@@ -7,73 +7,105 @@
 <style>
     .dashboard-wrapper { padding-top: 24px; padding-bottom: 48px; }
 
-    /* Stat card layout */
-    .stat-card-inner {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+    /* ── Greeting header ─────────────────────────────────────────── */
+    .greeting-title {
+        font-size: 1.6rem; font-weight: 800; color: var(--text-primary);
+        letter-spacing: -0.4px; margin: 0; line-height: 1.15;
     }
+    .greeting-sub { font-size: 13px; color: var(--text-secondary); margin: 5px 0 0; }
+
+    .clock-widget {
+        background: var(--bg-surface); border: 1px solid var(--border);
+        border-radius: var(--radius-md); padding: 9px 16px 9px 12px;
+        display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm);
+    }
+    .clock-ic {
+        width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--primary-soft); color: var(--primary-light);
+    }
+    .clock-time {
+        font-size: 1.1rem; font-weight: 700; color: var(--text-primary);
+        font-variant-numeric: tabular-nums; letter-spacing: 0.5px; line-height: 1.15;
+    }
+    .clock-date {
+        font-size: 11px; color: var(--text-secondary); font-weight: 600;
+        letter-spacing: 0.3px; margin-top: 1px;
+    }
+
+    /* ── Stat cards ──────────────────────────────────────────────── */
+    .stat-card-inner { display: flex; justify-content: space-between; align-items: flex-start; }
     .stat-label {
-        font-size: 11px;
-        font-weight: 700;
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        font-size: 11px; font-weight: 700; color: var(--text-secondary);
+        text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
     }
     .stat-value {
-        font-size: 1.875rem;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1;
-        margin-bottom: 5px;
-        letter-spacing: -0.5px;
+        font-size: 1.875rem; font-weight: 800; color: var(--text-primary);
+        line-height: 1; margin-bottom: 5px; letter-spacing: -0.5px;
     }
-    .stat-sub {
-        font-size: 12px;
-        color: #94a3b8;
-        margin: 0;
-    }
+    .stat-sub { font-size: 12px; color: var(--text-secondary); margin: 0; }
     .icon-box {
-        width: 48px;
-        height: 48px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
-        flex-shrink: 0;
-        transition: transform 0.2s ease;
+        width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+        border-radius: 12px; flex-shrink: 0; transition: transform 0.2s ease;
     }
     .analytics-card:hover .icon-box { transform: scale(1.08); }
 
-    /* Clock */
-    .clock-widget {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 12px 18px;
-        text-align: right;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    .stat-delta {
+        display: inline-flex; align-items: center; gap: 5px; width: fit-content;
+        font-size: 11.5px; font-weight: 700; margin-top: 12px;
+        padding: 3px 9px; border-radius: 20px;
     }
-    .clock-time {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #0f172a;
-        font-variant-numeric: tabular-nums;
-        letter-spacing: 0.5px;
-        line-height: 1.2;
-    }
-    .clock-date {
-        font-size: 10.5px;
-        color: #94a3b8;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-top: 2px;
-    }
+    .stat-delta.up   { color: var(--success); background: rgba(34,197,94,0.13); }
+    .stat-delta.down { color: var(--danger);  background: rgba(239,68,68,0.13); }
+    .stat-delta.flat { color: var(--text-muted); background: rgba(148,163,184,0.15); }
+    .stat-delta .sd-note { font-weight: 500; opacity: 0.85; }
 
-    /* Leaflet map fixes inside card */
-    #kioskMap { height: 340px; }
+    /* ── Recent Activities feed ──────────────────────────────────── */
+    .act-item { display: flex; gap: 12px; padding: 12px 20px; align-items: flex-start; }
+    .act-item + .act-item { border-top: 1px solid var(--border); }
+    .act-ic {
+        width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0; color: #fff;
+        display: flex; align-items: center; justify-content: center; font-size: 13px;
+    }
+    .act-body { flex: 1; min-width: 0; }
+    .act-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 0; line-height: 1.3; }
+    .act-sub { font-size: 12px; color: var(--text-secondary); margin: 1px 0 0;
+               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .act-time { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+
+    /* ── Live Attendance list ────────────────────────────────────── */
+    .la-item { display: flex; align-items: center; gap: 12px; padding: 11px 20px; }
+    .la-item + .la-item { border-top: 1px solid var(--border); }
+    .la-avatar {
+        width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+        background: var(--primary-soft); color: var(--primary-light);
+        display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+    }
+    .la-name { font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 0; }
+    .la-pos { font-size: 11.5px; color: var(--text-secondary); margin: 0; }
+    .la-time { margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--success); font-variant-numeric: tabular-nums; }
+
+    .dash-empty { padding: 34px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    .dash-empty > i { font-size: 26px; opacity: 0.35; display: block; margin-bottom: 12px; }
+
+    /* ── Compact map controls (token-based, theme aware) ─────────── */
+    .map-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .map-input, .map-select {
+        padding: 8px 11px; border-radius: 10px; font-size: 13px;
+        border: 1px solid var(--border-md); background: var(--bg-subtle); color: var(--text-primary);
+    }
+    .map-input { flex: 1; min-width: 120px; }
+    .map-select { flex: 1; min-width: 110px; }
+    .map-btn {
+        padding: 8px 12px; border: none; border-radius: 10px; font-size: 13px;
+        font-weight: 600; cursor: pointer; color: #fff; white-space: nowrap;
+    }
+    .map-btn.secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-md); }
+    .map-btn.primary { background: var(--primary); }
+    .map-hint { font-size: 11.5px; color: var(--text-secondary); margin-bottom: 8px; }
+
+    /* Leaflet map inside card */
+    #kioskMap { height: 260px; min-height: 220px; border-radius: 12px; overflow: hidden; }
     #kioskMap .leaflet-control-attribution { font-size: 9px; }
 </style>
 @endsection
@@ -82,20 +114,36 @@
 <div class="container-fluid dashboard-wrapper">
 
     {{-- HEADER --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    @php
+        $h = (int) now()->format('G');
+        $greet = $h < 12 ? 'Good morning' : ($h < 18 ? 'Good afternoon' : 'Good evening');
+    @endphp
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-            <p class="mb-1" style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">
-                WORKSPACE &rsaquo; REAL-TIME
-            </p>
-            <h4 class="fw-bold mb-0" style="color:#0f172a;letter-spacing:-0.3px;">Dashboard</h4>
+            <h1 class="greeting-title">{{ $greet }}, {{ auth()->user()->name ?? 'Admin' }} 👋</h1>
+            <p class="greeting-sub">Here's what's happening at Jeyanco Construction today.</p>
         </div>
-        <div class="clock-widget d-none d-sm-block">
-            <div class="clock-time" id="current-time">--:-- --</div>
-            <div class="clock-date"><i class="fas fa-calendar-day me-1"></i>{{ date('m/d/Y') }}</div>
+        <div class="clock-widget d-none d-sm-flex">
+            <div class="clock-ic"><i class="fas fa-clock"></i></div>
+            <div>
+                <div class="clock-time" id="current-time">--:-- --</div>
+                <div class="clock-date" id="current-date">{{ now()->format('l, F d, Y') }}</div>
+            </div>
         </div>
     </div>
 
     {{-- ROW 1: Stat Cards --}}
+    @php
+        $presentDelta = ($presentToday ?? 0) - ($presentYesterday ?? 0);
+        $lwp = $lastWeekPayroll ?? 0;
+        $payoutPct = $lwp > 0
+            ? round((($weeklyPayroll - $lwp) / $lwp) * 100, 1)
+            : (($weeklyPayroll ?? 0) > 0 ? 100 : 0);
+        $presentClass = $presentDelta > 0 ? 'up' : ($presentDelta < 0 ? 'down' : 'flat');
+        $presentIcon  = $presentDelta > 0 ? 'fa-arrow-up' : ($presentDelta < 0 ? 'fa-arrow-down' : 'fa-minus');
+        $payoutClass  = $payoutPct > 0 ? 'up' : ($payoutPct < 0 ? 'down' : 'flat');
+        $payoutIcon   = $payoutPct > 0 ? 'fa-arrow-up' : ($payoutPct < 0 ? 'fa-arrow-down' : 'fa-minus');
+    @endphp
     <div class="row g-3 mb-4">
 
         <div class="col-xl-3 col-md-6">
@@ -110,6 +158,11 @@
                         <i class="fas fa-helmet-safety text-primary fa-lg"></i>
                     </div>
                 </div>
+                @if(($newThisWeek ?? 0) > 0)
+                    <span class="stat-delta up"><i class="fas fa-arrow-up"></i> +{{ $newThisWeek }} <span class="sd-note">this week</span></span>
+                @else
+                    <span class="stat-delta flat"><i class="fas fa-minus"></i> 0 <span class="sd-note">new this week</span></span>
+                @endif
             </div>
         </div>
 
@@ -125,6 +178,7 @@
                         <i class="fas fa-user-check text-success fa-lg"></i>
                     </div>
                 </div>
+                <span class="stat-delta {{ $presentClass }}"><i class="fas {{ $presentIcon }}"></i> {{ $presentDelta > 0 ? '+' : '' }}{{ $presentDelta }} <span class="sd-note">vs yesterday</span></span>
             </div>
         </div>
 
@@ -140,6 +194,7 @@
                         <i class="fas fa-coins text-warning fa-lg"></i>
                     </div>
                 </div>
+                <span class="stat-delta {{ $payoutClass }}"><i class="fas {{ $payoutIcon }}"></i> {{ $payoutPct > 0 ? '+' : '' }}{{ $payoutPct }}% <span class="sd-note">vs last week</span></span>
             </div>
         </div>
 
@@ -155,6 +210,11 @@
                         <i class="fas fa-file-invoice-dollar text-danger fa-lg"></i>
                     </div>
                 </div>
+                @if(($pendingVale ?? 0) > 0)
+                    <span class="stat-delta down"><i class="fas fa-circle-exclamation"></i> Outstanding <span class="sd-note">balance</span></span>
+                @else
+                    <span class="stat-delta flat"><i class="fas fa-check"></i> All settled</span>
+                @endif
             </div>
         </div>
 
@@ -218,42 +278,92 @@
 
     </div>
 
-    {{-- ROW 3: Active Project Map (LIVE GPS) --}}
+    {{-- ROW 3: Live Attendance | Project Sites (map) | Recent Activities --}}
     <div class="row g-3 mb-4">
-        <div class="col-12">
-            <div class="table-card">
+
+        {{-- Live Attendance (Today) --}}
+        <div class="col-lg-4">
+            <div class="table-card h-100 d-flex flex-column">
                 <div class="table-card-header">
-                    <h6>
-                        <i class="fas fa-map-location-dot"></i>
-                        Active Project Site
+                    <h6><i class="fas fa-user-clock"></i> Live Attendance
+                        <span style="font-weight:500;color:var(--text-secondary);font-size:12px;">(Today)</span>
                     </h6>
-                    <span id="kiosk-status" style="font-size:12px;color:#94a3b8;font-weight:500;">
-                        <i class="fas fa-circle-notch fa-spin"></i> Locating kiosk...
+                    <span class="badge" style="background:rgba(34,197,94,0.15);color:var(--success);font-weight:700;font-size:10.5px;letter-spacing:0.5px;">
+                        <i class="fas fa-circle" style="font-size:6px;vertical-align:middle;"></i> LIVE
                     </span>
                 </div>
-                <div class="p-3">
-                    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
-                        <input id="siteSearch" type="text" placeholder="Search a place… (hal. Naga City)"
-                               style="flex:1;min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;font-size:13px;">
-                        <button id="siteSearchBtn" type="button"
-                                style="padding:8px 14px;border:none;border-radius:8px;background:#334155;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
-                            <i class="fas fa-search"></i> Search
-                        </button>
-                        <select id="siteSelect" title="Piliin ang site na itatakda"
-                                style="padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;font-size:13px;min-width:150px;"></select>
-                        <button id="siteSaveBtn" type="button"
-                                style="padding:8px 14px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
-                            <i class="fas fa-map-pin"></i> Save location
-                        </button>
-                    </div>
-                    <div id="siteMapHint" style="font-size:12px;color:#94a3b8;margin-bottom:8px;">
-                        Pumili ng site, mag-search o mag-click sa map para itakda ang lokasyon, tapos i-Save.
-                    </div>
-                    <div id="kioskMap" class="rounded-3 overflow-hidden"
-                         style="height:340px;border:1px solid #e2e8f0;"></div>
+                <div class="flex-grow-1">
+                    @forelse($todayAttendance as $att)
+                        <div class="la-item">
+                            <div class="la-avatar">{{ strtoupper(substr(optional($att->employee)->name ?? 'W', 0, 1)) }}</div>
+                            <div>
+                                <p class="la-name">{{ optional($att->employee)->name ?? 'Worker' }}</p>
+                                <p class="la-pos">{{ optional($att->employee)->position ?? 'On site' }}</p>
+                            </div>
+                            <span class="la-time">{{ \Carbon\Carbon::parse($att->time_in)->format('g:i A') }}</span>
+                        </div>
+                    @empty
+                        <div class="dash-empty">
+                            <i class="fas fa-user-clock"></i>
+                            No attendance records for today.<br>
+                            <span style="font-size:12px;">Attendance will appear here in real-time.</span>
+                            <div class="mt-3"><a href="{{ url('/attendance') }}" class="btn btn-sm btn-primary">View Attendance</a></div>
+                        </div>
+                    @endforelse
                 </div>
             </div>
         </div>
+
+        {{-- Project Sites (interactive map — search / set location / live kiosk GPS) --}}
+        <div class="col-lg-4">
+            <div class="table-card h-100 d-flex flex-column">
+                <div class="table-card-header">
+                    <h6><i class="fas fa-map-location-dot"></i> Project Sites</h6>
+                    <span id="kiosk-status" style="font-size:11.5px;color:var(--text-secondary);font-weight:500;">
+                        <i class="fas fa-circle-notch fa-spin"></i> Locating…
+                    </span>
+                </div>
+                <div class="p-3 flex-grow-1 d-flex flex-column">
+                    <div class="map-ctl">
+                        <input id="siteSearch" class="map-input" type="text" placeholder="Search a place…">
+                        <button id="siteSearchBtn" class="map-btn secondary" type="button" title="Search"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div class="map-ctl">
+                        <select id="siteSelect" class="map-select" title="Piliin ang site na itatakda"></select>
+                        <button id="siteSaveBtn" class="map-btn primary" type="button" title="Save location"><i class="fas fa-map-pin"></i> Save</button>
+                    </div>
+                    <div id="siteMapHint" class="map-hint">Pumili ng site, mag-search o mag-click sa map, tapos Save.</div>
+                    <div id="kioskMap" class="rounded-3 overflow-hidden flex-grow-1"></div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Recent Activities --}}
+        <div class="col-lg-4">
+            <div class="table-card h-100 d-flex flex-column">
+                <div class="table-card-header">
+                    <h6><i class="fas fa-wave-square"></i> Recent Activities</h6>
+                </div>
+                <div class="flex-grow-1">
+                    @forelse($recentActivities as $act)
+                        <div class="act-item">
+                            <div class="act-ic" style="background: {{ $act['color'] }};"><i class="fas {{ $act['icon'] }}"></i></div>
+                            <div class="act-body">
+                                <p class="act-title">{{ $act['title'] }}</p>
+                                <p class="act-sub">{{ $act['subtitle'] }}</p>
+                            </div>
+                            <span class="act-time">{{ $act['time']->diffForHumans() }}</span>
+                        </div>
+                    @empty
+                        <div class="dash-empty">
+                            <i class="fas fa-clock-rotate-left"></i>
+                            No recent activity yet.
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
     </div>
 
     {{-- MODAL: Full Employee List --}}
@@ -304,10 +414,13 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Live clock
+    // Live clock (time + date)
     (function tick() {
-        const el = document.getElementById('current-time');
-        if (el) el.innerText = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
+        const now = new Date();
+        const t = document.getElementById('current-time');
+        const d = document.getElementById('current-date');
+        if (t) t.innerText = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
+        if (d) d.innerText = now.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
         setTimeout(tick, 1000);
     })();
 
