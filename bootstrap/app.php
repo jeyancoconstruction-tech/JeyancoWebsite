@@ -12,6 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind Railway's load balancer the app receives requests over HTTP
+        // internally while the public connection is HTTPS. Trust the proxy so
+        // Laravel honours X-Forwarded-Proto and generates https:// URLs.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
         ]);
