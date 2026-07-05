@@ -232,6 +232,23 @@
                     </span>
                 </div>
                 <div class="p-3">
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
+                        <input id="siteSearch" type="text" placeholder="Search a place… (hal. Naga City)"
+                               style="flex:1;min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;font-size:13px;">
+                        <button id="siteSearchBtn" type="button"
+                                style="padding:8px 14px;border:none;border-radius:8px;background:#334155;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                        <select id="siteSelect" title="Piliin ang site na itatakda"
+                                style="padding:8px 12px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;font-size:13px;min-width:150px;"></select>
+                        <button id="siteSaveBtn" type="button"
+                                style="padding:8px 14px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+                            <i class="fas fa-map-pin"></i> Save location
+                        </button>
+                    </div>
+                    <div id="siteMapHint" style="font-size:12px;color:#94a3b8;margin-bottom:8px;">
+                        Pumili ng site, mag-search o mag-click sa map para itakda ang lokasyon, tapos i-Save.
+                    </div>
                     <div id="kioskMap" class="rounded-3 overflow-hidden"
                          style="height:340px;border:1px solid #e2e8f0;"></div>
                 </div>
@@ -345,48 +362,178 @@
         });
     }
 
-    // ---- LIVE KIOSK GPS MAP ----
+    // ---- PROJECT SITE MAP (Leaflet / OpenStreetMap — libre, walang API key) ----
     (function () {
-        const KIOSK_ID = 'jeyanco-01';
-        const HOME = [13.0, 124.0];   // TODO: palitan ng totoong site coords mo
-
         const mapEl = document.getElementById('kioskMap');
         if (!mapEl) return;
 
-        const map = L.map('kioskMap').setView(HOME, 16);
+        const NAGA = [13.6218, 123.1948];   // Naga City, Camarines Sur — default center
+        const csrf = document.querySelector('meta[name="csrf-token"]').content;
+
+        const map = L.map('kioskMap').setView(NAGA, 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap',
+            attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19,
         }).addTo(map);
 
-        const marker = L.marker(HOME).addTo(map);
-        const statusEl = document.getElementById('kiosk-status');
-        let hasFix = false;
+        // FIX: the map used to render half-blank because Leaflet measured the
+        // container before it was fully laid out. Recalc size a few times.
+        const fixSize = () => map.invalidateSize();
+        window.addEventListener('load', fixSize);
+        setTimeout(fixSize, 300);
+        setTimeout(fixSize, 900);
 
-        async function refresh() {
+        const siteSelect  = document.getElementById('siteSelect');
+        const saveBtn     = document.getElementById('siteSaveBtn');
+        const searchInput = document.getElementById('siteSearch');
+        const searchBtn   = document.getElementById('siteSearchBtn');
+        const hintEl      = document.getElementById('siteMapHint');
+        const setHint = (msg, color) => { hintEl.textContent = msg; hintEl.style.color = color || '#94a3b8'; };
+        const selectedName = () => (siteSelect.options[siteSelect.selectedIndex]?.text || 'site').replace(' 📍','');
+
+        let siteMarkers = {};     // id -> saved-location marker
+        let sitesById   = {};     // id -> site record
+        let placing     = null;   // { lat, lng } pending pin
+        let placingMarker = null;
+
+        // ---- load all sites, drop markers, populate the picker ----
+        async function loadSites(fit = true) {
+            try {
+                const res = await fetch('/sites/list', { headers: { 'Accept': 'application/json' } });
+                const d = await res.json();
+                const sites = d.sites || [];
+                Object.values(siteMarkers).forEach(m => map.removeLayer(m));
+                siteMarkers = {}; sitesById = {};
+                const prev = siteSelect.value;
+                siteSelect.innerHTML = '';
+                const bounds = [];
+                sites.forEach(s => {
+                    sitesById[s.id] = s;
+                    const hasLoc = s.latitude != null && s.longitude != null;
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = s.name + (hasLoc ? ' 📍' : '');
+                    siteSelect.appendChild(opt);
+                    if (hasLoc) {
+                        const lat = parseFloat(s.latitude), lng = parseFloat(s.longitude);
+                        siteMarkers[s.id] = L.marker([lat, lng]).addTo(map)
+                            .bindPopup(`<b>${s.name}</b>${s.location ? '<br>' + s.location : ''}`);
+                        bounds.push([lat, lng]);
+                    }
+                });
+                // keep previous selection, else default to "Site A"
+                if (prev && sitesById[prev]) siteSelect.value = prev;
+                else {
+                    const a = sites.find(s => s.name.trim().toLowerCase() === 'site a');
+                    if (a) siteSelect.value = a.id;
+                }
+                if (fit) {
+                    if (bounds.length === 1) map.setView(bounds[0], 16);
+                    else if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40] });
+                }
+                setHint('Pumili ng site, mag-search o mag-click sa map para itakda ang lokasyon, tapos i-Save.');
+            } catch (e) {
+                setHint('Hindi ma-load ang listahan ng sites.', '#ef4444');
+            }
+        }
+
+        // ---- click / drag to place the pin ----
+        function placePin(latlng) {
+            placing = { lat: latlng.lat, lng: latlng.lng };
+            if (placingMarker) placingMarker.setLatLng(latlng);
+            else {
+                placingMarker = L.marker(latlng, { draggable: true, zIndexOffset: 1000, opacity: 0.85 }).addTo(map);
+                placingMarker.on('dragend', ev => {
+                    const p = ev.target.getLatLng();
+                    placing = { lat: p.lat, lng: p.lng };
+                    setHint(`Pin para sa "${selectedName()}": ${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)} — pindutin ang Save.`, '#22c55e');
+                });
+            }
+            setHint(`Pin para sa "${selectedName()}": ${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)} — pindutin ang Save.`, '#22c55e');
+        }
+        map.on('click', e => placePin(e.latlng));
+
+        // ---- free place search via Nominatim (OpenStreetMap) ----
+        async function doSearch() {
+            const q = searchInput.value.trim();
+            if (!q) return;
+            setHint('Naghahanap ng lugar…');
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q=${encodeURIComponent(q)}`;
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                const arr = await res.json();
+                if (!arr.length) { setHint('Walang nahanap na lugar. Subukan ang ibang pangalan.', '#ef4444'); return; }
+                const lat = parseFloat(arr[0].lat), lng = parseFloat(arr[0].lon);
+                map.setView([lat, lng], 16);
+                placePin(L.latLng(lat, lng));   // auto-drop pin at the result
+            } catch (e) {
+                setHint('Hindi gumana ang search. Subukan ulit.', '#ef4444');
+            }
+        }
+        searchBtn.addEventListener('click', doSearch);
+        searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+
+        // ---- save the pin as the selected site's location ----
+        saveBtn.addEventListener('click', async () => {
+            const id = siteSelect.value;
+            if (!id) { setHint('Walang piniling site.', '#ef4444'); return; }
+            if (!placing) { setHint('Mag-click muna sa map o mag-search para maglagay ng pin.', '#ef4444'); return; }
+            const site = sitesById[id];
+            saveBtn.disabled = true; setHint('Sine-save ang lokasyon…');
+            try {
+                const res = await fetch(`/sites/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({
+                        name: site.name,
+                        location: (searchInput.value.trim() || `${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)}`),
+                        latitude: placing.lat,
+                        longitude: placing.lng,
+                    }),
+                });
+                const d = await res.json();
+                if (!res.ok || !d.success) throw new Error((d.message) || 'Save failed');
+                if (placingMarker) { map.removeLayer(placingMarker); placingMarker = null; }
+                placing = null;
+                await loadSites(false);
+                setHint(`✅ Na-save ang lokasyon ng "${site.name}".`, '#22c55e');
+            } catch (e) {
+                setHint('Hindi na-save: ' + e.message, '#ef4444');
+            } finally {
+                saveBtn.disabled = false;
+            }
+        });
+
+        loadSites();
+
+        // ---- live kiosk GPS overlay (Raspberry Pi) — distinct red dot ----
+        const KIOSK_ID = 'jeyanco-01';
+        const statusEl  = document.getElementById('kiosk-status');
+        const liveIcon  = L.divIcon({
+            className: '',
+            html: '<div style="width:14px;height:14px;background:#ef4444;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 4px rgba(239,68,68,.25)"></div>',
+            iconSize: [14, 14], iconAnchor: [7, 7],
+        });
+        let liveMarker = null;
+        async function refreshLive() {
             try {
                 const res = await fetch(`/api/location/latest?kiosk_id=${KIOSK_ID}`);
                 const d = await res.json();
                 if (d.lat && d.lng) {
                     const pos = [d.lat, d.lng];
-                    marker.setLatLng(pos);
-                    if (!hasFix) { map.setView(pos, 17); hasFix = true; }
-                    else { map.panTo(pos); }
+                    if (liveMarker) liveMarker.setLatLng(pos);
+                    else liveMarker = L.marker(pos, { icon: liveIcon }).addTo(map).bindPopup('Live kiosk position');
                     const t = d.recorded_at ? new Date(d.recorded_at).toLocaleTimeString() : '';
                     statusEl.innerHTML = `<i class="fas fa-circle text-success" style="font-size:8px;"></i> Live &middot; ${t}`;
                 } else {
-                    statusEl.innerHTML = `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Waiting for GPS fix`;
+                    statusEl.innerHTML = `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Waiting for GPS`;
                 }
             } catch (e) {
-                statusEl.innerHTML = `<i class="fas fa-circle text-danger" style="font-size:8px;"></i> Offline`;
+                statusEl.innerHTML = `<i class="fas fa-circle text-secondary" style="font-size:8px;"></i> No live GPS`;
             }
         }
-
-        refresh();
-        setInterval(refresh, 10000);   // every 10s
-
-        // Leaflet needs a size recalc if the card animates/loads in
-        setTimeout(() => map.invalidateSize(), 300);
+        refreshLive();
+        setInterval(refreshLive, 10000);
     })();
 </script>
 @endsection
