@@ -2,7 +2,7 @@
 
 @section('page_title', 'Dashboard')
 
-@section('styles')
+@push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     .dashboard-wrapper { padding-top: 24px; padding-bottom: 48px; }
@@ -108,7 +108,7 @@
     #kioskMap { height: 260px; min-height: 220px; border-radius: 12px; overflow: hidden; }
     #kioskMap .leaflet-control-attribution { font-size: 9px; }
 </style>
-@endsection
+@endpush
 
 @section('content')
 <div class="container-fluid dashboard-wrapper">
