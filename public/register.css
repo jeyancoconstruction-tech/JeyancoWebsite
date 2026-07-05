@@ -1,0 +1,89 @@
+/* Page Title */
+h2 {
+    font-weight: 700;
+    color: #212529;
+}
+
+/* Card Styling */
+.card {
+    border-radius: 12px;
+    border: none;
+    overflow: hidden;
+}
+
+.card-header {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.card-body {
+    background: #f8f9fa;
+}
+
+/* Form Labels */
+.form-label {
+    font-weight: 600;
+    color: #343a40;
+}
+
+/* Inputs */
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    padding: 10px;
+    transition: all 0.2s ease-in-out;
+}
+
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.1rem rgba(13, 110, 253, 0.15);
+}
+
+/* File Input */
+input[type="file"] {
+    padding: 6px;
+}
+
+/* Info Alert Box */
+.alert-info {
+    border-radius: 10px;
+    font-size: 14px;
+    background-color: #e9f5ff;
+    border: 1px solid #b6e0ff;
+    color: #0c5460;
+}
+
+/* Buttons */
+.btn-primary {
+    background: #0d6efd;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.btn-primary:hover {
+    background: #0b5ed7;
+}
+
+.btn-secondary {
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 500;
+}
+
+/* Responsive spacing */
+.container-fluid {
+    padding-top: 20px;
+    padding-bottom: 40px;
+}
+
+/* Fingerprint Field Highlight */
+#fingerprint_id {
+    font-weight: 600;
+    letter-spacing: 1px;
+    background: #fffbea;
+    border: 1px dashed #ffc107;
+}

@@ -1,0 +1,112 @@
+/* ==========================================================
+   JEYANCO PAYROLL STYLES v2.0
+   ========================================================== */
+
+.payroll-container {
+    padding: 8px 0 48px;
+    font-family: 'Inter', sans-serif;
+}
+
+.payroll-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 32px;
+    letter-spacing: -0.3px;
+}
+
+/* Weekly Card */
+.weekly-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 28px 24px;
+    text-align: center;
+    transition: all 0.22s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.weekly-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+    border-radius: 16px 16px 0 0;
+}
+
+.weekly-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 16px 36px rgba(30,58,138,0.1);
+    border-color: #bfdbfe;
+}
+
+.week-range-text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Folder / Open Box */
+.open-box-wrapper {
+    background: #f1f5f9;
+    border: 2px dashed #cbd5e1;
+    border-radius: 14px;
+    padding: 32px 16px;
+    margin-bottom: 20px;
+    transition: all 0.22s ease;
+}
+.weekly-card:hover .open-box-wrapper {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    border-color: transparent;
+    box-shadow: 0 8px 20px rgba(30,58,138,0.22);
+}
+
+.open-box-wrapper i {
+    font-size: 2.5rem;
+    color: #3b82f6;
+    display: block;
+    margin-bottom: 10px;
+    transition: transform 0.2s ease, color 0.2s;
+}
+.weekly-card:hover .open-box-wrapper i {
+    color: #ffffff;
+    transform: rotate(-8deg) scale(1.08);
+}
+
+.open-box-wrapper span {
+    font-weight: 700;
+    color: #3b82f6;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 1px;
+    transition: color 0.2s;
+}
+.weekly-card:hover .open-box-wrapper span { color: #ffffff; }
+
+/* Amount Display */
+.total-amount-display {
+    font-size: 1.85rem;
+    font-weight: 900;
+    color: #0f172a;
+    margin-top: 6px;
+    letter-spacing: -0.5px;
+    transition: color 0.2s;
+}
+.weekly-card:hover .total-amount-display { color: #1e3a8a; }
+
+.total-label {
+    font-size: 10.5px;
+    color: #94a3b8;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
