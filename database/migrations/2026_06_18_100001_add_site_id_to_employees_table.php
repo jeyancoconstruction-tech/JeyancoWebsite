@@ -7,13 +7,18 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('employees', function (Blueprint $table) {
-            $table->foreignId('site_id')
-                  ->nullable()
-                  ->after('labor_type_id')
-                  ->constrained('sites')
-                  ->nullOnDelete();
-        });
+        // site_id may already exist on fresh installs because the
+        // create_employees_table migration also defines it. Guard it so
+        // this migration is idempotent across environments.
+        if (! Schema::hasColumn('employees', 'site_id')) {
+            Schema::table('employees', function (Blueprint $table) {
+                $table->foreignId('site_id')
+                      ->nullable()
+                      ->after('labor_type_id')
+                      ->constrained('sites')
+                      ->nullOnDelete();
+            });
+        }
 
         // Assign all existing employees to Site A (id = 1)
         $siteA = \Illuminate\Support\Facades\DB::table('sites')->where('name', 'Site A')->value('id');
