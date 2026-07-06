@@ -47,6 +47,7 @@ Route::middleware(['auth', 'is_admin'])->group(function () {
     Route::delete('/employees/bulk-delete', [EmployeeController::class, 'bulkDelete'])->name('employees.bulk-delete');
     Route::delete('/employees/delete-all',  [EmployeeController::class, 'deleteAll'])->name('employees.delete-all');
     Route::get('/employees/register', [EmployeeController::class, 'register'])->name('employees.register');
+    Route::get('/employees/register/live', [EmployeeController::class, 'registerLive'])->name('employees.register.live');
 
     // Employee lifecycle (Register & Manage hub). Declared before the resource
     // so their suffixed paths are never swallowed by "/employees/{employee}".

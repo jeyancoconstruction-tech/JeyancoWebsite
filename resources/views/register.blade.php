@@ -79,34 +79,8 @@
                             <th>First seen</th><th class="text-center">Logs</th><th></th>
                         </tr>
                     </thead>
-                    <tbody>
-                    @forelse($pending as $e)
-                        <tr>
-                            <td>@include('employees._person', ['e' => $e, 'displayName' => 'New worker — needs details'])</td>
-                            <td>@include('employees._fp', ['e' => $e])</td>
-                            <td>
-                                <span class="rm-badge rm-badge-site"><i class="fas fa-tablet-screen-button"></i>
-                                    {{ optional($e->kiosk)->name ?? 'Site A Kiosk' }}</span>
-                            </td>
-                            <td class="rm-muted">{{ $e->created_at?->format('M d, Y g:i A') }}</td>
-                            <td class="text-center"><span class="rm-pill">{{ $e->attendances_count }}</span></td>
-                            <td class="rm-actions">
-                                <button class="rm-btn-complete js-emp-edit"
-                                        data-mode="complete"
-                                        data-id="{{ $e->id }}"
-                                        data-name=""
-                                        data-labor="{{ $e->labor_type_id }}"
-                                        data-rate="{{ $e->rate_per_hour }}"
-                                        data-site="{{ $e->site_id }}"
-                                        data-fp="{{ $e->fingerprint_id }}">
-                                    <i class="fas fa-user-pen"></i> Complete
-                                </button>
-                                @include('employees._menu', ['e' => $e, 'context' => 'pending'])
-                            </td>
-                        </tr>
-                    @empty
-                        @include('employees._empty', ['icon' => 'fingerprint', 'title' => 'No pending detections', 'sub' => 'When a new fingerprint clocks in on the Site A kiosk, it will show up here.'])
-                    @endforelse
+                    <tbody id="rmPendingBody">
+                        @include('employees._rows_pending', ['pending' => $pending])
                     </tbody>
                 </table>
             </div>
@@ -599,11 +573,14 @@
         setTimeout(() => nameEl.focus(), 250);
     }
 
-    document.querySelectorAll('.js-emp-edit').forEach(btn => {
-        btn.addEventListener('click', () => openModal(btn.dataset.mode, {
+    // Delegated so pending rows swapped in by live polling stay clickable.
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.js-emp-edit');
+        if (!btn) return;
+        openModal(btn.dataset.mode, {
             id: btn.dataset.id, name: btn.dataset.name, labor: btn.dataset.labor,
             rate: btn.dataset.rate, site: btn.dataset.site, fp: btn.dataset.fp,
-        }));
+        });
     });
     document.getElementById('rmAddBtn').addEventListener('click', () => openModal('add', {}));
 
@@ -619,6 +596,63 @@
             labor: '{{ old('labor_type_id') }}', site: '{{ old('site_id') }}', fp: '{{ old('fingerprint_id') }}'
         });
     @endif
+
+    // ── Realtime: auto-refresh kiosk-detected (pending) workers ──────────────
+    // Polls a lightweight feed every few seconds so new fingerprint scans on
+    // the Pi kiosk appear here without the admin having to refresh the page.
+    (function () {
+        const liveUrl = "{{ route('employees.register.live') }}";
+        const body    = document.getElementById('rmPendingBody');
+        let lastSig     = @json($liveSignature ?? null);
+        let prevPending = {{ $pending->count() }};
+
+        function setCount(sel, val) { const el = document.querySelector(sel); if (el) el.textContent = val; }
+        function updateCounts(c) {
+            ['pending', 'active', 'archived', 'removed'].forEach(k => {
+                setCount('.rm-stat-' + k + ' .rm-stat-num', c[k]);
+                setCount('.rm-tab[data-tab="' + k + '"] .rm-tab-count', c[k]);
+            });
+            const badge = document.querySelector('.nav-pending-badge');
+            if (badge) {
+                badge.textContent = c.pending;
+                badge.style.display = c.pending > 0 ? '' : 'none';
+            }
+        }
+        function toast(msg) {
+            let t = document.getElementById('rmToast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'rmToast';
+                t.style.cssText = 'position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(10px);' +
+                    'z-index:9999;background:#2563eb;color:#fff;padding:12px 20px;border-radius:12px;font-weight:600;' +
+                    'font-size:13.5px;box-shadow:0 12px 34px rgba(0,0,0,.4);display:flex;align-items:center;gap:10px;' +
+                    'opacity:0;transition:opacity .25s ease,transform .25s ease;';
+                document.body.appendChild(t);
+            }
+            t.innerHTML = '<i class="fas fa-fingerprint"></i> ' + msg;
+            requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
+            clearTimeout(t._hide);
+            t._hide = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(10px)'; }, 4500);
+        }
+
+        async function poll() {
+            try {
+                const res = await fetch(liveUrl, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) return;
+                const d = await res.json();
+                if (!d || d.signature === lastSig) return;   // nothing changed
+                lastSig = d.signature;
+                if (body) body.innerHTML = d.pending_html;
+                updateCounts(d.counts);
+                if (d.counts.pending > prevPending) {
+                    const n = d.counts.pending - prevPending;
+                    toast(n + ' new worker' + (n > 1 ? 's' : '') + ' detected from the kiosk');
+                }
+                prevPending = d.counts.pending;
+            } catch (e) { /* offline / transient — try again next tick */ }
+        }
+        setInterval(poll, 5000);
+    })();
 })();
 </script>
 @endsection
