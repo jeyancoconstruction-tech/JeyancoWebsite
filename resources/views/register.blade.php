@@ -358,7 +358,9 @@
 .rm-rate { text-align:center; font-weight:700; color:#374151; }
 .rm-pill { display:inline-block; min-width:26px; font-size:12px; font-weight:700; color:#475569; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:20px; padding:2px 8px; }
 
-.rm-actions { text-align:right; white-space:nowrap; display:flex; gap:6px; justify-content:flex-end; align-items:center; }
+.rm-actions { text-align:right; white-space:nowrap; }
+.rm-actions > * { vertical-align:middle; }
+.rm-actions > * + * { margin-left:6px; }
 .rm-btn-complete { height:34px; padding:0 14px; font-size:13px; font-weight:700; color:#fff; border:none; border-radius:8px; cursor:pointer;
     background:linear-gradient(135deg,#b45309,#d97706); display:inline-flex; align-items:center; gap:6px; transition:opacity .15s; }
 .rm-btn-complete:hover { opacity:.9; }
