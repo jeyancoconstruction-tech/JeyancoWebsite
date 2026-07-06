@@ -52,7 +52,6 @@ Route::middleware(['auth', 'is_admin'])->group(function () {
     // Employee lifecycle (Register & Manage hub). Declared before the resource
     // so their suffixed paths are never swallowed by "/employees/{employee}".
     Route::post  ('/employees/{employee}/complete', [EmployeeController::class, 'complete'])->name('employees.complete');
-    Route::post  ('/employees/{employee}/accept',   [EmployeeController::class, 'accept'])->name('employees.accept');
     Route::patch ('/employees/{employee}/archive',  [EmployeeController::class, 'archive'])->name('employees.archive');
     Route::patch ('/employees/{employee}/activate', [EmployeeController::class, 'activate'])->name('employees.activate');
     Route::patch ('/employees/{employee}/restore',  [EmployeeController::class, 'restore'])->name('employees.restore');

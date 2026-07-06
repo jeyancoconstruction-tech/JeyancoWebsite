@@ -554,6 +554,12 @@
 
     function openModal(mode, d) {
         clearPhoto();
+        // Show an existing photo (e.g. captured at the kiosk) so the admin can
+        // see it and replace it if needed.
+        if (d.photo) {
+            photoPrev.src = d.photo; photoPrev.style.display = 'block';
+            photoIcon.style.display = 'none'; photoClr.style.display = '';
+        }
         modeField.value = mode;
         idField.value   = d.id || '';
         nameEl.value = d.name || '';
@@ -567,6 +573,11 @@
             titleEl.textContent = 'Add Employee Manually';
             subEl.textContent = 'Register a worker without a kiosk scan.';
             submitLbl.textContent = 'Register';
+        } else if (mode === 'confirm') {
+            form.action = `${baseUrl}/${d.id}/complete`; methodEl.value = 'POST';
+            titleEl.textContent = 'Confirm the information';
+            subEl.textContent = 'Review the details submitted from the kiosk — fix any typo and add a photo if needed, then activate.';
+            submitLbl.textContent = 'Confirm & Activate';
         } else if (mode === 'complete') {
             form.action = `${baseUrl}/${d.id}/complete`; methodEl.value = 'POST';
             titleEl.textContent = 'Complete Registration';

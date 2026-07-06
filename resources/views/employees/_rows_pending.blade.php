@@ -1,11 +1,12 @@
 @forelse($pending as $e)
     @php
-        // A kiosk registration already carries a name + labor type + rate, so it
-        // can be Accepted straight away. A bare fingerprint detection has none of
-        // these and must be Completed (details filled) first.
+        // A kiosk registration already carries a name + labor type + rate, so the
+        // admin only needs to CONFIRM (review + tweak) it. A bare fingerprint
+        // detection has none of these and must be COMPLETED (details filled) first.
         $hasDetails = $e->name !== 'Unregistered Worker'
             && ! empty($e->labor_type_id)
             && (float) $e->rate_per_hour > 0;
+        $photoUrl = $e->photo ? asset('storage/' . $e->photo) : '';
     @endphp
     <tr>
         <td>@include('employees._person', ['e' => $e, 'displayName' => $hasDetails ? $e->name : 'New worker — needs details'])</td>
@@ -18,10 +19,17 @@
         <td class="text-center"><span class="rm-pill">{{ $e->attendances_count }}</span></td>
         <td class="rm-actions">
             @if($hasDetails)
-                <form action="{{ route('employees.accept', $e->id) }}" method="POST" style="display:inline;">
-                    @csrf
-                    <button type="submit" class="rm-btn-accept"><i class="fas fa-check"></i> Accept</button>
-                </form>
+                <button class="rm-btn-accept js-emp-edit"
+                        data-mode="confirm"
+                        data-id="{{ $e->id }}"
+                        data-name="{{ $e->name }}"
+                        data-labor="{{ $e->labor_type_id }}"
+                        data-rate="{{ $e->rate_per_hour }}"
+                        data-site="{{ $e->site_id }}"
+                        data-fp="{{ $e->fingerprint_id }}"
+                        data-photo="{{ $photoUrl }}">
+                    <i class="fas fa-check"></i> Confirm
+                </button>
             @else
                 <button class="rm-btn-complete js-emp-edit"
                         data-mode="complete"
@@ -30,7 +38,8 @@
                         data-labor="{{ $e->labor_type_id }}"
                         data-rate="{{ $e->rate_per_hour }}"
                         data-site="{{ $e->site_id }}"
-                        data-fp="{{ $e->fingerprint_id }}">
+                        data-fp="{{ $e->fingerprint_id }}"
+                        data-photo="{{ $photoUrl }}">
                     <i class="fas fa-user-pen"></i> Complete
                 </button>
             @endif
@@ -42,5 +51,5 @@
         </td>
     </tr>
 @empty
-    @include('employees._empty', ['icon' => 'fingerprint', 'title' => 'No workers awaiting approval', 'sub' => 'When a worker registers or scans a new fingerprint on the kiosk, they appear here for you to Accept or Reject.'])
+    @include('employees._empty', ['icon' => 'fingerprint', 'title' => 'No workers awaiting approval', 'sub' => 'When a worker registers or scans a new fingerprint on the kiosk, they appear here for you to Confirm or Reject.'])
 @endforelse
