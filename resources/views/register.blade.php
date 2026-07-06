@@ -45,10 +45,6 @@
             <span class="rm-stat-num">{{ $active->count() }}</span>
             <span class="rm-stat-lbl"><i class="fas fa-user-check"></i> Active</span>
         </button>
-        <button class="rm-stat rm-stat-archived" data-tab="archived">
-            <span class="rm-stat-num">{{ $archived->count() }}</span>
-            <span class="rm-stat-lbl"><i class="fas fa-box-archive"></i> Archived</span>
-        </button>
         <button class="rm-stat rm-stat-removed" data-tab="removed">
             <span class="rm-stat-num">{{ $removed->count() }}</span>
             <span class="rm-stat-lbl"><i class="fas fa-trash-can-arrow-up"></i> Removed</span>
@@ -59,7 +55,6 @@
     <div class="rm-tabs">
         <button class="rm-tab active" data-tab="pending">Pending <span class="rm-tab-count">{{ $pending->count() }}</span></button>
         <button class="rm-tab" data-tab="active">Active <span class="rm-tab-count">{{ $active->count() }}</span></button>
-        <button class="rm-tab" data-tab="archived">Archived <span class="rm-tab-count">{{ $archived->count() }}</span></button>
         <button class="rm-tab" data-tab="removed">Removed <span class="rm-tab-count">{{ $removed->count() }}</span></button>
     </div>
 
@@ -124,37 +119,6 @@
                         </tr>
                     @empty
                         @include('employees._empty', ['icon' => 'users', 'title' => 'No active employees', 'sub' => 'Complete a pending detection or add one manually to get started.'])
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    {{-- ═══ ARCHIVED ═══════════════════════════════════════════════════════ --}}
-    <div class="rm-pane" data-pane="archived">
-        <div class="rm-card">
-            <div class="rm-card-note">
-                <i class="fas fa-circle-info"></i>
-                Archived workers have left the company. Their payroll history stays intact; reactivate them anytime.
-            </div>
-            <div class="table-responsive">
-                <table class="rm-table">
-                    <thead>
-                        <tr><th>Employee</th><th>Site</th><th>Labor Type</th><th>Archived</th><th class="text-center">Logs</th><th></th></tr>
-                    </thead>
-                    <tbody>
-                    @forelse($archived as $e)
-                        <tr>
-                            <td>@include('employees._person', ['e' => $e, 'displayName' => $e->name])</td>
-                            <td>@include('employees._site', ['e' => $e])</td>
-                            <td>@include('employees._labor', ['e' => $e])</td>
-                            <td class="rm-muted">{{ $e->archived_at?->format('M d, Y') ?? '—' }}</td>
-                            <td class="text-center"><span class="rm-pill">{{ $e->attendances_count }}</span></td>
-                            <td class="rm-actions">@include('employees._menu', ['e' => $e, 'context' => 'archived'])</td>
-                        </tr>
-                    @empty
-                        @include('employees._empty', ['icon' => 'box-archive', 'title' => 'Nothing archived', 'sub' => 'Workers you archive will appear here.'])
                     @endforelse
                     </tbody>
                 </table>
@@ -480,7 +444,7 @@
     document.querySelectorAll('.rm-tab, .rm-stat').forEach(el => el.addEventListener('click', () => switchTab(el.dataset.tab)));
     // Open the tab from the URL hash, defaulting to whichever has items.
     const hash = (location.hash || '').replace('#', '');
-    if (['pending','active','archived','removed'].includes(hash)) switchTab(hash);
+    if (['pending','active','removed'].includes(hash)) switchTab(hash);
     else if ({{ $pending->count() }} === 0 && {{ $active->count() }} > 0) switchTab('active');
 
     // ── Kebab menus ──────────────────────────────────────────────────────────
@@ -628,7 +592,7 @@
 
         function setCount(sel, val) { const el = document.querySelector(sel); if (el) el.textContent = val; }
         function updateCounts(c) {
-            ['pending', 'active', 'archived', 'removed'].forEach(k => {
+            ['pending', 'active', 'removed'].forEach(k => {
                 setCount('.rm-stat-' + k + ' .rm-stat-num', c[k]);
                 setCount('.rm-tab[data-tab="' + k + '"] .rm-tab-count', c[k]);
             });
