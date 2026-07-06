@@ -277,6 +277,40 @@ class EmployeeController extends Controller
             ->with('success', $employee->name . ' has been registered and activated.');
     }
 
+    /**
+     * Accept a kiosk-submitted worker into the active workforce. Only pending
+     * workers that already have complete details can be accepted directly;
+     * bare kiosk detections must be Completed (details filled) first.
+     */
+    public function accept($id)
+    {
+        $employee = Employee::findOrFail($id);
+
+        if (! $employee->isPending()) {
+            return redirect()->route('employees.register')
+                ->with('error', 'Only workers awaiting approval can be accepted.');
+        }
+
+        $incomplete = $employee->name === 'Unregistered Worker'
+            || empty($employee->labor_type_id)
+            || (float) $employee->rate_per_hour <= 0;
+
+        if ($incomplete) {
+            return redirect()->route('employees.register')
+                ->with('error', 'Complete this worker’s details before accepting them.');
+        }
+
+        $employee->update(['status' => Employee::STATUS_ACTIVE]);
+
+        EmployeeAlert::fire(auth()->user(), 'new_employee',
+            'Employee Accepted',
+            $employee->name . ' was accepted and added to the workforce.'
+        );
+
+        return redirect()->route('employees.register')
+            ->with('success', $employee->name . ' has been accepted and is now active.');
+    }
+
     /** Deactivate / archive a worker who left the company (reversible). */
     public function archive($id)
     {

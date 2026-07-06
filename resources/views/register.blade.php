@@ -367,6 +367,11 @@
 .rm-btn-ghost { height:34px; padding:0 13px; font-size:13px; font-weight:600; color:#475569; background:#f1f5f9; border:1.5px solid #e2e8f0; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s; }
 .rm-btn-ghost:hover { background:#e2e8f0; color:#1e293b; }
 .rm-btn-danger-ghost { color:#dc2626; }
+.rm-btn-accept { height:34px; padding:0 14px; font-size:13px; font-weight:700; color:#fff; border:none; border-radius:8px; cursor:pointer;
+    background:linear-gradient(135deg,#15803d,#22c55e); display:inline-flex; align-items:center; gap:6px; transition:opacity .15s; }
+.rm-btn-accept:hover { opacity:.9; }
+.rm-btn-reject { height:34px; padding:0 13px; font-size:13px; font-weight:700; color:#dc2626; background:#fef2f2; border:1.5px solid #fecaca; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s; }
+.rm-btn-reject:hover { background:#fee2e2; }
 
 /* kebab menu */
 .rm-menu-wrap { position:relative; display:inline-block; }
@@ -429,6 +434,8 @@
 [data-bs-theme="dark"] .rm-tab { color:#94a3b8; }
 [data-bs-theme="dark"] .rm-tab.active { color:#93c5fd; border-bottom-color:#3b82f6; }
 [data-bs-theme="dark"] .rm-tab-count { background:#1c2740; color:#9fb0c7; }
+[data-bs-theme="dark"] .rm-btn-reject { background:#2a1416; border-color:#5b2426; color:#f87171; }
+[data-bs-theme="dark"] .rm-btn-reject:hover { background:#3a1a1d; }
 [data-bs-theme="dark"] .rm-card { background:#151d2e; border-color:#283449; }
 [data-bs-theme="dark"] .rm-card-note { background:#0f1a2e; border-bottom-color:#1c2740; color:#9fb0c7; }
 [data-bs-theme="dark"] .rm-table thead th { background:#1c2740; color:#6b7d96; border-bottom-color:#283449; }

@@ -100,12 +100,15 @@ class KioskController extends Controller
             'project_id'    => $projectId,
             'kiosk_id'      => $kiosk?->id,
             'site_id'       => $kiosk?->site_id,
-            'status'        => Employee::STATUS_ACTIVE,
+            // Kiosk registrations wait for admin acceptance before joining the
+            // active workforce — the admin Accepts or Rejects them on the
+            // Register & Manage page.
+            'status'        => Employee::STATUS_PENDING,
         ]);
 
         return response()->json([
             'success'  => true,
-            'message'  => $employee->name . ' registered successfully!',
+            'message'  => $employee->name . ' submitted — awaiting admin approval.',
             'employee' => [
                 'id'           => $employee->id,
                 'name'         => $employee->name,
