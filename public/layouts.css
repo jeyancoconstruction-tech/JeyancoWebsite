@@ -74,6 +74,11 @@ body {
     border-right: 1px solid rgba(255,255,255,0.04);
 }
 
+/* Modals must sit ABOVE the fixed sidebar (z-index 1100) so wide dialogs
+   aren't clipped behind it and the backdrop dims the whole screen. */
+.modal          { z-index: 1130 !important; }
+.modal-backdrop { z-index: 1120 !important; }
+
 .sidebar-top {
     flex: 1;
     overflow-y: auto;
