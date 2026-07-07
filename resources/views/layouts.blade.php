@@ -23,17 +23,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
-    <link rel="stylesheet" href="{{ asset('layouts.css') }}">
-    <link rel="stylesheet" href="{{ asset('dashboard.css') }}">
-    <link rel="stylesheet" href="{{ asset('payroll.css') }}">
-    <link rel="stylesheet" href="{{ asset('attendance.css') }}">
-    <link rel="stylesheet" href="{{ asset('ai.css') }}">
-    <link rel="stylesheet" href="{{ asset('analytics.css') }}">
-    <link rel="stylesheet" href="{{ asset('login.css') }}">
-    <link rel="stylesheet" href="{{ asset('dark-mode.css') }}">
+    {{-- Cache-bust each stylesheet with its file mtime so a new deploy always
+         serves fresh CSS instead of a stale browser-cached copy. --}}
+    @php $cssv = fn ($f) => asset($f) . '?v=' . (@filemtime(public_path($f)) ?: '1'); @endphp
+    <link rel="stylesheet" href="{{ $cssv('layouts.css') }}">
+    <link rel="stylesheet" href="{{ $cssv('dashboard.css') }}">
+    <link rel="stylesheet" href="{{ $cssv('payroll.css') }}">
+    <link rel="stylesheet" href="{{ $cssv('attendance.css') }}">
+    <link rel="stylesheet" href="{{ $cssv('ai.css') }}">
+    <link rel="stylesheet" href="{{ $cssv('analytics.css') }}">
+    <link rel="stylesheet" href="{{ $cssv('login.css') }}">
+    <link rel="stylesheet" href="{{ $cssv('dark-mode.css') }}">
 
     {{-- Enterprise design system — loaded LAST so it owns the final visual language --}}
-    <link rel="stylesheet" href="{{ asset('enterprise.css') }}">
+    <link rel="stylesheet" href="{{ $cssv('enterprise.css') }}">
 
     @stack('styles')
 
