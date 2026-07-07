@@ -75,6 +75,7 @@ Route::middleware(['auth', 'is_admin'])->group(function () {
     // PAYROLL RECORDS — unified module (Reports / By Employee / Pay Periods)
     Route::get('/payroll-records', [PayrollRecordsController::class, 'index'])->name('payroll-records');
     Route::get('/payroll-records/export', [PayrollRecordsController::class, 'export'])->name('payroll-records.export');
+    Route::get('/payroll-records/export/excel', [PayrollRecordsController::class, 'exportExcel'])->name('payroll-records.export.excel');
 
     // Reports were consolidated into Payroll Records — keep old links working.
     Route::get('/reports', fn () => redirect()->route('payroll-records'))->name('reports');

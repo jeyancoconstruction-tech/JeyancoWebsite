@@ -121,6 +121,34 @@ class PayrollRecordsController extends Controller
     }
 
     /**
+     * Export the current period's per-employee totals as a real Excel file.
+     * Uses an HTML-table workbook (opened natively by Excel) so no extra
+     * package/dependency is needed.
+     */
+    public function exportExcel(Request $request, PayrollService $payroll)
+    {
+        $period    = $this->resolvePeriod($request);
+        $employees = $payroll->computeForRange($period['from'], $period['to'])['employees'];
+
+        $search = trim((string) $request->input('employee', ''));
+        if ($search !== '') {
+            $needle = strtolower(ltrim($search, '#'));
+            $employees = array_values(array_filter($employees, function ($e) use ($needle) {
+                return str_contains(strtolower($e['name']), $needle) || (string) $e['employee_id'] === $needle;
+            }));
+        }
+
+        $totals   = $this->summarize($employees);
+        $filename = 'payroll-records_' . $period['from'] . '_to_' . $period['to'] . '.xls';
+        $html     = view('exports.payroll-excel', compact('employees', 'period', 'totals'))->render();
+
+        return response($html, 200, [
+            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
      * Resolve the reporting period into a from/to range + display metadata.
      * Weekly mode always yields a Monday–Sunday range.
      */

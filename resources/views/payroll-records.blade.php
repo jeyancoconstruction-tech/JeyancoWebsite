@@ -61,10 +61,10 @@
             <h1>Payroll Records</h1>
             <p>Reports, employee payroll, and pay periods — all in one place</p>
         </div>
-        <a href="{{ route('payroll-records.export', request()->query()) }}"
-           class="btn btn-light border fw-600">
-            <i class="fas fa-file-csv me-1"></i> Export CSV
-        </a>
+        <button type="button" class="btn btn-success fw-600"
+                data-bs-toggle="modal" data-bs-target="#exportPreviewModal">
+            <i class="fas fa-file-excel me-1"></i> Preview &amp; Download
+        </button>
     </div>
 
     {{-- ── Filter bar ──────────────────────────────────────────────────────── --}}
@@ -358,6 +358,84 @@
         </div>
 
     </div>{{-- /tab-content --}}
+
+    {{-- ── Export preview + download (Excel / CSV) ─────────────────────────── --}}
+    <div class="modal fade" id="exportPreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0">
+                <div class="modal-header text-white" style="background:linear-gradient(135deg,#166534,#15803d);">
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0"><i class="fas fa-file-excel me-2"></i>Payroll Export Preview</h6>
+                        <small style="opacity:.85;">{{ ucfirst($period['mode']) }} &middot; {{ $period['label'] }} &middot; {{ count($employees) }} employee{{ count($employees) === 1 ? '' : 's' }}</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0" style="font-size:12.5px;white-space:nowrap;">
+                            <thead style="position:sticky;top:0;z-index:2;background:#f1f5f9;">
+                                <tr>
+                                    <th class="ps-3">ID</th><th>Name</th><th>Position</th>
+                                    <th class="text-end">Workdays</th><th class="text-end">Hours</th>
+                                    <th class="text-end">Gross</th><th class="text-end">Overtime</th>
+                                    <th class="text-end">Holiday</th><th class="text-end">Rest Day</th>
+                                    <th class="text-end">Bonus</th><th class="text-end">Deductions</th>
+                                    <th class="text-end pe-3">Net Pay</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($employees as $e)
+                                    @php $t = $e['totals']; @endphp
+                                    <tr>
+                                        <td class="ps-3 text-muted">#{{ str_pad($e['employee_id'], 4, '0', STR_PAD_LEFT) }}</td>
+                                        <td class="fw-semibold">{{ $e['name'] }}</td>
+                                        <td>{{ $e['position'] }}</td>
+                                        <td class="text-end">{{ $t['workdays'] }}</td>
+                                        <td class="text-end">{{ number_format($t['hours'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($t['gross'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($t['overtime'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($t['holidayPay'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($t['restDayPay'] ?? 0, 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($t['bonus'], 2) }}</td>
+                                        <td class="text-end text-danger">₱{{ number_format($t['totalDeductions'], 2) }}</td>
+                                        <td class="text-end pe-3 fw-bold">₱{{ number_format($t['net'], 2) }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="12" class="text-center py-4 text-muted">No payroll data for this period.</td></tr>
+                                @endforelse
+                            </tbody>
+                            @if(count($employees))
+                                <tfoot style="position:sticky;bottom:0;background:#e2e8f0;font-weight:700;">
+                                    <tr>
+                                        <td class="ps-3" colspan="3">TOTAL</td>
+                                        <td class="text-end">{{ $summary['workdays'] }}</td>
+                                        <td class="text-end">{{ number_format($summary['hours'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($summary['gross'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($summary['overtime'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($summary['holidayPay'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($summary['restDayPay'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($summary['bonus'], 2) }}</td>
+                                        <td class="text-end">₱{{ number_format($summary['totalDeductions'], 2) }}</td>
+                                        <td class="text-end pe-3">₱{{ number_format($summary['net'], 2) }}</td>
+                                    </tr>
+                                </tfoot>
+                            @endif
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <span class="me-auto text-muted" style="font-size:12px;">This is a preview of the file you'll download.</span>
+                    <a href="{{ route('payroll-records.export', request()->query()) }}" class="btn btn-light border fw-600">
+                        <i class="fas fa-file-csv me-1"></i> Download CSV
+                    </a>
+                    <a href="{{ route('payroll-records.export.excel', request()->query()) }}" class="btn btn-success fw-600">
+                        <i class="fas fa-file-excel me-1"></i> Download Excel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>{{-- /pr-page --}}
 @endsection
 
