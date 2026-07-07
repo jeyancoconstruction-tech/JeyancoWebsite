@@ -34,20 +34,20 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+    background: linear-gradient(90deg, #3b82f6, #3b82f6);
     border-radius: 16px 16px 0 0;
 }
 
 .weekly-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 16px 36px rgba(30,58,138,0.1);
+    box-shadow: 0 16px 36px rgba(59,130,246,0.1);
     border-color: #bfdbfe;
 }
 
 .week-range-text {
     font-size: 1rem;
     font-weight: 700;
-    color: #1e3a8a;
+    color: #3b82f6;
     margin-bottom: 20px;
     display: flex;
     align-items: center;
@@ -65,9 +65,9 @@
     transition: all 0.22s ease;
 }
 .weekly-card:hover .open-box-wrapper {
-    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
     border-color: transparent;
-    box-shadow: 0 8px 20px rgba(30,58,138,0.22);
+    box-shadow: 0 8px 20px rgba(59,130,246,0.22);
 }
 
 .open-box-wrapper i {
@@ -101,7 +101,7 @@
     letter-spacing: -0.5px;
     transition: color 0.2s;
 }
-.weekly-card:hover .total-amount-display { color: #1e3a8a; }
+.weekly-card:hover .total-amount-display { color: #3b82f6; }
 
 .total-label {
     font-size: 10.5px;

@@ -16,7 +16,7 @@
     .report-modes { display: flex; gap: 6px; flex-wrap: wrap; }
     .mode-btn { border: 1px solid #e2e8f0; background: #ffffff; color: #475569; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
     .mode-btn:hover  { background: #eef2ff; }
-    .mode-btn.active { background: linear-gradient(135deg, #1e3a8a, #1e40af); color: #fff; border-color: #1e3a8a; }
+    .mode-btn.active { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; border-color: #3b82f6; }
 
     /* ── Summary bar ─────────────────────────────────────────────────────── */
     .pr-summary-bar { display: flex; flex-wrap: wrap; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
@@ -29,8 +29,8 @@
     /* ── Tabs ────────────────────────────────────────────────────────────── */
     .pr-tabs { border-bottom: 2px solid #e5e7eb; margin: 4px 0 20px; gap: 4px; }
     .pr-tabs .nav-link { color: #64748b; border: none; padding: 12px 20px; font-weight: 700; font-size: 14px; }
-    .pr-tabs .nav-link:hover  { color: #1e3a8a; }
-    .pr-tabs .nav-link.active { color: #1e3a8a; border-bottom: 3px solid #1e3a8a; background: none; }
+    .pr-tabs .nav-link:hover  { color: #3b82f6; }
+    .pr-tabs .nav-link.active { color: #3b82f6; border-bottom: 3px solid #3b82f6; background: none; }
 
     /* ── Weekly cards ────────────────────────────────────────────────────── */
     .payroll-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; cursor: pointer; transition: all 0.2s ease; }
@@ -108,7 +108,7 @@
                 </div>
                 <div class="col-auto">
                     <button type="submit" class="btn fw-600"
-                            style="background: linear-gradient(135deg, #1e3a8a, #1e40af); color: white; border: none;">
+                            style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none;">
                         <i class="fas fa-magnifying-glass me-1"></i> Apply
                     </button>
                 </div>
@@ -116,11 +116,11 @@
         </form>
 
         <div class="mt-3">
-            <span class="badge p-2 border" style="background:#ffffff;color:#1e3a8a;border-color:#e2e8f0;">
+            <span class="badge p-2 border" style="background:#ffffff;color:#3b82f6;border-color:#e2e8f0;">
                 <i class="fas fa-calendar-alt me-1"></i> {{ ucfirst($period['mode']) }} &middot; {{ $period['label'] }}
             </span>
             @if($selectedEmployee)
-            <span class="badge p-2 border ms-1" style="background:#f0f4ff;color:#1e3a8a;border-color:#e0e7ff;">
+            <span class="badge p-2 border ms-1" style="background:#f0f4ff;color:#3b82f6;border-color:#e0e7ff;">
                 <i class="fas fa-user me-1"></i> {{ $selectedEmployee['name'] }} (#{{ $selectedEmployee['employee_id'] }})
             </span>
             @endif
@@ -223,7 +223,7 @@
                                     <td class="text-end" style="color:#f97316;">&#8369;{{ number_format($d['bonus'], 2) }}</td>
                                     <td class="text-end" style="color:#16a34a;">&#8369;{{ number_format($d['gross'], 2) }}</td>
                                     <td class="text-end" style="color:#dc2626;">&#8369;{{ number_format($d['totalDeductions'], 2) }}</td>
-                                    <td class="text-end pe-4 fw-semibold" style="color:#1e3a8a;">&#8369;{{ number_format($d['net'], 2) }}</td>
+                                    <td class="text-end pe-4 fw-semibold" style="color:#3b82f6;">&#8369;{{ number_format($d['net'], 2) }}</td>
                                 </tr>
                                 @endforeach
                             @empty
@@ -267,11 +267,11 @@
                                 <td class="text-end">{{ $emp['totals']['hours'] }}</td>
                                 <td class="text-end" style="color:#16a34a;">&#8369;{{ number_format($emp['totals']['gross'], 2) }}</td>
                                 <td class="text-end" style="color:#dc2626;">&#8369;{{ number_format($emp['totals']['totalDeductions'], 2) }}</td>
-                                <td class="text-end fw-bold" style="color:#1e3a8a;">&#8369;{{ number_format($emp['totals']['net'], 2) }}</td>
+                                <td class="text-end fw-bold" style="color:#3b82f6;">&#8369;{{ number_format($emp['totals']['net'], 2) }}</td>
                                 <td class="text-end pe-4">
                                     <a href="{{ route('payslip.show', ['employee' => $emp['employee_id'], 'from' => $period['from'], 'to' => $period['to']]) }}"
                                        class="btn btn-sm rounded-pill px-3"
-                                       style="background:#f0f4ff;color:#1e3a8a;border:1px solid #e0e7ff;font-weight:600;">
+                                       style="background:#f0f4ff;color:#3b82f6;border:1px solid #e0e7ff;font-weight:600;">
                                         <i class="fas fa-file-invoice me-1"></i>Payslip
                                     </a>
                                 </td>
@@ -294,15 +294,15 @@
                 <div class="col-xl-4 col-lg-6">
                     <div class="payroll-card p-4 shadow-sm"
                          data-bs-toggle="modal" data-bs-target="#weeklyModal{{ $i }}">
-                        <div class="mb-2" style="color:#1e3a8a;font-weight:700;">
+                        <div class="mb-2" style="color:#3b82f6;font-weight:700;">
                             <i class="fas fa-calendar-week me-2"></i>{{ $week['week_range'] }}
                         </div>
                         <div class="text-muted small fw-600">Weekly Payroll</div>
-                        <div style="font-size:1.8rem;font-weight:900;color:#1e3a8a;">
+                        <div style="font-size:1.8rem;font-weight:900;color:#3b82f6;">
                             &#8369;{{ number_format($week['total_payroll'], 2) }}
                         </div>
                         <div class="mt-2 d-flex gap-3 small text-muted">
-                            <span><i class="fas fa-users me-1" style="color:#1e3a8a;"></i>{{ $week['employee_count'] }}</span>
+                            <span><i class="fas fa-users me-1" style="color:#3b82f6;"></i>{{ $week['employee_count'] }}</span>
                             <span><i class="fas fa-calendar-check me-1" style="color:#16a34a;"></i>{{ $week['working_days'] }} day(s)</span>
                         </div>
                     </div>
@@ -312,7 +312,7 @@
                     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                         <div class="modal-content border-0">
                             <div class="modal-header"
-                                 style="background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;border:none;">
+                                 style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border:none;">
                                 <h6 class="modal-title fw-bold">
                                     <i class="fas fa-calendar-week me-2"></i>{{ $week['week_range'] }}
                                 </h6>
@@ -335,11 +335,11 @@
                                             <td>{{ $detail['name'] }}</td>
                                             <td class="text-end" style="color:#16a34a;">&#8369;{{ number_format($detail['gross'], 2) }}</td>
                                             <td class="text-end" style="color:#dc2626;">&#8369;{{ number_format($detail['totalDeductions'], 2) }}</td>
-                                            <td class="text-end" style="color:#1e3a8a;">&#8369;{{ number_format($detail['net'], 2) }}</td>
+                                            <td class="text-end" style="color:#3b82f6;">&#8369;{{ number_format($detail['net'], 2) }}</td>
                                             <td class="text-end">
                                                 <a href="{{ route('payslip.show', ['employee' => $detail['employee_id'], 'from' => $period['from'], 'to' => $period['to']]) }}"
                                                    class="btn btn-sm rounded-pill px-3"
-                                                   style="background:#f0f4ff;color:#1e3a8a;border:1px solid #e0e7ff;font-weight:600;">
+                                                   style="background:#f0f4ff;color:#3b82f6;border:1px solid #e0e7ff;font-weight:600;">
                                                     Payslip
                                                 </a>
                                             </td>

@@ -264,7 +264,7 @@
 .rm-sub { font-size:.875rem; color:#64748b; margin:0; max-width:640px; }
 
 .rm-btn-primary { height:42px; padding:0 20px; font-size:14px; font-weight:700; color:#fff; border:none; border-radius:9px; cursor:pointer;
-    background:linear-gradient(135deg,#1e3a8a,#1e40af); display:inline-flex; align-items:center; gap:8px; box-shadow:0 4px 14px rgba(30,58,138,.22); transition:transform .1s, opacity .15s; white-space:nowrap; }
+    background:#3b82f6; display:inline-flex; align-items:center; gap:8px; box-shadow:none; transition:transform .1s, opacity .15s; white-space:nowrap; }
 .rm-btn-primary:hover { opacity:.93; transform:translateY(-1px); }
 
 /* Stat chips */
@@ -273,7 +273,7 @@
 .rm-stat { text-align:left; background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:16px 18px; cursor:pointer;
     display:flex; flex-direction:column; gap:6px; transition:border-color .15s, box-shadow .15s, transform .1s; }
 .rm-stat:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,23,42,.07); }
-.rm-stat.active { border-color:#1e3a8a; box-shadow:0 0 0 3px rgba(30,58,138,.08); }
+.rm-stat.active { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.08); }
 .rm-stat-num { font-size:1.7rem; font-weight:800; color:#0f172a; line-height:1; }
 .rm-stat-lbl { font-size:12.5px; font-weight:600; color:#64748b; display:flex; align-items:center; gap:6px; }
 .rm-stat-pending  .rm-stat-num { color:#b45309; }
@@ -286,16 +286,16 @@
 .rm-tab { background:none; border:none; padding:11px 16px; font-size:14px; font-weight:600; color:#64748b; cursor:pointer;
     border-bottom:2.5px solid transparent; margin-bottom:-1.5px; white-space:nowrap; transition:color .15s; }
 .rm-tab:hover { color:#1e293b; }
-.rm-tab.active { color:#1e3a8a; border-bottom-color:#1e3a8a; }
+.rm-tab.active { color:#3b82f6; border-bottom-color:#3b82f6; }
 .rm-tab-count { font-size:11px; font-weight:700; background:#f1f5f9; color:#475569; border-radius:10px; padding:1px 7px; margin-left:3px; }
-.rm-tab.active .rm-tab-count { background:#eff6ff; color:#1e40af; }
+.rm-tab.active .rm-tab-count { background:#eff6ff; color:#2563eb; }
 
 .rm-pane { display:none; }
 .rm-pane.active { display:block; }
 
 .rm-card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; }
 .rm-card-note { display:flex; gap:9px; align-items:flex-start; padding:13px 18px; background:#f8fafc; border-bottom:1px solid #eef2f7; font-size:12.5px; color:#475569; }
-.rm-card-note i { color:#1e3a8a; margin-top:2px; }
+.rm-card-note i { color:#3b82f6; margin-top:2px; }
 
 .rm-table { width:100%; border-collapse:collapse; }
 .rm-table thead th { background:#f8fafc; padding:11px 16px; font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e2e8f0; white-space:nowrap; }
@@ -305,7 +305,7 @@
 
 .rm-person { display:flex; align-items:center; gap:12px; }
 .rm-avatar { width:42px; height:42px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-    font-size:15px; font-weight:700; color:#fff; background:linear-gradient(135deg,#1e3a8a,#3b82f6); overflow:hidden; border:2px solid #e0e7ef; }
+    font-size:15px; font-weight:700; color:#fff; background:linear-gradient(135deg,#3b82f6,#3b82f6); overflow:hidden; border:2px solid #e0e7ef; }
 .rm-avatar img { width:100%; height:100%; object-fit:cover; }
 .rm-person-info { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .rm-person-name { font-size:14px; font-weight:600; color:#0f172a; }
@@ -314,7 +314,7 @@
 
 .rm-badge { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:4px 9px; border-radius:20px; white-space:nowrap; }
 .rm-badge-site  { color:#166534; background:#f0fdf4; border:1px solid #bbf7d0; }
-.rm-badge-labor { color:#fff; background:linear-gradient(135deg,#1e3a8a,#3b82f6); }
+.rm-badge-labor { color:#fff; background:linear-gradient(135deg,#3b82f6,#3b82f6); }
 .rm-badge-fp    { color:#fff; background:#059669; font-family:monospace; }
 .rm-badge i { font-size:10px; }
 .rm-dash { color:#94a3b8; font-size:13px; }
@@ -326,7 +326,7 @@
 .rm-actions > * { vertical-align:middle; }
 .rm-actions > * + * { margin-left:6px; }
 .rm-btn-complete { height:34px; padding:0 14px; font-size:13px; font-weight:700; color:#fff; border:none; border-radius:8px; cursor:pointer;
-    background:linear-gradient(135deg,#b45309,#d97706); display:inline-flex; align-items:center; gap:6px; transition:opacity .15s; }
+    background:#3b82f6; display:inline-flex; align-items:center; gap:6px; transition:opacity .15s; }
 .rm-btn-complete:hover { opacity:.9; }
 .rm-btn-ghost { height:34px; padding:0 13px; font-size:13px; font-weight:600; color:#475569; background:#f1f5f9; border:1.5px solid #e2e8f0; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s; }
 .rm-btn-ghost:hover { background:#e2e8f0; color:#1e293b; }
@@ -340,7 +340,7 @@
 /* kebab menu */
 .rm-menu-wrap { position:relative; display:inline-block; }
 .rm-menu-btn { width:34px; height:34px; border-radius:8px; border:1.5px solid #e2e8f0; background:#f8fafc; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .12s; }
-.rm-menu-btn:hover, .rm-menu-btn.active { background:#eff6ff; border-color:#bfdbfe; color:#1e40af; }
+.rm-menu-btn:hover, .rm-menu-btn.active { background:#eff6ff; border-color:#bfdbfe; color:#2563eb; }
 .rm-menu { display:none; position:absolute; right:0; top:calc(100% + 6px); background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.1); z-index:120; min-width:172px; overflow:hidden; }
 .rm-menu.open { display:block; }
 .rm-menu-item { display:flex; align-items:center; gap:9px; padding:10px 14px; font-size:13px; font-weight:500; color:#374151; background:none; border:none; width:100%; text-align:left; cursor:pointer; text-decoration:none; transition:background .1s; }
@@ -360,7 +360,7 @@
 
 /* modal */
 .rm-modal { border:none; border-radius:16px; overflow:hidden; }
-.rm-modal-head { display:flex; justify-content:space-between; align-items:flex-start; padding:18px 22px; background:linear-gradient(135deg,#1e3a8a,#1e40af); color:#fff; }
+.rm-modal-head { display:flex; justify-content:space-between; align-items:flex-start; padding:18px 22px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; }
 .rm-modal-title { font-size:16px; font-weight:700; margin:0 0 2px; }
 .rm-modal-sub { font-size:12px; opacity:.82; margin:0; }
 .rm-modal-x { background:rgba(255,255,255,.12); border:none; color:#fff; width:30px; height:30px; border-radius:8px; cursor:pointer; }
@@ -372,7 +372,7 @@
 .req { color:#dc2626; }
 .rm-optional { font-weight:400; color:#94a3b8; font-size:12px; }
 .rm-input { width:100%; height:42px; border:1.5px solid #e2e8f0; border-radius:8px; padding:0 13px; font-size:14px; color:#0f172a; background:#fff; outline:none; appearance:none; -webkit-appearance:none; transition:border-color .15s, box-shadow .15s; }
-.rm-input:focus { border-color:#1e3a8a; box-shadow:0 0 0 3px rgba(30,58,138,.08); }
+.rm-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.08); }
 .rm-mono { font-family:monospace; }
 .rm-hint { font-size:12px; color:#94a3b8; margin:5px 0 0; }
 .rm-select-wrap { position:relative; }
@@ -380,7 +380,7 @@
 .rm-select-icon { position:absolute; right:11px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:11px; pointer-events:none; }
 .rm-rate-box { height:42px; border:1.5px solid #e2e8f0; border-radius:8px; display:flex; align-items:center; gap:4px; padding:0 13px; background:#f8fafc; }
 .rm-rate-cur { font-size:13px; color:#94a3b8; font-weight:600; }
-.rm-rate-val { font-size:15px; font-weight:700; color:#1e3a8a; }
+.rm-rate-val { font-size:15px; font-weight:700; color:#3b82f6; }
 .rm-photo-row { display:flex; align-items:center; gap:14px; }
 .rm-photo-box { width:64px; height:64px; border-radius:12px; border:2px dashed #e2e8f0; background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#94a3b8; font-size:22px; flex-shrink:0; }
 .rm-photo-box img { width:100%; height:100%; object-fit:cover; }
