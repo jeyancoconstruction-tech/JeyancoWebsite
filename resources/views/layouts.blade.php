@@ -38,6 +38,9 @@
     {{-- Enterprise design system — loaded LAST so it owns the final visual language --}}
     <link rel="stylesheet" href="{{ $cssv('enterprise.css') }}">
 
+    {{-- Jeyanco brand design tokens — loaded AFTER enterprise so it owns the final palette --}}
+    <link rel="stylesheet" href="{{ $cssv('design-tokens.css') }}">
+
     @stack('styles')
 
     <meta name="csrf-token" content="{{ csrf_token() }}">

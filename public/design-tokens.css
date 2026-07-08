@@ -1,0 +1,188 @@
+/* =============================================================================
+   JEYANCO CONSTRUCTION · DESIGN TOKENS + FLAT ENTERPRISE OVERRIDES
+   -----------------------------------------------------------------------------
+   Loaded LAST. Retheme the whole app on ONE brand blue (Jeyanco #1E5C9B),
+   neutral gray-black dark mode, 6px radius, flat surfaces, monochrome type.
+   Visual layer ONLY — no markup, scripts, Blade/JS directives, IDs, routes,
+   form actions, polling or handlers are touched. Overrides existing token
+   names so every component inherits the system. Uses the app's real theme
+   selector: html[data-bs-theme="light|dark"] (the working toggle).
+   ============================================================================= */
+
+/* ── 1 · TOKENS ─────────────────────────────────────────────────────────── */
+html[data-bs-theme="light"] {
+    --bg: #F7F8F9;            --bg-body: #F7F8F9;
+    --surface: #FFFFFF;       --bg-surface: #FFFFFF;   --bg-elevated: #FFFFFF;
+    --bg-subtle: #F1F3F5;     --sidebar-bg: #FFFFFF;
+    --border: #E3E6E9;        --border-md: #D3D8DD;
+    --text-primary: #1B2430;  --text-secondary: #66707C;  --text-muted: #8A929B;
+    --brand: #1E5C9B;         --brand-strong: #174A7E;    --brand-subtle: #EDF3F9;
+    --primary: #1E5C9B;       --primary-mid: #174A7E;     --primary-light: #1E5C9B;
+    --primary-soft: #EDF3F9;  --accent: #1E5C9B;
+    --success: #2F7D4F;       --danger: #B3403A;          --warning: #A66A1E;
+}
+html[data-bs-theme="dark"] {
+    --bg: #16181B;            --bg-body: #16181B;
+    --surface: #1E2125;       --bg-surface: #1E2125;   --bg-elevated: #24282D;
+    --bg-subtle: #191C20;     --sidebar-bg: #191C20;
+    --border: #2C3036;        --border-md: #3A3F46;
+    --text-primary: #E6E8EA;  --text-secondary: #98A0A9;  --text-muted: #767E87;
+    --brand: #5B95CF;         --brand-strong: #7FAEDD;    --brand-subtle: #1D2A38;
+    --primary: #5B95CF;       --primary-mid: #7FAEDD;     --primary-light: #5B95CF;
+    --primary-soft: #1D2A38;  --accent: #5B95CF;
+    --success: #6FB08A;       --danger: #D4756F;          --warning: #C99A5B;
+}
+:root {
+    --radius-sm: 6px; --radius-md: 6px; --radius-lg: 6px;
+    --shadow-xs: none;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 1px 3px rgba(0,0,0,0.07);
+    --shadow-lg: 0 2px 8px rgba(0,0,0,0.10);
+    --shadow-xl: 0 4px 16px rgba(0,0,0,0.12);
+    --transition: all 0.12s ease;
+}
+
+/* Numbers use tabular figures everywhere */
+body, .table, .rm-table, .stat-value, .total-amount-display,
+[class*="amount"], [class*="net"], [class*="total"] { font-feature-settings: "tnum" 1; }
+
+/* ── 2 · RADIUS · exactly 6px (avatars stay circular) ───────────────────── */
+.card, .analytics-card, .table-card, .weekly-card, .modal-content, .btn,
+.form-control, .form-select, .rm-card, .rm-input, .rm-btn-primary, .rm-btn-ghost,
+.rm-btn-complete, .rm-btn-accept, .rm-btn-reject, .rm-menu, .rm-menu-btn, .rm-badge,
+.rm-modal, .rm-pill, .mode-btn, .map-btn, .map-input, .map-select, .open-box-wrapper,
+.emp-search, .emp-select, .clock-widget, .stat-delta, .badge, .notif-dropdown,
+.notif-icon-wrap, .notif-wrapper, .search-container, .profile-capsule, .theme-switch,
+.an-badge-blue, .an-badge-purple, .an-period-chip, .chatbot-window, .cb-input {
+    border-radius: 6px !important;
+}
+[class^="emp-av-"], [class*=" emp-av-"], .rm-person-avatar, .la-avatar,
+.avatar-box, .avatar-box img, .ava, .brand-icon { border-radius: 50% !important; }
+
+/* ── 3 · SURFACES · flat, 1px border, no shadow, no colour bars ─────────── */
+.card, .analytics-card, .table-card, .weekly-card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: none !important;
+}
+.card:hover, .analytics-card:hover, .table-card:hover, .weekly-card:hover {
+    transform: none !important; box-shadow: none !important;
+    border-color: var(--border-md) !important;
+}
+.analytics-card::before, .weekly-card::before,
+.an-kpi-card::before, .an-card::before { display: none !important; }
+
+/* ── 4 · SIDEBAR · theme-aware, 2px brand active bar, monochrome icons ──── */
+.sidebar { border-right: 1px solid var(--border) !important; }
+.brand-text { color: var(--text-primary) !important; }
+.menu-section { color: var(--text-secondary) !important; opacity: 1 !important; letter-spacing: .08em; }
+.nav-link { color: var(--text-secondary) !important; font-weight: 500 !important; }
+.nav-link:hover { color: var(--text-primary) !important; background: var(--brand-subtle) !important; }
+.nav-link.active { color: var(--brand) !important; background: var(--brand-subtle) !important; font-weight: 600 !important; }
+.nav-link svg, .nav-link i[data-lucide] { color: currentColor !important; opacity: 1 !important; }
+.nav-link.active svg, .nav-link.active i[data-lucide] { color: var(--brand) !important; }
+.nav-link.active::before { background: var(--brand) !important; }
+.nav-pending-badge { background: transparent !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; }
+/* Keep the white "JYC" monogram visible on a light sidebar */
+html[data-bs-theme="light"] .logo-wrapper { background: var(--brand); border-radius: 6px; padding: 3px; }
+
+/* ── 5 · TOP BAR · flat, no pulse ──────────────────────────────────────── */
+.topbar { box-shadow: none !important; border-bottom: 1px solid var(--border) !important; }
+.status-pill { background: transparent !important; border: none !important; color: var(--text-secondary) !important; padding-left: 0 !important; }
+.status-pill .dot, .status-pill .dot.pulse { animation: none !important; box-shadow: none !important; background: var(--success) !important; }
+.fab-pulse-ring, .cb-status-dot { animation: none !important; }
+.search-container, .notif-wrapper, .profile-capsule, .theme-switch { border: 1px solid var(--border) !important; box-shadow: none !important; }
+
+/* ── 6 · BUTTONS · one primary (brand); secondary outline; danger muted ── */
+.btn { border-radius: 6px !important; box-shadow: none !important; font-weight: 500 !important; }
+.btn-primary, .btn-success {
+    background: var(--brand) !important; border: 1px solid var(--brand) !important; color: #fff !important;
+}
+.btn-primary:hover, .btn-success:hover {
+    background: var(--brand-strong) !important; border-color: var(--brand-strong) !important; color: #fff !important;
+}
+.btn-light, .btn-secondary, .btn-outline-secondary, .btn-outline-primary, .btn-view-all {
+    background: var(--surface) !important; border: 1px solid var(--border) !important; color: var(--text-primary) !important;
+}
+.btn-light:hover, .btn-secondary:hover, .btn-outline-secondary:hover, .btn-view-all:hover {
+    background: var(--brand-subtle) !important; border-color: var(--border-md) !important;
+}
+.btn-danger {
+    background: var(--surface) !important; border: 1px solid var(--border) !important; color: var(--danger) !important;
+}
+.btn-danger:hover { background: var(--brand-subtle) !important; color: var(--danger) !important; }
+/* Inline hard-coded electric-blue fills → brand (no JS colours touched) */
+.main-content [style*="background:#3b82f6"], .main-content [style*="background: #3b82f6"],
+.main-content [style*="background:#2563eb"], .main-content [style*="background: #2563eb"] {
+    background: var(--brand) !important;
+}
+
+/* ── 7 · INPUTS · 1px border, 6px, focus = 1px brand (no glow) ──────────── */
+.form-control, .form-select, .rm-input, .emp-search, .emp-select, .map-input, .map-select, .cb-input {
+    background: var(--surface) !important; border: 1px solid var(--border) !important;
+    color: var(--text-primary) !important; box-shadow: none !important;
+}
+.form-control:focus, .form-select:focus, .rm-input:focus, .emp-search:focus,
+.emp-select:focus, .map-input:focus, .map-select:focus, .cb-input:focus {
+    border-color: var(--brand) !important; box-shadow: none !important; outline: none !important;
+}
+.form-switch .form-check-input:checked, .form-check-input:checked {
+    background-color: var(--brand) !important; border-color: var(--brand) !important;
+}
+
+/* ── 8 · TABS · underline, 2px brand active, no fills/icons ─────────────── */
+.rm-tab.active, .pr-tabs .nav-link.active, .att-tabs .nav-link.active,
+.nav-tabs .nav-link.active, .an-tab.active {
+    color: var(--brand) !important; border-bottom: 2px solid var(--brand) !important; background: none !important;
+}
+.mode-btn.active {
+    background: var(--brand-subtle) !important; color: var(--brand) !important; border-color: var(--brand) !important;
+}
+
+/* ── 9 · STAT CARDS · no icon box, no colour bar, plain trend text ──────── */
+.icon-box { background: transparent !important; box-shadow: none !important; }
+.icon-box i { color: var(--text-secondary) !important; }
+.stat-value { font-size: 28px !important; font-weight: 600 !important; }
+.stat-delta, .stat-delta.up, .stat-delta.down, .stat-delta.flat {
+    background: transparent !important; padding: 0 !important; font-weight: 500 !important;
+    color: var(--text-secondary) !important;
+}
+
+/* ── 10 · TAGS / BADGES / PILLS · one neutral outline style ─────────────── */
+.badge, .rm-badge, .rm-badge-site, .rm-badge-labor, .rm-pill, .rm-tab-count,
+.an-badge-blue, .an-badge-purple, .an-period-chip, .emp-tag, .emp-count {
+    background: transparent !important; color: var(--text-secondary) !important;
+    border: 1px solid var(--border) !important; font-weight: 500 !important; box-shadow: none !important;
+}
+
+/* ── 11 · AVATARS · uniform brand-subtle, no rainbow ───────────────────── */
+[class^="emp-av-"], [class*=" emp-av-"], .rm-person-avatar, .la-avatar {
+    background: var(--brand-subtle) !important; color: var(--brand) !important; border: none !important;
+}
+
+/* ── 12 · TABLES · flat rows, 1px border, sticky header ─────────────────── */
+.table, .rm-table { border-color: var(--border) !important; }
+.table > :not(caption) > * > *, .rm-table td, .rm-table th { border-color: var(--border) !important; }
+.table thead th, .rm-table thead th {
+    background: var(--surface) !important; color: var(--text-secondary) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.table tbody tr:hover td, .rm-table tbody tr:hover td { background: var(--brand-subtle) !important; }
+
+/* ── 13 · FLOATING AI BUTTON · flat, monochrome, no glow ────────────────── */
+.chatbot-fab {
+    background: var(--surface) !important; border: 1px solid var(--border) !important;
+    color: var(--text-secondary) !important; box-shadow: none !important;
+    width: 44px !important; height: 44px !important;
+}
+.chatbot-fab i { color: var(--text-secondary) !important; }
+.fab-pulse-ring { display: none !important; }
+
+/* ── 14 · MODALS · 6px, 1px border, plain header ───────────────────────── */
+.modal-content { border: 1px solid var(--border) !important; box-shadow: var(--shadow-lg) !important; background: var(--surface) !important; }
+
+/* ── 15 · FOCUS · single brand ring, no glow ───────────────────────────── */
+html[data-bs-theme="dark"] :focus-visible,
+html[data-bs-theme="light"] :focus-visible {
+    box-shadow: 0 0 0 2px var(--brand-subtle), 0 0 0 3px var(--brand) !important; border-radius: 6px;
+}
