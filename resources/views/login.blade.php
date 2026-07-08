@@ -61,7 +61,7 @@
 
         .login-header { text-align: center; margin-bottom: 32px; }
         .logo-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 18px; }
-        .logo-icon { width: 46px; height: 46px; flex-shrink: 0; border-radius: 10px; overflow: hidden; }
+        .logo-icon { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; overflow: hidden; }
         .logo-icon img { width: 100%; height: 100%; object-fit: contain; }
         .logo-text { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: 0.5px; line-height: 1.2; text-align: left; }
         .logo-text small { display: block; font-size: 10px; font-weight: 600; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; }
