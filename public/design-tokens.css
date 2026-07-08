@@ -83,8 +83,10 @@ body, .table, .rm-table, .stat-value, .total-amount-display,
 .nav-link.active svg, .nav-link.active i[data-lucide] { color: var(--brand) !important; }
 .nav-link.active::before { background: var(--brand) !important; }
 .nav-pending-badge { background: transparent !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; }
-/* Keep the white "JYC" monogram visible on a light sidebar */
-html[data-bs-theme="light"] .logo-wrapper { background: var(--brand); border-radius: 6px; padding: 3px; }
+/* Logo is always a circle; keep the white "JYC" monogram visible on a light sidebar */
+.logo-wrapper { border-radius: 50% !important; overflow: hidden; }
+.brand-icon { border-radius: 50% !important; }
+html[data-bs-theme="light"] .logo-wrapper { background: var(--brand); }
 
 /* ── 5 · TOP BAR · flat, no pulse ──────────────────────────────────────── */
 .topbar { box-shadow: none !important; border-bottom: 1px solid var(--border) !important; }
@@ -185,4 +187,10 @@ html[data-bs-theme="light"] .logo-wrapper { background: var(--brand); border-rad
 html[data-bs-theme="dark"] :focus-visible,
 html[data-bs-theme="light"] :focus-visible {
     box-shadow: 0 0 0 2px var(--brand-subtle), 0 0 0 3px var(--brand) !important; border-radius: 6px;
+}
+
+/* ── 16 · TYPE · page titles 20px / 600 (not oversized/800) ─────────────── */
+html[data-bs-theme="dark"] h1, html[data-bs-theme="light"] h1,
+.pr-header h1, .greeting-title {
+    font-size: 20px !important; font-weight: 600 !important; letter-spacing: -0.01em !important;
 }
