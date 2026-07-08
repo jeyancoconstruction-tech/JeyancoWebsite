@@ -5,12 +5,12 @@
 @push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-    .dashboard-wrapper { padding-top: 24px; padding-bottom: 48px; }
+    .dashboard-wrapper { padding-top: 0; padding-bottom: 48px; }
 
     /* ── Greeting header ─────────────────────────────────────────── */
     .greeting-title {
         font-size: 1.6rem; font-weight: 800; color: var(--text-primary);
-        letter-spacing: -0.4px; margin: 0; line-height: 1.15;
+        letter-spacing: -0.4px; margin: 0; line-height: 1.10;
     }
     .greeting-sub { font-size: 13px; color: var(--text-secondary); margin: 5px 0 0; }
 

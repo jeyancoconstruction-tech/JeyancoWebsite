@@ -50,6 +50,16 @@ html { scrollbar-gutter: stable; }
 body, .table, .rm-table, .stat-value, .total-amount-display,
 [class*="amount"], [class*="net"], [class*="total"] { font-feature-settings: "tnum" 1; }
 
+/* Consistent, tighter top gap on EVERY page in BOTH themes. (Dark mode had a
+   32px override in enterprise.css while light used 20px — the content sat at a
+   different height per theme.) Same specificity, loaded later, so it wins. */
+html[data-bs-theme="dark"] .main-content .container-fluid.py-4,
+html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 14px 24px 24px !important; }
+@media (max-width: 991px) {
+    html[data-bs-theme="dark"] .main-content .container-fluid.py-4,
+    html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 12px 14px 20px !important; }
+}
+
 /* ── 2 · RADIUS · exactly 6px (avatars stay circular) ───────────────────── */
 .card, .analytics-card, .table-card, .weekly-card, .modal-content, .btn,
 .form-control, .form-select, .rm-card, .rm-input, .rm-btn-primary, .rm-btn-ghost,
