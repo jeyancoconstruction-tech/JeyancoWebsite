@@ -42,6 +42,10 @@ html[data-bs-theme="dark"] {
     --transition: all 0.12s ease;
 }
 
+/* Reserve the scrollbar gutter so the page doesn't jump/shift horizontally
+   when a scrollbar appears or disappears (e.g. while toggling light/dark). */
+html { scrollbar-gutter: stable; }
+
 /* Numbers use tabular figures everywhere */
 body, .table, .rm-table, .stat-value, .total-amount-display,
 [class*="amount"], [class*="net"], [class*="total"] { font-feature-settings: "tnum" 1; }
@@ -72,30 +76,28 @@ body, .table, .rm-table, .stat-value, .total-amount-display,
 .analytics-card::before, .weekly-card::before,
 .an-kpi-card::before, .an-card::before { display: none !important; }
 
-/* ── 4 · SIDEBAR · theme-aware, 2px brand active bar, monochrome icons ──── */
-/* The sidebar rail renders IDENTICALLY (dark) in both themes so the logo +
-   brand name always match the approved dark-mode branding. Fixed neutral-dark
-   values (not theme tokens) so light mode looks the same as dark mode here. */
-.sidebar { background: #191C20 !important; border-right: 1px solid #2C3036 !important; }
-.brand-title { border-bottom-color: rgba(255,255,255,0.07) !important; }
+/* ── 4 · SIDEBAR · theme-aware (light rail in light mode, dark in dark),
+   2px brand active bar, readable brand name + monochrome icons in both. */
+.sidebar { background: var(--sidebar-bg) !important; border-right: 1px solid var(--border) !important; }
+.brand-title { border-bottom-color: var(--border) !important; }
 .brand-text {
     background: none !important;
     -webkit-background-clip: initial !important; background-clip: initial !important;
-    -webkit-text-fill-color: #E6E8EA !important; color: #E6E8EA !important;
+    -webkit-text-fill-color: var(--text-primary) !important; color: var(--text-primary) !important;
     /* Always one consistent line (was width-dependent: sometimes 1, sometimes 2). */
     white-space: nowrap !important;
     font-size: 11px !important; letter-spacing: 0.4px !important; line-height: 1.15 !important;
 }
 .logo-wrapper { border-radius: 50% !important; overflow: hidden; background: transparent !important; padding: 0 !important; }
 .brand-icon { border-radius: 50% !important; }
-.menu-section { color: #6B7178 !important; opacity: 1 !important; letter-spacing: .08em; }
-.nav-link { color: #98A0A9 !important; font-weight: 500 !important; }
-.nav-link:hover { color: #E6E8EA !important; background: #1D2A38 !important; }
-.nav-link.active { color: #7FAEDD !important; background: #1D2A38 !important; font-weight: 600 !important; }
+.menu-section { color: var(--text-secondary) !important; opacity: 1 !important; letter-spacing: .08em; }
+.nav-link { color: var(--text-secondary) !important; font-weight: 500 !important; }
+.nav-link:hover { color: var(--text-primary) !important; background: var(--brand-subtle) !important; }
+.nav-link.active { color: var(--brand) !important; background: var(--brand-subtle) !important; font-weight: 600 !important; }
 .nav-link svg, .nav-link i[data-lucide] { color: currentColor !important; opacity: 1 !important; }
-.nav-link.active svg, .nav-link.active i[data-lucide] { color: #7FAEDD !important; }
-.nav-link.active::before { background: #5B95CF !important; }
-.nav-pending-badge { background: transparent !important; color: #98A0A9 !important; border: 1px solid #3A3F46 !important; }
+.nav-link.active svg, .nav-link.active i[data-lucide] { color: var(--brand) !important; }
+.nav-link.active::before { background: var(--brand) !important; }
+.nav-pending-badge { background: transparent !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; }
 
 /* ── 5 · TOP BAR · flat, no pulse ──────────────────────────────────────── */
 .topbar { box-shadow: none !important; border-bottom: 1px solid var(--border) !important; }
