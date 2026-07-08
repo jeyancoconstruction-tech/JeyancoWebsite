@@ -82,6 +82,9 @@ body, .table, .rm-table, .stat-value, .total-amount-display,
     background: none !important;
     -webkit-background-clip: initial !important; background-clip: initial !important;
     -webkit-text-fill-color: #E6E8EA !important; color: #E6E8EA !important;
+    /* Always one consistent line (was width-dependent: sometimes 1, sometimes 2). */
+    white-space: nowrap !important;
+    font-size: 11px !important; letter-spacing: 0.4px !important; line-height: 1.15 !important;
 }
 .logo-wrapper { border-radius: 50% !important; overflow: hidden; background: transparent !important; padding: 0 !important; }
 .brand-icon { border-radius: 50% !important; }
