@@ -788,3 +788,21 @@ html[data-bs-theme="light"] {
 html[data-bs-theme="dark"] h1, html[data-bs-theme="light"] h1 {
     font-size: 30px !important; line-height: 1.2 !important; letter-spacing: -0.02em;
 }
+
+/* 10 · Monochrome typography — text is WHITE in dark mode / BLACK in light mode.
+   Colour is reserved for surfaces, borders, icons and control fills, never the
+   type itself. (Form-validation red is kept for usability.) */
+.text-primary, .text-info, .text-secondary, .text-success, .text-danger, .text-warning,
+.text-dark, .text-black,
+.text-primary-emphasis, .text-info-emphasis, .text-success-emphasis,
+.text-danger-emphasis, .text-warning-emphasis, .text-secondary-emphasis,
+.la-time, .stat-delta, .total-amount-display, .week-range-text, .rm-rate-val {
+    color: var(--text-primary) !important;
+}
+.text-muted, .text-body-secondary { color: var(--text-secondary) !important; }
+
+/* Neutralise inline-coloured text (values in tables, spans, etc.) while leaving
+   the white/coloured text that sits on a filled button, badge or pill alone. */
+.main-content [style*="color"]:not(.btn):not(button):not([class*="badge"]):not([class*="btn"]):not([class*="pill"]):not(.invalid-feedback) {
+    color: var(--text-primary) !important;
+}
