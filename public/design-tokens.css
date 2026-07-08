@@ -74,7 +74,14 @@ body, .table, .rm-table, .stat-value, .total-amount-display,
 
 /* ── 4 · SIDEBAR · theme-aware, 2px brand active bar, monochrome icons ──── */
 .sidebar { border-right: 1px solid var(--border) !important; }
-.brand-text { color: var(--text-primary) !important; }
+/* Kill the gradient-text trick so the brand name is a solid, readable colour
+   in BOTH themes (was light-grey→indigo gradient, invisible on a light rail). */
+.brand-text {
+    background: none !important;
+    -webkit-background-clip: initial !important; background-clip: initial !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    color: var(--text-primary) !important;
+}
 .menu-section { color: var(--text-secondary) !important; opacity: 1 !important; letter-spacing: .08em; }
 .nav-link { color: var(--text-secondary) !important; font-weight: 500 !important; }
 .nav-link:hover { color: var(--text-primary) !important; background: var(--brand-subtle) !important; }
@@ -83,10 +90,10 @@ body, .table, .rm-table, .stat-value, .total-amount-display,
 .nav-link.active svg, .nav-link.active i[data-lucide] { color: var(--brand) !important; }
 .nav-link.active::before { background: var(--brand) !important; }
 .nav-pending-badge { background: transparent !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; }
-/* Logo is always a circle; keep the white "JYC" monogram visible on a light sidebar */
-.logo-wrapper { border-radius: 50% !important; overflow: hidden; }
+/* Logo: identical circular treatment in both themes (the PNG carries its own
+   blue), matching the dark-mode look the user approved. */
+.logo-wrapper { border-radius: 50% !important; overflow: hidden; background: transparent !important; padding: 0 !important; }
 .brand-icon { border-radius: 50% !important; }
-html[data-bs-theme="light"] .logo-wrapper { background: var(--brand); }
 
 /* ── 5 · TOP BAR · flat, no pulse ──────────────────────────────────────── */
 .topbar { box-shadow: none !important; border-bottom: 1px solid var(--border) !important; }
