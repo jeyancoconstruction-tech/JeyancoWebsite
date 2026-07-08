@@ -434,14 +434,14 @@
                 datasets: [{
                     label: 'Hours Worked',
                     data: {!! json_encode($attendanceData ?? []) !!},
-                    borderColor: '#6366f1',
+                    borderColor: '#3b82f6',
                     backgroundColor: 'rgba(99,102,241,0.08)',
                     fill: true,
                     tension: 0.4,
                     pointRadius: 4,
                     pointHoverRadius: 6,
                     pointBackgroundColor: '#fff',
-                    pointBorderColor: '#6366f1',
+                    pointBorderColor: '#3b82f6',
                     pointBorderWidth: 2
                 }]
             },

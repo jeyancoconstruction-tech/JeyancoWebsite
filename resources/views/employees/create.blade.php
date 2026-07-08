@@ -94,7 +94,7 @@
                                 </select>
                                 <button type="button" id="newSiteBtn"
                                         class="btn fw-600"
-                                        style="background:#6366f1;color:#fff;border:none;padding:8px 14px;border-radius:7px;white-space:nowrap;">
+                                        style="background:#3b82f6;color:#fff;border:none;padding:8px 14px;border-radius:7px;white-space:nowrap;">
                                     <i class="fas fa-plus me-1"></i>New Site
                                 </button>
                             </div>
@@ -146,7 +146,7 @@
 
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
                                     <button type="button" id="openCameraBtn"
-                                            style="background:#1e3a8a;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:600;cursor:pointer;">
+                                            style="background:#3b82f6;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:600;cursor:pointer;">
                                         <i class="fas fa-camera me-1"></i>Camera
                                     </button>
                                     <button type="button" id="openGalleryBtn"
@@ -172,7 +172,7 @@
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-secondary">
                                 Fingerprint ID
-                                <span class="badge ms-1" style="background:#eff6ff;color:#1e40af;font-size:10px;font-weight:600;border:1px solid #bfdbfe;border-radius:99px;padding:2px 8px;">Auto-assigned</span>
+                                <span class="badge ms-1" style="background:#eff6ff;color:#2563eb;font-size:10px;font-weight:600;border:1px solid #bfdbfe;border-radius:99px;padding:2px 8px;">Auto-assigned</span>
                             </label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light border-end-0">👆</span>
@@ -191,7 +191,7 @@
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
                         <button type="submit" class="btn fw-bold px-5"
-                                style="background:#1e3a8a;color:#fff;border:none;border-radius:8px;">
+                                style="background:#3b82f6;color:#fff;border:none;border-radius:8px;">
                             <i class="fas fa-plus me-2"></i>Add Employee
                         </button>
                     </div>
@@ -299,7 +299,7 @@
 <div class="modal fade" id="cameraModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
         <div class="modal-content" style="border-radius:16px;overflow:hidden;border:none;">
-            <div class="modal-header" style="background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;border:none;padding:14px 20px;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border:none;padding:14px 20px;">
                 <h6 class="modal-title mb-0 fw-bold" id="cameraModalLabel">
                     <i class="fas fa-camera me-2"></i>Take Photo
                 </h6>
@@ -317,7 +317,7 @@
             </div>
             <div class="modal-footer" style="border:none;background:#0f172a;justify-content:center;gap:10px;padding:14px 20px;">
                 <button type="button" id="captureBtn"
-                        style="background:#1e3a8a;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer;">
+                        style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer;">
                     <i class="fas fa-circle me-2" style="color:#ef4444;font-size:10px;"></i>Capture
                 </button>
                 <button type="button" data-bs-dismiss="modal"

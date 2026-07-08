@@ -6,11 +6,11 @@
 <style>
     .att-tabs { border-bottom: 2px solid #e5e7eb; gap: 4px; margin-bottom: 18px; }
     .att-tabs .nav-link { color: #64748b; border: none; font-weight: 700; padding: 10px 18px; }
-    .att-tabs .nav-link:hover { color: #1e3a8a; }
-    .att-tabs .nav-link.active { color: #1e3a8a; border-bottom: 3px solid #1e3a8a; background: none; }
+    .att-tabs .nav-link:hover { color: #3b82f6; }
+    .att-tabs .nav-link.active { color: #3b82f6; border-bottom: 3px solid #3b82f6; background: none; }
     [data-bs-theme="dark"] .att-tabs { border-bottom-color: #283449; }
     [data-bs-theme="dark"] .att-tabs .nav-link { color: #9fb0c7; }
-    [data-bs-theme="dark"] .att-tabs .nav-link.active { color: #a5b4fc; border-bottom-color: #a5b4fc; }
+    [data-bs-theme="dark"] .att-tabs .nav-link.active { color: #93c5fd; border-bottom-color: #93c5fd; }
 
     /* History toolbar */
     .att-hist-toolbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; }

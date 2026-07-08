@@ -91,7 +91,7 @@
                                 </select>
                                 <button type="button" id="newSiteBtn"
                                         class="btn fw-600"
-                                        style="background:#6366f1;color:#fff;border:none;padding:8px 14px;border-radius:7px;white-space:nowrap;">
+                                        style="background:#3b82f6;color:#fff;border:none;padding:8px 14px;border-radius:7px;white-space:nowrap;">
                                     <i class="fas fa-plus me-1"></i>New Site
                                 </button>
                             </div>
@@ -156,7 +156,7 @@
                             <small class="text-muted d-block mb-2">Current Labor Type</small>
                             <div class="row g-2">
                                 <div class="col-6">
-                                    <strong style="color:var(--primary,#1e3a8a);">{{ $employee->laborType->name }}</strong>
+                                    <strong style="color:var(--primary,#3b82f6);">{{ $employee->laborType->name }}</strong>
                                     <small class="text-muted d-block">Daily: {{ $employee->laborType->getFormattedDailyRate() }}</small>
                                 </div>
                                 <div class="col-6">
@@ -173,7 +173,7 @@
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
                         <button type="submit" class="btn fw-bold px-5"
-                                style="background:#1e3a8a;color:#fff;border:none;border-radius:8px;">
+                                style="background:#3b82f6;color:#fff;border:none;border-radius:8px;">
                             <i class="fas fa-save me-2"></i>Save Changes
                         </button>
                     </div>

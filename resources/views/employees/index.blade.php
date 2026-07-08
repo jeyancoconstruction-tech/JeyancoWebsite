@@ -222,7 +222,7 @@
     font-size: 1.45rem; font-weight: 700; color: #0f172a; margin: 0;
 }
 .emp-count-chip {
-    font-size: 12px; font-weight: 600; color: #1e40af;
+    font-size: 12px; font-weight: 600; color: #2563eb;
     background: #eff6ff; border: 1px solid #bfdbfe;
     padding: 3px 10px; border-radius: 20px;
 }
@@ -244,7 +244,7 @@
     background: #fff; color: #0f172a; width: 200px;
     outline: none; transition: border-color .15s, box-shadow .15s;
 }
-.emp-search:focus { border-color: #1e3a8a; box-shadow: 0 0 0 3px rgba(30,58,138,.08); }
+.emp-search:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.08); }
 .emp-search::placeholder { color: #94a3b8; }
 
 /* ── Select ──────────────────────────────────────────────────────────────── */
@@ -258,7 +258,7 @@
     transition: border-color .15s;
     min-width: 130px;
 }
-.emp-select:focus { border-color: #1e3a8a; }
+.emp-select:focus { border-color: #3b82f6; }
 .emp-select-icon {
     position: absolute; right: 10px; top: 50%;
     transform: translateY(-50%); color: #94a3b8;
@@ -326,17 +326,17 @@
     flex-shrink: 0; border: 2px solid transparent;
 }
 /* Avatar color palette keyed by first letter */
-.emp-av-a,.emp-av-b { background: linear-gradient(135deg,#1e3a8a,#3b82f6); }
-.emp-av-c,.emp-av-d { background: linear-gradient(135deg,#6d28d9,#818cf8); }
+.emp-av-a,.emp-av-b { background: linear-gradient(135deg,#3b82f6,#3b82f6); }
+.emp-av-c,.emp-av-d { background: linear-gradient(135deg,#2563eb,#60a5fa); }
 .emp-av-e,.emp-av-f { background: linear-gradient(135deg,#065f46,#10b981); }
 .emp-av-g,.emp-av-h { background: linear-gradient(135deg,#92400e,#f59e0b); }
 .emp-av-i,.emp-av-j { background: linear-gradient(135deg,#be123c,#f43f5e); }
 .emp-av-k,.emp-av-l { background: linear-gradient(135deg,#0e7490,#38bdf8); }
-.emp-av-m,.emp-av-n { background: linear-gradient(135deg,#1e3a8a,#6366f1); }
+.emp-av-m,.emp-av-n { background: linear-gradient(135deg,#3b82f6,#3b82f6); }
 .emp-av-o,.emp-av-p { background: linear-gradient(135deg,#701a75,#e879f9); }
 .emp-av-q,.emp-av-r { background: linear-gradient(135deg,#7c2d12,#f97316); }
 .emp-av-s,.emp-av-t { background: linear-gradient(135deg,#134e4a,#2dd4bf); }
-.emp-av-u,.emp-av-v { background: linear-gradient(135deg,#1e3a8a,#7c3aed); }
+.emp-av-u,.emp-av-v { background: linear-gradient(135deg,#3b82f6,#2563eb); }
 .emp-av-w,.emp-av-x { background: linear-gradient(135deg,#166534,#4ade80); }
 .emp-av-y,.emp-av-z { background: linear-gradient(135deg,#9f1239,#fb7185); }
 
@@ -360,7 +360,7 @@
 .emp-badge-labor {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: 12px; font-weight: 600; white-space: nowrap;
-    color: #fff; background: linear-gradient(135deg,#1e3a8a,#3b82f6);
+    color: #fff; background: linear-gradient(135deg,#3b82f6,#3b82f6);
     padding: 4px 10px; border-radius: 20px;
 }
 .emp-badge-labor i { font-size: 10px; }
@@ -402,7 +402,7 @@
     font-size: 13px;
 }
 .emp-more-btn:hover        { background: #f1f5f9; border-color: #cbd5e1; color: #1e293b; }
-.emp-more-btn.active       { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+.emp-more-btn.active       { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
 .emp-more-menu {
     display: none; position: absolute; right: 0; top: calc(100% + 6px);
     background: #fff; border: 1px solid #e2e8f0;
@@ -430,7 +430,7 @@
 .emp-modal-header {
     display: flex; align-items: flex-start; justify-content: space-between;
     padding: 18px 24px;
-    background: linear-gradient(135deg, #1e3a8a, #1e40af); color: #fff;
+    background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff;
 }
 .emp-modal-title { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
 .emp-modal-sub   { font-size: 12px; opacity: .8; margin: 0; }
@@ -442,21 +442,21 @@
     font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 10px;
     display: flex; align-items: center; gap: 6px;
 }
-.emp-site-add-label i { color: #1e3a8a; }
+.emp-site-add-label i { color: #3b82f6; }
 .emp-modal-input {
     flex: 1; height: 36px; padding: 0 11px; font-size: 13px;
     border: 1.5px solid #e2e8f0; border-radius: 7px;
     background: #fff; color: #0f172a; outline: none;
     transition: border-color .15s;
 }
-.emp-modal-input:focus { border-color: #1e3a8a; }
+.emp-modal-input:focus { border-color: #3b82f6; }
 .emp-site-add-btn {
     height: 36px; padding: 0 16px; font-size: 13px; font-weight: 700;
-    background: #1e3a8a; color: #fff; border: none;
+    background: #3b82f6; color: #fff; border: none;
     border-radius: 7px; cursor: pointer; white-space: nowrap;
     transition: background .15s;
 }
-.emp-site-add-btn:hover { background: #1e40af; }
+.emp-site-add-btn:hover { background: #2563eb; }
 .emp-modal-err { font-size: 12px; color: #dc2626; margin-top: 6px; }
 .emp-sites-loading { text-align: center; padding: 20px 0; color: #64748b; font-size: 13px; }
 
@@ -472,7 +472,7 @@
 .site-row .site-count { font-size: 12px; color: #64748b; white-space: nowrap; }
 .site-row input.site-edit-input {
     flex: 1; font-size: 14px; font-weight: 600;
-    border: 1.5px solid #6366f1; border-radius: 6px; padding: 4px 8px;
+    border: 1.5px solid #3b82f6; border-radius: 6px; padding: 4px 8px;
     outline: none;
 }
 .site-action-btn {
@@ -492,12 +492,12 @@
 .emp-selecting .emp-col-check { display: table-cell; }
 .emp-checkbox, .emp-row-check {
     width: 16px; height: 16px; cursor: pointer;
-    accent-color: #1e3a8a; flex-shrink: 0;
+    accent-color: #3b82f6; flex-shrink: 0;
 }
 
 /* ── Selection mode active button ────────────────────────────────────────── */
 .emp-btn-selecting {
-    background: #eff6ff !important; color: #1e40af !important;
+    background: #eff6ff !important; color: #2563eb !important;
     border-color: #bfdbfe !important;
 }
 .emp-btn-selecting:hover { background: #dbeafe !important; border-color: #93c5fd !important; }
@@ -510,7 +510,7 @@
 }
 .emp-bulk-info {
     display: flex; align-items: center; gap: 8px;
-    font-size: 13px; font-weight: 600; color: #1e40af;
+    font-size: 13px; font-weight: 600; color: #2563eb;
 }
 .emp-bulk-info i { font-size: 14px; }
 .emp-bulk-actions { display: flex; align-items: center; gap: 8px; }
@@ -535,7 +535,7 @@
 /* ── Dark mode ───────────────────────────────────────────────────────────── */
 [data-bs-theme="dark"] .emp-flash       { background:#052e16; border-color:#166534; border-left-color:#22c55e; color:#86efac; }
 [data-bs-theme="dark"] .emp-title       { color: #e8edf5; }
-[data-bs-theme="dark"] .emp-count-chip  { background: #172554; border-color: #1e3a8a; color: #93c5fd; }
+[data-bs-theme="dark"] .emp-count-chip  { background: #172554; border-color: #3b82f6; color: #93c5fd; }
 [data-bs-theme="dark"] .emp-search      { background: #151d2e; border-color: #283449; color: #e8edf5; }
 [data-bs-theme="dark"] .emp-search:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
 [data-bs-theme="dark"] .emp-search::placeholder { color: #6b7d96; }
@@ -577,14 +577,14 @@
 [data-bs-theme="dark"] .site-row .site-count { color: #6b7d96; }
 [data-bs-theme="dark"] .site-action-btn:hover { background: #283449; }
 [data-bs-theme="dark"] .emp-sites-loading { color: #6b7d96; }
-[data-bs-theme="dark"] .emp-bulk-bar     { background: #172554; border-bottom-color: #1e3a8a; }
+[data-bs-theme="dark"] .emp-bulk-bar     { background: #172554; border-bottom-color: #3b82f6; }
 [data-bs-theme="dark"] .emp-bulk-info    { color: #93c5fd; }
 [data-bs-theme="dark"] .emp-bulk-cancel  { border-color: #283449; color: #94a3b8; }
 [data-bs-theme="dark"] .emp-bulk-cancel:hover { background: #283449; }
 [data-bs-theme="dark"] .emp-checkbox,
 [data-bs-theme="dark"] .emp-row-check    { accent-color: #3b82f6; }
-[data-bs-theme="dark"] .emp-btn-selecting { background: #172554 !important; color: #93c5fd !important; border-color: #1e3a8a !important; }
-[data-bs-theme="dark"] .emp-btn-selecting:hover { background: #1e3a8a !important; }
+[data-bs-theme="dark"] .emp-btn-selecting { background: #172554 !important; color: #93c5fd !important; border-color: #3b82f6 !important; }
+[data-bs-theme="dark"] .emp-btn-selecting:hover { background: #3b82f6 !important; }
 
 @keyframes empToastIn {
     from { opacity: 0; transform: translateX(14px); }

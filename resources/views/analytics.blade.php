@@ -19,7 +19,7 @@
     <div class="an-kpi-grid">
 
         <div class="an-kpi-card">
-            <div class="an-kpi-icon" style="background:#eff6ff;color:#1e3a8a;">
+            <div class="an-kpi-icon" style="background:#eff6ff;color:#3b82f6;">
                 <i class="fas fa-users"></i>
             </div>
             <div class="an-kpi-body">
@@ -182,10 +182,10 @@
                 <div class="an-deduction-legend">
                     <div class="an-dl-row"><span class="an-dl-dot" style="background:#3b82f6;"></span><span class="an-dl-label">SSS</span><span class="an-dl-val">₱{{ number_format($sssTot, 0) }}</span></div>
                     <div class="an-dl-row"><span class="an-dl-dot" style="background:#10b981;"></span><span class="an-dl-label">PhilHealth</span><span class="an-dl-val">₱{{ number_format($philTot, 0) }}</span></div>
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#f59e0b;"></span><span class="an-dl-label">Pag-IBIG</span><span class="an-dl-val">₱{{ number_format($pagibigTot, 0) }}</span></div>
+                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#14b8a6;"></span><span class="an-dl-label">Pag-IBIG</span><span class="an-dl-val">₱{{ number_format($pagibigTot, 0) }}</span></div>
                     <div class="an-dl-row"><span class="an-dl-dot" style="background:#ef4444;"></span><span class="an-dl-label">Vale</span><span class="an-dl-val">₱{{ number_format($valeTot, 0) }}</span></div>
                     @if($otherTot > 0)
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#8b5cf6;"></span><span class="an-dl-label">Other</span><span class="an-dl-val">₱{{ number_format($otherTot, 0) }}</span></div>
+                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#64748b;"></span><span class="an-dl-label">Other</span><span class="an-dl-val">₱{{ number_format($otherTot, 0) }}</span></div>
                     @endif
                     <div class="an-dl-total">Total: ₱{{ number_format($totalDeductions, 0) }}</div>
                 </div>
@@ -312,7 +312,7 @@
 .an-sub   { font-size: 13.5px; color: #64748b; margin: 0; }
 .an-period-chip {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 600; color: #1e40af;
+    font-size: 12px; font-weight: 600; color: #2563eb;
     background: #eff6ff; border: 1px solid #bfdbfe;
     padding: 5px 12px; border-radius: 20px;
 }
@@ -336,7 +336,7 @@
 .an-kpi-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.07); transform: translateY(-1px); }
 .an-kpi-card::after {
     content: ''; position: absolute; top: 0; left: 0; right: 0;
-    height: 3px; background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+    height: 3px; background: linear-gradient(90deg, #3b82f6, #3b82f6);
     border-radius: 14px 14px 0 0;
 }
 
@@ -397,9 +397,9 @@
 }
 
 /* Badges */
-.an-badge-blue   { font-size: 11px; font-weight: 700; color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.an-badge-blue   { font-size: 11px; font-weight: 700; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
 .an-badge-green  { font-size: 11px; font-weight: 700; color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-.an-badge-purple { font-size: 11px; font-weight: 700; color: #7c3aed; background: #f5f3ff; border: 1px solid #ddd6fe; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.an-badge-purple { font-size: 11px; font-weight: 700; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
 
 /* ── Deduction legend ─────────────────────────────────────────────────────── */
 .an-deduction-legend { flex-shrink: 0; min-width: 160px; }
@@ -424,7 +424,7 @@
     border-radius: 6px; overflow: hidden;
 }
 .an-site-bar-fill {
-    height: 100%; background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+    height: 100%; background: linear-gradient(90deg, #3b82f6, #3b82f6);
     border-radius: 6px; transition: width .6s ease;
     min-width: 4px;
 }
@@ -453,7 +453,7 @@
 .an-emp-cell { display: flex; align-items: center; gap: 10px; }
 .an-emp-avatar {
     width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
-    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    background: linear-gradient(135deg, #3b82f6, #3b82f6);
     color: #fff; font-size: 13px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
 }
@@ -465,8 +465,8 @@
 .an-td-ded  { color: #dc2626 !important; }
 
 .an-ot-badge {
-    font-size: 12px; font-weight: 600; color: #7c3aed;
-    background: #f5f3ff; padding: 2px 7px; border-radius: 5px;
+    font-size: 12px; font-weight: 600; color: #2563eb;
+    background: #eff6ff; padding: 2px 7px; border-radius: 5px;
 }
 .an-holiday-badge {
     font-size: 12px; font-weight: 600; color: #d97706;
@@ -479,7 +479,7 @@
 /* ── Dark mode ───────────────────────────────────────────────────────────── */
 [data-bs-theme="dark"] .an-title         { color: #e8edf5; }
 [data-bs-theme="dark"] .an-sub           { color: #6b7d96; }
-[data-bs-theme="dark"] .an-period-chip   { background: #172554; border-color: #1e3a8a; color: #93c5fd; }
+[data-bs-theme="dark"] .an-period-chip   { background: #172554; border-color: #3b82f6; color: #93c5fd; }
 [data-bs-theme="dark"] .an-kpi-card      { background: #151d2e; border-color: #283449; }
 [data-bs-theme="dark"] .an-kpi-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.3); }
 [data-bs-theme="dark"] .an-kpi-label     { color: #6b7d96; }
@@ -490,9 +490,9 @@
 [data-bs-theme="dark"] .an-card-title    { color: #e8edf5; }
 [data-bs-theme="dark"] .an-card-sub      { color: #6b7d96; }
 [data-bs-theme="dark"] .an-empty         { color: #475569; }
-[data-bs-theme="dark"] .an-badge-blue    { background: #172554; border-color: #1e3a8a; color: #93c5fd; }
+[data-bs-theme="dark"] .an-badge-blue    { background: #172554; border-color: #3b82f6; color: #93c5fd; }
 [data-bs-theme="dark"] .an-badge-green   { background: #052e16; border-color: #166534; color: #86efac; }
-[data-bs-theme="dark"] .an-badge-purple  { background: #2e1065; border-color: #4c1d95; color: #c4b5fd; }
+[data-bs-theme="dark"] .an-badge-purple  { background: #172554; border-color: #2563eb; color: #93c5fd; }
 [data-bs-theme="dark"] .an-dl-label      { color: #cdd7e5; }
 [data-bs-theme="dark"] .an-dl-val        { color: #e8edf5; }
 [data-bs-theme="dark"] .an-dl-total      { color: #6b7d96; border-top-color: #283449; }
@@ -610,7 +610,7 @@
     // ── 3. Labor Type Doughnut ─────────────────────────────────────────────
     const laborLabels = @json($laborDist->keys()->values());
     const laborData   = @json($laborDist->values()->values());
-    const PALETTE     = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#14b8a6'];
+    const PALETTE     = ['#3b82f6','#10b981','#14b8a6','#ef4444','#64748b','#06b6d4','#0ea5e9','#14b8a6'];
 
     if (document.getElementById('laborTypeChart')) {
         new Chart(document.getElementById('laborTypeChart'), {
@@ -649,7 +649,7 @@
                     label: 'OT Pay (₱)',
                     data: otPay,
                     backgroundColor: isDark ? 'rgba(139,92,246,0.6)' : 'rgba(124,58,237,0.65)',
-                    borderColor: '#7c3aed',
+                    borderColor: '#2563eb',
                     borderWidth: 1.5,
                     borderRadius: 6,
                 }]
@@ -675,7 +675,7 @@
         {{ $sssTot }}, {{ $philTot }}, {{ $pagibigTot }},
         {{ $valeTot }}, {{ $otherTot }}
     ].map((v, i) => v);
-    const dedColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+    const dedColors = ['#3b82f6', '#10b981', '#14b8a6', '#ef4444', '#64748b'];
 
     if (document.getElementById('deductionChart')) {
         const filteredLabels = [];
