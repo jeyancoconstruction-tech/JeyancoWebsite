@@ -43,25 +43,25 @@
                 {{-- Category Navigation --}}
                 <div class="category-nav" id="categoryNav">
                     <button class="cat-btn active" data-cat="workforce">
-                        <span class="cat-icon">👷</span> Workforce
+                        <span class="cat-icon"><i data-lucide="hard-hat" style="width:16px;height:16px;"></i></span> Workforce
                     </button>
                     <button class="cat-btn" data-cat="payroll">
-                        <span class="cat-icon">💰</span> Payroll
+                        <span class="cat-icon"><i data-lucide="wallet" style="width:16px;height:16px;"></i></span> Payroll
                     </button>
                     <button class="cat-btn" data-cat="attendance">
-                        <span class="cat-icon">✅</span> Attendance
+                        <span class="cat-icon"><i data-lucide="calendar-check" style="width:16px;height:16px;"></i></span> Attendance
                     </button>
                     <button class="cat-btn" data-cat="reports">
-                        <span class="cat-icon">📊</span> Reports
+                        <span class="cat-icon"><i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i></span> Reports
                     </button>
                     <button class="cat-btn" data-cat="security">
-                        <span class="cat-icon">🔐</span> Security
+                        <span class="cat-icon"><i data-lucide="shield" style="width:16px;height:16px;"></i></span> Security
                     </button>
                     <button class="cat-btn" data-cat="settings">
-                        <span class="cat-icon">⚙️</span> Settings
+                        <span class="cat-icon"><i data-lucide="settings" style="width:16px;height:16px;"></i></span> Settings
                     </button>
                     <button class="cat-btn" data-cat="system">
-                        <span class="cat-icon">🖥️</span> System
+                        <span class="cat-icon"><i data-lucide="monitor" style="width:16px;height:16px;"></i></span> System
                     </button>
                 </div>
 

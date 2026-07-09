@@ -45,6 +45,12 @@ html[data-bs-theme="dark"] {
 /* Always keep a vertical scrollbar so the layout (incl. the top nav bar) never
    shifts horizontally when a scrollbar appears/disappears — e.g. on theme toggle. */
 html { overflow-y: scroll !important; scrollbar-gutter: stable; }
+body { overflow-x: hidden; }
+
+/* Analytics KPI icons: uniform brand box + brand icon, visible in BOTH themes.
+   (Inline light bg + monochrome-neutralised icon colour made them vanish on the
+   dark cards.) */
+.main-content .an-kpi-icon { background: var(--brand-subtle) !important; color: var(--brand) !important; }
 
 /* Raise content on EVERY page: drop the extra top padding page wrappers add on
    top of the already-tight container padding, so every page starts near the top. */
