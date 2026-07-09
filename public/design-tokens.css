@@ -42,9 +42,13 @@ html[data-bs-theme="dark"] {
     --transition: all 0.12s ease;
 }
 
-/* Reserve the scrollbar gutter so the page doesn't jump/shift horizontally
-   when a scrollbar appears or disappears (e.g. while toggling light/dark). */
-html { scrollbar-gutter: stable; }
+/* Always keep a vertical scrollbar so the layout (incl. the top nav bar) never
+   shifts horizontally when a scrollbar appears/disappears — e.g. on theme toggle. */
+html { overflow-y: scroll !important; scrollbar-gutter: stable; }
+
+/* Raise content on EVERY page: drop the extra top padding page wrappers add on
+   top of the already-tight container padding, so every page starts near the top. */
+.main-content .container-fluid.py-4 > *:first-child { padding-top: 0 !important; margin-top: 0 !important; }
 
 /* Numbers use tabular figures everywhere */
 body, .table, .rm-table, .stat-value, .total-amount-display,
