@@ -108,28 +108,37 @@
     #kioskMap { height: 260px; min-height: 220px; border-radius: 12px; overflow: hidden; }
     #kioskMap .leaflet-control-attribution { font-size: 9px; }
 
-    /* ── COMPACT: fit the whole dashboard on one screen ──────────────── */
+    /* ── COMPACT + CLEAN: fit the dashboard on one screen, tidily ────── */
     .dashboard-wrapper .mb-4 { margin-bottom: 12px !important; }
     .dashboard-wrapper .g-3 { --bs-gutter-y: 12px; --bs-gutter-x: 12px; }
-    .dashboard-wrapper .greeting-title { font-size: 18px !important; }
-    .dashboard-wrapper .greeting-sub { font-size: 12px; margin-top: 1px; }
-    .dashboard-wrapper .clock-widget { padding: 6px 12px !important; }
-    .dashboard-wrapper .clock-ic { width: 32px; height: 32px; }
-    .dashboard-wrapper .clock-time { font-size: 1rem; }
-    .dashboard-wrapper .analytics-card { padding: 12px 14px !important; }
-    .dashboard-wrapper .stat-label { margin-bottom: 4px; }
-    .dashboard-wrapper .stat-value { font-size: 20px !important; margin-bottom: 2px; }
-    .dashboard-wrapper .stat-sub { font-size: 11px; }
-    .dashboard-wrapper .stat-delta { margin-top: 6px; }
-    .dashboard-wrapper .icon-box { width: 32px !important; height: 32px !important; }
-    .dashboard-wrapper .table-card-header { padding: 9px 16px !important; }
-    .dashboard-wrapper .table > :not(caption) > * > * { padding-top: 6px !important; padding-bottom: 6px !important; }
-    .dashboard-wrapper .table-card > .p-4 { padding: 10px 16px !important; min-height: 0 !important; }
-    .dashboard-wrapper #attendanceChart { max-height: 180px !important; }
-    #kioskMap { height: 180px !important; min-height: 160px !important; }
-    .dashboard-wrapper .la-item { padding: 7px 20px !important; }
-    .dashboard-wrapper .act-item { padding: 8px 20px !important; }
-    .dashboard-wrapper .p-3 { padding: 10px !important; }
+
+    /* Header */
+    .dashboard-wrapper .greeting-title { font-size: 19px !important; }
+    .dashboard-wrapper .greeting-sub { font-size: 12px; margin-top: 2px; }
+    .dashboard-wrapper .clock-widget { padding: 7px 14px !important; gap: 10px; }
+    .dashboard-wrapper .clock-ic { width: 34px; height: 34px; }
+    .dashboard-wrapper .clock-time { font-size: 1.05rem; }
+
+    /* Stat cards — balanced padding, icon sized to its box */
+    .dashboard-wrapper .analytics-card { padding: 13px 15px !important; }
+    .dashboard-wrapper .stat-label { margin-bottom: 5px; }
+    .dashboard-wrapper .stat-value { font-size: 21px !important; margin-bottom: 3px; }
+    .dashboard-wrapper .stat-sub { font-size: 11.5px; }
+    .dashboard-wrapper .stat-delta { margin-top: 8px; }
+    .dashboard-wrapper .icon-box { width: 36px !important; height: 36px !important; }
+    .dashboard-wrapper .icon-box i { font-size: 14px !important; }
+
+    /* Cards / tables — tidy compact rows, consistent header height */
+    .dashboard-wrapper .table-card-header { padding: 11px 18px !important; }
+    .dashboard-wrapper .table > :not(caption) > * > * { padding-top: 7px !important; padding-bottom: 7px !important; }
+
+    /* Chart fills its card so it lines up with the personnel table height */
+    .dashboard-wrapper .table-card > .p-4 { padding: 12px 16px !important; min-height: 0 !important; }
+
+    /* Map + bottom lists */
+    #kioskMap { height: 195px !important; min-height: 175px !important; }
+    .dashboard-wrapper .la-item { padding: 8px 20px !important; }
+    .dashboard-wrapper .act-item { padding: 9px 20px !important; }
 </style>
 @endpush
 
