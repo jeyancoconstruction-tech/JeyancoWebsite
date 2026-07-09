@@ -22,8 +22,8 @@
     .pr-summary-bar { display: flex; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
     .pr-stat { flex: 1; min-width: 110px; padding: 14px 18px; border-right: 1px solid var(--border); }
     .pr-stat:last-child { border-right: none; }
-    .pr-stat .k { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 3px; }
-    .pr-stat .v { font-size: 1.2rem; font-weight: 800; line-height: 1.2; }
+    .pr-stat .k { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); margin-bottom: 4px; }
+    .pr-stat .v { font-size: 1.15rem; font-weight: 600; line-height: 1.2; color: var(--text-primary); font-variant-numeric: tabular-nums; }
     @media (max-width: 768px) { .pr-stat { min-width: 50%; border-bottom: 1px solid var(--border); } }
 
     /* ── Tabs ────────────────────────────────────────────────────────────── */
@@ -134,31 +134,31 @@
         </div>
         <div class="pr-stat">
             <div class="k">Gross Pay</div>
-            <div class="v" style="color:#22c55e;">&#8369;{{ number_format($summary['gross'], 2) }}</div>
+            <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['gross'], 2) }}</div>
         </div>
         <div class="pr-stat">
             <div class="k">Deductions</div>
-            <div class="v" style="color:#ef4444;">&#8369;{{ number_format($summary['totalDeductions'], 2) }}</div>
+            <div class="v" style="color:var(--danger);">&#8369;{{ number_format($summary['totalDeductions'], 2) }}</div>
         </div>
         <div class="pr-stat">
             <div class="k">Overtime</div>
-            <div class="v" style="color:#f59e0b;">&#8369;{{ number_format($summary['overtime'], 2) }}</div>
+            <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['overtime'], 2) }}</div>
         </div>
         <div class="pr-stat">
             <div class="k">Holiday Pay</div>
-            <div class="v" style="color:#a855f7;">&#8369;{{ number_format($summary['holidayPay'], 2) }}</div>
+            <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['holidayPay'], 2) }}</div>
         </div>
         <div class="pr-stat">
             <div class="k">Rest Day Pay</div>
-            <div class="v" style="color:#14b8a6;">&#8369;{{ number_format($summary['restDayPay'] ?? 0, 2) }}</div>
+            <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['restDayPay'] ?? 0, 2) }}</div>
         </div>
         <div class="pr-stat">
             <div class="k">Bonus</div>
-            <div class="v" style="color:#f97316;">&#8369;{{ number_format($summary['bonus'], 2) }}</div>
+            <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['bonus'], 2) }}</div>
         </div>
         <div class="pr-stat">
             <div class="k">Employees</div>
-            <div class="v" style="color:#06b6d4;">{{ $summary['employee_count'] }}</div>
+            <div class="v" style="color:var(--text-primary);">{{ $summary['employee_count'] }}</div>
         </div>
         <div class="pr-stat">
             <div class="k">Hours / Days</div>
@@ -217,11 +217,11 @@
                                     <td class="ps-4 text-muted">{{ \Carbon\Carbon::parse($day['date'])->format('m/d/Y (D)') }}</td>
                                     <td class="fw-semibold">{{ $d['name'] }}</td>
                                     <td class="text-end">{{ $d['hours'] }}</td>
-                                    <td class="text-end" style="color:#0369a1;">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
-                                    <td class="text-end" style="color:#14b8a6;">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
-                                    <td class="text-end" style="color:#f97316;">&#8369;{{ number_format($d['bonus'], 2) }}</td>
-                                    <td class="text-end" style="color:#16a34a;">&#8369;{{ number_format($d['gross'], 2) }}</td>
-                                    <td class="text-end" style="color:#dc2626;">&#8369;{{ number_format($d['totalDeductions'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['bonus'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-secondary);">&#8369;{{ number_format($d['gross'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($d['totalDeductions'], 2) }}</td>
                                     <td class="text-end pe-4 fw-semibold" style="color:var(--brand);">&#8369;{{ number_format($d['net'], 2) }}</td>
                                 </tr>
                                 @endforeach
@@ -264,8 +264,8 @@
                                 <td class="text-muted">#{{ $emp['employee_id'] }}</td>
                                 <td class="text-center">{{ $emp['totals']['workdays'] }}</td>
                                 <td class="text-end">{{ $emp['totals']['hours'] }}</td>
-                                <td class="text-end" style="color:#16a34a;">&#8369;{{ number_format($emp['totals']['gross'], 2) }}</td>
-                                <td class="text-end" style="color:#dc2626;">&#8369;{{ number_format($emp['totals']['totalDeductions'], 2) }}</td>
+                                <td class="text-end" style="color:var(--text-secondary);">&#8369;{{ number_format($emp['totals']['gross'], 2) }}</td>
+                                <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($emp['totals']['totalDeductions'], 2) }}</td>
                                 <td class="text-end fw-bold" style="color:var(--brand);">&#8369;{{ number_format($emp['totals']['net'], 2) }}</td>
                                 <td class="text-end pe-4">
                                     <a href="{{ route('payslip.show', ['employee' => $emp['employee_id'], 'from' => $period['from'], 'to' => $period['to']]) }}"
@@ -302,7 +302,7 @@
                         </div>
                         <div class="mt-2 d-flex gap-3 small text-muted">
                             <span><i class="fas fa-users me-1" style="color:var(--brand);"></i>{{ $week['employee_count'] }}</span>
-                            <span><i class="fas fa-calendar-check me-1" style="color:#16a34a;"></i>{{ $week['working_days'] }} day(s)</span>
+                            <span><i class="fas fa-calendar-check me-1" style="color:var(--text-secondary);"></i>{{ $week['working_days'] }} day(s)</span>
                         </div>
                     </div>
                 </div>
@@ -332,8 +332,8 @@
                                         @foreach($week['details'] as $detail)
                                         <tr class="fw-semibold">
                                             <td>{{ $detail['name'] }}</td>
-                                            <td class="text-end" style="color:#16a34a;">&#8369;{{ number_format($detail['gross'], 2) }}</td>
-                                            <td class="text-end" style="color:#dc2626;">&#8369;{{ number_format($detail['totalDeductions'], 2) }}</td>
+                                            <td class="text-end" style="color:var(--text-secondary);">&#8369;{{ number_format($detail['gross'], 2) }}</td>
+                                            <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($detail['totalDeductions'], 2) }}</td>
                                             <td class="text-end" style="color:var(--brand);">&#8369;{{ number_format($detail['net'], 2) }}</td>
                                             <td class="text-end">
                                                 <a href="{{ route('payslip.show', ['employee' => $detail['employee_id'], 'from' => $period['from'], 'to' => $period['to']]) }}"
