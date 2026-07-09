@@ -143,7 +143,7 @@
                         </td>
 
                         {{-- Vale balance --}}
-                        <td class="emp-vale {{ ($emp->vale ?? 0) > 0 ? 'has-vale' : '' }}">
+                        <td class="emp-vale {{ ($emp->vale ?? 0) > 0 ? 'has-vale' : '' }}" data-vale-cell="{{ $emp->id }}">
                             ₱{{ number_format($emp->vale ?? 0, 2) }}
                         </td>
 
@@ -169,6 +169,12 @@
                                     <a href="{{ route('employees.edit', $emp->id) }}" class="emp-more-item">
                                         <i class="fas fa-pen"></i> Edit
                                     </a>
+                                    <button type="button" class="emp-more-item js-set-vale"
+                                            data-id="{{ $emp->id }}"
+                                            data-name="{{ $emp->name }}"
+                                            data-vale="{{ $emp->vale ?? 0 }}">
+                                        <i class="fas fa-coins"></i> Set Vale
+                                    </button>
                                     <form action="{{ route('employees.destroy', $emp->id) }}" method="POST">
                                         @csrf
                                         @method('DELETE')
@@ -201,6 +207,30 @@
             <div class="emp-empty-icon"><i class="fas fa-filter"></i></div>
             <p class="emp-empty-title">No results</p>
             <p class="emp-empty-sub">Try a different name or site filter.</p>
+        </div>
+    </div>
+</div>
+
+{{-- ── Set Vale modal ─────────────────────────────────────────────────────── --}}
+<div class="modal fade" id="empValeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content emp-modal-content">
+            <div class="emp-modal-header">
+                <div>
+                    <h3 class="emp-modal-title">Set Vale Balance</h3>
+                    <p class="emp-modal-sub" id="valeModalName">—</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <label class="emp-site-add-label" for="valeInput"><i class="fas fa-coins"></i> Vale amount (₱)</label>
+                <input type="number" step="0.01" min="0" id="valeInput" class="emp-modal-input" style="width:100%;" placeholder="0.00">
+                <p class="emp-modal-sub mt-2" style="color:var(--text-muted);">Manual running balance per employee. Payroll deductions are still entered per period on the Payroll page.</p>
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button type="button" class="emp-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="emp-site-add-btn" id="valeSaveBtn">Save</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -723,6 +753,48 @@
         wrap.appendChild(el);
         setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }, 3000);
     }
+
+    // ── Set Vale (manual per-employee balance) ───────────────────────────────
+    const valeModalEl = document.getElementById('empValeModal');
+    let   valeModal   = null;
+    let   valeEmpId   = null;
+    function getValeModal() {
+        if (!valeModal && window.bootstrap) valeModal = new bootstrap.Modal(valeModalEl);
+        return valeModal;
+    }
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.js-set-vale');
+        if (!btn) return;
+        valeEmpId = btn.dataset.id;
+        document.getElementById('valeModalName').textContent = btn.dataset.name;
+        document.getElementById('valeInput').value = parseFloat(btn.dataset.vale || 0).toFixed(2);
+        document.querySelectorAll('.emp-more-menu.open').forEach(m => {
+            m.classList.remove('open');
+            if (m.previousElementSibling) m.previousElementSibling.classList.remove('active');
+        });
+        const m = getValeModal(); if (m) m.show();
+        setTimeout(() => document.getElementById('valeInput').focus(), 250);
+    });
+    document.getElementById('valeSaveBtn').addEventListener('click', async function () {
+        const amount = parseFloat(document.getElementById('valeInput').value);
+        if (isNaN(amount) || amount < 0) { flashToast('Enter a valid amount.', 'error'); return; }
+        this.disabled = true;
+        try {
+            const r = await fetch(`{{ url('employees') }}/${valeEmpId}/vale`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify({ vale: amount }),
+            });
+            const data = await r.json();
+            if (data.success) {
+                const cell = document.querySelector(`[data-vale-cell="${valeEmpId}"]`);
+                if (cell) { cell.textContent = data.formatted; cell.classList.toggle('has-vale', data.vale > 0); }
+                const m = getValeModal(); if (m) m.hide();
+                flashToast('Vale balance updated.', 'success');
+            } else { flashToast(data.message || 'Update failed.', 'error'); }
+        } catch { flashToast('Network error — please try again.', 'error'); }
+        finally { this.disabled = false; }
+    });
 
     function escHtml(s) {
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');

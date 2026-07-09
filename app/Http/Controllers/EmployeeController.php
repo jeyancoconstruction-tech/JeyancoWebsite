@@ -277,6 +277,24 @@ class EmployeeController extends Controller
             ->with('success', $employee->name . ' has been registered and activated.');
     }
 
+    /** Manually set an employee's running vale (cash-advance) balance. */
+    public function updateVale(Request $request, $id)
+    {
+        $employee = Employee::findOrFail($id);
+
+        $data = $request->validate([
+            'vale' => 'required|numeric|min:0',
+        ]);
+
+        $employee->update(['vale' => $data['vale']]);
+
+        return response()->json([
+            'success'   => true,
+            'vale'      => (float) $employee->vale,
+            'formatted' => '₱' . number_format($employee->vale, 2),
+        ]);
+    }
+
     /** Deactivate / archive a worker who left the company (reversible). */
     public function archive($id)
     {
