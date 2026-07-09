@@ -107,6 +107,29 @@
     /* Leaflet map inside card */
     #kioskMap { height: 260px; min-height: 220px; border-radius: 12px; overflow: hidden; }
     #kioskMap .leaflet-control-attribution { font-size: 9px; }
+
+    /* ── COMPACT: fit the whole dashboard on one screen ──────────────── */
+    .dashboard-wrapper .mb-4 { margin-bottom: 12px !important; }
+    .dashboard-wrapper .g-3 { --bs-gutter-y: 12px; --bs-gutter-x: 12px; }
+    .dashboard-wrapper .greeting-title { font-size: 18px !important; }
+    .dashboard-wrapper .greeting-sub { font-size: 12px; margin-top: 1px; }
+    .dashboard-wrapper .clock-widget { padding: 6px 12px !important; }
+    .dashboard-wrapper .clock-ic { width: 32px; height: 32px; }
+    .dashboard-wrapper .clock-time { font-size: 1rem; }
+    .dashboard-wrapper .analytics-card { padding: 12px 14px !important; }
+    .dashboard-wrapper .stat-label { margin-bottom: 4px; }
+    .dashboard-wrapper .stat-value { font-size: 20px !important; margin-bottom: 2px; }
+    .dashboard-wrapper .stat-sub { font-size: 11px; }
+    .dashboard-wrapper .stat-delta { margin-top: 6px; }
+    .dashboard-wrapper .icon-box { width: 32px !important; height: 32px !important; }
+    .dashboard-wrapper .table-card-header { padding: 9px 16px !important; }
+    .dashboard-wrapper .table > :not(caption) > * > * { padding-top: 6px !important; padding-bottom: 6px !important; }
+    .dashboard-wrapper .table-card > .p-4 { padding: 10px 16px !important; min-height: 0 !important; }
+    .dashboard-wrapper #attendanceChart { max-height: 180px !important; }
+    #kioskMap { height: 180px !important; min-height: 160px !important; }
+    .dashboard-wrapper .la-item { padding: 7px 20px !important; }
+    .dashboard-wrapper .act-item { padding: 8px 20px !important; }
+    .dashboard-wrapper .p-3 { padding: 10px !important; }
 </style>
 @endpush
 
