@@ -80,6 +80,7 @@
                         <th>Site</th>
                         <th>Labor Type</th>
                         <th class="text-center">Rate / hr</th>
+                        <th class="text-center">Vale Balance</th>
                         <th>Fingerprint</th>
                         <th></th>
                     </tr>
@@ -141,6 +142,11 @@
                             ₱{{ number_format($emp->rate_per_hour, 2) }}
                         </td>
 
+                        {{-- Vale balance --}}
+                        <td class="emp-vale {{ ($emp->vale ?? 0) > 0 ? 'has-vale' : '' }}">
+                            ₱{{ number_format($emp->vale ?? 0, 2) }}
+                        </td>
+
                         {{-- Fingerprint --}}
                         <td>
                             @if($emp->fingerprint_id)
@@ -177,7 +183,7 @@
                     </tr>
                     @empty
                     <tr class="emp-empty-row">
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="emp-empty">
                                 <div class="emp-empty-icon"><i class="fas fa-users"></i></div>
                                 <p class="emp-empty-title">No employees yet</p>
@@ -348,6 +354,8 @@
 
 .emp-dash { color: var(--text-muted); font-size: 13px; }
 .emp-rate { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.emp-vale { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.emp-vale.has-vale { color: var(--danger); }
 .emp-actions-cell { text-align: right; white-space: nowrap; }
 
 /* ── Empty state ─────────────────────────────────────────────────────────── */
