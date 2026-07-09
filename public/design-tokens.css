@@ -47,6 +47,14 @@ html[data-bs-theme="dark"] {
 html { overflow-y: scroll !important; scrollbar-gutter: stable; }
 body { overflow-x: hidden; }
 
+/* THE fix for the nav bar growing/shrinking on theme toggle: dark-mode.css set
+   a taller topbar (68px) and wider sidebar (260px) ONLY in dark mode, so both
+   changed size when switching. Pin them identical in BOTH themes. */
+html[data-bs-theme="dark"], html[data-bs-theme="light"] {
+    --topbar-height: 56px !important;
+    --sidebar-width: 240px !important;
+}
+
 /* Analytics KPI icons: uniform brand box + brand icon, visible in BOTH themes.
    (Inline light bg + monochrome-neutralised icon colour made them vanish on the
    dark cards.) */
