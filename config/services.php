@@ -41,6 +41,13 @@ return [
         'key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    // Anthropic (Claude) — powers the kiosk payroll assistant.
+    // Always read via config('services.anthropic.key'), never env() directly,
+    // so the value survives config caching in production.
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+    ],
+
     // Gemini API removed
 
 ];

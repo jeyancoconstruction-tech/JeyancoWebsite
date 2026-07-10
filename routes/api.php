@@ -5,6 +5,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KioskController;
+use App\Http\Controllers\KioskAiController;
+use App\Http\Controllers\KioskLocationController;
 
 // Existing routes
 Route::get('/kiosk/employees',         [KioskController::class, 'getEmployees']);
@@ -28,3 +30,14 @@ Route::post('/kiosk/scan-attendance',  [KioskController::class, 'scanAttendance'
 
 // ✅ Realtime "who is on site today" board (AM/PM in-out + overtime).
 Route::get('/kiosk/today-attendance',  [KioskController::class, 'todayAttendance']);
+
+// ✅ Kiosk GPS (NEO-M8L on the Pi, posted every ~30s). Cache-only: latest fix wins.
+//    The literal /location/latest must precede /location/{kioskId}, otherwise
+//    "latest" is captured as a kiosk id.
+Route::post('/location',            [KioskLocationController::class, 'store']);
+Route::get ('/location/latest',     [KioskLocationController::class, 'latestByQuery']); // dashboard map
+Route::get ('/location/{kioskId}',  [KioskLocationController::class, 'latest']);
+
+// ✅ Kiosk payroll AI assistant (Claude). Answers only about the scanned employee.
+Route::post('/kiosk/ask',                     [KioskAiController::class, 'ask']);
+Route::get ('/employees/by-finger/{fingerId}', [KioskAiController::class, 'byFinger']);
