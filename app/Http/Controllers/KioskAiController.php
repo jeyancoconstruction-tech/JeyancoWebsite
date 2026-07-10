@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 /**
  * Payroll assistant for the Raspberry Pi kiosk. A worker scans a finger, we
@@ -54,12 +55,18 @@ class KioskAiController extends Controller
     public function ask(Request $request, PayrollService $payroll): JsonResponse
     {
         $data = $request->validate([
-            'employee_id' => 'required|integer|exists:employees,id',
-            'kiosk_id'    => 'nullable|string|max:50',
-            'question'    => 'required|string|max:500',
+            // Employee uses SoftDeletes: a bare exists:employees,id also matches
+            // trashed rows, which the model can no longer load — that would blow
+            // up as an HTML 404 the kiosk can't parse. Require a live row.
+            'employee_id' => ['required', 'integer', Rule::exists('employees', 'id')->whereNull('deleted_at')],
+            'kiosk_id'    => ['nullable', 'string', 'max:50'],
+            'question'    => ['required', 'string', 'max:500'],
         ]);
 
-        $employee = Employee::with('laborType')->findOrFail($data['employee_id']);
+        $employee = Employee::with('laborType')->find($data['employee_id']);
+        if (! $employee) {
+            return response()->json(['answer' => self::FALLBACK]);
+        }
 
         $key = config('services.anthropic.key');
         if (empty($key)) {
