@@ -9,9 +9,94 @@ use App\Models\LaborType;
 use App\Models\Project;
 use App\Models\Kiosk;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class KioskController extends Controller
 {
+    /**
+     * GPS attendance validation (anti-fraud). Returns null when the clock action
+     * is allowed, or a ready-to-return rejection payload when it must be blocked.
+     *
+     * Designated location = the kiosk's assigned site coordinates (set by the
+     * admin on the dashboard map). The kiosk's current position is taken from
+     * the clock request's own lat/lng when present, otherwise the latest cached
+     * GPS heartbeat. GPS off / no recent fix is rejected; being farther than the
+     * configured radius is rejected. A kiosk with no designated coordinates, an
+     * unresolvable kiosk, or the master switch off is left ungated.
+     */
+    private function locationGate(?Kiosk $kiosk, Request $request): ?array
+    {
+        if (! config('kiosk.enforce_location')) {
+            return null;
+        }
+        if (! $kiosk) {
+            return null; // can't identify the device → don't block existing flows
+        }
+
+        $site = $kiosk->site;
+        $destLat = $site?->latitude;
+        $destLng = $site?->longitude;
+        if ($destLat === null || $destLng === null) {
+            return null; // no designated location assigned yet → ungated
+        }
+
+        // Current position: prefer the coordinates sent with the scan, else the
+        // latest cached heartbeat (must be a real, recent fix).
+        $curLat = $request->input('lat');
+        $curLng = $request->input('lng');
+
+        if ($curLat === null || $curLng === null) {
+            $cacheKey = 'kiosk_location_' . ($request->kiosk_id ?: $kiosk->code);
+            $fix = Cache::get($cacheKey);
+            $maxAge = (int) (config('kiosk.location_max_age') ?: config('kiosk.offline_after'));
+
+            $fresh = $fix
+                && ($fix['status'] ?? null) === 'fix'
+                && ($fix['lat'] ?? null) !== null
+                && isset($fix['last_seen'])
+                && Carbon::parse($fix['last_seen'])->diffInSeconds(now()) <= $maxAge;
+
+            if ($fresh) {
+                $curLat = $fix['lat'];
+                $curLng = $fix['lng'];
+            }
+        }
+
+        if ($curLat === null || $curLng === null) {
+            return [
+                'success' => false,
+                'code'    => 'no_gps',
+                'message' => 'Naka-off o walang GPS ang kiosk — hindi matatanggap ang attendance. I-on ang lokasyon at subukan ulit.',
+            ];
+        }
+
+        $distance = $this->haversineMeters((float) $curLat, (float) $curLng, (float) $destLat, (float) $destLng);
+        $radius   = (int) config('kiosk.geofence_radius');
+
+        if ($distance > $radius) {
+            return [
+                'success'    => false,
+                'code'       => 'outside_location',
+                'message'    => 'Nasa labas ng authorized na lugar (' . number_format($distance)
+                                . 'm, limit ' . $radius . 'm) — hindi matatanggap ang attendance.',
+                'distance_m' => round($distance, 1),
+            ];
+        }
+
+        return null; // within the designated location → allowed
+    }
+
+    /** Great-circle distance in metres. */
+    private function haversineMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earth = 6_371_000;
+        $dLat  = deg2rad($lat2 - $lat1);
+        $dLon  = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
+
+        return $earth * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
+
     /**
      * Get all labor types for position dropdown
      */
@@ -200,7 +285,16 @@ class KioskController extends Controller
         $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'type'        => 'required|in:time_in,time_out',
+            'kiosk_id'    => 'nullable',
+            'kiosk_code'  => 'nullable|string',
+            'lat'         => 'nullable|numeric|between:-90,90',
+            'lng'         => 'nullable|numeric|between:-180,180',
         ]);
+
+        // Anti-fraud GPS gate (same rule as /clock) when the kiosk identifies itself.
+        if ($gate = $this->locationGate(Kiosk::resolve($request->kiosk_id, $request->kiosk_code), $request)) {
+            return response()->json($gate);
+        }
 
         $employeeId = $request->employee_id;
         $type       = $request->type;
@@ -347,11 +441,19 @@ class KioskController extends Controller
             'type'           => 'required|in:time_in,time_out',
             'kiosk_id'       => 'nullable',
             'kiosk_code'     => 'nullable|string',
+            'lat'            => 'nullable|numeric|between:-90,90',
+            'lng'            => 'nullable|numeric|between:-180,180',
         ]);
 
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
         if ($kiosk) {
             $kiosk->forceFill(['last_seen_at' => now()])->save();
+        }
+
+        // Anti-fraud: reject before creating any employee/attendance if the kiosk
+        // is outside its designated location or has no GPS fix.
+        if ($gate = $this->locationGate($kiosk, $request)) {
+            return response()->json($gate);
         }
 
         $fp = (string) $request->fingerprint_id;
