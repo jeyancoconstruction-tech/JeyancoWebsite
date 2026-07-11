@@ -34,9 +34,10 @@ Route::get('/kiosk/today-attendance',  [KioskController::class, 'todayAttendance
 // ✅ Kiosk GPS (NEO-M8L on the Pi, posted every ~30s). Cache-only: latest fix wins.
 //    The literal /location/latest must precede /location/{kioskId}, otherwise
 //    "latest" is captured as a kiosk id.
-Route::post('/location',            [KioskLocationController::class, 'store']);
-Route::get ('/location/latest',     [KioskLocationController::class, 'latestByQuery']); // dashboard map
-Route::get ('/location/{kioskId}',  [KioskLocationController::class, 'latest']);
+Route::post('/location',                  [KioskLocationController::class, 'store']);
+Route::get ('/location/latest',           [KioskLocationController::class, 'latestByQuery']); // dashboard map
+Route::get ('/location/{kioskId}/status', [KioskLocationController::class, 'status']);        // anti-theft state
+Route::get ('/location/{kioskId}',        [KioskLocationController::class, 'latest']);
 
 // ✅ Kiosk payroll AI assistant (Claude). Answers only about the scanned employee.
 Route::post('/kiosk/ask',                     [KioskAiController::class, 'ask']);
