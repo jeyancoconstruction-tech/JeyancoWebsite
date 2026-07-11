@@ -85,7 +85,6 @@ Route::middleware(['auth', 'is_admin'])->group(function () {
     // Batch A4 print (all employees for a period as cut-out slips) declared
     // before the {employee} wildcard so "batch" isn't captured as an id.
     Route::get('/payslip/batch/print', [PayslipController::class, 'printBatch'])->name('payslip.batch');
-    Route::get('/payslip/{employee}', [PayslipController::class, 'show'])->name('payslip.show');
     Route::get('/payslip/{employee}/export', [PayslipController::class, 'export'])->name('payslip.export');
 
     // ATTENDANCE

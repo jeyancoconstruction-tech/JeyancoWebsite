@@ -14,21 +14,6 @@ use Carbon\Carbon;
  */
 class PayslipController extends Controller
 {
-    public function show(Request $request, PayrollService $payroll, $employee)
-    {
-        $emp = Employee::findOrFail($employee);
-        [$from, $to, $label] = $this->resolveRange($request);
-        $payslip = $this->buildPayslip($payroll, $emp, $from, $to);
-
-        return view('payslip', [
-            'employee'    => $emp,
-            'payslip'     => $payslip,
-            'from'        => $from,
-            'to'          => $to,
-            'periodLabel' => $label,
-        ]);
-    }
-
     public function export(Request $request, PayrollService $payroll, $employee)
     {
         $emp = Employee::findOrFail($employee);
@@ -81,6 +66,14 @@ class PayslipController extends Controller
         [$from, $to, $label] = $this->resolveRange($request);
 
         $employees = $payroll->computeForRange($from, $to)['employees'];
+
+        // Optional single-employee slip (the per-row "Print Slip" button).
+        if ($request->filled('employee')) {
+            $employees = collect($employees)
+                ->where('employee_id', (int) $request->input('employee'))
+                ->values()
+                ->all();
+        }
 
         $slips = collect($employees)->map(function (array $e): array {
             $t = $e['totals'];

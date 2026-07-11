@@ -263,17 +263,26 @@
         <div class="tab-pane fade" id="tab-employees" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <h6 class="mb-0"><i class="fas fa-users me-1"></i> By Employee
-                    <span class="text-muted small fw-normal">&middot; {{ count($employees) }} employee(s)</span>
+                    <span class="text-muted small fw-normal">&middot; <span id="empSlipCount">{{ count($employees) }}</span> employee(s)</span>
                 </h6>
-                @if(count($employees))
-                <a href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to']]) }}"
-                   target="_blank" rel="noopener" class="btn btn-sm fw-600"
-                   style="background:var(--brand-subtle);color:var(--brand);border:1px solid var(--border);"
-                   title="Print all payslips for this period on A4 (cut-out slips)">
-                    <i class="fas fa-print me-1"></i> Print A4 Payslips
-                </a>
-                @endif
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="position-relative">
+                        <i class="fas fa-search position-absolute" style="left:11px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:12px;pointer-events:none;"></i>
+                        <input type="text" id="empSlipSearch" class="form-control form-control-sm"
+                               placeholder="Search employee…" autocomplete="off"
+                               style="width:220px;padding-left:30px;border-color:var(--border);">
+                    </div>
+                    @if(count($employees))
+                    <a href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to']]) }}"
+                       target="_blank" rel="noopener" class="btn btn-sm fw-600"
+                       style="background:var(--brand-subtle);color:var(--brand);border:1px solid var(--border);white-space:nowrap;"
+                       title="Print all payslips for this period on A4 (cut-out slips)">
+                        <i class="fas fa-print me-1"></i> Print A4 Payslips
+                    </a>
+                    @endif
+                </div>
             </div>
+            <div id="empSlipEmpty" class="text-center py-4 text-muted" style="display:none;">Walang employee na tumugma sa hinahanap.</div>
 
             <div class="row g-3">
                 @forelse($employees as $emp)
@@ -286,7 +295,7 @@
                     }
                     $regular = round($t['gross'] - $t['overtime'] - $t['holidayPay'] - ($t['restDayPay'] ?? 0), 2);
                 @endphp
-                <div class="col-xl-6 col-12">
+                <div class="col-xl-6 col-12 emp-slip-col" data-emp-name="{{ strtolower($emp['name']) }}">
                     <div class="emp-slip">
                         <div class="emp-slip-head">
                             <img class="emp-slip-logo" src="{{ asset('images/JeyancoLogo.png') }}" alt="">
@@ -334,10 +343,11 @@
                         </div>
 
                         <div class="d-flex gap-2 mt-3">
-                            <a href="{{ route('payslip.show', ['employee' => $emp['employee_id'], 'from' => $period['from'], 'to' => $period['to']]) }}"
+                            <a href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to'], 'employee' => $emp['employee_id']]) }}"
+                               target="_blank" rel="noopener"
                                class="btn btn-sm fw-600 flex-grow-1"
                                style="background:var(--brand);color:#fff;border:none;">
-                                <i class="fas fa-file-invoice me-1"></i> View Full Payslip
+                                <i class="fas fa-print me-1"></i> Print Slip
                             </a>
                         </div>
                     </div>
@@ -413,10 +423,11 @@
                                             <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($detail['totalDeductions'], 2) }}</td>
                                             <td class="text-end" style="color:var(--brand);">&#8369;{{ number_format($detail['net'], 2) }}</td>
                                             <td class="text-end">
-                                                <a href="{{ route('payslip.show', ['employee' => $detail['employee_id'], 'from' => $period['from'], 'to' => $period['to']]) }}"
+                                                <a href="{{ route('payslip.batch', ['from' => $wFrom, 'to' => $wTo, 'employee' => $detail['employee_id']]) }}"
+                                                   target="_blank" rel="noopener"
                                                    class="btn btn-sm rounded-pill px-3"
                                                    style="background:var(--brand-subtle);color:var(--brand);border:1px solid var(--border);font-weight:600;">
-                                                    Payslip
+                                                    <i class="fas fa-print me-1"></i>Print Slip
                                                 </a>
                                             </td>
                                         </tr>
@@ -548,5 +559,26 @@ flatpickr('input[name="from"], input[name="to"], input[name="date"]', {
     altFormat  : 'm-d-Y',   // MM-DD-YYYY
     allowInput : true,
 });
+
+// By Employee — filter payslip cards by name
+(function () {
+    var input = document.getElementById('empSlipSearch');
+    if (!input) return;
+    var cards   = Array.prototype.slice.call(document.querySelectorAll('#tab-employees .emp-slip-col'));
+    var countEl = document.getElementById('empSlipCount');
+    var emptyEl = document.getElementById('empSlipEmpty');
+
+    input.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        var shown = 0;
+        cards.forEach(function (c) {
+            var match = !q || (c.dataset.empName || '').indexOf(q) !== -1;
+            c.style.display = match ? '' : 'none';
+            if (match) shown++;
+        });
+        if (countEl) countEl.textContent = shown;
+        if (emptyEl) emptyEl.style.display = (cards.length && shown === 0) ? 'block' : 'none';
+    });
+})();
 </script>
 @endpush
