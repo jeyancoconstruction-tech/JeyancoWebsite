@@ -152,7 +152,7 @@
     @endphp
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-            <h1 class="greeting-title">{{ $greet }}, {{ auth()->user()->name ?? 'Admin!' }} </h1>
+            <h1 class="greeting-title">{{ $greet }}, {{ auth()->user()->name ?? 'Admin' }} !</h1>
             <p class="greeting-sub">Here's what's happening at Jeyanco Construction today.</p>
         </div>
         <div class="clock-widget d-none d-sm-flex">
