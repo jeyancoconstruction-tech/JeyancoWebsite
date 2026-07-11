@@ -49,6 +49,29 @@
     [data-bs-theme="dark"] .pr-stat        { border-right-color: var(--border); border-bottom-color: var(--border); }
     [data-bs-theme="dark"] .payroll-card   { background: var(--surface); border-color: var(--border); }
     [data-bs-theme="dark"] .payroll-card:hover { border-color: var(--brand); }
+
+    /* ── By Employee: payslip-style cards ────────────────────────────────── */
+    .emp-slip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; height: 100%; }
+    .emp-slip-head { display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid var(--brand); padding-bottom: 8px; margin-bottom: 10px; }
+    .emp-slip-logo { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
+    .emp-slip-co { flex: 1; min-width: 0; }
+    .emp-slip-co .co  { font-size: 12.5px; font-weight: 800; color: var(--brand); letter-spacing: .3px; line-height: 1.1; }
+    .emp-slip-co .sub { font-size: 9.5px; color: var(--text-secondary); }
+    .emp-slip-doc { text-align: right; }
+    .emp-slip-doc .lbl { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: var(--text-secondary); }
+    .emp-slip-doc .per { font-size: 9px; color: var(--text-secondary); }
+    .emp-slip-emp { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .emp-slip-emp .who  { font-weight: 700; color: var(--text-primary); font-size: 13px; }
+    .emp-slip-emp .meta { color: var(--text-secondary); font-size: 11px; }
+    .emp-slip-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .emp-slip-cols h6 { margin: 0 0 5px; font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-secondary); font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+    .emp-slip .ln { display: flex; justify-content: space-between; font-size: 11.5px; padding: 2.5px 0; font-variant-numeric: tabular-nums; }
+    .emp-slip .ln .k { color: var(--text-secondary); }
+    .emp-slip .ln .v { color: var(--text-primary); font-weight: 600; }
+    .emp-slip .ln.sum { border-top: 1px solid var(--border-md); margin-top: 3px; padding-top: 5px; font-weight: 800; }
+    .emp-slip-net { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border: 1.5px solid var(--brand); border-radius: 6px; padding: 8px 12px; background: var(--brand-subtle); }
+    .emp-slip-net .k { font-size: 11px; font-weight: 800; letter-spacing: .5px; color: var(--brand); }
+    .emp-slip-net .v { font-size: 1.15rem; font-weight: 900; color: var(--brand); font-variant-numeric: tabular-nums; }
 </style>
 @endpush
 
@@ -238,51 +261,90 @@
 
         {{-- ===== BY EMPLOYEE ============================================== --}}
         <div class="tab-pane fade" id="tab-employees" role="tabpanel">
-            <div class="card table-card">
-                <div class="table-card-header d-flex justify-content-between align-items-center">
-                    <h6><i class="fas fa-users"></i> By Employee</h6>
-                    <span class="text-muted small">{{ count($employees) }} employee(s)</span>
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h6 class="mb-0"><i class="fas fa-users me-1"></i> By Employee
+                    <span class="text-muted small fw-normal">&middot; {{ count($employees) }} employee(s)</span>
+                </h6>
+                @if(count($employees))
+                <a href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to']]) }}"
+                   target="_blank" rel="noopener" class="btn btn-sm fw-600"
+                   style="background:var(--brand-subtle);color:var(--brand);border:1px solid var(--border);"
+                   title="Print all payslips for this period on A4 (cut-out slips)">
+                    <i class="fas fa-print me-1"></i> Print A4 Payslips
+                </a>
+                @endif
+            </div>
+
+            <div class="row g-3">
+                @forelse($employees as $emp)
+                @php
+                    $t = $emp['totals'];
+                    $sss = $phil = $pag = $vale = $other = 0;
+                    foreach ($emp['periods'] as $pp) {
+                        $sss  += $pp['sssDeduction'];   $phil  += $pp['philhealthDeduction'];
+                        $pag  += $pp['pagibigDeduction']; $vale += $pp['vale']; $other += $pp['manualDeductions'];
+                    }
+                    $regular = round($t['gross'] - $t['overtime'] - $t['holidayPay'] - ($t['restDayPay'] ?? 0), 2);
+                @endphp
+                <div class="col-xl-6 col-12">
+                    <div class="emp-slip">
+                        <div class="emp-slip-head">
+                            <img class="emp-slip-logo" src="{{ asset('images/JeyancoLogo.png') }}" alt="">
+                            <div class="emp-slip-co">
+                                <div class="co">JEYANCO CONSTRUCTION</div>
+                                <div class="sub">Payroll Dept. &middot; Panganiban, PH</div>
+                            </div>
+                            <div class="emp-slip-doc">
+                                <div class="lbl">PAYSLIP</div>
+                                <div class="per">{{ $period['label'] }}</div>
+                            </div>
+                        </div>
+
+                        <div class="emp-slip-emp">
+                            <span class="who">{{ $emp['name'] }}</span>
+                            <span class="meta">#{{ str_pad($emp['employee_id'], 4, '0', STR_PAD_LEFT) }}
+                                @if(!empty($emp['position'])) &middot; {{ $emp['position'] }} @endif
+                                &middot; {{ $t['workdays'] }}d / {{ number_format($t['hours'], 1) }}h</span>
+                        </div>
+
+                        <div class="emp-slip-cols">
+                            <div>
+                                <h6>Earnings</h6>
+                                <div class="ln"><span class="k">Regular</span><span class="v">&#8369;{{ number_format($regular, 2) }}</span></div>
+                                <div class="ln"><span class="k">Overtime</span><span class="v">&#8369;{{ number_format($t['overtime'], 2) }}</span></div>
+                                <div class="ln"><span class="k">Holiday</span><span class="v">&#8369;{{ number_format($t['holidayPay'], 2) }}</span></div>
+                                <div class="ln"><span class="k">Rest Day</span><span class="v">&#8369;{{ number_format($t['restDayPay'] ?? 0, 2) }}</span></div>
+                                <div class="ln"><span class="k">Bonus</span><span class="v">&#8369;{{ number_format($t['bonus'], 2) }}</span></div>
+                                <div class="ln sum"><span class="k">Gross</span><span class="v">&#8369;{{ number_format($t['gross'], 2) }}</span></div>
+                            </div>
+                            <div>
+                                <h6>Deductions</h6>
+                                <div class="ln"><span class="k">SSS</span><span class="v">&#8369;{{ number_format($sss, 2) }}</span></div>
+                                <div class="ln"><span class="k">PhilHealth</span><span class="v">&#8369;{{ number_format($phil, 2) }}</span></div>
+                                <div class="ln"><span class="k">PAG-IBIG</span><span class="v">&#8369;{{ number_format($pag, 2) }}</span></div>
+                                <div class="ln"><span class="k">Vale/Utang</span><span class="v">&#8369;{{ number_format($vale, 2) }}</span></div>
+                                <div class="ln"><span class="k">Other</span><span class="v">&#8369;{{ number_format($other, 2) }}</span></div>
+                                <div class="ln sum"><span class="k">Total</span><span class="v">&#8369;{{ number_format($t['totalDeductions'], 2) }}</span></div>
+                            </div>
+                        </div>
+
+                        <div class="emp-slip-net">
+                            <span class="k">NET PAY</span>
+                            <span class="v">&#8369;{{ number_format($t['net'], 2) }}</span>
+                        </div>
+
+                        <div class="d-flex gap-2 mt-3">
+                            <a href="{{ route('payslip.show', ['employee' => $emp['employee_id'], 'from' => $period['from'], 'to' => $period['to']]) }}"
+                               class="btn btn-sm fw-600 flex-grow-1"
+                               style="background:var(--brand);color:#fff;border:none;">
+                                <i class="fas fa-file-invoice me-1"></i> View Full Payslip
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <div class="table-responsive">
-                    <table class="table align-middle table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th class="ps-4">Employee</th>
-                                <th>Emp ID</th>
-                                <th class="text-center">Workdays</th>
-                                <th class="text-end">Hours</th>
-                                <th class="text-end">Gross</th>
-                                <th class="text-end">Deductions</th>
-                                <th class="text-end">Net Pay</th>
-                                <th class="text-end pe-4"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($employees as $emp)
-                            <tr>
-                                <td class="ps-4 fw-semibold">{{ $emp['name'] }}</td>
-                                <td class="text-muted">#{{ $emp['employee_id'] }}</td>
-                                <td class="text-center">{{ $emp['totals']['workdays'] }}</td>
-                                <td class="text-end">{{ $emp['totals']['hours'] }}</td>
-                                <td class="text-end" style="color:var(--text-secondary);">&#8369;{{ number_format($emp['totals']['gross'], 2) }}</td>
-                                <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($emp['totals']['totalDeductions'], 2) }}</td>
-                                <td class="text-end fw-bold" style="color:var(--brand);">&#8369;{{ number_format($emp['totals']['net'], 2) }}</td>
-                                <td class="text-end pe-4">
-                                    <a href="{{ route('payslip.show', ['employee' => $emp['employee_id'], 'from' => $period['from'], 'to' => $period['to']]) }}"
-                                       class="btn btn-sm rounded-pill px-3"
-                                       style="background:var(--brand-subtle);color:var(--brand);border:1px solid var(--border);font-weight:600;">
-                                        <i class="fas fa-file-invoice me-1"></i>Payslip
-                                    </a>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="8" class="text-center py-5 text-muted">No payroll data for this period.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                @empty
+                <div class="col-12 text-center py-5 text-muted">No payroll data for this period.</div>
+                @endforelse
             </div>
         </div>
 
