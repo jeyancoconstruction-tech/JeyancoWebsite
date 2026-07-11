@@ -290,6 +290,12 @@
         <div class="tab-pane fade" id="tab-periods" role="tabpanel">
             <div class="row g-3">
                 @forelse($weeks as $i => $week)
+                @php
+                    // week_range is "m/d/Y - m/d/Y" — derive ISO dates for the batch print link.
+                    [$wStart, $wEnd] = array_pad(array_map('trim', explode(' - ', $week['week_range'])), 2, null);
+                    try { $wFrom = \Carbon\Carbon::createFromFormat('m/d/Y', $wStart)->toDateString(); } catch (\Throwable $e) { $wFrom = $period['from']; }
+                    try { $wTo   = \Carbon\Carbon::createFromFormat('m/d/Y', $wEnd)->toDateString();   } catch (\Throwable $e) { $wTo   = $period['to']; }
+                @endphp
                 <div class="col-xl-4 col-lg-6">
                     <div class="payroll-card p-4 shadow-sm"
                          data-bs-toggle="modal" data-bs-target="#weeklyModal{{ $i }}">
@@ -315,7 +321,16 @@
                                 <h6 class="modal-title fw-bold">
                                     <i class="fas fa-calendar-week me-2"></i>{{ $week['week_range'] }}
                                 </h6>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                <div class="d-flex align-items-center gap-2">
+                                    <a href="{{ route('payslip.batch', ['from' => $wFrom, 'to' => $wTo]) }}"
+                                       target="_blank" rel="noopener"
+                                       class="btn btn-sm fw-600"
+                                       style="background:#fff;color:var(--brand);border:none;white-space:nowrap;"
+                                       title="Print all payslips for this period on A4 (cut-out slips)">
+                                        <i class="fas fa-print me-1"></i> Print A4 Payslips
+                                    </a>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
                             </div>
                             <div class="modal-body p-3">
                                 <table class="table align-middle table-hover">

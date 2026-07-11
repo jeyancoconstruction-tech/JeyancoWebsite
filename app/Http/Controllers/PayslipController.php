@@ -72,6 +72,58 @@ class PayslipController extends Controller
     }
 
     /**
+     * A4 batch print: every employee's payslip for one pay period, laid out as
+     * compact cut-out slips (each with the company logo) so admin prints one
+     * sheet and cuts it — saves paper. Opened in a new tab; auto-triggers print.
+     */
+    public function printBatch(Request $request, PayrollService $payroll)
+    {
+        [$from, $to, $label] = $this->resolveRange($request);
+
+        $employees = $payroll->computeForRange($from, $to)['employees'];
+
+        $slips = collect($employees)->map(function (array $e): array {
+            $t = $e['totals'];
+
+            $ded = ['sss' => 0, 'philhealth' => 0, 'pagibig' => 0, 'vale' => 0, 'other' => 0];
+            foreach ($e['periods'] as $p) {
+                $ded['sss']        += $p['sssDeduction'];
+                $ded['philhealth'] += $p['philhealthDeduction'];
+                $ded['pagibig']    += $p['pagibigDeduction'];
+                $ded['vale']       += $p['vale'];
+                $ded['other']      += $p['manualDeductions'];
+            }
+            $ded = array_map(fn ($v) => round($v, 2), $ded);
+
+            $regular = round($t['gross'] - $t['overtime'] - $t['holidayPay'] - ($t['restDayPay'] ?? 0), 2);
+
+            return [
+                'employee_id'     => $e['employee_id'],
+                'name'            => $e['name'],
+                'position'        => $e['position'] ?? '',
+                'workdays'        => $t['workdays'],
+                'hours'           => $t['hours'],
+                'regular'         => $regular,
+                'overtime'        => $t['overtime'],
+                'holidayPay'      => $t['holidayPay'],
+                'restDayPay'      => $t['restDayPay'] ?? 0,
+                'bonus'           => $t['bonus'],
+                'gross'           => $t['gross'],
+                'ded'             => $ded,
+                'totalDeductions' => $t['totalDeductions'],
+                'net'             => $t['net'],
+            ];
+        })->values();
+
+        return view('payslips-batch', [
+            'slips'       => $slips,
+            'periodLabel' => $label,
+            'from'        => $from,
+            'to'          => $to,
+        ]);
+    }
+
+    /**
      * Resolve from/to (defaults to the current Monday–Sunday week).
      */
     private function resolveRange(Request $request): array

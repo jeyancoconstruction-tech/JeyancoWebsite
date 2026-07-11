@@ -25,6 +25,8 @@
     }
     .payslip-head h2 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: 0.3px; }
     .payslip-head .sub { font-size: 12px; opacity: 0.85; }
+    .payslip-brand { display: flex; align-items: center; gap: 14px; }
+    .payslip-logo { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; background: #fff; padding: 3px; flex-shrink: 0; }
     .payslip-head .doc { text-align: right; }
     .payslip-head .doc .label { font-size: 18px; font-weight: 800; letter-spacing: 2px; }
 
@@ -95,9 +97,12 @@
     {{-- PAYSLIP SHEET --}}
     <div class="payslip-sheet">
         <div class="payslip-head">
-            <div>
-                <h2>Jeyanco Construction</h2>
-                <div class="sub">Payroll Department &middot; Panganiban, Philippines</div>
+            <div class="payslip-brand">
+                <img class="payslip-logo" src="{{ asset('images/JeyancoLogo.png') }}" alt="Jeyanco Construction">
+                <div>
+                    <h2>Jeyanco Construction</h2>
+                    <div class="sub">Payroll Department &middot; Panganiban, Philippines</div>
+                </div>
             </div>
             <div class="doc">
                 <div class="label">PAYSLIP</div>
