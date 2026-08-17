@@ -16,7 +16,7 @@ class IsAdmin
     public function handle(Request $request, Closure $next): Response
     {
         // Check if user is authenticated and is admin
-        if (auth()->check() && auth()->user()->is_admin) {
+        if (auth()->check() && auth()->user()->isAdmin()) {
             return $next($request);
         }
 

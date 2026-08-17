@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
@@ -40,22 +38,24 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         if (Auth::attempt($credentials, $remember)) {
-            // Admin-only area: reject non-admin accounts gracefully (instead of a
-            // post-login 403) without leaving them authenticated.
-            if (! Auth::user()->is_admin) {
+            // Deactivated accounts keep their records but lose access. Rejected
+            // here so they never reach an authenticated page.
+            if (! Auth::user()->is_active) {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
                 RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
 
                 return back()->withErrors([
-                    'username' => 'This account does not have administrator access.',
+                    'username' => 'This account has been deactivated. Please contact your administrator.',
                 ])->onlyInput('username');
             }
 
             // Success: clear throttle + regenerate session (prevents fixation).
             RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
+
+            Auth::user()->forceFill(['last_login_at' => now()])->saveQuietly();
 
             return redirect()->intended('dashboard');
         }
@@ -77,22 +77,7 @@ class AuthController extends Controller
     }
 
     // --- PARA SA REGISTER ---
-    public function showRegisterForm() {
-        return view('auth_register'); // Gawin mo ring blade ito
-    }
-
-    public function registerPost(Request $request) {
-        $request->validate([
-            'username' => 'required|unique:users,username',
-            'password' => 'required|min:6',
-        ]);
-
-        User::create([
-            'name'     => $request->username,
-            'username' => $request->username,
-            'password' => Hash::make($request->password), // Password encryption
-        ]);
-
-        return redirect()->route('login')->with('success', 'Account Created.');
-    }
+    // Public self-registration is closed. Accounts are issued by an Admin from
+    // Account Management (see AccountController) so nobody can grant themselves
+    // access to payroll data.
 }

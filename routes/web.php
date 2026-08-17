@@ -13,6 +13,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\AccountController;
 
 
 Route::get('/', function () {
@@ -25,17 +26,17 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
-    // REGISTER (AUTH USER)
-    Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
-    Route::post('/register', [AuthController::class, 'registerPost'])->name('register.post');
+    // Public self-registration is closed — accounts are issued by an Admin
+    // from Account Management (/accounts).
 
 });
 
 // LOGOUT (accessible to all authenticated users)
 Route::middleware('auth')->post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// ADMIN ONLY ROUTES - Role-Based Access Control
-Route::middleware(['auth', 'is_admin'])->group(function () {
+// SIGNED-IN ROUTES — every active account (Admin and Staff) reaches these.
+// Anything reserved for Admins lives in the 'is_admin' group further down.
+Route::middleware(['auth', 'active'])->group(function () {
 
     // DASHBOARD
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -103,6 +104,30 @@ Route::middleware(['auth', 'is_admin'])->group(function () {
     Route::get('/ai/history', [AIController::class, 'history'])->name('ai.history');
     Route::post('/ai/clear-old', [AIController::class, 'clearOldMessages'])->name('ai.clear-old');
 
+    // --- SEARCH FUNCTIONALITY ---
+    Route::get('/search', [SearchController::class, 'search'])->name('search');
+    Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->name('search.suggestions');
+
+    // --- NOTIFICATIONS ---
+    Route::get('/notifications',              [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/read-all',   [NotificationController::class, 'readAll'])->name('notifications.readAll');
+    Route::delete('/notifications/delete-all',[NotificationController::class, 'deleteAll'])->name('notifications.deleteAll');
+    Route::patch('/notifications/{id}/read',  [NotificationController::class, 'markRead'])->name('notifications.read');
+
+});
+
+// ADMIN ONLY ROUTES — Role-Based Access Control
+Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
+
+    // --- ACCOUNT MANAGEMENT (Admin issues and manages staff logins) ---
+    Route::get   ('/accounts',                 [AccountController::class, 'index'])->name('accounts.index');
+    Route::get   ('/accounts/create',          [AccountController::class, 'create'])->name('accounts.create');
+    Route::post  ('/accounts',                 [AccountController::class, 'store'])->name('accounts.store');
+    Route::get   ('/accounts/{account}/edit',  [AccountController::class, 'edit'])->name('accounts.edit');
+    Route::put   ('/accounts/{account}',       [AccountController::class, 'update'])->name('accounts.update');
+    Route::patch ('/accounts/{account}/toggle',[AccountController::class, 'toggle'])->name('accounts.toggle');
+    Route::delete('/accounts/{account}',       [AccountController::class, 'destroy'])->name('accounts.destroy');
+
     // --- SETTINGS MODULE ---
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings/update', [SettingsController::class, 'update'])->name('settings.update');
@@ -120,15 +145,5 @@ Route::middleware(['auth', 'is_admin'])->group(function () {
     Route::get('/holidays/calendar', [SettingsController::class, 'holidayCalendar'])->name('holidays.calendar');
     Route::put('/holidays/{id}', [SettingsController::class, 'editHoliday'])->name('holidays.edit');
     Route::delete('/holidays/{id}', [SettingsController::class, 'deleteHoliday'])->name('holidays.delete');
-
-    // --- SEARCH FUNCTIONALITY ---
-    Route::get('/search', [SearchController::class, 'search'])->name('search');
-    Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->name('search.suggestions');
-
-    // --- NOTIFICATIONS ---
-    Route::get('/notifications',              [NotificationController::class, 'index'])->name('notifications.index');
-    Route::patch('/notifications/read-all',   [NotificationController::class, 'readAll'])->name('notifications.readAll');
-    Route::delete('/notifications/delete-all',[NotificationController::class, 'deleteAll'])->name('notifications.deleteAll');
-    Route::patch('/notifications/{id}/read',  [NotificationController::class, 'markRead'])->name('notifications.read');
 
 });

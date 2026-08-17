@@ -104,10 +104,15 @@
                 <i data-lucide="bot"></i> <span>Jeyanco AI</span>
             </a>
 
-            <div class="menu-section">SYSTEM</div>
-            <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
-                <i data-lucide="settings"></i> <span>Settings</span>
-            </a>
+            @if(auth()->user()?->isAdmin())
+                <div class="menu-section">SYSTEM</div>
+                <a class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}" href="{{ route('accounts.index') }}">
+                    <i data-lucide="user-cog"></i> <span>Accounts</span>
+                </a>
+                <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
+                    <i data-lucide="settings"></i> <span>Settings</span>
+                </a>
+            @endif
 
         </nav>
     </div>
@@ -177,11 +182,18 @@
                     </div>
                     <div class="profile-info d-none d-md-block">
                         <span class="u-name">{{ auth()->user()->name ?? 'ADMIN123' }}</span>
-                        <span class="u-role">Project Manager</span>
+                        <span class="u-role">{{ auth()->user()?->role_label ?? 'Staff' }}</span>
                     </div>
                     <i data-lucide="chevron-down" class="chevron"></i>
                 </div>
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                    @if(auth()->user()?->isAdmin())
+                        <li>
+                            <a class="dropdown-item" href="{{ route('accounts.index') }}">
+                                <i data-lucide="user-cog"></i> Manage Accounts
+                            </a>
+                        </li>
+                    @endif
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <form action="{{ route('logout') }}" method="POST">

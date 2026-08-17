@@ -22,12 +22,18 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        User::create([
+        // The bootstrap administrator. is_admin is normally kept in step with
+        // `role` by the model, but this seeder runs WithoutModelEvents, so it
+        // is set explicitly here.
+        $admin = User::create([
             'name' => 'admin',
             'username' => 'admin',
             'email' => 'admin@jeyanco.com',
             'password' => \Illuminate\Support\Facades\Hash::make('admin'),
-            'is_admin' => true,
+            'role' => User::ROLE_ADMIN,
+            'is_active' => true,
         ]);
+
+        $admin->forceFill(['is_admin' => true])->saveQuietly();
     }
 }
