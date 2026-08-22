@@ -31,6 +31,10 @@ Route::post('/kiosk/scan-attendance',  [KioskController::class, 'scanAttendance'
 // ✅ Realtime "who is on site today" board (AM/PM in-out + overtime).
 Route::get('/kiosk/today-attendance',  [KioskController::class, 'todayAttendance']);
 
+// ✅ Sensor sync + kiosk "REGISTERED" list. The Pi polls this every ~60s and
+//    deletes any fingerprint slot that is no longer in the returned list.
+Route::get('/kiosk/active-fingerprints', [KioskController::class, 'activeFingerprints']);
+
 // ✅ Kiosk GPS (NEO-M8L on the Pi, posted every ~30s). Cache-only: latest fix wins.
 //    The literal /location/latest must precede /location/{kioskId}, otherwise
 //    "latest" is captured as a kiosk id.

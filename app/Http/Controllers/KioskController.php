@@ -704,6 +704,46 @@ class KioskController extends Controller
         ]);
     }
 
+    /**
+     * Fingerprint slots the sensor should be holding (kiosk ↔ web two-way sync).
+     *
+     * The Pi polls this every ~60s and deletes any slot on the R307 that is not
+     * in `fingerprint_ids` — so archiving or removing a worker on the web wipes
+     * their finger from the sensor without anyone touching the kiosk.
+     *
+     * Who stays enrolled: every non-archived, non-deleted employee that has a
+     * fingerprint_id. Pending workers count — the kiosk enrolled them, their
+     * details just are not filled in yet, and dropping them would erase a finger
+     * the admin has not reviewed. Archived and soft-deleted workers fall out.
+     *
+     * The list is deliberately NOT scoped to the calling kiosk: a superset is
+     * harmless (a slot the sensor does not have is a no-op), while a too-narrow
+     * list would make a kiosk delete fingers that are still valid.
+     */
+    public function activeFingerprints()
+    {
+        $employees = Employee::whereNotNull('fingerprint_id')
+            ->where('status', '!=', Employee::STATUS_ARCHIVED)
+            ->orderBy('name')
+            ->get();
+
+        // Sensor slot numbers. fingerprint_id is a string column, so drop any
+        // non-numeric value rather than letting (int) cast it to slot 0.
+        $fingerprintIds = $employees
+            ->pluck('fingerprint_id')
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        return response()->json([
+            'success'         => true,
+            'fingerprint_ids' => $fingerprintIds,                              // e.g. [1, 2, 5, 8]
+            'employees'       => $employees->map(fn ($e) => $this->kioskEmployeePayload($e))->values(),
+            'count'           => $employees->count(),
+        ]);
+    }
+
     /** Format a stored timestamp as a 12-hour clock string (or null). */
     private function fmt12($value): ?string
     {
