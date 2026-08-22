@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use App\Models\Employee;
 use App\Models\LaborType;
 use App\Models\Site;
@@ -55,7 +56,7 @@ class EmployeeController extends Controller
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
             'site_id'        => 'nullable|exists:sites,id',
-            'fingerprint_id' => 'nullable|string|unique:employees,fingerprint_id',
+            'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
@@ -65,8 +66,15 @@ class EmployeeController extends Controller
 
         // Auto-assign next sequential ID when the field is left blank.
         $fingerprintId = $request->filled('fingerprint_id')
-            ? $request->fingerprint_id
+            ? (string) $request->fingerprint_id
             : (string) $this->nextFingerprintId();
+
+        // Reclaim the slot from a removed or archived worker who still owns it.
+        if ($holder = Employee::releaseFingerprint($fingerprintId)) {
+            return back()->withInput()->withErrors([
+                'fingerprint_id' => Employee::fingerprintConflictMessage($holder, $fingerprintId),
+            ]);
+        }
 
         $photoPath = null;
         if ($request->hasFile('photo')) {
@@ -110,12 +118,22 @@ class EmployeeController extends Controller
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
             'site_id'        => 'nullable|exists:sites,id',
-            'fingerprint_id' => 'nullable|string|unique:employees,fingerprint_id,' . $id,
+            'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
         ], [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
         ]);
 
         $laborType = LaborType::findOrFail($request->labor_type_id);
+
+        $fingerprintId = $request->filled('fingerprint_id')
+            ? (string) $request->fingerprint_id
+            : $employee->fingerprint_id;
+
+        if ($fingerprintId && $holder = Employee::releaseFingerprint($fingerprintId, $employee->id)) {
+            return back()->withInput()->withErrors([
+                'fingerprint_id' => Employee::fingerprintConflictMessage($holder, $fingerprintId),
+            ]);
+        }
 
         $updateData = [
             'name'           => $request->name,
@@ -123,7 +141,7 @@ class EmployeeController extends Controller
             'rate_per_hour'  => $request->rate_per_hour,
             'labor_type_id'  => $request->labor_type_id,
             'site_id'        => $request->site_id ?: null,
-            'fingerprint_id' => $request->fingerprint_id ?? $employee->fingerprint_id,
+            'fingerprint_id' => $fingerprintId,
         ];
 
         if ($request->hasFile('photo')) {
@@ -241,7 +259,7 @@ class EmployeeController extends Controller
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
             'site_id'        => 'nullable|exists:sites,id',
-            'fingerprint_id' => 'nullable|string|unique:employees,fingerprint_id,' . $id,
+            'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
@@ -249,13 +267,23 @@ class EmployeeController extends Controller
 
         $laborType = LaborType::findOrFail($request->labor_type_id);
 
+        $fingerprintId = $request->filled('fingerprint_id')
+            ? (string) $request->fingerprint_id
+            : $employee->fingerprint_id;
+
+        if ($fingerprintId && $holder = Employee::releaseFingerprint($fingerprintId, $employee->id)) {
+            return back()->withInput()->withErrors([
+                'fingerprint_id' => Employee::fingerprintConflictMessage($holder, $fingerprintId),
+            ]);
+        }
+
         $data = [
             'name'           => $request->name,
             'position'       => $laborType->name,
             'rate_per_hour'  => $request->rate_per_hour,
             'labor_type_id'  => $request->labor_type_id,
             'site_id'        => $request->site_id ?: null,
-            'fingerprint_id' => $request->filled('fingerprint_id') ? $request->fingerprint_id : $employee->fingerprint_id,
+            'fingerprint_id' => $fingerprintId,
             'status'         => Employee::STATUS_ACTIVE,
         ];
 
@@ -368,6 +396,36 @@ class EmployeeController extends Controller
         $deleted = Employee::whereIn('id', $request->ids)->delete(); // soft delete
 
         return response()->json(['success' => true, 'deleted' => $deleted]);
+    }
+
+    /**
+     * Wipe every fingerprint assignment so enrollment can restart from #1.
+     *
+     * Employee records, rates and attendance history are untouched — only the
+     * fingerprint_id link is dropped. Soft-deleted and archived rows are cleared
+     * too, on purpose: the unique index on fingerprint_id covers them, and
+     * nextFingerprintId() takes its MAX withTrashed(), so leaving a removed
+     * worker holding #14 would block re-enrolling #14 and keep the counter from
+     * returning to #1.
+     *
+     * The sensor follows on its own: the kiosk polls active-fingerprints every
+     * ~60s and deletes any slot missing from it, so an empty list empties the
+     * R307 without anyone touching the Pi.
+     */
+    public function clearAllFingerprints()
+    {
+        $cleared = Employee::withTrashed()
+            ->whereNotNull('fingerprint_id')
+            ->update(['fingerprint_id' => null]);
+
+        return response()->json([
+            'success' => true,
+            'cleared' => $cleared,
+            'next_id' => $this->nextFingerprintId(),   // back to 1
+            'message' => $cleared . ' fingerprint' . ($cleared === 1 ? '' : 's')
+                         . ' cleared. Enrollment restarts at #1; the kiosk sensor '
+                         . 'clears itself within a minute.',
+        ]);
     }
 
     /**

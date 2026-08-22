@@ -155,9 +155,25 @@ class KioskController extends Controller
             'project'       => 'nullable|string|max:255',
             'kiosk_id'      => 'nullable',
             'kiosk_code'    => 'nullable|string',
+            'fingerprint_id'=> 'nullable|string',
         ]);
 
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
+
+        // Keep the slot the kiosk just enrolled. Dropping it used to leave the
+        // worker unable to clock in, and now that the sensor syncs against
+        // active-fingerprints it would also get wiped off the R307 within a
+        // minute as an orphan.
+        $fp = null;
+        if ($request->filled('fingerprint_id')) {
+            $fp = (string) $request->fingerprint_id;
+            if ($holder = Employee::releaseFingerprint($fp)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => Employee::fingerprintConflictMessage($holder, $fp),
+                ]);
+            }
+        }
 
         // Resolve labor type from an explicit id, otherwise by matching the
         // position name to an existing labor type (so its rate is applied).
@@ -185,6 +201,7 @@ class KioskController extends Controller
             'project_id'    => $projectId,
             'kiosk_id'      => $kiosk?->id,
             'site_id'       => $kiosk?->site_id,
+            'fingerprint_id'=> $fp,
             // Kiosk registrations wait for admin acceptance before joining the
             // active workforce — the admin Accepts or Rejects them on the
             // Register & Manage page.
@@ -199,6 +216,7 @@ class KioskController extends Controller
                 'name'         => $employee->name,
                 'position'     => $employee->position,
                 'rate_per_hour'=> $employee->rate_per_hour,
+                'fingerprint_id'=> $employee->fingerprint_id,
             ]
         ]);
     }
@@ -405,16 +423,29 @@ class KioskController extends Controller
     {
         $request->validate([
             'employee_id'   => 'required|exists:employees,id',
-            'fingerprint_id'=> 'required|string|unique:employees,fingerprint_id',
+            'fingerprint_id'=> 'required|string',
         ]);
 
         $employee = Employee::findOrFail($request->employee_id);
-        $employee->fingerprint_id = $request->fingerprint_id;
+        $fp       = (string) $request->fingerprint_id;
+
+        // A `unique` rule here would reject the slot whenever a removed or
+        // archived worker still owned it — which is most of them, since the
+        // unique index spans soft-deleted rows. Reclaim the slot instead, and
+        // only refuse when someone who can actually clock in still holds it.
+        if ($holder = Employee::releaseFingerprint($fp, $employee->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => Employee::fingerprintConflictMessage($holder, $fp),
+            ]);
+        }
+
+        $employee->fingerprint_id = $fp;
         $employee->save();
 
         return response()->json([
             'success'       => true,
-            'message'       => $employee->name . ' fingerprint enrolled at ID #' . $request->fingerprint_id,
+            'message'       => $employee->name . ' fingerprint enrolled at ID #' . $fp,
             'employee_id'   => $employee->id,
             'fingerprint_id'=> $employee->fingerprint_id,
         ]);

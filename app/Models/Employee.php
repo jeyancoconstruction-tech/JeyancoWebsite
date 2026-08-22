@@ -75,6 +75,61 @@ class Employee extends Model
     public function isActive(): bool   { return $this->status === self::STATUS_ACTIVE; }
     public function isArchived(): bool { return $this->status === self::STATUS_ARCHIVED; }
 
+    // ── Fingerprint slots ────────────────────────────────────────────────────
+
+    /**
+     * Free a sensor slot so it can be handed to another worker.
+     *
+     * fingerprint_id carries a DB-level unique index that spans soft-deleted
+     * rows, and Laravel's `unique` validation rule does not filter them either.
+     * So a worker who was removed or archived keeps owning their slot forever —
+     * the kiosk enrolls a finger into that free sensor slot, the web refuses it
+     * with "already been taken", and the slot is dead for good. Every removal
+     * burns one more slot.
+     *
+     * A worker who is removed or archived cannot clock in, so their claim on the
+     * slot is meaningless: release it. A pending stub the kiosk auto-created from
+     * an unknown scan is the same physical finger, so release it too — unless it
+     * already collected attendance, which the admin has to resolve deliberately.
+     *
+     * @return static|null  null when the slot is free to use, or the employee
+     *                      still legitimately holding it.
+     */
+    public static function releaseFingerprint(string $fingerprintId, ?int $exceptEmployeeId = null): ?self
+    {
+        $holder = static::withTrashed()
+            ->where('fingerprint_id', $fingerprintId)
+            ->when($exceptEmployeeId, fn ($q) => $q->where('id', '!=', $exceptEmployeeId))
+            ->first();
+
+        if (! $holder) {
+            return null;                                  // nobody holds it
+        }
+
+        if ($holder->trashed() || $holder->isArchived()) {
+            $holder->forceFill(['fingerprint_id' => null])->save();
+            return null;
+        }
+
+        if ($holder->isPending() && $holder->attendances()->count() === 0) {
+            $holder->forceFill(['fingerprint_id' => null])->save();
+            return null;
+        }
+
+        return $holder;                                   // real conflict
+    }
+
+    /** Why the slot could not be released — a message the kiosk can show as-is. */
+    public static function fingerprintConflictMessage(self $holder, string $fingerprintId): string
+    {
+        if ($holder->isPending()) {
+            return "Fingerprint #{$fingerprintId} is already logging attendance for a pending worker ("
+                 . $holder->name . '). Complete or remove them on the web first.';
+        }
+
+        return "Fingerprint #{$fingerprintId} is already assigned to " . $holder->name . '.';
+    }
+
     /**
      * Get the daily rate based on labor type or fallback to rate_per_hour * 8
      */

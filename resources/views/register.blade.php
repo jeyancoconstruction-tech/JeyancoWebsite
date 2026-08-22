@@ -30,9 +30,19 @@
                 Complete their details to activate them across Attendance, Payroll and the Dashboard.
             </p>
         </div>
-        <button type="button" class="rm-btn-primary" id="rmAddBtn">
-            <i class="fas fa-user-plus"></i> Add Manually
-        </button>
+        <div class="rm-header-actions">
+            @if(auth()->user()?->isAdmin())
+            {{-- Fingerprint reset: clears every enrolled finger so the admin can
+                 re-enroll the workforce one by one from #1. --}}
+            <button type="button" class="rm-btn-danger" id="rmClearFpBtn"
+                    title="Clear every enrolled fingerprint and restart at #1">
+                <i class="fas fa-fingerprint"></i> Clear All Fingerprints
+            </button>
+            @endif
+            <button type="button" class="rm-btn-primary" id="rmAddBtn">
+                <i class="fas fa-user-plus"></i> Add Manually
+            </button>
+        </div>
     </div>
 
     {{-- ── Stat chips (also switch tabs) ───────────────────────────────────── --}}
@@ -266,6 +276,12 @@
 .rm-btn-primary { height:42px; padding:0 20px; font-size:14px; font-weight:700; color:#fff; border:none; border-radius:9px; cursor:pointer;
     background:#3b82f6; display:inline-flex; align-items:center; gap:8px; box-shadow:none; transition:transform .1s, opacity .15s; white-space:nowrap; }
 .rm-btn-primary:hover { opacity:.93; transform:translateY(-1px); }
+
+.rm-header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.rm-btn-danger { height:42px; padding:0 18px; font-size:14px; font-weight:700; color:#b91c1c; border:1px solid #fecaca; border-radius:9px;
+    cursor:pointer; background:#fef2f2; display:inline-flex; align-items:center; gap:8px; transition:background .15s, transform .1s; white-space:nowrap; }
+.rm-btn-danger:hover { background:#fee2e2; transform:translateY(-1px); }
+.rm-btn-danger:disabled { opacity:.6; cursor:not-allowed; transform:none; }
 
 /* Stat chips */
 .rm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
@@ -618,6 +634,7 @@
             clearTimeout(t._hide);
             t._hide = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(10px)'; }, 4500);
         }
+        window.rmToast = toast;
 
         async function poll() {
             try {
@@ -638,5 +655,57 @@
         setInterval(poll, 5000);
     })();
 })();
+
+@if(auth()->user()?->isAdmin())
+// ── Clear All Fingerprints ───────────────────────────────────────────────────
+// Drops every fingerprint_id (including archived and removed workers, whose IDs
+// still hold the unique index) so enrollment restarts at #1. Employee records,
+// rates and attendance survive. The kiosk sensor empties itself on its next
+// active-fingerprints sync, ~60s later.
+(function () {
+    const btn = document.getElementById('rmClearFpBtn');
+    if (!btn) return;
+
+    const url  = '{{ route("employees.clear-fingerprints") }}';
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+
+    btn.addEventListener('click', async function () {
+        if (!confirm(
+            'Clear ALL enrolled fingerprints?
+
+' +
+            '• Every worker loses their fingerprint link and cannot clock in until re-enrolled.
+' +
+            '• The kiosk sensor wipes itself within about a minute.
+' +
+            '• Enrollment restarts at #1.
+
+' +
+            'Employee details, rates and attendance history are NOT deleted.'
+        )) return;
+
+        const label = btn.innerHTML;
+        btn.disabled  = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing…';
+        try {
+            const r = await fetch(url, {
+                method:  'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+            });
+            const d = await r.json();
+            if (r.ok && d.success) {
+                if (window.rmToast) window.rmToast(d.message);
+                setTimeout(() => location.reload(), 1200);
+                return;
+            }
+            alert(d.message || 'Could not clear fingerprints.');
+        } catch (e) {
+            alert('Network error — please try again.');
+        }
+        btn.disabled  = false;
+        btn.innerHTML = label;
+    });
+})();
+@endif
 </script>
 @endsection
