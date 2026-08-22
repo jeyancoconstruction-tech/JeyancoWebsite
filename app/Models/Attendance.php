@@ -9,6 +9,8 @@ class Attendance extends Model
 {
     protected $fillable = [
         'employee_id',
+        'site_id',
+        'kiosk_id',
         'date',
         'session',
         'time_in',
@@ -40,6 +42,15 @@ class Attendance extends Model
 
     public function employee() {
         return $this->belongsTo(Employee::class);
+    }
+
+    /** Where this clock was taken — the kiosk's active site, not the worker's home site. */
+    public function site() {
+        return $this->belongsTo(Site::class);
+    }
+
+    public function kiosk() {
+        return $this->belongsTo(Kiosk::class);
     }
 
     /**

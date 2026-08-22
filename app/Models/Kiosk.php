@@ -25,18 +25,21 @@ class Kiosk extends Model
 
     /**
      * Resolve a kiosk from a request that may send either a numeric kiosk_id or
-     * a string kiosk_code. Falls back to the Site A kiosk so the current
-     * single-kiosk deployment "just works" without the Pi sending an id.
+     * a string kiosk_code.
+     *
+     * The fallback only applies when the caller identified nothing at all, so a
+     * single-kiosk deployment still "just works" without the Pi sending an id.
+     * It deliberately does NOT apply to an id or code that simply did not match:
+     * that used to quietly resolve "SITE_B" to the Site A kiosk, filing every
+     * scan taken at another site under Site A with no error anywhere.
      */
     public static function resolve($id = null, $code = null): ?self
     {
         if ($id) {
-            $kiosk = static::find($id);
-            if ($kiosk) return $kiosk;
+            return static::find($id);
         }
         if ($code) {
-            $kiosk = static::where('code', $code)->first();
-            if ($kiosk) return $kiosk;
+            return static::where('code', $code)->first();
         }
         return static::where('code', 'SITE_A')->first() ?? static::query()->orderBy('id')->first();
     }

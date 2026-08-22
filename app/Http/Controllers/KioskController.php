@@ -8,6 +8,7 @@ use App\Models\Attendance;
 use App\Models\LaborType;
 use App\Models\Project;
 use App\Models\Kiosk;
+use App\Models\Site;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -24,6 +25,55 @@ class KioskController extends Controller
      * configured radius is rejected. A kiosk with no designated coordinates, an
      * unresolvable kiosk, or the master switch off is left ungated.
      */
+    /**
+     * Where the kiosk is standing right now.
+     *
+     * One device is carried between sites, so the switcher on the kiosk is the
+     * authority — not the row in the database, which only remembers where the
+     * device was last time. An explicit site_id therefore wins over the kiosk's
+     * stored site, and is written back so the dashboard, the geofence and any
+     * later request that omits site_id all agree with what the operator picked.
+     */
+    private function activeSite(Request $request, ?Kiosk $kiosk): ?Site
+    {
+        if ($request->filled('site_id')) {
+            $site = Site::find($request->site_id);
+            if ($site) {
+                if ($kiosk && $kiosk->site_id !== $site->id) {
+                    $kiosk->forceFill(['site_id' => $site->id])->save();
+                }
+                $kiosk?->setRelation('site', $site);   // keep the geofence in step
+                return $site;
+            }
+        }
+
+        return $kiosk?->site;
+    }
+
+    /**
+     * Sites the kiosk can switch between.
+     *
+     * The kiosk used to carry a hard-coded Site A / Site B toggle, so a new site
+     * added on the web was unreachable until someone edited the Pi. Driving the
+     * switcher off this list means adding a site on the web is all it takes.
+     */
+    public function getSites()
+    {
+        $sites = Site::orderBy('name')->get(['id', 'name', 'location', 'latitude', 'longitude']);
+
+        return response()->json([
+            'success' => true,
+            'sites'   => $sites->map(fn ($s) => [
+                'id'        => $s->id,
+                'name'      => $s->name,
+                'location'  => $s->location,
+                'latitude'  => $s->latitude,
+                'longitude' => $s->longitude,
+            ])->values(),
+            'count'   => $sites->count(),
+        ]);
+    }
+
     private function locationGate(?Kiosk $kiosk, Request $request): ?array
     {
         if (! config('kiosk.enforce_location')) {
@@ -155,6 +205,7 @@ class KioskController extends Controller
             'project'       => 'nullable|string|max:255',
             'kiosk_id'      => 'nullable',
             'kiosk_code'    => 'nullable|string',
+            'site_id'       => 'nullable|exists:sites,id',
             'fingerprint_id'=> 'nullable|string',
         ]);
 
@@ -200,7 +251,7 @@ class KioskController extends Controller
             'rate_per_hour' => $hourlyRate,
             'project_id'    => $projectId,
             'kiosk_id'      => $kiosk?->id,
-            'site_id'       => $kiosk?->site_id,
+            'site_id'       => $this->activeSite($request, $kiosk)?->id,
             'fingerprint_id'=> $fp,
             // Kiosk registrations wait for admin acceptance before joining the
             // active workforce — the admin Accepts or Rejects them on the
@@ -305,12 +356,16 @@ class KioskController extends Controller
             'type'        => 'required|in:time_in,time_out',
             'kiosk_id'    => 'nullable',
             'kiosk_code'  => 'nullable|string',
+            'site_id'     => 'nullable|exists:sites,id',
             'lat'         => 'nullable|numeric|between:-90,90',
             'lng'         => 'nullable|numeric|between:-180,180',
         ]);
 
+        $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
+        $site  = $this->activeSite($request, $kiosk);
+
         // Anti-fraud GPS gate (same rule as /clock) when the kiosk identifies itself.
-        if ($gate = $this->locationGate(Kiosk::resolve($request->kiosk_id, $request->kiosk_code), $request)) {
+        if ($gate = $this->locationGate($kiosk, $request)) {
             return response()->json($gate);
         }
 
@@ -338,6 +393,8 @@ class KioskController extends Controller
             if (!$attendance) {
                 $attendance = new Attendance([
                     'employee_id' => $employeeId,
+                    'site_id'     => $site?->id,
+                    'kiosk_id'    => $kiosk?->id,
                     'date'        => $today,
                     'session'     => $session,
                 ]);
@@ -472,6 +529,7 @@ class KioskController extends Controller
             'type'           => 'required|in:time_in,time_out',
             'kiosk_id'       => 'nullable',
             'kiosk_code'     => 'nullable|string',
+            'site_id'        => 'nullable|exists:sites,id',
             'lat'            => 'nullable|numeric|between:-90,90',
             'lng'            => 'nullable|numeric|between:-180,180',
         ]);
@@ -480,6 +538,10 @@ class KioskController extends Controller
         if ($kiosk) {
             $kiosk->forceFill(['last_seen_at' => now()])->save();
         }
+
+        // Resolve the site BEFORE the gate so the geofence measures against the
+        // site the operator switched to, not the one the device sat at last.
+        $site = $this->activeSite($request, $kiosk);
 
         // Anti-fraud: reject before creating any employee/attendance if the kiosk
         // is outside its designated location or has no GPS fix.
@@ -503,7 +565,7 @@ class KioskController extends Controller
                 'position'       => null,
                 'rate_per_hour'  => 0,
                 'labor_type_id'  => null,
-                'site_id'        => $kiosk?->site_id,
+                'site_id'        => $site?->id,
                 'kiosk_id'       => $kiosk?->id,
                 'status'         => Employee::STATUS_PENDING,
                 'fingerprint_id' => $fp,
@@ -535,6 +597,8 @@ class KioskController extends Controller
             if (!$attendance) {
                 $attendance = new Attendance([
                     'employee_id' => $employee->id,
+                    'site_id'     => $site?->id,
+                    'kiosk_id'    => $kiosk?->id,
                     'date'        => $today,
                     'session'     => $session,
                 ]);
@@ -596,12 +660,15 @@ class KioskController extends Controller
             'fingerprint_id' => 'required|string',
             'kiosk_id'       => 'nullable',
             'kiosk_code'     => 'nullable|string',
+            'site_id'        => 'nullable|exists:sites,id',
         ]);
 
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
         if ($kiosk) {
             $kiosk->forceFill(['last_seen_at' => now()])->save();
         }
+
+        $site = $this->activeSite($request, $kiosk);
 
         $fp = (string) $request->fingerprint_id;
 
@@ -617,7 +684,7 @@ class KioskController extends Controller
                 'position'       => null,
                 'rate_per_hour'  => 0,
                 'labor_type_id'  => null,
-                'site_id'        => $kiosk?->site_id,
+                'site_id'        => $site?->id,
                 'kiosk_id'       => $kiosk?->id,
                 'status'         => Employee::STATUS_PENDING,
                 'fingerprint_id' => $fp,
@@ -670,11 +737,15 @@ class KioskController extends Controller
     public function todayAttendance(Request $request)
     {
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
+        $site  = $this->activeSite($request, $kiosk);
         $today = Carbon::now()->setTimezone('Asia/Manila')->format('Y-m-d');
 
+        // Scope to where the device is standing. Without this the Site B board
+        // listed everyone who clocked in anywhere today.
         $rows = Attendance::with('employee')
             ->where('date', $today)
             ->whereNotNull('time_in')
+            ->when($site, fn ($q) => $q->where('site_id', $site->id))
             ->get()
             ->groupBy('employee_id');
 

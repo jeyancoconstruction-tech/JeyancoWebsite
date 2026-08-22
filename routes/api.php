@@ -35,6 +35,10 @@ Route::get('/kiosk/today-attendance',  [KioskController::class, 'todayAttendance
 //    deletes any fingerprint slot that is no longer in the returned list.
 Route::get('/kiosk/active-fingerprints', [KioskController::class, 'activeFingerprints']);
 
+// ✅ Sites the kiosk can switch between. One device is carried between sites, so
+//    its switcher is built from this list — adding a site on the web is enough.
+Route::get('/kiosk/sites',              [KioskController::class, 'getSites']);
+
 // ✅ Kiosk GPS (NEO-M8L on the Pi, posted every ~30s). Cache-only: latest fix wins.
 //    The literal /location/latest must precede /location/{kioskId}, otherwise
 //    "latest" is captured as a kiosk id.
