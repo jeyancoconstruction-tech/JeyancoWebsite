@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Kiosk;
+use App\Models\Site;
 use App\Models\User;
 use App\Notifications\KioskAlert;
 use Illuminate\Http\JsonResponse;
@@ -41,9 +43,23 @@ class KioskLocationController extends Controller
             'lng'       => 'nullable|numeric|between:-180,180',
             'status'    => 'nullable|string|in:fix,no_fix',
             'timestamp' => 'nullable|integer',
+
+            // gps_tracker.py also reports which site it believes it is standing
+            // in and which one the operator selected on the kiosk. Both used to
+            // be dropped, so the map could show a dot without the system ever
+            // knowing which site that dot belonged to.
+            'detected_site' => 'nullable|string|max:100',
+            'detected_name' => 'nullable|string|max:100',
+            'active_site'   => 'nullable|string|max:100',
+            'active_name'   => 'nullable|string|max:100',
+            'in_geofence'   => 'nullable|boolean',
+            'site_match'    => 'nullable|boolean',
+            'distance_m'    => 'nullable|numeric',
         ]);
 
-        $kioskId = $data['kiosk_id'];
+        $kioskId  = $data['kiosk_id'];
+        $detected = $this->matchSite($data['detected_site'] ?? null, $data['detected_name'] ?? null);
+        $active   = $this->matchSite($data['active_site'] ?? null, $data['active_name'] ?? null);
 
         // Backward compatible: an older Pi that only sends lat/lng (no status)
         // is treated as a good fix.
@@ -61,9 +77,33 @@ class KioskLocationController extends Controller
             'status'     => $hasFix ? 'fix' : 'no_fix',
             'last_seen'  => now()->toIso8601String(),
             'updated_at' => now()->toIso8601String(),
+
+            // Where the tracker says it is, and where the operator says it is.
+            'detected_site_id'   => $detected?->id,
+            'detected_site_name' => $detected?->name ?? ($data['detected_name'] ?? null),
+            'active_site_id'     => $active?->id,
+            'active_site_name'   => $active?->name ?? ($data['active_name'] ?? null),
+            'in_geofence'        => $data['in_geofence'] ?? null,
+            'site_match'         => $data['site_match'] ?? null,
+            'reported_distance_m'=> $data['distance_m'] ?? null,
         ];
 
         Cache::put(self::LOC_PREFIX . $kioskId, $record, now()->addDays(7));
+
+        // The tracker identifies itself by its own device id ("jeyanco-01") while
+        // a clock request identifies the kiosk by its code ("SITE_A"). Writing the
+        // fix under both means the attendance location gate and the dashboard map
+        // read the same heartbeat instead of missing each other.
+        $kiosk = Kiosk::where('code', $kioskId)->first();
+        if ($kiosk && $kiosk->code !== $kioskId) {
+            Cache::put(self::LOC_PREFIX . $kiosk->code, $record, now()->addDays(7));
+        }
+        if (! $kiosk) {
+            $fallback = Kiosk::query()->orderBy('id')->first();
+            if ($fallback) {
+                Cache::put(self::LOC_PREFIX . $fallback->code, $record, now()->addDays(7));
+            }
+        }
 
         // The first good fix becomes the geofence anchor ("home").
         if ($hasFix && ! Cache::has(self::HOME_PREFIX . $kioskId)) {
@@ -79,6 +119,42 @@ class KioskLocationController extends Controller
         $this->evaluateAlerts($kioskId);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Map what the tracker calls a site onto a real Site row.
+     *
+     * gps_tracker.py names them by slug ("site-a") and by label ("Site A"),
+     * neither of which is a database id. Accept an id, a slug, or the name so
+     * the tracker keeps working whichever it sends.
+     */
+    private function matchSite(?string $key, ?string $name): ?Site
+    {
+        foreach ([$key, $name] as $candidate) {
+            if (! $candidate) {
+                continue;
+            }
+            $candidate = trim($candidate);
+
+            if (ctype_digit($candidate) && $site = Site::find((int) $candidate)) {
+                return $site;
+            }
+
+            // "site-a" and "Site A" both normalise to "sitea".
+            $normalised = preg_replace('/[^a-z0-9]/', '', strtolower($candidate));
+            if ($normalised === '') {
+                continue;
+            }
+
+            $site = Site::all()->first(
+                fn ($s) => preg_replace('/[^a-z0-9]/', '', strtolower($s->name)) === $normalised
+            );
+            if ($site) {
+                return $site;
+            }
+        }
+
+        return null;
     }
 
     /** GET /api/location/{kioskId} */
@@ -151,6 +227,17 @@ class KioskLocationController extends Controller
             'distance_m'        => $state['distance'],
             'geofence_radius_m' => (int) config('kiosk.geofence_radius'),
             'alert'             => $state['alert'],
+
+            // The dashboard map reads recorded_at for its "Live · time" label.
+            'recorded_at'       => $rec['updated_at'],
+
+            // Where the tracker says it is vs where the operator says it is.
+            // A mismatch means someone is clocking in against the wrong site.
+            'detected_site_id'  => $rec['detected_site_id'] ?? null,
+            'detected_site'     => $rec['detected_site_name'] ?? null,
+            'active_site_id'    => $rec['active_site_id'] ?? null,
+            'active_site'       => $rec['active_site_name'] ?? null,
+            'site_match'        => $rec['site_match'] ?? null,
         ];
     }
 
@@ -168,10 +255,23 @@ class KioskLocationController extends Controller
 
         $geofence = 'unknown';
         $distance = null;
-        $home     = Cache::get(self::HOME_PREFIX . $kioskId);
 
-        if ($home && $rec['status'] === 'fix' && $rec['lat'] !== null && $rec['lng'] !== null) {
-            $distance = round($this->haversine($home['lat'], $home['lng'], $rec['lat'], $rec['lng']), 1);
+        // A kiosk that is carried between sites has no single "home": anchoring
+        // on its first-ever fix made every legitimate move look like a theft.
+        // Measure against the site it is standing at when the tracker reports
+        // one; the first-fix anchor stays as the fallback for a tracker that
+        // does not.
+        $anchor = null;
+        $siteId = $rec['active_site_id'] ?? $rec['detected_site_id'] ?? null;
+        if ($siteId && $site = Site::find($siteId)) {
+            if ($site->latitude !== null && $site->longitude !== null) {
+                $anchor = ['lat' => $site->latitude, 'lng' => $site->longitude];
+            }
+        }
+        $anchor ??= Cache::get(self::HOME_PREFIX . $kioskId);
+
+        if ($anchor && $rec['status'] === 'fix' && $rec['lat'] !== null && $rec['lng'] !== null) {
+            $distance = round($this->haversine($anchor['lat'], $anchor['lng'], $rec['lat'], $rec['lng']), 1);
             $geofence = $distance <= $radius ? 'inside' : 'outside';
         }
 

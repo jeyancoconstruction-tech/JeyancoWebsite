@@ -65,12 +65,19 @@ class KioskController extends Controller
             'success' => true,
             'sites'   => $sites->map(fn ($s) => [
                 'id'        => $s->id,
+                // Stable key for gps_tracker.py, which names sites by slug.
+                'slug'      => \Illuminate\Support\Str::slug($s->name),
                 'name'      => $s->name,
                 'location'  => $s->location,
                 'latitude'  => $s->latitude,
                 'longitude' => $s->longitude,
+                // Geofence radius in metres, so the tracker stops carrying its
+                // own hard-coded copy of coordinates that drift out of step with
+                // whatever the admin set on the dashboard map.
+                'radius'    => (int) config('kiosk.geofence_radius'),
             ])->values(),
             'count'   => $sites->count(),
+            'radius'  => (int) config('kiosk.geofence_radius'),
         ]);
     }
 
