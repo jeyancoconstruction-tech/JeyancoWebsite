@@ -670,19 +670,17 @@
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
     btn.addEventListener('click', async function () {
-        if (!confirm(
-            'Clear ALL enrolled fingerprints?
-
-' +
-            '• Every worker loses their fingerprint link and cannot clock in until re-enrolled.
-' +
-            '• The kiosk sensor wipes itself within about a minute.
-' +
-            '• Enrollment restarts at #1.
-
-' +
+        const warning = [
+            'Clear ALL enrolled fingerprints?',
+            '',
+            '- Every worker loses their fingerprint link and cannot clock in until re-enrolled.',
+            '- The kiosk sensor wipes itself within about a minute.',
+            '- Enrollment restarts at #1.',
+            '',
             'Employee details, rates and attendance history are NOT deleted.'
-        )) return;
+        ].join('\n');
+
+        if (!confirm(warning)) return;
 
         const label = btn.innerHTML;
         btn.disabled  = true;
