@@ -4,6 +4,10 @@
 
 @push('styles')
 <style>
+.att-site { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600;
+    color:#0f766e; background:#f0fdfa; border:1px solid #ccfbf1; border-radius:8px; padding:2px 8px; white-space:nowrap; }
+.att-site i { font-size:10px; }
+
     .att-tabs { border-bottom: 2px solid #e5e7eb; gap: 4px; margin-bottom: 18px; }
     .att-tabs .nav-link { color: #64748b; border: none; font-weight: 700; padding: 10px 18px; }
     .att-tabs .nav-link:hover { color: #3b82f6; }
@@ -98,6 +102,7 @@
                     <thead>
                         <tr>
                             <th class="p-2 text-start">Employee</th>
+                            <th class="p-2 text-start">Site</th>
                             <th class="p-2 text-start">Session</th>
                             <th class="p-2 text-start">Time In / Out</th>
                             <th class="p-2 text-center">Status</th>
@@ -111,6 +116,13 @@
                         @endphp
                         <tr>
                             <td class="fw-bold p-2">{{ $record->employee->name ?? 'Unknown' }}</td>
+                            <td class="p-2">
+                                @if($record->site)
+                                    <span class="att-site"><i class="fas fa-map-marker-alt"></i> {{ $record->site->name }}</span>
+                                @else
+                                    <span class="text-muted">&mdash;</span>
+                                @endif
+                            </td>
                             <td class="p-2">
                                 <span class="session-label {{ $record->session == 'AM' ? 'badge-am' : 'badge-pm' }}">{{ $record->session }}</span>
                             </td>
@@ -128,7 +140,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="4" class="text-center py-5 text-muted">
+                            <td colspan="5" class="text-center py-5 text-muted">
                                 <i class="fas fa-user-clock mb-2 d-block" style="font-size: 1.75rem; opacity: 0.3;"></i>
                                 No employees have clocked in today yet.
                             </td>
@@ -168,6 +180,7 @@
                                 <input type="checkbox" id="selectAllChk" title="Select all on this page">
                             </th>
                             <th class="p-2 text-start">Employee</th>
+                            <th class="p-2 text-start">Site</th>
                             <th class="p-2 text-start">Date</th>
                             <th class="p-2 text-start">Session</th>
                             <th class="p-2 text-start">Time In / Out</th>
@@ -185,6 +198,13 @@
                                 <input type="checkbox" class="row-chk" value="{{ $record->id }}">
                             </td>
                             <td class="fw-bold p-2">{{ $record->employee->name ?? 'Unknown' }}</td>
+                            <td class="p-2">
+                                @if($record->site)
+                                    <span class="att-site"><i class="fas fa-map-marker-alt"></i> {{ $record->site->name }}</span>
+                                @else
+                                    <span class="text-muted">&mdash;</span>
+                                @endif
+                            </td>
                             <td class="p-2">{{ \Carbon\Carbon::parse($record->date)->format('m/d/Y') }}</td>
                             <td class="p-2">
                                 <span class="session-label {{ $record->session == 'AM' ? 'badge-am' : 'badge-pm' }}">{{ $record->session }}</span>
@@ -207,7 +227,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">No previous attendance records.</td>
+                            <td colspan="7" class="text-center py-5 text-muted">No previous attendance records.</td>
                         </tr>
                         @endforelse
                     </tbody>

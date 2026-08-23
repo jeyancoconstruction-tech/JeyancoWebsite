@@ -666,10 +666,35 @@
                 const d = await res.json();
                 if (d.lat && d.lng) {
                     const pos = [d.lat, d.lng];
-                    if (liveMarker) liveMarker.setLatLng(pos);
-                    else liveMarker = L.marker(pos, { icon: liveIcon }).addTo(map).bindPopup('Live kiosk position');
+                    const where = d.detected_site || 'Out of range';
+                    if (liveMarker) liveMarker.setLatLng(pos).setPopupContent(`Live kiosk position &middot; ${where}`);
+                    else liveMarker = L.marker(pos, { icon: liveIcon }).addTo(map)
+                                       .bindPopup(`Live kiosk position &middot; ${where}`);
+
                     const t = d.recorded_at ? new Date(d.recorded_at).toLocaleTimeString() : '';
-                    statusEl.innerHTML = `<i class="fas fa-circle text-success" style="font-size:8px;"></i> Live &middot; ${t}`;
+
+                    // One kiosk is carried between sites, so "where does the GPS
+                    // say it is" and "which site did the operator select" can
+                    // disagree — and when they do, attendance is being filed
+                    // against the wrong site. Say so instead of just "Live".
+                    if (d.site_match === false) {
+                        statusEl.innerHTML =
+                            `<i class="fas fa-triangle-exclamation text-danger" style="font-size:9px;"></i> ` +
+                            `GPS: ${where} &middot; naka-set sa ${d.active_site || '—'}`;
+                    } else if (d.alert === 'outside_geofence') {
+                        statusEl.innerHTML =
+                            `<i class="fas fa-circle text-danger" style="font-size:8px;"></i> ` +
+                            `Wala sa site &middot; ${Math.round(d.distance_m || 0)}m &middot; ${t}`;
+                    } else {
+                        statusEl.innerHTML =
+                            `<i class="fas fa-circle text-success" style="font-size:8px;"></i> ` +
+                            `Live &middot; ${where} &middot; ${t}`;
+                    }
+                } else if (d.status === 'no_fix') {
+                    // Buhay ang kiosk, walang satellite lock. Ibang-iba ito sa
+                    // katahimikan, na ibig sabihin nawawala ang kiosk.
+                    statusEl.innerHTML =
+                        `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Naka-on, walang GPS signal`;
                 } else {
                     statusEl.innerHTML = `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Waiting for GPS`;
                 }

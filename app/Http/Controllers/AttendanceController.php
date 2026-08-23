@@ -20,14 +20,18 @@ class AttendanceController extends Controller
 
         // CURRENT DAY VIEW — resets daily: only today's present employees
         // (a record exists only once an employee actually times in).
-        $todayAttendances = Attendance::with('employee')
+        // Eager-load the site each clock was taken at. One kiosk is carried
+        // between sites, so "which site" is a property of the attendance, not
+        // of the worker — reading it off the employee would show wherever they
+        // were first registered.
+        $todayAttendances = Attendance::with(['employee', 'site'])
             ->whereDate('date', $today)
             ->whereNotNull('time_in')
             ->orderByDesc('time_in')
             ->get();
 
         // HISTORY — all previous days (kept accessible, but out of the day view).
-        $historyAttendances = Attendance::with('employee')
+        $historyAttendances = Attendance::with(['employee', 'site'])
             ->whereDate('date', '<', $today)
             ->orderBy('date', 'desc')
             ->orderBy('session', 'asc')
