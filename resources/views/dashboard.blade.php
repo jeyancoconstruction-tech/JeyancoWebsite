@@ -660,6 +660,31 @@
             iconSize: [14, 14], iconAnchor: [7, 7],
         });
         let liveMarker = null;
+        let liveCentred = false;     // isang beses lang tayo mang-aagaw ng view
+
+        // Ang mapa ay naka-zoom sa mga site pin (zoom 16 = ilang daang metro).
+        // Ang kiosk ay pwedeng kilometro ang layo — naidadagdag ang marker pero
+        // wala sa screen, kaya mukhang "walang lumalabas sa mapa". Isama ito sa
+        // tanaw sa unang fix, at gawing clickable ang status para makabalik.
+        function revealKiosk(pos, zoomIn) {
+            const siteLatLngs = Object.values(siteMarkers).map(m => m.getLatLng());
+            if (zoomIn || siteLatLngs.length === 0) {
+                map.setView(pos, 16);
+                return;
+            }
+            map.fitBounds([pos].concat(siteLatLngs.map(p => [p.lat, p.lng])),
+                          { padding: [50, 50], maxZoom: 16 });
+        }
+
+        statusEl.style.cursor = 'pointer';
+        statusEl.title = 'I-click para hanapin ang kiosk sa mapa';
+        statusEl.addEventListener('click', () => {
+            if (liveMarker) {
+                revealKiosk(liveMarker.getLatLng(), true);
+                liveMarker.openPopup();
+            }
+        });
+
         async function refreshLive() {
             try {
                 const res = await fetch(`/api/location/latest?kiosk_id=${KIOSK_ID}`);
@@ -670,6 +695,12 @@
                     if (liveMarker) liveMarker.setLatLng(pos).setPopupContent(`Live kiosk position &middot; ${where}`);
                     else liveMarker = L.marker(pos, { icon: liveIcon }).addTo(map)
                                        .bindPopup(`Live kiosk position &middot; ${where}`);
+
+                    // Unang fix: iangat ang tanaw para makita mo talaga.
+                    if (!liveCentred) {
+                        liveCentred = true;
+                        revealKiosk(pos, false);
+                    }
 
                     const t = d.recorded_at ? new Date(d.recorded_at).toLocaleTimeString() : '';
 
