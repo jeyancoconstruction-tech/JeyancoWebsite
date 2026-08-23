@@ -12,8 +12,15 @@
         <td>@include('employees._person', ['e' => $e, 'displayName' => $hasDetails ? $e->name : 'New worker — needs details'])</td>
         <td>@include('employees._fp', ['e' => $e])</td>
         <td>
-            <span class="rm-badge rm-badge-site"><i class="fas fa-tablet-screen-button"></i>
-                {{ optional($e->kiosk)->name ?? 'Site A Kiosk' }}</span>
+            {{-- The site the worker picked on the kiosk, which is what the admin
+                 needs to see. The device name is secondary now that one kiosk is
+                 carried between sites. --}}
+            @if($e->site)
+                <span class="rm-badge rm-badge-site"><i class="fas fa-map-marker-alt"></i> {{ $e->site->name }}</span>
+            @else
+                <span class="rm-badge rm-badge-site"><i class="fas fa-tablet-screen-button"></i>
+                    {{ optional($e->kiosk)->name ?? 'Unknown site' }}</span>
+            @endif
         </td>
         <td class="rm-muted">{{ $e->created_at?->format('M d, Y g:i A') }}</td>
         <td class="text-center"><span class="rm-pill">{{ $e->attendances_count }}</span></td>

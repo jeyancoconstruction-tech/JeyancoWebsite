@@ -238,9 +238,25 @@ class KioskController extends Controller
         $position   = $laborType?->name ?? ($request->position ?: 'Worker');
         $hourlyRate = $laborType ? $laborType->getHourlyRate() : 0;
 
-        // Resolve project from id or name (the kiosk sends a name like "Site A").
+        // The kiosk's REGISTER form sends the chosen site by name in `project`
+        // (its "PROJECT / SITE" field). A name that matches a real site IS a
+        // site: recording it as a project created a shadow "Site B" row in the
+        // projects table while employees.site_id — the column the whole web
+        // reads — stayed on whatever site the device happened to sit at. The
+        // worker picked Site B and the system showed Site A.
+        $namedSite = $request->filled('project')
+            ? Site::whereRaw('LOWER(name) = ?', [strtolower(trim($request->project))])->first()
+            : null;
+
+        // Explicit site_id wins, then the site named in the form, then wherever
+        // the device is standing.
+        $employeeSite = $request->filled('site_id')
+            ? Site::find($request->site_id)
+            : ($namedSite ?: $kiosk?->site);
+
+        // Only a name that is NOT one of our sites is a genuine project.
         $projectId = $request->project_id;
-        if (!$projectId && $request->filled('project')) {
+        if (!$projectId && $request->filled('project') && !$namedSite) {
             $projectId = Project::firstOrCreate(['name' => trim($request->project)])->id;
         }
 
@@ -251,7 +267,7 @@ class KioskController extends Controller
             'rate_per_hour' => $hourlyRate,
             'project_id'    => $projectId,
             'kiosk_id'      => $kiosk?->id,
-            'site_id'       => $this->activeSite($request, $kiosk)?->id,
+            'site_id'       => $employeeSite?->id,
             'fingerprint_id'=> $fp,
             // Kiosk registrations wait for admin acceptance before joining the
             // active workforce — the admin Accepts or Rejects them on the

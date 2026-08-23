@@ -80,7 +80,7 @@
                 <table class="rm-table">
                     <thead>
                         <tr>
-                            <th>Worker</th><th>Fingerprint</th><th>Detected at</th>
+                            <th>Worker</th><th>Fingerprint</th><th>Site</th>
                             <th>First seen</th><th class="text-center">Logs</th><th></th>
                         </tr>
                     </thead>
