@@ -1,15 +1,33 @@
 @forelse($pending as $e)
     @php
+        // Did the worker actually give a name at the kiosk? A bare fingerprint
+        // scan creates the 'Unregistered Worker' placeholder instead.
+        $named = $e->name && $e->name !== 'Unregistered Worker' && trim($e->name) !== '';
+
         // A kiosk registration already carries a name + labor type + rate, so the
         // admin only needs to CONFIRM (review + tweak) it. A bare fingerprint
         // detection has none of these and must be COMPLETED (details filled) first.
-        $hasDetails = $e->name !== 'Unregistered Worker'
+        $hasDetails = $named
             && ! empty($e->labor_type_id)
             && (float) $e->rate_per_hour > 0;
+
+        // Named but without a rate: the kiosk offered a position that is not one
+        // of the web's labor types (e.g. "Foreman"), so no rate could be looked
+        // up. Show the name they gave anyway — hiding it behind "New worker" made
+        // a completed registration look like a bare scan.
+        $missingRate = $named && ! $hasDetails;
+
         $photoUrl = $e->photo ? asset('storage/' . $e->photo) : '';
     @endphp
     <tr>
-        <td>@include('employees._person', ['e' => $e, 'displayName' => $hasDetails ? $e->name : 'New worker — needs details'])</td>
+        <td>
+            @include('employees._person', ['e' => $e, 'displayName' => $named ? $e->name : 'New worker — needs details'])
+            @if($missingRate)
+                <span class="rm-needs-rate" title="Ang position na '{{ $e->position }}' ay walang katugmang labor type, kaya walang rate. Itakda ito sa Complete.">
+                    <i class="fas fa-triangle-exclamation"></i> walang rate
+                </span>
+            @endif
+        </td>
         <td>@include('employees._fp', ['e' => $e])</td>
         <td>
             {{-- The site the worker picked on the kiosk, which is what the admin

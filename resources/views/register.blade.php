@@ -283,6 +283,13 @@
 .rm-btn-danger:hover { background:#fee2e2; transform:translateY(-1px); }
 .rm-btn-danger:disabled { opacity:.6; cursor:not-allowed; transform:none; }
 
+/* Named at the kiosk but no rate could be resolved — the position they picked
+   is not one of the web's labor types. */
+.rm-needs-rate { display:inline-flex; align-items:center; gap:5px; margin-top:3px; margin-left:46px;
+    font-size:11px; font-weight:600; color:#b45309; background:#fffbeb; border:1px solid #fde68a;
+    border-radius:7px; padding:1px 7px; white-space:nowrap; }
+.rm-needs-rate i { font-size:9.5px; }
+
 /* Stat chips */
 .rm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
 @media(max-width:720px){ .rm-stats{ grid-template-columns:repeat(2,1fr); } }
