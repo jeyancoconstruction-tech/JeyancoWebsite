@@ -14,6 +14,7 @@ use App\Http\Controllers\AIController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\PasswordResetController;
 
 
 Route::get('/', function () {
@@ -25,6 +26,18 @@ Route::middleware('guest')->group(function () {
     // LOGIN
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+
+    // PASSWORD RESET — self-service, for accounts that have an email on file.
+    // Accounts without one are still reset by an Admin in Account Management.
+    Route::get ('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetController::class, 'email'])
+         ->middleware('throttle:6,1')->name('password.email');
+    Route::get ('/reset-password/{token}', [PasswordResetController::class, 'reset'])->name('password.reset');
+    // Looser than the request step on purpose: every mistyped confirmation
+    // counts against this, and the token itself is the real guard — 64 random
+    // hex characters, single use, expiring in an hour.
+    Route::post('/reset-password', [PasswordResetController::class, 'update'])
+         ->middleware('throttle:15,1')->name('password.update');
 
     // Public self-registration is closed — accounts are issued by an Admin
     // from Account Management (/accounts).
