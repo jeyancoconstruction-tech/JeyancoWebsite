@@ -2,18 +2,17 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * "/" is not a landing page — the site opens straight onto the sign-in
+     * screen. This shipped as Laravel's stock test asserting a 200 from the
+     * starter welcome page, which this app never had a route for.
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_the_root_url_sends_visitors_to_the_login_screen(): void
     {
-        $response = $this->get('/');
-
-        $response->assertStatus(200);
+        $this->get('/')->assertRedirect(route('login'));
     }
 }
