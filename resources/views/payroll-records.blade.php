@@ -511,10 +511,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <span class="me-auto text-muted" style="font-size:12px;">This is a preview of the file you'll download.</span>
-                    <a href="{{ route('payroll-records.export', request()->query()) }}" class="btn btn-light border fw-600">
-                        <i class="fas fa-file-csv me-1"></i> Download CSV
-                    </a>
+                    <span class="me-auto text-muted" style="font-size:12px;">This is exactly what the Excel file will contain.</span>
                     <a href="{{ route('payroll-records.export.excel', request()->query()) }}" class="btn btn-success fw-600">
                         <i class="fas fa-file-excel me-1"></i> Download Excel
                     </a>
