@@ -3,12 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Services\PayrollService;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use App\Notifications\PayrollNotification;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -91,12 +85,13 @@ class PayrollRecordsController extends Controller
      * Export the current period's per-employee totals as CSV (no dependency).
      */
     /**
-     * Export the current period's per-employee totals as a real .xlsx workbook.
+     * Export the current period's per-employee totals for Excel.
      *
-     * This used to stream an HTML table named ".xls", which Excel opened only
-     * after warning that the file's extension did not match its contents. A
-     * genuine xlsx also means the money columns arrive as numbers Excel can sum
-     * and reformat, rather than as pre-formatted text.
+     * Written as an HTML table served under an .xls name, which Excel opens
+     * natively. It does warn that the extension does not match the contents —
+     * the price of needing no PHP extensions beyond the standard ones. A real
+     * .xlsx is a ZIP archive and cannot be produced without ext-zip, which the
+     * deployment image does not carry.
      */
     public function exportExcel(Request $request, PayrollService $payroll)
     {
@@ -105,115 +100,14 @@ class PayrollRecordsController extends Controller
             $payroll->computeForRange($period['from'], $period['to'])['employees'],
             $request
         );
-        $totals = $this->summarize($employees);
 
-        $columns = ['Employee ID', 'Name', 'Position', 'Workdays', 'Hours', 'Gross Pay',
-                    'Overtime', 'Holiday Pay', 'Rest Day Pay', 'Bonus', 'Deductions', 'Net Pay'];
-        $lastCol = 'L';
+        $totals   = $this->summarize($employees);
+        $filename = 'payroll-records_' . $period['from'] . '_to_' . $period['to'] . '.xls';
+        $html     = view('exports.payroll-excel', compact('employees', 'period', 'totals'))->render();
 
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Payroll Records');
-
-        // Title band.
-        $sheet->setCellValue('A1', 'Jeyanco Construction - Payroll Records');
-        $sheet->mergeCells("A1:{$lastCol}1");
-        $sheet->getStyle('A1')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 15, 'color' => ['rgb' => 'FFFFFF']],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1E3A8A']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-        ]);
-        $sheet->getRowDimension(1)->setRowHeight(26);
-
-        // Meta band.
-        $sheet->setCellValue('A2', 'Period (' . ucfirst($period['mode']) . ')');
-        $sheet->setCellValue('C2', $period['label']);
-        $sheet->setCellValue('J2', 'Generated');
-        $sheet->setCellValue('K2', now()->format('M d, Y'));
-        $sheet->mergeCells('A2:B2');
-        $sheet->mergeCells('C2:I2');
-        $sheet->mergeCells('K2:L2');
-        $sheet->getStyle("A2:{$lastCol}2")->getFill()
-              ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('EEF2FF');
-        $sheet->getStyle('A2')->getFont()->setBold(true);
-        $sheet->getStyle('J2')->getFont()->setBold(true);
-
-        // Header row.
-        $headerRow = 4;
-        $sheet->fromArray($columns, null, "A{$headerRow}");
-        $sheet->getStyle("A{$headerRow}:{$lastCol}{$headerRow}")->applyFromArray([
-            'font'      => ['bold' => true],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DBE3F4']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
-        ]);
-
-        // Body. Figures stay numeric so Excel can total and reformat them.
-        $row = $headerRow + 1;
-        foreach ($employees as $e) {
-            $t = $e['totals'];
-
-            // Written as text: the leading "#" and zero padding are the ID's
-            // format, and Excel would otherwise strip them.
-            $sheet->setCellValueExplicit(
-                "A{$row}",
-                '#' . str_pad((string) $e['employee_id'], 4, '0', STR_PAD_LEFT),
-                DataType::TYPE_STRING
-            );
-
-            $sheet->fromArray([[
-                $e['name'], $e['position'],
-                (int) $t['workdays'], (float) $t['hours'], (float) $t['gross'],
-                (float) $t['overtime'], (float) $t['holidayPay'], (float) ($t['restDayPay'] ?? 0),
-                (float) $t['bonus'], (float) $t['totalDeductions'], (float) $t['net'],
-            ]], null, "B{$row}", true);
-
-            $row++;
-        }
-
-        $firstBodyRow = $headerRow + 1;
-        $lastBodyRow  = $row - 1;
-
-        // Total row.
-        $totalRow = $row;
-        $sheet->setCellValue("A{$totalRow}", 'TOTAL - ' . $totals['employee_count'] . ' employee(s)');
-        $sheet->mergeCells("A{$totalRow}:C{$totalRow}");
-        $sheet->fromArray([[
-            $totals['workdays'], $totals['hours'], $totals['gross'], $totals['overtime'],
-            $totals['holidayPay'], $totals['restDayPay'], $totals['bonus'],
-            $totals['totalDeductions'], $totals['net'],
-        ]], null, "D{$totalRow}", true);
-        $sheet->getStyle("A{$totalRow}:{$lastCol}{$totalRow}")->applyFromArray([
-            'font' => ['bold' => true],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F1F5F9']],
-        ]);
-
-        // Number formats: peso columns as currency, hours to 2dp, workdays whole.
-        // Matches what the on-screen preview shows. An xlsx sheet is UTF-8 XML,
-        // so the peso sign survives the round trip into Excel.
-        $peso = "\u{20B1}#,##0.00";
-        if ($lastBodyRow >= $firstBodyRow) {
-            $sheet->getStyle("D{$firstBodyRow}:D{$lastBodyRow}")->getNumberFormat()->setFormatCode('0');
-            $sheet->getStyle("E{$firstBodyRow}:E{$lastBodyRow}")->getNumberFormat()->setFormatCode('#,##0.00');
-            $sheet->getStyle("F{$firstBodyRow}:{$lastCol}{$lastBodyRow}")->getNumberFormat()->setFormatCode($peso);
-        }
-        $sheet->getStyle("D{$totalRow}")->getNumberFormat()->setFormatCode('0');
-        $sheet->getStyle("E{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00');
-        $sheet->getStyle("F{$totalRow}:{$lastCol}{$totalRow}")->getNumberFormat()->setFormatCode($peso);
-
-        // Borders, widths, and a frozen header so it stays put while scrolling.
-        $sheet->getStyle("A{$headerRow}:{$lastCol}{$totalRow}")->getBorders()->getAllBorders()
-              ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('94A3B8');
-        foreach (range('A', $lastCol) as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
-        $sheet->freezePane('A' . ($headerRow + 1));
-
-        $filename = 'payroll-records_' . $period['from'] . '_to_' . $period['to'] . '.xlsx';
-
-        return response()->streamDownload(function () use ($spreadsheet) {
-            (new Xlsx($spreadsheet))->save('php://output');
-        }, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        return response($html, 200, [
+            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
     }
 
