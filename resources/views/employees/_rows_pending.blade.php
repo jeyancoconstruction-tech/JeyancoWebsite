@@ -20,6 +20,11 @@
         $photoUrl = $e->photo ? asset('storage/' . $e->photo) : '';
     @endphp
     <tr>
+        {{-- Also rendered by the 5-second live refresh, so a row that arrives
+             from the kiosk is selectable the moment it appears. --}}
+        <td class="rm-check-col">
+            <input type="checkbox" class="rm-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}">
+        </td>
         <td>
             @include('employees._person', ['e' => $e, 'displayName' => $named ? $e->name : 'New worker — needs details'])
             @if($missingRate)

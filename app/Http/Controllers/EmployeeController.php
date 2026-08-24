@@ -374,6 +374,53 @@ class EmployeeController extends Controller
         return back()->with('success', 'Record permanently deleted.');
     }
 
+    /**
+     * Restore several removed workers at once.
+     *
+     * Scoped to onlyTrashed() exactly like the single-row restore, so an id
+     * that is not actually in the Removed tab is ignored rather than acted on.
+     */
+    public function bulkRestore(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'required|integer',
+        ]);
+
+        $employees = Employee::onlyTrashed()->whereIn('id', $request->ids)->get();
+        foreach ($employees as $employee) {
+            $employee->restore();
+        }
+
+        return response()->json(['success' => true, 'restored' => $employees->count()]);
+    }
+
+    /**
+     * Permanently delete several removed workers at once.
+     *
+     * Same steps as forceDelete() for each row — photo file, attendance rows,
+     * then the record — and the same onlyTrashed() guard, so nothing that is
+     * still live can be destroyed through this path.
+     */
+    public function bulkForceDelete(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'required|integer',
+        ]);
+
+        $employees = Employee::onlyTrashed()->whereIn('id', $request->ids)->get();
+        foreach ($employees as $employee) {
+            if ($employee->photo) {
+                Storage::disk('public')->delete($employee->photo);
+            }
+            $employee->attendances()->delete();
+            $employee->forceDelete();
+        }
+
+        return response()->json(['success' => true, 'deleted' => $employees->count()]);
+    }
+
     public function deleteAll()
     {
         $employees = Employee::all();
@@ -398,35 +445,6 @@ class EmployeeController extends Controller
         return response()->json(['success' => true, 'deleted' => $deleted]);
     }
 
-    /**
-     * Wipe every fingerprint assignment so enrollment can restart from #1.
-     *
-     * Employee records, rates and attendance history are untouched — only the
-     * fingerprint_id link is dropped. Soft-deleted and archived rows are cleared
-     * too, on purpose: the unique index on fingerprint_id covers them, and
-     * nextFingerprintId() takes its MAX withTrashed(), so leaving a removed
-     * worker holding #14 would block re-enrolling #14 and keep the counter from
-     * returning to #1.
-     *
-     * The sensor follows on its own: the kiosk polls active-fingerprints every
-     * ~60s and deletes any slot missing from it, so an empty list empties the
-     * R307 without anyone touching the Pi.
-     */
-    public function clearAllFingerprints()
-    {
-        $cleared = Employee::withTrashed()
-            ->whereNotNull('fingerprint_id')
-            ->update(['fingerprint_id' => null]);
-
-        return response()->json([
-            'success' => true,
-            'cleared' => $cleared,
-            'next_id' => $this->nextFingerprintId(),   // back to 1
-            'message' => $cleared . ' fingerprint' . ($cleared === 1 ? '' : 's')
-                         . ' cleared. Enrollment restarts at #1; the kiosk sensor '
-                         . 'clears itself within a minute.',
-        ]);
-    }
 
     /**
      * Return the next sequential fingerprint ID by finding the numeric

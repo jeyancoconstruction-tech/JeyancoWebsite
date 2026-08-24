@@ -60,10 +60,11 @@ Route::middleware(['auth', 'active'])->group(function () {
     // "/employees/register" so it no longer collides with the guest "/register" page.
     Route::delete('/employees/bulk-delete', [EmployeeController::class, 'bulkDelete'])->name('employees.bulk-delete');
     Route::delete('/employees/delete-all',  [EmployeeController::class, 'deleteAll'])->name('employees.delete-all');
-    // Admin-only fingerprint reset. Declared here (before the resource) so the
-    // literal path is not swallowed by "DELETE /employees/{employee}".
-    Route::delete('/employees/clear-fingerprints', [EmployeeController::class, 'clearAllFingerprints'])
-        ->middleware('is_admin')->name('employees.clear-fingerprints');
+    // Bulk counterparts of the per-row restore / permanent delete, for the
+    // Removed tab's select-all. Literal paths, so they must stay above the
+    // "/employees/{employee}" wildcard further down.
+    Route::patch ('/employees/bulk-restore',      [EmployeeController::class, 'bulkRestore'])->name('employees.bulk-restore');
+    Route::delete('/employees/bulk-force-delete', [EmployeeController::class, 'bulkForceDelete'])->name('employees.bulk-force-delete');
     Route::get('/employees/register', [EmployeeController::class, 'register'])->name('employees.register');
     Route::get('/employees/register/live', [EmployeeController::class, 'registerLive'])->name('employees.register.live');
 

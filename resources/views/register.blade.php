@@ -31,14 +31,10 @@
             </p>
         </div>
         <div class="rm-header-actions">
-            @if(auth()->user()?->isAdmin())
-            {{-- Fingerprint reset: clears every enrolled finger so the admin can
-                 re-enroll the workforce one by one from #1. --}}
-            <button type="button" class="rm-btn-danger" id="rmClearFpBtn"
-                    title="Clear every enrolled fingerprint and restart at #1">
-                <i class="fas fa-fingerprint"></i> Clear All Fingerprints
-            </button>
-            @endif
+            {{-- "Clear All Fingerprints" used to sit here. It wiped every enrolled
+                 finger in one click — the whole workforce had to re-enrol, and
+                 there was no way to act on just a few. The per-tab select-all
+                 below covers the real need without that blast radius. --}}
             <button type="button" class="rm-btn-primary" id="rmAddBtn">
                 <i class="fas fa-user-plus"></i> Add Manually
             </button>
@@ -76,10 +72,17 @@
                 These workers scanned a new fingerprint on the kiosk. Click <strong>Complete</strong> to set their
                 name, position and rate — they then become active everywhere in the system.
             </div>
+            <div class="rm-bulk" data-bulk="pending" hidden>
+                <span class="rm-bulk-count"><strong>0</strong> selected</span>
+                <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
+                <span class="rm-bulk-spacer"></span>
+                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-xmark"></i> Reject selected</button>
+            </div>
             <div class="table-responsive">
                 <table class="rm-table">
                     <thead>
                         <tr>
+                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="Select all"></th>
                             <th>Worker</th><th>Fingerprint</th><th>Site</th>
                             <th>First seen</th><th class="text-center">Logs</th><th></th>
                         </tr>
@@ -95,10 +98,17 @@
     {{-- ═══ ACTIVE ═════════════════════════════════════════════════════════ --}}
     <div class="rm-pane" data-pane="active">
         <div class="rm-card">
+            <div class="rm-bulk" data-bulk="active" hidden>
+                <span class="rm-bulk-count"><strong>0</strong> selected</span>
+                <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
+                <span class="rm-bulk-spacer"></span>
+                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-trash"></i> Remove selected</button>
+            </div>
             <div class="table-responsive">
                 <table class="rm-table">
                     <thead>
                         <tr>
+                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="Select all"></th>
                             <th>Employee</th><th>Site</th><th>Labor Type</th>
                             <th class="text-center">Rate / hr</th><th>Fingerprint</th>
                             <th class="text-center">Logs</th><th></th>
@@ -107,6 +117,7 @@
                     <tbody>
                     @forelse($active as $e)
                         <tr>
+                            <td class="rm-check-col"><input type="checkbox" class="rm-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td>@include('employees._person', ['e' => $e, 'displayName' => $e->name])</td>
                             <td>@include('employees._site', ['e' => $e])</td>
                             <td>@include('employees._labor', ['e' => $e])</td>
@@ -143,14 +154,22 @@
                 <i class="fas fa-circle-info"></i>
                 Removed records are hidden everywhere but never lost. Restore them, or permanently delete as a last resort.
             </div>
+            <div class="rm-bulk" data-bulk="removed" hidden>
+                <span class="rm-bulk-count"><strong>0</strong> selected</span>
+                <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
+                <span class="rm-bulk-spacer"></span>
+                <button type="button" class="rm-bulk-plain js-bulk-restore"><i class="fas fa-rotate-left"></i> Restore selected</button>
+                <button type="button" class="rm-bulk-danger js-bulk-purge"><i class="fas fa-trash"></i> Delete permanently</button>
+            </div>
             <div class="table-responsive">
                 <table class="rm-table">
                     <thead>
-                        <tr><th>Employee</th><th>Site</th><th>Labor Type</th><th>Removed</th><th class="text-center">Logs</th><th></th></tr>
+                        <tr><th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="Select all"></th><th>Employee</th><th>Site</th><th>Labor Type</th><th>Removed</th><th class="text-center">Logs</th><th></th></tr>
                     </thead>
                     <tbody>
                     @forelse($removed as $e)
                         <tr>
+                            <td class="rm-check-col"><input type="checkbox" class="rm-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td>@include('employees._person', ['e' => $e, 'displayName' => $e->name])</td>
                             <td>@include('employees._site', ['e' => $e])</td>
                             <td>@include('employees._labor', ['e' => $e])</td>
@@ -312,6 +331,32 @@
 .rm-tab.active { color:#3b82f6; border-bottom-color:#3b82f6; }
 .rm-tab-count { font-size:11px; font-weight:700; background:#f1f5f9; color:#475569; border-radius:10px; padding:1px 7px; margin-left:3px; }
 .rm-tab.active .rm-tab-count { background:#eff6ff; color:#2563eb; }
+
+/* ── Bulk selection ─────────────────────────────────────────────────────── */
+.rm-check-col { width:38px; text-align:center; padding-left:14px !important; padding-right:0 !important; }
+.rm-check, .rm-check-all {
+    width:16px; height:16px; cursor:pointer; accent-color:var(--brand,#1e5c9b); vertical-align:middle;
+}
+.rm-check-all:disabled { cursor:not-allowed; opacity:.4; }
+
+.rm-bulk {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    margin:0 0 12px; padding:10px 14px; border-radius:10px;
+    background:rgba(30,92,155,0.08); border:1px solid rgba(30,92,155,0.28);
+}
+.rm-bulk[hidden] { display:none; }
+.rm-bulk-count { font-size:13px; font-weight:600; }
+.rm-bulk-count strong { font-size:15px; }
+.rm-bulk-spacer { flex:1 1 auto; }
+.rm-bulk-plain, .rm-bulk-danger {
+    border-radius:8px; padding:7px 13px; font-size:12.5px; font-weight:600;
+    cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+    transition:filter .15s, opacity .15s;
+}
+.rm-bulk-plain  { background:transparent; border:1px solid rgba(148,163,184,.5); color:inherit; }
+.rm-bulk-danger { background:#dc2626; border:1px solid #dc2626; color:#fff; }
+.rm-bulk-plain:hover, .rm-bulk-danger:hover { filter:brightness(1.08); }
+.rm-bulk-plain:disabled, .rm-bulk-danger:disabled { opacity:.55; cursor:not-allowed; }
 
 .rm-pane { display:none; }
 .rm-pane.active { display:block; }
@@ -663,54 +708,127 @@
     })();
 })();
 
-@if(auth()->user()?->isAdmin())
-// ── Clear All Fingerprints ───────────────────────────────────────────────────
-// Drops every fingerprint_id (including archived and removed workers, whose IDs
-// still hold the unique index) so enrollment restarts at #1. Employee records,
-// rates and attendance survive. The kiosk sensor empties itself on its next
-// active-fingerprints sync, ~60s later.
-(function () {
-    const btn = document.getElementById('rmClearFpBtn');
-    if (!btn) return;
 
-    const url  = '{{ route("employees.clear-fingerprints") }}';
+// ── Bulk selection ───────────────────────────────────────────────────────────
+// Replaces the old "Clear All Fingerprints" sledgehammer: pick exactly the rows
+// you mean — or tick the header box for the whole tab — and act on them once.
+// Each tab keeps its own selection, and the buttons match what that tab can do.
+(function () {
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
 
-    btn.addEventListener('click', async function () {
-        const warning = [
-            'Clear ALL enrolled fingerprints?',
-            '',
-            '- Every worker loses their fingerprint link and cannot clock in until re-enrolled.',
-            '- The kiosk sensor wipes itself within about a minute.',
-            '- Enrollment restarts at #1.',
-            '',
-            'Employee details, rates and attendance history are NOT deleted.'
-        ].join('\n');
+    const ENDPOINTS = {
+        remove:  { url: '{{ route('employees.bulk-delete') }}',       method: 'DELETE' },
+        restore: { url: '{{ route('employees.bulk-restore') }}',      method: 'PATCH'  },
+        purge:   { url: '{{ route('employees.bulk-force-delete') }}', method: 'DELETE' },
+    };
 
-        if (!confirm(warning)) return;
+    const paneOf   = el   => el.closest('.rm-pane');
+    const boxesIn  = pane => Array.from(pane.querySelectorAll('tbody .rm-check'));
+    const pickedIn = pane => boxesIn(pane).filter(b => b.checked);
 
+    function sync(pane) {
+        if (!pane) return;
+        const boxes  = boxesIn(pane);
+        const picked = pickedIn(pane);
+        const all    = pane.querySelector('.rm-check-all');
+        const bar    = pane.querySelector('.rm-bulk');
+
+        if (all) {
+            all.disabled      = boxes.length === 0;
+            all.checked       = boxes.length > 0 && picked.length === boxes.length;
+            all.indeterminate = picked.length > 0 && picked.length < boxes.length;
+        }
+        if (bar) {
+            bar.hidden = picked.length === 0;
+            const n = bar.querySelector('.rm-bulk-count strong');
+            if (n) n.textContent = picked.length;
+        }
+    }
+
+    function syncAll() { document.querySelectorAll('.rm-pane').forEach(sync); }
+
+    document.addEventListener('change', function (e) {
+        const t = e.target;
+        if (t.classList && t.classList.contains('rm-check-all')) {
+            const pane = paneOf(t);
+            boxesIn(pane).forEach(b => { b.checked = t.checked; });
+            sync(pane);
+        } else if (t.classList && t.classList.contains('rm-check')) {
+            sync(paneOf(t));
+        }
+    });
+
+    document.addEventListener('click', async function (e) {
+        const btn = e.target.closest('.js-bulk-clear, .js-bulk-remove, .js-bulk-restore, .js-bulk-purge');
+        if (!btn) return;
+
+        const pane = paneOf(btn);
+
+        if (btn.classList.contains('js-bulk-clear')) {
+            boxesIn(pane).forEach(b => { b.checked = false; });
+            sync(pane);
+            return;
+        }
+
+        const ids = pickedIn(pane).map(b => b.value);
+        if (!ids.length) return;
+
+        const kind = btn.classList.contains('js-bulk-restore') ? 'restore'
+                   : btn.classList.contains('js-bulk-purge')   ? 'purge'
+                   : 'remove';
+        const one  = ids.length === 1;
+        const many = ids.length + (one ? ' record' : ' records');
+
+        const question = kind === 'purge'
+            ? 'Permanently delete ' + many + '?\n\n'
+              + 'This cannot be undone. Their attendance history and photos go too.'
+            : kind === 'restore'
+                ? 'Restore ' + many + '?'
+                : 'Remove ' + many + '?\n\nThey move to the Removed tab and can be restored from there.';
+
+        if (!confirm(question)) return;
+
+        const { url, method } = ENDPOINTS[kind];
         const label = btn.innerHTML;
-        btn.disabled  = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Clearing…';
+        pane.querySelectorAll('.rm-bulk button').forEach(b => { b.disabled = true; });
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Working…';
+
         try {
-            const r = await fetch(url, {
-                method:  'DELETE',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+            const res = await fetch(url, {
+                method:  method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept':       'application/json',
+                },
+                body: JSON.stringify({ ids: ids }),
             });
-            const d = await r.json();
-            if (r.ok && d.success) {
-                if (window.rmToast) window.rmToast(d.message);
-                setTimeout(() => location.reload(), 1200);
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                const done = data.deleted ?? data.restored ?? ids.length;
+                if (window.rmToast) window.rmToast(done + (done === 1 ? ' record' : ' records') + ' updated');
+                setTimeout(() => location.reload(), 700);
                 return;
             }
-            alert(d.message || 'Could not clear fingerprints.');
-        } catch (e) {
+            alert(data.message || 'Could not complete that action.');
+        } catch (err) {
             alert('Network error — please try again.');
         }
-        btn.disabled  = false;
+
+        pane.querySelectorAll('.rm-bulk button').forEach(b => { b.disabled = false; });
         btn.innerHTML = label;
     });
+
+    // The pending rows are swapped out wholesale by the 5-second live refresh,
+    // which fires no change event — without this the count would keep showing a
+    // selection whose rows are already gone.
+    const pendingBody = document.getElementById('rmPendingBody');
+    if (pendingBody) {
+        new MutationObserver(() => sync(paneOf(pendingBody))).observe(pendingBody, { childList: true });
+    }
+
+    syncAll();
 })();
-@endif
 </script>
 @endsection
