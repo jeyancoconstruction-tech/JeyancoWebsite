@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -23,5 +24,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // A login page left open past the session lifetime submits a stale CSRF
+        // token. The default response is a bare "419 Page Expired" screen with
+        // no way forward, which reads as a broken login. Hand back a fresh form
+        // with an explanation instead.
+        // Laravel rewrites the TokenMismatchException into a 419 HttpException
+        // before render callbacks run, so the status code is what to match on.
+        $exceptions->render(function (HttpExceptionInterface $e, $request) {
+            if ($e->getStatusCode() === 419 && $request->isMethod('POST') && $request->is('login')) {
+                return redirect()->route('login')
+                    ->withErrors(['username' => 'Your session expired for security. Please sign in again.'])
+                    ->withInput($request->only('username', 'remember'));
+            }
+        });
     })->create();

@@ -20,19 +20,34 @@ class AuthController extends Controller
 
     // Logic para sa Login
     public function login(Request $request) {
-        $credentials = $request->validate([
+        $request->validate([
             'username' => ['required', 'string'],
             'password' => ['required', 'string'],
+        ], [], [
+            'username' => 'username or email',
+            'password' => 'password',
         ]);
 
-        // Brute-force protection: throttle by username + IP.
-        $throttleKey = Str::lower($request->input('username')) . '|' . $request->ip();
+        // Staff sign in with a username, but accounts may also carry an email
+        // and people naturally type that instead. The single box accepts either
+        // — anything shaped like an address is matched against the email
+        // column, everything else against username. Usernames cannot contain
+        // "@" (see AccountController::rules), so the two can never collide.
+        $login = trim($request->input('username'));
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
+        $credentials = [
+            $field     => $login,
+            'password' => $request->input('password'),
+        ];
+
+        // Brute-force protection: throttle by identifier + IP.
+        $throttleKey = Str::lower($login) . '|' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_ATTEMPTS)) {
             $seconds = RateLimiter::availableIn($throttleKey);
-            return back()->withErrors([
-                'username' => "Too many failed attempts. Please try again in {$seconds} second(s).",
-            ])->onlyInput('username');
+
+            return $this->failed($request, "Too many failed attempts. Please try again in {$seconds} second(s).");
         }
 
         $remember = $request->boolean('remember');
@@ -42,13 +57,18 @@ class AuthController extends Controller
             // here so they never reach an authenticated page.
             if (! Auth::user()->is_active) {
                 Auth::logout();
+
+                // The session is thrown away, which also discards the "previous
+                // URL" that back() relies on — so the redirect is aimed at the
+                // login route explicitly. Errors and old input are flashed
+                // AFTER the new token exists, otherwise the message is lost and
+                // the visitor bounces to the form with nothing to explain why.
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
+
                 RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
 
-                return back()->withErrors([
-                    'username' => 'This account has been deactivated. Please contact your administrator.',
-                ])->onlyInput('username');
+                return $this->failed($request, 'This account has been deactivated. Please contact your administrator.');
             }
 
             // Success: clear throttle + regenerate session (prevents fixation).
@@ -57,15 +77,27 @@ class AuthController extends Controller
 
             Auth::user()->forceFill(['last_login_at' => now()])->saveQuietly();
 
-            return redirect()->intended('dashboard');
+            return redirect()->intended(route('dashboard'));
         }
 
         // Failed attempt — record it and return a generic message.
         RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
 
-        return back()->withErrors([
-            'username' => 'Invalid username or password.',
-        ])->onlyInput('username');
+        return $this->failed($request, 'Invalid username/email or password.');
+    }
+
+    /**
+     * Send the visitor back to the login form with a message.
+     *
+     * Always targets the named route rather than back(): a rejected sign-in may
+     * have just invalidated the session, and back() would fall through to "/".
+     * The remember checkbox is flashed along with the username so the form comes
+     * back exactly as it was filled in — only the password is dropped.
+     */
+    private function failed(Request $request, string $message) {
+        return redirect()->route('login')
+            ->withErrors(['username' => $message])
+            ->withInput($request->only('username', 'remember'));
     }
 
     // Logout Function
@@ -73,7 +105,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect()->route('login');
+        return redirect()->route('login')->with('success', 'You have been signed out.');
     }
 
     // --- PARA SA REGISTER ---
