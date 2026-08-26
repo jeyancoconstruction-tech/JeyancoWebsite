@@ -28,12 +28,13 @@ class Employee extends Model
     ];
 
     protected $fillable = [
-        'name', 'rate_per_hour', 'position', 'employment_type', 'project_id', 'labor_type_id',
+        'name', 'rate_per_hour', 'position', 'employment_type', 'contract_rate', 'project_id', 'labor_type_id',
         'site_id', 'kiosk_id', 'status', 'vale', 'fingerprint_id', 'photo', 'archived_at',
     ];
 
     protected $casts = [
         'rate_per_hour' => 'float',
+        'contract_rate' => 'float',
         'vale'          => 'float',
         'archived_at'   => 'datetime',
         'created_at'    => 'datetime',
@@ -146,6 +147,23 @@ class Employee extends Model
     public function getEmploymentLabelAttribute(): string
     {
         return self::EMPLOYMENT_TYPES[$this->employment_type] ?? self::EMPLOYMENT_TYPES[self::EMPLOYMENT_DAILY];
+    }
+
+    /**
+     * The flat amount this worker earns for each day present, or null when the
+     * usual hours x rate computation applies.
+     *
+     * Both conditions matter: tagging someone contractual without agreeing an
+     * amount must not silently drop their pay to zero.
+     */
+    public function contractDayPay(): ?float
+    {
+        if (! $this->isContractual()) {
+            return null;
+        }
+        $rate = (float) ($this->contract_rate ?? 0);
+
+        return $rate > 0 ? $rate : null;
     }
 
     /** True when the worker is engaged on a contract rather than paid per day. */

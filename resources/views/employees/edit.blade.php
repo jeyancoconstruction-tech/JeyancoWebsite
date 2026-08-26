@@ -81,6 +81,26 @@
                             <small class="text-muted">Hindi pa ito nakakaapekto sa computation ng sweldo.</small>
                         </div>
 
+                        {{-- Contract rate. Ginagamit LANG kapag Contractual ang napili:
+                             flat na halaga kada araw na pumasok, walang OT at
+                             walang SSS/PhilHealth/Pag-IBIG. Kapag walang laman,
+                             arawan pa rin ang computation kahit naka-tag. --}}
+                        <div class="col-md-6" id="contract_rate_wrap">
+                            <label class="form-label fw-bold text-secondary">Contract Rate (kada araw)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">₱</span>
+                                <input type="number" step="0.01" min="0" name="contract_rate"
+                                       class="form-control border-start-0 @error('contract_rate') is-invalid @enderror"
+                                       value="{{ old('contract_rate', $employee->contract_rate) }}"
+                                       placeholder="hal. 1200.00">
+                            </div>
+                            @error('contract_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <small class="text-muted">
+                                Para sa Contractual lang. Flat kada araw na pumasok — walang OT,
+                                walang SSS/PhilHealth/Pag-IBIG. Iwanang blangko kung arawan.
+                            </small>
+                        </div>
+
                         {{-- Rate per Hour (auto-calculated) --}}
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-secondary">Rate Per Hour</label>
@@ -296,4 +316,17 @@
     function showErr(msg) { errEl.textContent = msg; errEl.style.display = 'block'; }
 })();
 </script>
+
+{{-- Itago ang contract rate kapag Arawan — walang silbi ito doon. --}}
+<script>
+(function () {
+    const sel  = document.querySelector('select[name="employment_type"]');
+    const wrap = document.getElementById('contract_rate_wrap');
+    if (!sel || !wrap) return;
+    const sync = () => { wrap.style.display = sel.value === 'contractual' ? '' : 'none'; };
+    sel.addEventListener('change', sync);
+    sync();
+})();
+</script>
+
 @endsection

@@ -60,6 +60,8 @@ class PayrollService
         }
         $records = $query->get();
 
+        $this->applyContractPay($records);
+
         $weeks = $this->groupByWeek($records, $cfg);
 
         return [
@@ -67,6 +69,48 @@ class PayrollService
             'days'      => $this->groupByDay($records, $cfg),
             'employees' => $this->pivotByEmployee($weeks),
         ];
+    }
+
+    /**
+     * Work out what each attendance row is worth to a contractual worker, and
+     * stamp it on the row so every grouping below reads the same figure.
+     *
+     * A contract pays for the DAY, not the hours — so eleven hours earns the
+     * same as six, and there is no overtime to add. Attendance, though, is
+     * stored one row per session: a worker who clocks AM and PM produces two
+     * rows for a single day. Paying the flat rate on each row would pay them
+     * twice for that day, so the day's rate is split across the sessions that
+     * actually recorded a time-in. The parts add back up to exactly one day.
+     *
+     * Nothing is stamped for a daily worker, or for a contractual one with no
+     * agreed rate — those rows fall through to the usual hours x rate path.
+     */
+    private function applyContractPay($records): void
+    {
+        foreach ($records->groupBy('employee_id') as $empRecords) {
+            $employee = optional($empRecords->first())->employee;
+            $dayPay   = $employee?->contractDayPay();
+
+            if ($dayPay === null) {
+                continue;
+            }
+
+            $byDate = $empRecords->groupBy(fn ($r) => Carbon::parse($r->date)->toDateString());
+
+            foreach ($byDate as $dayRecords) {
+                $paying = $dayRecords->filter(fn ($r) => (bool) $r->time_in);
+                $count  = $paying->count();
+
+                if ($count === 0) {
+                    continue;   // absent that day — a contract still pays nothing
+                }
+
+                $share = $dayPay / $count;
+                foreach ($paying as $rec) {
+                    $rec->contract_pay = $share;
+                }
+            }
+        }
     }
 
     /**
@@ -110,8 +154,21 @@ class PayrollService
         $rate      = $dailyRate !== null ? ($dailyRate / 8) : (float) ($employee->rate_per_hour ?? 0);
         $ot_rate   = $rate * $cfg['otMultiplier'];
 
-        $basicPay    = $regular_hours * $rate;
-        $otPay       = $ot_hours * $ot_rate;
+        // A contract pays a flat amount for the day. Hours are still measured
+        // and reported — the office wants to see them — but they no longer
+        // decide the pay, and overtime does not apply.
+        $contractPay = $rec->contract_pay ?? null;
+        $onContract  = $contractPay !== null;
+
+        if ($onContract) {
+            $basicPay = (float) $contractPay;
+            $otPay    = 0.0;
+            $ot_rate  = 0.0;
+        } else {
+            $basicPay = $regular_hours * $rate;
+            $otPay    = $ot_hours * $ot_rate;
+        }
+
         $dayEarnings = $basicPay + $otPay;
 
         // Holiday premium — rate depends on holiday type (PH labor law):
@@ -138,10 +195,12 @@ class PayrollService
 
         $gross       = $dayEarnings + $holidayPay + $restDayPay;
 
-        // Statutory deductions are computed on GROSS pay (not the daily rate).
-        $sssDeduction        = ($gross * $cfg['sss']) / 100;
-        $philhealthDeduction = ($gross * $cfg['philhealth']) / 100;
-        $pagibigDeduction    = ($gross * $cfg['pagibig']) / 100;
+        // Statutory deductions are computed on GROSS pay (not the daily rate),
+        // and do not apply to contract work. Vale and manual deductions still
+        // do — those are advances and adjustments, not statutory contributions.
+        $sssDeduction        = $onContract ? 0.0 : ($gross * $cfg['sss']) / 100;
+        $philhealthDeduction = $onContract ? 0.0 : ($gross * $cfg['philhealth']) / 100;
+        $pagibigDeduction    = $onContract ? 0.0 : ($gross * $cfg['pagibig']) / 100;
         $autoDeductions      = $sssDeduction + $philhealthDeduction + $pagibigDeduction;
 
         $vale             = is_numeric($rec->vale) ? $rec->vale : 0;
