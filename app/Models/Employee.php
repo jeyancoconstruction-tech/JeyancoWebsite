@@ -15,8 +15,20 @@ class Employee extends Model
     public const STATUS_ACTIVE   = 'active';     // fully registered, part of the workforce
     public const STATUS_ARCHIVED = 'archived';   // left the company, records preserved
 
+    /** Paid for each day actually worked — what every worker is today. */
+    public const EMPLOYMENT_DAILY = 'daily';
+
+    /** Engaged on a contract. Recorded so the office can tell them apart; the
+     *  payroll computation does NOT yet treat them differently. */
+    public const EMPLOYMENT_CONTRACTUAL = 'contractual';
+
+    public const EMPLOYMENT_TYPES = [
+        self::EMPLOYMENT_DAILY        => 'Arawan (daily)',
+        self::EMPLOYMENT_CONTRACTUAL  => 'Contractual',
+    ];
+
     protected $fillable = [
-        'name', 'rate_per_hour', 'position', 'project_id', 'labor_type_id',
+        'name', 'rate_per_hour', 'position', 'employment_type', 'project_id', 'labor_type_id',
         'site_id', 'kiosk_id', 'status', 'vale', 'fingerprint_id', 'photo', 'archived_at',
     ];
 
@@ -128,6 +140,18 @@ class Employee extends Model
         }
 
         return "Fingerprint #{$fingerprintId} is already assigned to " . $holder->name . '.';
+    }
+
+    /** Human label for the employment type. */
+    public function getEmploymentLabelAttribute(): string
+    {
+        return self::EMPLOYMENT_TYPES[$this->employment_type] ?? self::EMPLOYMENT_TYPES[self::EMPLOYMENT_DAILY];
+    }
+
+    /** True when the worker is engaged on a contract rather than paid per day. */
+    public function isContractual(): bool
+    {
+        return $this->employment_type === self::EMPLOYMENT_CONTRACTUAL;
     }
 
     /**

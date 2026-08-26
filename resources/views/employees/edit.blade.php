@@ -59,6 +59,28 @@
                             </div>
                         </div>
 
+                        {{-- Employment type. Naitatala lang ito sa ngayon —
+                             PAREHO pa rin ang computation ng sweldo para sa
+                             arawan at contractual hangga't wala pang pinal na
+                             panuntunan mula sa consultant. --}}
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary">Employment Type</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">📄</span>
+                                <select name="employment_type"
+                                        class="form-select border-start-0 @error('employment_type') is-invalid @enderror">
+                                    @foreach(\App\Models\Employee::EMPLOYMENT_TYPES as $val => $label)
+                                        <option value="{{ $val }}"
+                                            {{ old('employment_type', $employee->employment_type) === $val ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @error('employment_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <small class="text-muted">Hindi pa ito nakakaapekto sa computation ng sweldo.</small>
+                        </div>
+
                         {{-- Rate per Hour (auto-calculated) --}}
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-secondary">Rate Per Hour</label>

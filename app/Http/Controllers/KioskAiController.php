@@ -98,6 +98,10 @@ class KioskAiController extends Controller
                 'id'       => $employee->id,
                 'name'     => $employee->name,
                 'position' => $employee->position ?: ($employee->laborType->name ?? 'Worker'),
+                // Recorded only — the figures below are computed the same way
+                // for daily and contractual workers until that rule is settled.
+                'employment_type'  => $employee->employment_type,
+                'employment_label' => $employee->employment_label,
             ],
             'period' => [
                 'start' => $start->toDateString(),

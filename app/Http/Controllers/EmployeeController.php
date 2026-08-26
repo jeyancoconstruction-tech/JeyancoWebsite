@@ -55,6 +55,7 @@ class EmployeeController extends Controller
             'name'           => 'required|string|max:255',
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
+            'employment_type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
             'site_id'        => 'nullable|exists:sites,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
@@ -84,6 +85,7 @@ class EmployeeController extends Controller
         Employee::create([
             'name'           => $request->name,
             'position'       => $laborType->name,
+            'employment_type' => $request->input('employment_type', Employee::EMPLOYMENT_DAILY),
             'rate_per_hour'  => $request->rate_per_hour,
             'labor_type_id'  => $request->labor_type_id,
             'site_id'        => $request->site_id ?: null,
@@ -117,6 +119,7 @@ class EmployeeController extends Controller
             'name'           => 'required|string|max:255',
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
+            'employment_type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
             'site_id'        => 'nullable|exists:sites,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
         ], [
@@ -138,6 +141,7 @@ class EmployeeController extends Controller
         $updateData = [
             'name'           => $request->name,
             'position'       => $laborType->name,
+            'employment_type' => $request->input('employment_type', $employee->employment_type ?: Employee::EMPLOYMENT_DAILY),
             'rate_per_hour'  => $request->rate_per_hour,
             'labor_type_id'  => $request->labor_type_id,
             'site_id'        => $request->site_id ?: null,
@@ -258,6 +262,7 @@ class EmployeeController extends Controller
             'name'           => 'required|string|max:255',
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
+            'employment_type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
             'site_id'        => 'nullable|exists:sites,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
@@ -280,6 +285,7 @@ class EmployeeController extends Controller
         $data = [
             'name'           => $request->name,
             'position'       => $laborType->name,
+            'employment_type' => $request->input('employment_type', $employee->employment_type ?: Employee::EMPLOYMENT_DAILY),
             'rate_per_hour'  => $request->rate_per_hour,
             'labor_type_id'  => $request->labor_type_id,
             'site_id'        => $request->site_id ?: null,

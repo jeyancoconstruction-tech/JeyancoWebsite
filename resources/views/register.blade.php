@@ -358,6 +358,12 @@
 .rm-bulk-plain:hover, .rm-bulk-danger:hover { filter:brightness(1.08); }
 .rm-bulk-plain:disabled, .rm-bulk-danger:disabled { opacity:.55; cursor:not-allowed; }
 
+/* Contractual tag. Recorded only — payroll still computes the same way. */
+.rm-badge-contract {
+    background: rgba(232,163,61,0.14); color: #b26f00;
+    border: 1px solid rgba(232,163,61,0.55); margin-left: 5px;
+}
+
 .rm-pane { display:none; }
 .rm-pane.active { display:block; }
 
