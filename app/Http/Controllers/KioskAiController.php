@@ -52,6 +52,76 @@ class KioskAiController extends Controller
     }
 
     /** POST /api/kiosk/ask  {employee_id, kiosk_id, question} */
+    /**
+     * This worker's own payroll figures, in plain numbers.
+     *
+     * The chat assistant can only answer when an Anthropic key is configured;
+     * without one it returns a canned apology, which left the worker with no
+     * way at all to see their pay. These are the same figures PayrollService
+     * gives the admin's Payroll Records page, so the kiosk and the web can
+     * never quote different numbers for the same week.
+     *
+     * Addressed by fingerprint: the worker proves who they are by scanning,
+     * and can only ever reach their own row.
+     */
+    public function summary(int $fingerId, PayrollService $payroll): JsonResponse
+    {
+        $employee = Employee::with('laborType')
+            ->where('fingerprint_id', (string) $fingerId)
+            ->first();
+
+        if (! $employee) {
+            return response()->json(['success' => false, 'message' => 'Employee not found.'], 404);
+        }
+
+        $start = Carbon::now()->startOfWeek(Carbon::MONDAY);
+        $end   = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+
+        $totals = [];
+        try {
+            $rows = $payroll->computeForRange($start->toDateString(), $end->toDateString())['employees'] ?? [];
+            foreach ($rows as $row) {
+                if ((int) ($row['employee_id'] ?? 0) === (int) $employee->id) {
+                    $totals = $row['totals'] ?? [];
+                    break;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Kiosk payroll summary failed — ' . $e->getMessage());
+        }
+
+        $num = fn ($key) => round((float) ($totals[$key] ?? 0), 2);
+
+        return response()->json([
+            'success'  => true,
+            'employee' => [
+                'id'       => $employee->id,
+                'name'     => $employee->name,
+                'position' => $employee->position ?: ($employee->laborType->name ?? 'Worker'),
+            ],
+            'period' => [
+                'start' => $start->toDateString(),
+                'end'   => $end->toDateString(),
+                'label' => $start->format('M d') . ' – ' . $end->format('M d, Y'),
+            ],
+            'totals' => [
+                // "Ilang araw na pinasok" — the day count the payroll itself uses.
+                'workdays'   => (int) ($totals['workdays'] ?? 0),
+                'hours'      => $num('hours'),
+                'overtime'   => $num('overtime'),
+                'gross'      => $num('gross'),
+                'bonus'      => $num('bonus'),
+                'deductions' => $num('totalDeductions'),
+                'net'        => $num('net'),
+            ],
+            // Running cash-advance balance, kept off the totals because it is a
+            // standing balance rather than part of this week's computation.
+            'vale' => round((float) ($employee->vale ?? 0), 2),
+            // So the kiosk can say why the chat is quiet instead of looking broken.
+            'assistant_available' => ! empty(config('services.anthropic.key')),
+        ]);
+    }
+
     public function ask(Request $request, PayrollService $payroll): JsonResponse
     {
         $data = $request->validate([

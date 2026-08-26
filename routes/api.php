@@ -50,3 +50,7 @@ Route::get ('/location/{kioskId}',        [KioskLocationController::class, 'late
 // ✅ Kiosk payroll AI assistant (Claude). Answers only about the scanned employee.
 Route::post('/kiosk/ask',                     [KioskAiController::class, 'ask']);
 Route::get ('/employees/by-finger/{fingerId}', [KioskAiController::class, 'byFinger']);
+
+// ✅ The worker's own payroll figures, in plain numbers — no AI key needed.
+//    Same source as the admin's Payroll Records, addressed by fingerprint.
+Route::get ('/kiosk/my-payroll/{fingerId}',    [KioskAiController::class, 'summary']);
