@@ -223,9 +223,16 @@ class KioskController extends Controller
         // active-fingerprints it would also get wiped off the R307 within a
         // minute as an orphan.
         $fp = null;
+
+        // A pending row already holding this finger is this same worker, met
+        // earlier by the scan loop. Fill it in instead of creating a second.
+        $adopt = null;
+
         if ($request->filled('fingerprint_id')) {
-            $fp = (string) $request->fingerprint_id;
-            if ($holder = Employee::releaseFingerprint($fp)) {
+            $fp     = (string) $request->fingerprint_id;
+            $adopt  = Employee::pendingHolderOf($fp);
+
+            if (! $adopt && $holder = Employee::releaseFingerprint($fp)) {
                 return response()->json([
                     'success' => false,
                     'message' => Employee::fingerprintConflictMessage($holder, $fp),
@@ -267,7 +274,7 @@ class KioskController extends Controller
             $projectId = Project::firstOrCreate(['name' => trim($request->project)])->id;
         }
 
-        $employee = Employee::create([
+        $attributes = [
             'name'          => $request->name,
             'labor_type_id' => $laborType?->id,
             'position'      => $position,
@@ -280,7 +287,14 @@ class KioskController extends Controller
             // active workforce — the admin Accepts or Rejects them on the
             // Register & Manage page.
             'status'        => Employee::STATUS_PENDING,
-        ]);
+        ];
+
+        if ($adopt) {
+            $adopt->fill($attributes)->save();
+            $employee = $adopt->refresh();
+        } else {
+            $employee = Employee::create($attributes);
+        }
 
         return response()->json([
             'success'  => true,

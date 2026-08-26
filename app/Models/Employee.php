@@ -108,6 +108,27 @@ class Employee extends Model
      * @return static|null  null when the slot is free to use, or the employee
      *                      still legitimately holding it.
      */
+    /**
+     * The pending row already standing in for this finger, if there is one.
+     *
+     * A fingerprint IS the identity here. When the kiosk's scan loop meets a
+     * finger it does not recognise it opens a pending "Unregistered Worker"
+     * placeholder — including, moments later, the very finger someone is in
+     * the middle of enrolling. Registering that finger afterwards is the same
+     * person arriving with their details, so the placeholder is filled in
+     * rather than left behind beside a second row for the same worker.
+     *
+     * Adopting also keeps whatever the placeholder already logged: someone who
+     * clocked in for days before an admin registered them does not lose that
+     * attendance.
+     */
+    public static function pendingHolderOf(string $fingerprintId): ?self
+    {
+        return static::where('fingerprint_id', $fingerprintId)
+            ->where('status', self::STATUS_PENDING)
+            ->first();
+    }
+
     public static function releaseFingerprint(string $fingerprintId, ?int $exceptEmployeeId = null): ?self
     {
         $holder = static::withTrashed()
