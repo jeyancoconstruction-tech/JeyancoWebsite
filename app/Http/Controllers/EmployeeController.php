@@ -51,20 +51,18 @@ class EmployeeController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate(array_merge([
-            'name'           => 'required|string|max:255',
-            'rate_per_hour'  => 'required|numeric|min:0.01',
-            'labor_type_id'  => 'required|exists:labor_types,id',
-            'employment_type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
-            'contract_rate'   => ['nullable', 'numeric', 'min:0'],
+        $request->validate(array_merge($this->identityRules($request), [
             'site_id'        => 'nullable|exists:sites,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], $this->profileRules()), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
+            'first_name.required_without' => 'The first name is required.',
+            'last_name.required_with'     => 'The last name is required.',
         ]);
 
-        $laborType = LaborType::findOrFail($request->labor_type_id);
+        $identity  = $this->identityData($request);
+        $laborType = $request->filled('labor_type_id') ? LaborType::find($request->labor_type_id) : null;
 
         // Auto-assign next sequential ID when the field is left blank.
         $fingerprintId = $request->filled('fingerprint_id')
@@ -83,28 +81,29 @@ class EmployeeController extends Controller
             $photoPath = $request->file('photo')->store('employees', 'public');
         }
 
-        Employee::create(Employee::withoutMissingColumns(array_merge([
-            'name'           => $request->name,
-            'position'       => $laborType->name,
+        $employee = Employee::create(Employee::withoutMissingColumns(array_merge([
+            // A contractual worker has no labor type to take a position from,
+            // so their job title stands in.
+            'position'       => $laborType?->name ?: ($request->input('job_title') ?: 'Contractual'),
             'employment_type' => $request->input('employment_type', Employee::EMPLOYMENT_DAILY),
             'contract_rate'  => $request->filled('contract_rate') ? (float) $request->contract_rate : null,
-            'rate_per_hour'  => $request->rate_per_hour,
-            'labor_type_id'  => $request->labor_type_id,
+            'rate_per_hour'  => $request->rate_per_hour ?: 0,
+            'labor_type_id'  => $request->labor_type_id ?: null,
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
             'photo'          => $photoPath,
             'status'         => Employee::STATUS_ACTIVE,
-        ], $this->profileData($request))));
+        ], $this->profileData($request), $identity)));
 
         EmployeeAlert::fire(auth()->user(), 'new_employee',
             'New Employee Registered',
-            $request->name . ' has been added to the system.'
+            $employee->name . ' has been added to the system.'
         );
 
         // Back to where the Register Employee button was pressed, on the tab
         // the new worker just landed in.
         return redirect()->to(route('employees.register') . '#active')
-            ->with('success', $request->name . ' has been registered and activated.');
+            ->with('success', $employee->name . ' has been registered and activated.');
     }
 
     public function edit($id)
@@ -119,19 +118,17 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
 
-        $request->validate(array_merge([
-            'name'           => 'required|string|max:255',
-            'rate_per_hour'  => 'required|numeric|min:0.01',
-            'labor_type_id'  => 'required|exists:labor_types,id',
-            'employment_type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
-            'contract_rate'   => ['nullable', 'numeric', 'min:0'],
+        $request->validate(array_merge($this->identityRules($request), [
             'site_id'        => 'nullable|exists:sites,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
         ], $this->profileRules()), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
+            'first_name.required_without' => 'The first name is required.',
+            'last_name.required_with'     => 'The last name is required.',
         ]);
 
-        $laborType = LaborType::findOrFail($request->labor_type_id);
+        $identity  = $this->identityData($request, $employee);
+        $laborType = $request->filled('labor_type_id') ? LaborType::find($request->labor_type_id) : null;
 
         $fingerprintId = $request->filled('fingerprint_id')
             ? (string) $request->fingerprint_id
@@ -144,15 +141,14 @@ class EmployeeController extends Controller
         }
 
         $updateData = array_merge([
-            'name'           => $request->name,
-            'position'       => $laborType->name,
+            'position'       => $laborType?->name ?: ($request->input('job_title') ?: $employee->position),
             'employment_type' => $request->input('employment_type', $employee->employment_type ?: Employee::EMPLOYMENT_DAILY),
             'contract_rate'  => $request->filled('contract_rate') ? (float) $request->contract_rate : $employee->contract_rate,
-            'rate_per_hour'  => $request->rate_per_hour,
-            'labor_type_id'  => $request->labor_type_id,
+            'rate_per_hour'  => $request->rate_per_hour ?: $employee->rate_per_hour,
+            'labor_type_id'  => $request->labor_type_id ?: $employee->labor_type_id,
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
-        ], $this->profileData($request));
+        ], $this->profileData($request), $identity);
         $updateData = Employee::withoutMissingColumns($updateData);
 
         if ($request->hasFile('photo')) {
@@ -168,6 +164,91 @@ class EmployeeController extends Controller
     }
 
     // ── Worker profile (Register Employee form) ───────────────────────────────
+
+    /**
+     * Rules shared by the forms that can post name parts and a contract.
+     *
+     * Two forms reach store()/update(): the full page, which posts
+     * first/middle/last, and the quick-edit modal on Register & Manage, which
+     * posts a single `name`. Either is acceptable, neither is required on its
+     * own — hence required_without on both sides.
+     *
+     * Labor type and hourly rate are required only for a worker this payroll
+     * actually pays. A contractual worker has neither: they are settled
+     * against a contract total, so the form hides both fields and there is
+     * nothing to validate.
+     */
+    private function identityRules(Request $request): array
+    {
+        $contractual = $request->input('employment_type') === Employee::EMPLOYMENT_CONTRACTUAL;
+
+        return [
+            'name'        => 'required_without:first_name|nullable|string|max:255',
+            'first_name'  => 'required_without:name|nullable|string|max:100',
+            'middle_name' => 'nullable|string|max:100',
+            'last_name'   => 'required_with:first_name|nullable|string|max:100',
+
+            'labor_type_id' => $contractual
+                ? 'nullable|exists:labor_types,id'
+                : 'required|exists:labor_types,id',
+            'rate_per_hour' => $contractual
+                ? 'nullable|numeric|min:0'
+                : 'required|numeric|min:0.01',
+
+            'employment_type' => ['nullable', Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
+            'contract_rate'   => ['nullable', 'numeric', 'min:0'],
+            'end_of_contract' => ['nullable', 'date'],
+        ];
+    }
+
+    /**
+     * Name, name parts, and the pay fields that depend on employment type.
+     *
+     * `name` stays the single value the rest of the app reads, so it is
+     * composed from the parts whenever they are posted and left untouched
+     * when they are not.
+     */
+    private function identityData(Request $request, ?Employee $employee = null): array
+    {
+        $contractual = $request->input('employment_type', $employee?->employment_type)
+            === Employee::EMPLOYMENT_CONTRACTUAL;
+
+        $data = [];
+
+        if ($request->filled('first_name')) {
+            $data['first_name']  = trim($request->input('first_name'));
+            $data['middle_name'] = trim((string) $request->input('middle_name')) ?: null;
+            $data['last_name']   = trim((string) $request->input('last_name')) ?: null;
+            $data['name']        = Employee::composeName(
+                $data['first_name'], $data['middle_name'], $data['last_name']
+            );
+        } elseif ($request->filled('name')) {
+            $data['name'] = trim($request->input('name'));
+        }
+
+        if ($contractual) {
+            // No labor type and no hourly rate: the form does not offer them,
+            // and payroll does not pay this worker by the hour.
+            $data['labor_type_id'] = null;
+            $data['rate_per_hour'] = 0;
+
+            // Only what this form actually submitted. The quick-edit modal on
+            // Register & Manage posts neither, and must not clear a worker's
+            // agreed contract as a side effect of correcting something else.
+            if ($request->has('contract_rate')) {
+                $data['contract_rate'] = $request->filled('contract_rate') ? (float) $request->contract_rate : null;
+            }
+            if ($request->has('end_of_contract')) {
+                $data['end_of_contract'] = $request->input('end_of_contract') ?: null;
+            }
+        } elseif ($request->has('employment_type')) {
+            // Switched to Regular on a form that offers the choice — the
+            // contract no longer applies.
+            $data['end_of_contract'] = null;
+        }
+
+        return $data;
+    }
 
     /**
      * Validation for the resume-style half of the registration form.

@@ -29,6 +29,13 @@ class Employee extends Model
         self::EMPLOYMENT_CONTRACTUAL  => 'Contractual',
     ];
 
+    /**
+     * Columns the controller writes through identityData() rather than the
+     * generic profile mapping — `name` is composed from the parts, and the
+     * contract end date depends on the employment type.
+     */
+    public const IDENTITY_FIELDS = ['first_name', 'middle_name', 'last_name', 'end_of_contract'];
+
     /** Every profile column the Register Employee form writes. */
     public const PROFILE_FIELDS = [
         'birth_date', 'birth_place', 'gender', 'civil_status', 'nationality', 'religion', 'blood_type',
@@ -46,6 +53,7 @@ class Employee extends Model
         'name', 'rate_per_hour', 'position', 'employment_type', 'contract_rate', 'project_id', 'labor_type_id',
         'site_id', 'kiosk_id', 'status', 'vale', 'fingerprint_id', 'photo', 'archived_at',
         ...self::PROFILE_FIELDS,
+        ...self::IDENTITY_FIELDS,
     ];
 
     protected $casts = [
@@ -55,8 +63,9 @@ class Employee extends Model
         'archived_at'   => 'datetime',
         'created_at'    => 'datetime',
         'updated_at'    => 'datetime',
-        'birth_date'    => 'date',
-        'date_hired'    => 'date',
+        'birth_date'      => 'date',
+        'date_hired'      => 'date',
+        'end_of_contract' => 'date',
         // Stored as JSON so a worker can carry several of each without
         // needing a child table per list.
         'education'       => 'array',
@@ -209,7 +218,11 @@ class Employee extends Model
      */
     public static function withoutMissingColumns(array $attributes): array
     {
-        $guarded = array_merge(['employment_type', 'contract_rate'], self::PROFILE_FIELDS);
+        $guarded = array_merge(
+            ['employment_type', 'contract_rate'],
+            self::PROFILE_FIELDS,
+            self::IDENTITY_FIELDS
+        );
 
         foreach ($guarded as $column) {
             if (array_key_exists($column, $attributes) && ! self::tableHas($column)) {
@@ -265,27 +278,62 @@ class Employee extends Model
         return self::EMPLOYMENT_TYPES[$this->employment_type] ?? self::EMPLOYMENT_TYPES[self::EMPLOYMENT_DAILY];
     }
 
-    /**
-     * The flat amount this worker earns for each day present, or null when the
-     * usual hours x rate computation applies.
-     *
-     * Both conditions matter: tagging someone contractual without agreeing an
-     * amount must not silently drop their pay to zero.
-     */
-    public function contractDayPay(): ?float
-    {
-        if (! $this->isContractual()) {
-            return null;
-        }
-        $rate = (float) ($this->contract_rate ?? 0);
-
-        return $rate > 0 ? $rate : null;
-    }
-
     /** True when the worker is engaged on a contract rather than paid per day. */
     public function isContractual(): bool
     {
         return $this->employment_type === self::EMPLOYMENT_CONTRACTUAL;
+    }
+
+    /**
+     * Contractual workers are not paid through this payroll.
+     *
+     * `contract_rate` is the agreed total for the whole project, not a rate per
+     * day, so there is no per-day figure to derive from it — and deriving one
+     * would be dangerous. This used to return `contract_rate` as the pay for
+     * each day present, which meant that once the field held a project total,
+     * a worker earned the entire contract again on every day they clocked in.
+     *
+     * Their attendance is still recorded and their hours still reported; only
+     * the money is left out, to be settled against the contract separately.
+     */
+    public function isExcludedFromPayroll(): bool
+    {
+        return $this->isContractual();
+    }
+
+    /** The full name, composed from the parts when they are on file. */
+    public static function composeName(?string $first, ?string $middle, ?string $last): string
+    {
+        return trim(preg_replace('/\s+/', ' ', implode(' ', array_filter([
+            trim((string) $first),
+            trim((string) $middle),
+            trim((string) $last),
+        ]))));
+    }
+
+    /**
+     * Best-effort split of a single stored name into parts.
+     *
+     * Only used to pre-fill the edit form for workers registered before the
+     * name was captured in pieces — the kiosk still creates workers with a
+     * bare name. One word is a first name; two are first and last; anything
+     * more puts the middle words in the middle. It will not always be right,
+     * which is why the admin sees the result in editable fields rather than it
+     * being written to the record behind their back.
+     */
+    public static function splitName(?string $name): array
+    {
+        $parts = preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        return match (count($parts)) {
+            0       => ['first_name' => '', 'middle_name' => '', 'last_name' => ''],
+            1       => ['first_name' => $parts[0], 'middle_name' => '', 'last_name' => ''],
+            default => [
+                'first_name'  => array_shift($parts),
+                'last_name'   => array_pop($parts),
+                'middle_name' => implode(' ', $parts),
+            ],
+        };
     }
 
     /**

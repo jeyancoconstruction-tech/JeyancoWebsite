@@ -24,7 +24,9 @@
 
     <div class="row">
         <div class="col-12">
-            <form action="{{ route('employees.update', $employee->id) }}" method="POST">
+            {{-- enctype matters: without it the browser posts no file at all and
+                 a chosen photo is silently dropped. --}}
+            <form action="{{ route('employees.update', $employee->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -37,26 +39,50 @@
                         </div>
                     </div>
 
+                    @php
+                        // Workers registered before the name was captured in
+                        // pieces — and everyone the kiosk creates — have only
+                        // `name`. Split it so the fields are not blank, and let
+                        // the admin correct it.
+                        $parts = \App\Models\Employee::splitName($employee->name);
+                        $first  = old('first_name',  $employee->first_name  ?: $parts['first_name']);
+                        $middle = old('middle_name', $employee->middle_name ?: $parts['middle_name']);
+                        $last   = old('last_name',   $employee->last_name   ?: $parts['last_name']);
+                    @endphp
+
                     <div class="row g-3">
-                        {{-- Full Name --}}
-                        <div class="col-md-6 col-lg-5">
-                            <label class="ep-label" for="name">Full Name <span class="ep-req">*</span></label>
-                            <input type="text" id="name" name="name" value="{{ $employee->name }}"
-                                   class="form-control" placeholder="Enter full name" required>
+                        {{-- Name, in parts. `name` is composed from these on save. --}}
+                        <div class="col-md-4 col-lg-3">
+                            <label class="ep-label" for="first_name">First Name <span class="ep-req">*</span></label>
+                            <input type="text" id="first_name" name="first_name" value="{{ $first }}"
+                                   class="form-control @error('first_name') is-invalid @enderror" required>
+                            @error('first_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-4 col-lg-2">
+                            <label class="ep-label" for="middle_name">Middle Name</label>
+                            <input type="text" id="middle_name" name="middle_name" value="{{ $middle }}"
+                                   class="form-control @error('middle_name') is-invalid @enderror">
+                            @error('middle_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-4 col-lg-3">
+                            <label class="ep-label" for="last_name">Last Name <span class="ep-req">*</span></label>
+                            <input type="text" id="last_name" name="last_name" value="{{ $last }}"
+                                   class="form-control @error('last_name') is-invalid @enderror" required>
+                            @error('last_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
                         {{-- Position / Job Title. Descriptive only — `position` is
                              derived from the labor type and is what payroll reads. --}}
-                        <div class="col-md-6 col-lg-4">
+                        <div class="col-md-6 col-lg-2">
                             <label class="ep-label" for="job_title">Position / Job Title</label>
                             <input type="text" id="job_title" name="job_title"
                                    value="{{ old('job_title', $employee->job_title) }}"
                                    class="form-control @error('job_title') is-invalid @enderror"
-                                   placeholder="e.g. Mason, Site Foreman">
+                                   placeholder="e.g. Mason">
                             @error('job_title')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
-                        <div class="col-md-6 col-lg-3">
+                        <div class="col-md-6 col-lg-2">
                             <label class="ep-label" for="date_hired">Date Hired</label>
                             <input type="date" id="date_hired" name="date_hired"
                                    value="{{ old('date_hired', $employee->date_hired?->format('Y-m-d')) }}"
@@ -64,35 +90,8 @@
                             @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
-                        {{-- Labor Type --}}
-                        <div class="col-md-6 col-lg-5">
-                            <label class="ep-label" for="labor_type_select">Labor Type <span class="ep-req">*</span></label>
-                            <select id="labor_type_select" name="labor_type_id" class="form-select" required>
-                                <option value="">— Select Labor Type —</option>
-                                @foreach($laborTypes as $labor)
-                                    <option value="{{ $labor->id }}"
-                                            data-daily="{{ $labor->daily_rate }}"
-                                            {{ $employee->labor_type_id == $labor->id ? 'selected' : '' }}>
-                                        {{ $labor->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        {{-- Rate per Hour (auto-calculated) --}}
+                        {{-- Employee type drives the fields below it. --}}
                         <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="rate_per_hour">Rate Per Hour</label>
-                            <input type="number" step="0.01" id="rate_per_hour" name="rate_per_hour"
-                                   value="{{ $employee->rate_per_hour }}"
-                                   class="form-control" style="cursor:not-allowed;" readonly>
-                            <span class="ep-hint">Calculated from Labor Type (Daily ÷ 8).</span>
-                        </div>
-
-                        {{-- Employment type. Naitatala lang ito sa ngayon —
-                             PAREHO pa rin ang computation ng sweldo para sa
-                             arawan at contractual hangga't wala pang pinal na
-                             panuntunan mula sa consultant. --}}
-                        <div class="col-md-6 col-lg-2">
                             <label class="ep-label" for="employment_type">Employee Type</label>
                             <select name="employment_type" id="employment_type"
                                     class="form-select @error('employment_type') is-invalid @enderror">
@@ -106,18 +105,54 @@
                             @error('employment_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
-                        {{-- Contract rate. Ginagamit LANG kapag Contractual ang napili:
-                             flat na halaga kada araw na pumasok, walang OT at
-                             walang SSS/PhilHealth/Pag-IBIG. Kapag walang laman,
-                             arawan pa rin ang computation kahit naka-tag. --}}
-                        <div class="col-md-6 col-lg-2" id="contract_rate_wrap">
-                            <label class="ep-label" for="contract_rate">Contract Rate</label>
+                        {{-- ── Regular only ── --}}
+                        <div class="col-md-6 col-lg-4 js-regular-only">
+                            <label class="ep-label" for="labor_type_select">Labor Type <span class="ep-req">*</span></label>
+                            <select id="labor_type_select" name="labor_type_id" class="form-select">
+                                <option value="">— Select Labor Type —</option>
+                                @foreach($laborTypes as $labor)
+                                    <option value="{{ $labor->id }}"
+                                            data-daily="{{ $labor->daily_rate }}"
+                                            {{ $employee->labor_type_id == $labor->id ? 'selected' : '' }}>
+                                        {{ $labor->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 col-lg-2 js-regular-only">
+                            <label class="ep-label" for="rate_per_hour">Rate Per Hour</label>
+                            <input type="number" step="0.01" id="rate_per_hour" name="rate_per_hour"
+                                   value="{{ $employee->rate_per_hour }}"
+                                   class="form-control" style="cursor:not-allowed;" readonly>
+                            <span class="ep-hint">Calculated from Labor Type (Daily ÷ 8).</span>
+                        </div>
+
+                        {{-- ── Contractual only ── --}}
+                        <div class="col-md-6 col-lg-3 js-contract-only" hidden>
+                            <label class="ep-label" for="contract_rate">Contract Amount</label>
                             <input type="number" step="0.01" min="0" name="contract_rate" id="contract_rate"
                                    class="form-control @error('contract_rate') is-invalid @enderror"
                                    value="{{ old('contract_rate', $employee->contract_rate) }}"
-                                   placeholder="1200.00">
+                                   placeholder="300000.00">
                             @error('contract_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <span class="ep-hint">Flat kada araw na pumasok.</span>
+                            <span class="ep-hint">Total for the whole project.</span>
+                        </div>
+
+                        <div class="col-md-6 col-lg-3 js-contract-only" hidden>
+                            <label class="ep-label" for="end_of_contract">End of Contract</label>
+                            <input type="date" id="end_of_contract" name="end_of_contract"
+                                   value="{{ old('end_of_contract', $employee->end_of_contract?->format('Y-m-d')) }}"
+                                   class="form-control @error('end_of_contract') is-invalid @enderror">
+                            @error('end_of_contract')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="col-12 js-contract-only" hidden>
+                            <p class="ep-note">
+                                <i class="fas fa-circle-info"></i>
+                                Contractual workers are settled against their contract, so this payroll
+                                computes no wages for them. Their attendance and hours are still recorded.
+                            </p>
                         </div>
 
                         {{-- Site Assignment --}}
@@ -186,6 +221,14 @@
                                    class="form-control ep-mono" readonly>
                             <input type="hidden" name="fingerprint_id" value="{{ $employee->fingerprint_id }}">
                             <span class="ep-hint">Cannot be changed here.</span>
+                        </div>
+
+                        {{-- Photo — camera or gallery, see _photo_picker --}}
+                        <div class="col-md-6 col-lg-3">
+                            <label class="ep-label">Profile Photo</label>
+                            @include('employees._photo_picker', [
+                                'currentPhoto' => $employee->photo ? asset('storage/' . $employee->photo) : null,
+                            ])
                         </div>
 
                         {{-- Current labor type info card --}}
@@ -314,16 +357,6 @@
 })();
 </script>
 
-{{-- Itago ang contract rate kapag Arawan — walang silbi ito doon. --}}
-<script>
-(function () {
-    const sel  = document.querySelector('select[name="employment_type"]');
-    const wrap = document.getElementById('contract_rate_wrap');
-    if (!sel || !wrap) return;
-    const sync = () => { wrap.style.display = sel.value === 'contractual' ? '' : 'none'; };
-    sel.addEventListener('change', sync);
-    sync();
-})();
-</script>
+@include('employees._employment_type_toggle')
 
 @endsection

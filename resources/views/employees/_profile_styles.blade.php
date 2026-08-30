@@ -94,6 +94,33 @@
 }
 .ep-photo-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 
+/* ── Camera modal ─────────────────────────────────────────────────────── */
+/* Deliberately dark in both themes — a viewfinder reads better against black. */
+.ep-cam { border: none; border-radius: var(--radius-lg, 6px); overflow: hidden; }
+.ep-cam-head { background: var(--brand, #1e5c9b); color: #fff; border: none; padding: 12px 18px; }
+.ep-cam-body { background: #000; position: relative; }
+.ep-cam-video { width: 100%; display: block; max-height: 380px; object-fit: cover; }
+.ep-cam-error {
+    display: none; flex-direction: column; align-items: center; gap: 8px;
+    padding: 40px 24px; text-align: center; color: #f87171;
+}
+.ep-cam-error i { font-size: 2.4rem; }
+.ep-cam-error small { color: #94a3b8; }
+.ep-cam-foot { border: none; background: #0f172a; justify-content: center; gap: 10px; padding: 12px 18px; }
+
+/* ── Inline note ──────────────────────────────────────────────────────── */
+.ep-note {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin: 2px 0 0;
+    padding: 10px 12px;
+    font-size: .8rem; line-height: 1.45;
+    color: var(--text-secondary, #66707c);
+    background: var(--brand-subtle, #edf3f9);
+    border: 1px solid var(--border, #e3e6e9);
+    border-radius: var(--radius-md, 6px);
+}
+.ep-note i { color: var(--brand, #1e5c9b); margin-top: 2px; flex: none; }
+
 /* ── Sticky action bar ────────────────────────────────────────────────── */
 /* The form is long; keep Save reachable without scrolling back down. */
 .ep-actions {

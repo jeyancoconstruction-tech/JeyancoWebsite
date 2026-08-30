@@ -10,7 +10,7 @@
         <div>
             <h2 class="page-title mb-1">Register Employee</h2>
             <p class="text-muted mb-0" style="font-size:.875rem;">
-                Only Full Name, Labor Type and Rate are required — the rest of the profile can be completed later.
+                Only the name and the pay fields are required — the rest of the profile can be completed later.
             </p>
         </div>
         <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
@@ -42,37 +42,67 @@
                     </div>
 
                     <div class="row g-3">
-                        {{-- Full Name --}}
-                        <div class="col-md-6 col-lg-5">
-                            <label class="ep-label" for="name">Full Name <span class="ep-req">*</span></label>
-                            <input type="text" id="name" name="name" value="{{ old('name') }}"
-                                   class="form-control @error('name') is-invalid @enderror"
-                                   placeholder="Enter full name" required>
-                            @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        {{-- Name, in parts. `name` itself is composed from these
+                             on save — it stays what the rest of the app reads. --}}
+                        <div class="col-md-4 col-lg-3">
+                            <label class="ep-label" for="first_name">First Name <span class="ep-req">*</span></label>
+                            <input type="text" id="first_name" name="first_name" value="{{ old('first_name') }}"
+                                   class="form-control @error('first_name') is-invalid @enderror"
+                                   placeholder="Juan" required>
+                            @error('first_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-4 col-lg-2">
+                            <label class="ep-label" for="middle_name">Middle Name</label>
+                            <input type="text" id="middle_name" name="middle_name" value="{{ old('middle_name') }}"
+                                   class="form-control @error('middle_name') is-invalid @enderror"
+                                   placeholder="Santos">
+                            @error('middle_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-md-4 col-lg-3">
+                            <label class="ep-label" for="last_name">Last Name <span class="ep-req">*</span></label>
+                            <input type="text" id="last_name" name="last_name" value="{{ old('last_name') }}"
+                                   class="form-control @error('last_name') is-invalid @enderror"
+                                   placeholder="Dela Cruz" required>
+                            @error('last_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
                         {{-- Position / Job Title. Descriptive only — `position` is
                              derived from the labor type and is what payroll reads. --}}
-                        <div class="col-md-6 col-lg-4">
+                        <div class="col-md-6 col-lg-2">
                             <label class="ep-label" for="job_title">Position / Job Title</label>
                             <input type="text" id="job_title" name="job_title" value="{{ old('job_title') }}"
                                    class="form-control @error('job_title') is-invalid @enderror"
-                                   placeholder="e.g. Mason, Site Foreman">
+                                   placeholder="e.g. Mason">
                             @error('job_title')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
-                        <div class="col-md-6 col-lg-3">
+                        <div class="col-md-6 col-lg-2">
                             <label class="ep-label" for="date_hired">Date Hired</label>
                             <input type="date" id="date_hired" name="date_hired" value="{{ old('date_hired') }}"
                                    class="form-control @error('date_hired') is-invalid @enderror">
                             @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
-                        {{-- Labor Type --}}
-                        <div class="col-md-6 col-lg-5">
+                        {{-- Employee type drives the three fields below it. --}}
+                        <div class="col-md-6 col-lg-3">
+                            <label class="ep-label" for="employment_type">Employee Type <span class="ep-req">*</span></label>
+                            <select name="employment_type" id="employment_type"
+                                    class="form-select @error('employment_type') is-invalid @enderror">
+                                @foreach(\App\Models\Employee::EMPLOYMENT_TYPES as $val => $label)
+                                    <option value="{{ $val }}"
+                                        {{ old('employment_type', \App\Models\Employee::EMPLOYMENT_DAILY) === $val ? 'selected' : '' }}>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('employment_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+
+                        {{-- ── Regular only: paid by the hour off a labor type ── --}}
+                        <div class="col-md-6 col-lg-4 js-regular-only">
                             <label class="ep-label" for="labor_type_selector">Labor Type <span class="ep-req">*</span></label>
                             <select name="labor_type_id" id="labor_type_selector"
-                                    class="form-select @error('labor_type_id') is-invalid @enderror" required>
+                                    class="form-select @error('labor_type_id') is-invalid @enderror">
                                 <option value="">— Select Labor Type —</option>
                                 @foreach($laborTypes as $type)
                                     <option value="{{ $type->id }}"
@@ -86,47 +116,41 @@
                             @error('labor_type_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
-                        {{-- Rate per Hour (auto-filled) --}}
-                        <div class="col-md-6 col-lg-3">
+                        <div class="col-md-6 col-lg-2 js-regular-only">
                             <label class="ep-label" for="rate_per_hour">Rate Per Hour <span class="ep-req">*</span></label>
                             <input type="number" step="0.01" id="rate_per_hour" name="rate_per_hour"
                                    value="{{ old('rate_per_hour') }}"
                                    class="form-control @error('rate_per_hour') is-invalid @enderror"
-                                   placeholder="0.00" required>
+                                   placeholder="0.00">
                             @error('rate_per_hour')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             <span class="ep-hint">Auto-filled from the labor type.</span>
                         </div>
 
-                        {{-- Employment type. Naitatala lang ito sa ngayon —
-                             PAREHO pa rin ang computation ng sweldo para sa
-                             arawan at contractual hangga't wala pang pinal na
-                             panuntunan mula sa consultant. --}}
-                        <div class="col-md-6 col-lg-2">
-                            <label class="ep-label" for="employment_type">Employee Type</label>
-                            <select name="employment_type" id="employment_type"
-                                    class="form-select @error('employment_type') is-invalid @enderror">
-                                @foreach(\App\Models\Employee::EMPLOYMENT_TYPES as $val => $label)
-                                    <option value="{{ $val }}"
-                                        {{ old('employment_type', \App\Models\Employee::EMPLOYMENT_DAILY) === $val ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('employment_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-
-                        {{-- Contract rate. Ginagamit LANG kapag Contractual ang napili:
-                             flat na halaga kada araw na pumasok, walang OT at
-                             walang SSS/PhilHealth/Pag-IBIG. Kapag walang laman,
-                             arawan pa rin ang computation kahit naka-tag. --}}
-                        <div class="col-md-6 col-lg-2" id="contract_rate_wrap">
-                            <label class="ep-label" for="contract_rate">Contract Rate</label>
+                        {{-- ── Contractual only ── --}}
+                        <div class="col-md-6 col-lg-3 js-contract-only" hidden>
+                            <label class="ep-label" for="contract_rate">Contract Amount</label>
                             <input type="number" step="0.01" min="0" name="contract_rate" id="contract_rate"
                                    class="form-control @error('contract_rate') is-invalid @enderror"
-                                   value="{{ old('contract_rate', null) }}"
-                                   placeholder="1200.00">
+                                   value="{{ old('contract_rate') }}"
+                                   placeholder="300000.00">
                             @error('contract_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <span class="ep-hint">Flat kada araw na pumasok.</span>
+                            <span class="ep-hint">Total for the whole project.</span>
+                        </div>
+
+                        <div class="col-md-6 col-lg-3 js-contract-only" hidden>
+                            <label class="ep-label" for="end_of_contract">End of Contract</label>
+                            <input type="date" id="end_of_contract" name="end_of_contract"
+                                   value="{{ old('end_of_contract') }}"
+                                   class="form-control @error('end_of_contract') is-invalid @enderror">
+                            @error('end_of_contract')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="col-12 js-contract-only" hidden>
+                            <p class="ep-note">
+                                <i class="fas fa-circle-info"></i>
+                                Contractual workers are settled against their contract, so this payroll
+                                computes no wages for them. Their attendance and hours are still recorded.
+                            </p>
                         </div>
 
                         {{-- Site Assignment --}}
@@ -192,34 +216,10 @@
                             <span class="ep-hint">Next free ID pre-filled. Clear to auto-assign.</span>
                         </div>
 
-                        {{-- Photo --}}
+                        {{-- Photo — camera or gallery, see _photo_picker --}}
                         <div class="col-md-6 col-lg-3">
-                            <label class="ep-label">Photo <span class="ep-optional">(optional)</span></label>
-                            <div id="photoBox" class="ep-photo">
-                                <div id="photoPlaceholder" class="ep-photo-empty">
-                                    <i class="fas fa-user-circle"></i>
-                                </div>
-                                <img id="photoPreviewImg" src="" alt="Preview" class="ep-photo-img" style="display:none;">
-
-                                <div class="ep-photo-actions">
-                                    <button type="button" id="openCameraBtn" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-camera me-1"></i>Camera
-                                    </button>
-                                    <button type="button" id="openGalleryBtn" class="btn btn-sm btn-outline-secondary">
-                                        <i class="fas fa-images me-1"></i>Gallery
-                                    </button>
-                                    <button type="button" id="photoRemoveBtn" class="btn btn-sm btn-outline-danger" style="display:none;">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <input type="file" id="galleryInput" name="photo"
-                                   accept="image/jpg,image/jpeg,image/png"
-                                   class="@error('photo') is-invalid @enderror"
-                                   style="display:none;">
-                            @error('photo')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <span class="ep-hint">JPG or PNG, max 2 MB.</span>
+                            <label class="ep-label">Profile Photo <span class="ep-optional">(optional)</span></label>
+                            @include('employees._photo_picker')
                         </div>
                     </div>
                 </div>
@@ -227,7 +227,7 @@
                 @include('employees._profile_fields')
 
                 <div class="ep-actions">
-                    <p class="ep-actions-note">Only Full Name, Labor Type and Rate are required.</p>
+                    <p class="ep-actions-note">First and last name are required, plus the pay fields for the chosen employee type.</p>
                     <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">Cancel</a>
                     <button type="submit" class="btn btn-primary fw-bold px-4">
                         <i class="fas fa-user-plus me-2"></i>Register Employee
@@ -334,147 +334,6 @@
 })();
 </script>
 
-{{-- Camera modal --}}
-<div class="modal fade" id="cameraModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
-        <div class="modal-content" style="border-radius:16px;overflow:hidden;border:none;">
-            <div class="modal-header" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border:none;padding:14px 20px;">
-                <h6 class="modal-title mb-0 fw-bold" id="cameraModalLabel">
-                    <i class="fas fa-camera me-2"></i>Take Photo
-                </h6>
-                <button type="button" class="btn-close btn-close-white" id="cameraCloseBtn" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0" style="background:#000;position:relative;">
-                <video id="cameraStream" autoplay playsinline muted
-                       style="width:100%;display:block;max-height:380px;object-fit:cover;"></video>
-                <canvas id="cameraCanvas" style="display:none;"></canvas>
-                <div id="cameraError" style="display:none;padding:40px 24px;text-align:center;color:#f87171;">
-                    <i class="fas fa-video-slash" style="font-size:2.5rem;margin-bottom:12px;display:block;"></i>
-                    <span id="cameraErrorMsg">Camera not available.</span>
-                    <div style="margin-top:12px;font-size:12px;color:#94a3b8;">Use the Gallery option instead.</div>
-                </div>
-            </div>
-            <div class="modal-footer" style="border:none;background:#0f172a;justify-content:center;gap:10px;padding:14px 20px;">
-                <button type="button" id="captureBtn"
-                        style="background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer;">
-                    <i class="fas fa-circle me-2" style="color:#ef4444;font-size:10px;"></i>Capture
-                </button>
-                <button type="button" data-bs-dismiss="modal"
-                        style="background:rgba(255,255,255,.1);color:#e2e8f0;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;">
-                    Cancel
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-(function () {
-    const galleryInput   = document.getElementById('galleryInput');
-    const openCameraBtn  = document.getElementById('openCameraBtn');
-    const openGalleryBtn = document.getElementById('openGalleryBtn');
-    const photoPreview   = document.getElementById('photoPreviewImg');
-    const placeholder    = document.getElementById('photoPlaceholder');
-    const removeBtn      = document.getElementById('photoRemoveBtn');
-    const cameraStream   = document.getElementById('cameraStream');
-    const canvas         = document.getElementById('cameraCanvas');
-    const captureBtn     = document.getElementById('captureBtn');
-    const cameraModal    = document.getElementById('cameraModal');
-    const cameraError    = document.getElementById('cameraError');
-    const cameraErrorMsg = document.getElementById('cameraErrorMsg');
-    const bsModal        = new bootstrap.Modal(cameraModal);
-    let stream           = null;
-
-    function showPreview(url) {
-        photoPreview.src            = url;
-        photoPreview.style.display  = 'block';
-        placeholder.style.display   = 'none';
-        removeBtn.style.display     = '';
-    }
-
-    function clearPreview() {
-        photoPreview.src            = '';
-        photoPreview.style.display  = 'none';
-        placeholder.style.display   = 'flex';
-        removeBtn.style.display     = 'none';
-        galleryInput.value          = '';
-    }
-
-    // Gallery — open file picker
-    openGalleryBtn.addEventListener('click', () => galleryInput.click());
-    galleryInput.addEventListener('change', () => {
-        if (galleryInput.files[0]) {
-            showPreview(URL.createObjectURL(galleryInput.files[0]));
-        }
-    });
-
-    // Remove selected photo
-    removeBtn.addEventListener('click', clearPreview);
-
-    // Camera — open getUserMedia stream
-    openCameraBtn.addEventListener('click', async () => {
-        cameraError.style.display  = 'none';
-        cameraStream.style.display = 'block';
-        captureBtn.disabled        = true;
-        bsModal.show();
-
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-                audio: false,
-            });
-            cameraStream.srcObject = stream;
-            cameraStream.onloadedmetadata = () => { captureBtn.disabled = false; };
-        } catch (e) {
-            cameraStream.style.display = 'none';
-            cameraError.style.display  = 'flex';
-            cameraError.style.flexDirection = 'column';
-            cameraError.style.alignItems = 'center';
-            cameraErrorMsg.textContent =
-                e.name === 'NotAllowedError'  ? 'Camera access was denied.' :
-                e.name === 'NotFoundError'    ? 'No camera found on this device.' :
-                'Could not open camera (' + e.name + ').';
-            captureBtn.disabled = true;
-        }
-    });
-
-    // Stop camera when modal closes
-    cameraModal.addEventListener('hidden.bs.modal', () => {
-        if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-        cameraStream.srcObject     = null;
-        cameraStream.style.display = 'block';
-        cameraError.style.display  = 'none';
-        captureBtn.disabled        = false;
-    });
-
-    // Capture snapshot → convert to File → set on galleryInput
-    captureBtn.addEventListener('click', () => {
-        if (!stream) return;
-        canvas.width  = cameraStream.videoWidth  || 640;
-        canvas.height = cameraStream.videoHeight || 480;
-        canvas.getContext('2d').drawImage(cameraStream, 0, 0);
-        canvas.toBlob(blob => {
-            const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
-            const dt   = new DataTransfer();
-            dt.items.add(file);
-            galleryInput.files = dt.files;
-            showPreview(URL.createObjectURL(blob));
-            bsModal.hide();
-        }, 'image/jpeg', 0.92);
-    });
-})();
-</script>
-
-{{-- Itago ang contract rate kapag Arawan — walang silbi ito doon. --}}
-<script>
-(function () {
-    const sel  = document.querySelector('select[name="employment_type"]');
-    const wrap = document.getElementById('contract_rate_wrap');
-    if (!sel || !wrap) return;
-    const sync = () => { wrap.style.display = sel.value === 'contractual' ? '' : 'none'; };
-    sel.addEventListener('change', sync);
-    sync();
-})();
-</script>
+@include('employees._employment_type_toggle')
 
 @endsection

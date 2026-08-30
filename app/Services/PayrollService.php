@@ -60,8 +60,6 @@ class PayrollService
         }
         $records = $query->get();
 
-        $this->applyContractPay($records);
-
         $weeks = $this->groupByWeek($records, $cfg);
 
         return [
@@ -72,47 +70,6 @@ class PayrollService
     }
 
     /**
-     * Work out what each attendance row is worth to a contractual worker, and
-     * stamp it on the row so every grouping below reads the same figure.
-     *
-     * A contract pays for the DAY, not the hours — so eleven hours earns the
-     * same as six, and there is no overtime to add. Attendance, though, is
-     * stored one row per session: a worker who clocks AM and PM produces two
-     * rows for a single day. Paying the flat rate on each row would pay them
-     * twice for that day, so the day's rate is split across the sessions that
-     * actually recorded a time-in. The parts add back up to exactly one day.
-     *
-     * Nothing is stamped for a daily worker, or for a contractual one with no
-     * agreed rate — those rows fall through to the usual hours x rate path.
-     */
-    private function applyContractPay($records): void
-    {
-        foreach ($records->groupBy('employee_id') as $empRecords) {
-            $employee = optional($empRecords->first())->employee;
-            $dayPay   = $employee?->contractDayPay();
-
-            if ($dayPay === null) {
-                continue;
-            }
-
-            $byDate = $empRecords->groupBy(fn ($r) => Carbon::parse($r->date)->toDateString());
-
-            foreach ($byDate as $dayRecords) {
-                $paying = $dayRecords->filter(fn ($r) => (bool) $r->time_in);
-                $count  = $paying->count();
-
-                if ($count === 0) {
-                    continue;   // absent that day — a contract still pays nothing
-                }
-
-                $share = $dayPay / $count;
-                foreach ($paying as $rec) {
-                    $rec->contract_pay = $share;
-                }
-            }
-        }
-    }
-
     /**
      * Per-record payroll breakdown — identical math used by every grouping.
      */
@@ -154,16 +111,18 @@ class PayrollService
         $rate      = $dailyRate !== null ? ($dailyRate / 8) : (float) ($employee->rate_per_hour ?? 0);
         $ot_rate   = $rate * $cfg['otMultiplier'];
 
-        // A contract pays a flat amount for the day. Hours are still measured
-        // and reported — the office wants to see them — but they no longer
-        // decide the pay, and overtime does not apply.
-        $contractPay = $rec->contract_pay ?? null;
-        $onContract  = $contractPay !== null;
+        // Contractual workers are settled against their contract, not through
+        // this payroll. Their hours are still measured and reported — the
+        // office wants to see who was on site — but no money is computed for
+        // them here, and no rate is implied. Everything below multiplies out
+        // to zero from these.
+        $onContract = (bool) $employee?->isExcludedFromPayroll();
 
         if ($onContract) {
-            $basicPay = (float) $contractPay;
-            $otPay    = 0.0;
+            $rate     = 0.0;
             $ot_rate  = 0.0;
+            $basicPay = 0.0;
+            $otPay    = 0.0;
         } else {
             $basicPay = $regular_hours * $rate;
             $otPay    = $ot_hours * $ot_rate;
@@ -203,8 +162,11 @@ class PayrollService
         $pagibigDeduction    = $onContract ? 0.0 : ($gross * $cfg['pagibig']) / 100;
         $autoDeductions      = $sssDeduction + $philhealthDeduction + $pagibigDeduction;
 
-        $vale             = is_numeric($rec->vale) ? $rec->vale : 0;
-        $manualDeductions = is_numeric($rec->deductions) ? $rec->deductions : 0;
+        // An excluded worker earns nothing here, so deducting an advance from
+        // it would report a negative net for someone this payroll does not pay.
+        // Advances against a contract are settled with the contract.
+        $vale             = $onContract ? 0 : (is_numeric($rec->vale) ? $rec->vale : 0);
+        $manualDeductions = $onContract ? 0 : (is_numeric($rec->deductions) ? $rec->deductions : 0);
 
         $totalDeductions = $autoDeductions + $vale + $manualDeductions;
         $net             = $gross - $totalDeductions;
