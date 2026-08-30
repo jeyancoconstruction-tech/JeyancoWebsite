@@ -27,9 +27,13 @@ return new class extends Migration {
             $table->decimal('vale', 8, 2)->default(0);
 
             // SITE SYSTEM
+            // The foreign key lives in a later migration: `sites` is not
+            // created until 2026_06_18, so constraining it here would point at
+            // a table that does not exist yet.
             $table->unsignedBigInteger('site_id')->nullable();
 
             // KIOSK TRACKING
+            // Same story — `kiosks` is not created until 2026_06_29.
             $table->unsignedBigInteger('registered_kiosk_id')->nullable();
 
             // BIOMETRIC
@@ -39,17 +43,6 @@ return new class extends Migration {
             $table->string('photo')->nullable();
 
             $table->timestamps();
-
-            // FOREIGN KEYS
-            $table->foreign('site_id')
-                ->references('id')
-                ->on('sites')
-                ->onDelete('set null');
-
-            $table->foreign('registered_kiosk_id')
-                ->references('id')
-                ->on('kiosks')
-                ->onDelete('set null');
         });
     }
 

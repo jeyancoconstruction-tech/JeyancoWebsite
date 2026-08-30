@@ -23,11 +23,19 @@
     @endif
 
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="custom-card p-4 p-md-5">
-                <form action="{{ route('employees.update', $employee->id) }}" method="POST">
-                    @csrf
-                    @method('PUT')
+        <div class="col-lg-10 col-xl-9">
+            <form action="{{ route('employees.update', $employee->id) }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="ep-section">
+                    <div class="ep-section-head">
+                        <span class="ep-section-icon"><i class="fas fa-helmet-safety"></i></span>
+                        <div>
+                            <h3 class="ep-section-title">Employment &amp; Pay</h3>
+                            <p class="ep-section-sub">What the worker is paid and where they are assigned.</p>
+                        </div>
+                    </div>
 
                     <div class="row g-4">
                         {{-- Full Name --}}
@@ -209,21 +217,23 @@
                         </div>
                         @endif
                     </div>
+                </div>
 
-                    <hr class="my-4">
+                @include('employees._profile_fields', ['employee' => $employee])
 
-                    <div class="d-flex justify-content-end gap-2">
-                        <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
-                        <button type="submit" class="btn fw-bold px-5"
-                                style="background:#3b82f6;color:#fff;border:none;border-radius:8px;">
-                            <i class="fas fa-save me-2"></i>Save Changes
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <div class="d-flex justify-content-end gap-2 mb-4">
+                    <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    <button type="submit" class="btn fw-bold px-5"
+                            style="background:#3b82f6;color:#fff;border:none;border-radius:8px;">
+                        <i class="fas fa-save me-2"></i>Save Changes
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+@include('employees._profile_assets')
 
 <script src="{{ asset('js/site-location-picker.js') }}"></script>
 <script>

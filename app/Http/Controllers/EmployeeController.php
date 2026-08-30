@@ -51,7 +51,7 @@ class EmployeeController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $request->validate(array_merge([
             'name'           => 'required|string|max:255',
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
@@ -60,7 +60,7 @@ class EmployeeController extends Controller
             'site_id'        => 'nullable|exists:sites,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ], [
+        ], $this->profileRules()), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
         ]);
 
@@ -83,7 +83,7 @@ class EmployeeController extends Controller
             $photoPath = $request->file('photo')->store('employees', 'public');
         }
 
-        Employee::create(Employee::withoutMissingColumns([
+        Employee::create(Employee::withoutMissingColumns(array_merge([
             'name'           => $request->name,
             'position'       => $laborType->name,
             'employment_type' => $request->input('employment_type', Employee::EMPLOYMENT_DAILY),
@@ -94,15 +94,17 @@ class EmployeeController extends Controller
             'fingerprint_id' => $fingerprintId,
             'photo'          => $photoPath,
             'status'         => Employee::STATUS_ACTIVE,
-        ]));
+        ], $this->profileData($request))));
 
         EmployeeAlert::fire(auth()->user(), 'new_employee',
             'New Employee Registered',
             $request->name . ' has been added to the system.'
         );
 
-        return redirect()->route('employees.index')
-            ->with('success', 'Employee registered successfully!');
+        // Back to where the Register Employee button was pressed, on the tab
+        // the new worker just landed in.
+        return redirect()->to(route('employees.register') . '#active')
+            ->with('success', $request->name . ' has been registered and activated.');
     }
 
     public function edit($id)
@@ -117,7 +119,7 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
 
-        $request->validate([
+        $request->validate(array_merge([
             'name'           => 'required|string|max:255',
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
@@ -125,7 +127,7 @@ class EmployeeController extends Controller
             'contract_rate'   => ['nullable', 'numeric', 'min:0'],
             'site_id'        => 'nullable|exists:sites,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
-        ], [
+        ], $this->profileRules()), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
         ]);
 
@@ -141,7 +143,7 @@ class EmployeeController extends Controller
             ]);
         }
 
-        $updateData = [
+        $updateData = array_merge([
             'name'           => $request->name,
             'position'       => $laborType->name,
             'employment_type' => $request->input('employment_type', $employee->employment_type ?: Employee::EMPLOYMENT_DAILY),
@@ -150,7 +152,7 @@ class EmployeeController extends Controller
             'labor_type_id'  => $request->labor_type_id,
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
-        ];
+        ], $this->profileData($request));
         $updateData = Employee::withoutMissingColumns($updateData);
 
         if ($request->hasFile('photo')) {
@@ -163,6 +165,135 @@ class EmployeeController extends Controller
         $employee->update($updateData);
 
         return redirect()->route('employees.index')->with('success', 'Employee updated successfully!');
+    }
+
+    // ── Worker profile (Register Employee form) ───────────────────────────────
+
+    /**
+     * Validation for the resume-style half of the registration form.
+     *
+     * Everything here is optional on purpose. A worker the kiosk picked up from
+     * a fingerprint scan has none of it, and payroll must never stall waiting
+     * for a birthday or a barangay — the office completes the profile later.
+     */
+    private function profileRules(): array
+    {
+        return [
+            // Personal
+            'birth_date'   => 'nullable|date|before:today',
+            'birth_place'  => 'nullable|string|max:180',
+            'gender'       => ['nullable', Rule::in(Employee::GENDERS)],
+            'civil_status' => ['nullable', Rule::in(Employee::CIVIL_STATUSES)],
+            'nationality'  => 'nullable|string|max:60',
+            'religion'     => 'nullable|string|max:60',
+            'blood_type'   => 'nullable|string|max:5',
+
+            // Contact
+            'phone'                      => 'nullable|string|max:30',
+            'email'                      => 'nullable|email|max:150',
+            'emergency_contact_name'     => 'nullable|string|max:150',
+            'emergency_contact_relation' => 'nullable|string|max:60',
+            'emergency_contact_phone'    => 'nullable|string|max:30',
+
+            // Address
+            'address_street'   => 'nullable|string|max:200',
+            'address_barangay' => 'nullable|string|max:120',
+            'address_city'     => 'nullable|string|max:120',
+            'address_province' => 'nullable|string|max:120',
+            'address_postal'   => 'nullable|string|max:20',
+
+            // Government IDs
+            'sss_number'        => 'nullable|string|max:40',
+            'philhealth_number' => 'nullable|string|max:40',
+            'pagibig_number'    => 'nullable|string|max:40',
+            'tin_number'        => 'nullable|string|max:40',
+
+            // Job
+            'job_title'  => 'nullable|string|max:150',
+            'date_hired' => 'nullable|date',
+
+            // Education (repeatable)
+            'education'                  => 'nullable|array|max:10',
+            'education.*.level'          => 'nullable|string|max:60',
+            'education.*.school'         => 'nullable|string|max:180',
+            'education.*.course'         => 'nullable|string|max:180',
+            'education.*.year_graduated' => 'nullable|string|max:20',
+
+            // Work experience (repeatable)
+            'work_experience'            => 'nullable|array|max:10',
+            'work_experience.*.company'  => 'nullable|string|max:180',
+            'work_experience.*.position' => 'nullable|string|max:150',
+            'work_experience.*.from'     => 'nullable|string|max:20',
+            'work_experience.*.to'       => 'nullable|string|max:20',
+            'work_experience.*.duties'   => 'nullable|string|max:500',
+
+            'skills' => 'nullable|string|max:1000',
+            'notes'  => 'nullable|string|max:2000',
+        ];
+    }
+
+    /**
+     * The profile columns present in this request, ready to save.
+     *
+     * Only fields the form actually submitted are returned. This matters:
+     * `update()` is reached from two places — the full Edit Employee page,
+     * which posts the whole profile, and the compact quick-edit modal on
+     * Register & Manage, which posts only name, labor type, rate, site and
+     * fingerprint. Mapping every column unconditionally would let that modal
+     * blank a worker's entire profile as a side effect of correcting a rate.
+     *
+     * Within a form that does submit a section, an empty value is a real
+     * clearing and is saved as null. The repeatable sections always post their
+     * blank starter row, so rows with nothing in them are dropped — otherwise
+     * an untouched form would store a worker with three empty schools. An
+     * emptied list becomes null rather than [], so "no education on file"
+     * reads the same whether it was never entered or later cleared.
+     */
+    private function profileData(Request $request): array
+    {
+        $data = [];
+
+        foreach (Employee::PROFILE_FIELDS as $field) {
+            if (in_array($field, ['education', 'work_experience', 'skills'], true)) {
+                continue;                       // handled below
+            }
+            if (! $request->has($field)) {
+                continue;                       // not part of this form
+            }
+            $value = $request->input($field);
+            $data[$field] = ($value === '' || $value === null) ? null : $value;
+        }
+
+        foreach (['education', 'work_experience'] as $list) {
+            if (! $request->has($list)) {
+                continue;
+            }
+
+            $rows = collect($request->input($list, []))
+                ->map(fn ($row) => array_map(
+                    fn ($v) => is_string($v) ? trim($v) : $v,
+                    is_array($row) ? $row : []
+                ))
+                ->reject(fn ($row) => collect($row)->filter(fn ($v) => $v !== '' && $v !== null)->isEmpty())
+                ->values()
+                ->all();
+
+            $data[$list] = $rows ?: null;
+        }
+
+        // Typed as one comma-separated line, kept as a list.
+        if ($request->has('skills')) {
+            $skills = collect(explode(',', (string) $request->input('skills', '')))
+                ->map(fn ($s) => trim($s))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $data['skills'] = $skills ?: null;
+        }
+
+        return $data;
     }
 
     /**

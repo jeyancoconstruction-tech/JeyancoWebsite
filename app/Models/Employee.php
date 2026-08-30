@@ -25,13 +25,27 @@ class Employee extends Model
     public const EMPLOYMENT_CONTRACTUAL = 'contractual';
 
     public const EMPLOYMENT_TYPES = [
-        self::EMPLOYMENT_DAILY        => 'Arawan (daily)',
+        self::EMPLOYMENT_DAILY        => 'Regular',
         self::EMPLOYMENT_CONTRACTUAL  => 'Contractual',
     ];
+
+    /** Every profile column the Register Employee form writes. */
+    public const PROFILE_FIELDS = [
+        'birth_date', 'birth_place', 'gender', 'civil_status', 'nationality', 'religion', 'blood_type',
+        'phone', 'email', 'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
+        'address_street', 'address_barangay', 'address_city', 'address_province', 'address_postal',
+        'sss_number', 'philhealth_number', 'pagibig_number', 'tin_number',
+        'job_title', 'date_hired',
+        'education', 'work_experience', 'skills', 'notes',
+    ];
+
+    public const GENDERS        = ['Male', 'Female'];
+    public const CIVIL_STATUSES = ['Single', 'Married', 'Widowed', 'Separated'];
 
     protected $fillable = [
         'name', 'rate_per_hour', 'position', 'employment_type', 'contract_rate', 'project_id', 'labor_type_id',
         'site_id', 'kiosk_id', 'status', 'vale', 'fingerprint_id', 'photo', 'archived_at',
+        ...self::PROFILE_FIELDS,
     ];
 
     protected $casts = [
@@ -41,6 +55,13 @@ class Employee extends Model
         'archived_at'   => 'datetime',
         'created_at'    => 'datetime',
         'updated_at'    => 'datetime',
+        'birth_date'    => 'date',
+        'date_hired'    => 'date',
+        // Stored as JSON so a worker can carry several of each without
+        // needing a child table per list.
+        'education'       => 'array',
+        'work_experience' => 'array',
+        'skills'          => 'array',
     ];
 
     // ── Relationships ────────────────────────────────────────────────────────
@@ -188,7 +209,9 @@ class Employee extends Model
      */
     public static function withoutMissingColumns(array $attributes): array
     {
-        foreach (['employment_type', 'contract_rate'] as $column) {
+        $guarded = array_merge(['employment_type', 'contract_rate'], self::PROFILE_FIELDS);
+
+        foreach ($guarded as $column) {
             if (array_key_exists($column, $attributes) && ! self::tableHas($column)) {
                 unset($attributes[$column]);
             }
@@ -216,6 +239,24 @@ class Employee extends Model
         }
 
         return $seen[$column];
+    }
+
+    /** The address as one line, skipping the parts that were left blank. */
+    public function getFullAddressAttribute(): string
+    {
+        return collect([
+            $this->address_street,
+            $this->address_barangay,
+            $this->address_city,
+            $this->address_province,
+            $this->address_postal,
+        ])->filter()->implode(', ');
+    }
+
+    /** Age in whole years, or null when no birth date is on file. */
+    public function getAgeAttribute(): ?int
+    {
+        return $this->birth_date?->age;
     }
 
     /** Human label for the employment type. */

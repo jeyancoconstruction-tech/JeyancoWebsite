@@ -35,9 +35,14 @@
                  finger in one click — the whole workforce had to re-enrol, and
                  there was no way to act on just a few. The per-tab select-all
                  below covers the real need without that blast radius. --}}
-            <button type="button" class="rm-btn-primary" id="rmAddBtn">
-                <i class="fas fa-user-plus"></i> Add Manually
-            </button>
+            {{-- Goes to the full registration form rather than the compact
+                 modal: a complete worker profile (personal, contact, address,
+                 education, work history, skills) does not fit in a dialog.
+                 The modal stays for completing kiosk detections and quick
+                 edits, where only pay details change. --}}
+            <a href="{{ route('employees.create') }}" class="rm-btn-primary" id="rmAddBtn">
+                <i class="fas fa-user-plus"></i> Register Employee
+            </a>
         </div>
     </div>
 
@@ -139,7 +144,7 @@
                             </td>
                         </tr>
                     @empty
-                        @include('employees._empty', ['icon' => 'users', 'title' => 'No active employees', 'sub' => 'Complete a pending detection or add one manually to get started.'])
+                        @include('employees._empty', ['icon' => 'users', 'title' => 'No active employees', 'sub' => 'Complete a pending detection, or use Register Employee to get started.'])
                     @endforelse
                     </tbody>
                 </table>
@@ -295,6 +300,8 @@
 .rm-btn-primary { height:42px; padding:0 20px; font-size:14px; font-weight:700; color:#fff; border:none; border-radius:9px; cursor:pointer;
     background:#3b82f6; display:inline-flex; align-items:center; gap:8px; box-shadow:none; transition:transform .1s, opacity .15s; white-space:nowrap; }
 .rm-btn-primary:hover { opacity:.93; transform:translateY(-1px); }
+/* Register Employee is an <a>, so keep it looking like the button it replaced. */
+a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decoration:none; color:#fff; }
 
 .rm-header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .rm-btn-danger { height:42px; padding:0 18px; font-size:14px; font-weight:700; color:#b91c1c; border:1px solid #fecaca; border-radius:9px;
@@ -640,7 +647,7 @@
             rate: btn.dataset.rate, site: btn.dataset.site, fp: btn.dataset.fp,
         });
     });
-    document.getElementById('rmAddBtn').addEventListener('click', () => openModal('add', {}));
+    // "Register Employee" is a link to the full form now — no modal to open.
 
     form.addEventListener('submit', function () {
         const b = document.getElementById('empFormSubmit');

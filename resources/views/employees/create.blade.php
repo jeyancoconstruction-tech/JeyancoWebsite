@@ -7,9 +7,14 @@
 @section('content')
 <div class="employee-container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="page-title">Add New Employee</h2>
-        <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary shadow-sm px-4">
-            <i class="fas fa-arrow-left me-2"></i>Back to List
+        <div>
+            <h2 class="page-title mb-1">Register Employee</h2>
+            <p class="text-muted mb-0" style="font-size:.875rem;">
+                Only Full Name, Labor Type and Rate are required — the rest of the profile can be completed later.
+            </p>
+        </div>
+        <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
+            <i class="fas fa-arrow-left me-2"></i>Back to Register &amp; Manage
         </a>
     </div>
 
@@ -23,10 +28,18 @@
     @endif
 
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="custom-card p-4 p-md-5">
-                <form action="{{ route('employees.store') }}" method="POST" enctype="multipart/form-data">
-                    @csrf
+        <div class="col-lg-10 col-xl-9">
+            <form action="{{ route('employees.store') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+
+                <div class="ep-section">
+                    <div class="ep-section-head">
+                        <span class="ep-section-icon"><i class="fas fa-helmet-safety"></i></span>
+                        <div>
+                            <h3 class="ep-section-title">Employment &amp; Pay</h3>
+                            <p class="ep-section-sub">What the worker is paid and where they are assigned. Required to activate them.</p>
+                        </div>
+                    </div>
 
                     <div class="row g-4">
                         {{-- Full Name --}}
@@ -228,21 +241,23 @@
                             <small class="text-muted">Next available ID is pre-filled. Clear to auto-assign on save.</small>
                         </div>
                     </div>
+                </div>
 
-                    <hr class="my-4">
+                @include('employees._profile_fields')
 
-                    <div class="d-flex justify-content-end gap-2">
-                        <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary px-4">Cancel</a>
-                        <button type="submit" class="btn fw-bold px-5"
-                                style="background:#3b82f6;color:#fff;border:none;border-radius:8px;">
-                            <i class="fas fa-plus me-2"></i>Add Employee
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <div class="d-flex justify-content-end gap-2 mb-4">
+                    <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    <button type="submit" class="btn fw-bold px-5"
+                            style="background:#3b82f6;color:#fff;border:none;border-radius:8px;">
+                        <i class="fas fa-user-plus me-2"></i>Register Employee
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+@include('employees._profile_assets')
 
 <script src="{{ asset('js/site-location-picker.js') }}"></script>
 <script>
