@@ -39,6 +39,11 @@ Route::get('/kiosk/active-fingerprints', [KioskController::class, 'activeFingerp
 //    its switcher is built from this list — adding a site on the web is enough.
 Route::get('/kiosk/sites',              [KioskController::class, 'getSites']);
 
+// ✅ Ang listahan ng manggagawa na ipinapakita ng kiosk, at kung sino ang
+//    wala pang fingerprint. Ang admin ang naglalagay ng detalye sa web; ang
+//    kiosk ay daliri na lang ang kinukuha.
+Route::get('/kiosk/roster',             [KioskController::class, 'roster']);
+
 // ✅ Kiosk GPS (NEO-M8L on the Pi, posted every ~30s). Cache-only: latest fix wins.
 //    The literal /location/latest must precede /location/{kioskId}, otherwise
 //    "latest" is captured as a kiosk id.

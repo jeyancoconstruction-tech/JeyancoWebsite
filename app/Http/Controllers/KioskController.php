@@ -157,6 +157,67 @@ class KioskController extends Controller
     /**
      * Get all labor types for position dropdown
      */
+    /**
+     * The workforce this kiosk should show, and who still needs a finger.
+     *
+     * The kiosk used to be where a worker typed their own name, position and
+     * site — on a touchscreen, standing on a site, with the office having no
+     * say until an admin approved it afterwards. The details belong where the
+     * office already keeps them, so this turns the kiosk around: the admin
+     * enters the worker on the web, and the kiosk only collects the one thing
+     * a browser cannot — the fingerprint.
+     *
+     * Scoped to where the device is standing, so a kiosk at Site C lists the
+     * people working at Site C. Those still missing a finger come first,
+     * because they are the only rows anyone needs to act on.
+     */
+    public function roster(Request $request)
+    {
+        $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
+        $site  = $this->activeSite($request, $kiosk);
+
+        $employees = Employee::with('laborType')
+            ->whereIn('status', [Employee::STATUS_ACTIVE, Employee::STATUS_PENDING])
+            ->when($site, fn ($q) => $q->where('site_id', $site->id))
+            ->orderBy('name')
+            ->get();
+
+        $rows = $employees->map(function (Employee $e) {
+            $enrolled = ! empty($e->fingerprint_id);
+
+            return [
+                'id'               => $e->id,
+                'name'             => $e->name,
+                'position'         => $e->position ?: ($e->laborType->name ?? 'Worker'),
+                'employment_type'  => $e->employment_type,
+                'employment_label' => $e->employment_label,
+                'fingerprint_id'   => $e->fingerprint_id,
+                'enrolled'         => $enrolled,
+                // What the kiosk puts on the badge. "Pending" here means the
+                // finger is missing — not the admin-approval status, which the
+                // worker standing at the kiosk has no way to act on.
+                'state'            => $enrolled ? 'enrolled' : 'pending',
+            ];
+        });
+
+        // Needs-a-finger first; alphabetical within each group.
+        $sorted = $rows->sortBy([
+            fn ($a, $b) => ($a['enrolled'] ? 1 : 0) <=> ($b['enrolled'] ? 1 : 0),
+            fn ($a, $b) => strcasecmp($a['name'], $b['name']),
+        ])->values();
+
+        return response()->json([
+            'success'   => true,
+            'site'      => $site ? ['id' => $site->id, 'name' => $site->name] : null,
+            'employees' => $sorted,
+            'counts'    => [
+                'total'    => $sorted->count(),
+                'pending'  => $sorted->where('enrolled', false)->count(),
+                'enrolled' => $sorted->where('enrolled', true)->count(),
+            ],
+        ]);
+    }
+
     public function getLaborTypes()
     {
         $laborTypes = LaborType::select('id', 'name', 'daily_rate')->get()
