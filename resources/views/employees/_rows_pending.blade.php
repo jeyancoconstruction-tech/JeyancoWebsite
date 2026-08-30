@@ -17,6 +17,11 @@
         // a completed registration look like a bare scan.
         $missingRate = $named && ! $hasDetails;
 
+        // Registered on the web: details are already filled in, but nobody has
+        // read their finger yet. The opposite of a kiosk detection, and the
+        // admin has nothing to complete — the kiosk does the next step.
+        $awaitingFingerprint = empty($e->fingerprint_id);
+
         $photoUrl = $e->photo ? asset('storage/' . $e->photo) : '';
     @endphp
     <tr>
@@ -27,6 +32,11 @@
         </td>
         <td>
             @include('employees._person', ['e' => $e, 'displayName' => $named ? $e->name : 'New worker — needs details'])
+            @if($awaitingFingerprint)
+                <span class="rm-awaiting-fp" title="Registered on the web. Enrol their finger on the kiosk to activate them.">
+                    <i class="fas fa-fingerprint"></i> awaiting fingerprint
+                </span>
+            @endif
             @if($missingRate)
                 <span class="rm-needs-rate" title="Ang position na '{{ $e->position }}' ay walang katugmang labor type, kaya walang rate. Itakda ito sa Complete.">
                     <i class="fas fa-triangle-exclamation"></i> walang rate
@@ -48,7 +58,13 @@
         <td class="rm-muted">{{ $e->created_at?->format('M d, Y g:i A') }}</td>
         <td class="text-center"><span class="rm-pill">{{ $e->attendances_count }}</span></td>
         <td class="rm-actions">
-            @if($hasDetails)
+            @if($awaitingFingerprint)
+                {{-- Nothing for the admin to confirm — the kiosk holds the next
+                     step. Edit stays available for fixing details meanwhile. --}}
+                <a href="{{ route('employees.edit', $e->id) }}" class="rm-btn-ghost">
+                    <i class="fas fa-pen"></i> Edit
+                </a>
+            @elseif($hasDetails)
                 <button class="rm-btn-accept js-emp-edit"
                         data-mode="confirm"
                         data-id="{{ $e->id }}"

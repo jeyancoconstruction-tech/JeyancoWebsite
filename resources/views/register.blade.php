@@ -26,8 +26,9 @@
         <div>
             <h1 class="rm-title">Register &amp; Manage Employees</h1>
             <p class="rm-sub">
-                Workers detected by the <strong>Site A</strong> fingerprint kiosk appear here automatically.
-                Complete their details to activate them across Attendance, Payroll and the Dashboard.
+                Newly registered workers and workers detected by the fingerprint kiosk both wait under
+                <strong>Pending</strong>. A worker becomes active — and appears across Attendance, Payroll
+                and the Dashboard — once their fingerprint is enrolled at the kiosk.
             </p>
         </div>
         <div class="rm-header-actions">
@@ -74,8 +75,10 @@
         <div class="rm-card">
             <div class="rm-card-note">
                 <i class="fas fa-circle-info"></i>
-                These workers scanned a new fingerprint on the kiosk. Click <strong>Complete</strong> to set their
-                name, position and rate — they then become active everywhere in the system.
+                Two kinds of worker wait here. Ones marked <strong>awaiting fingerprint</strong> were registered
+                on the web and just need their finger enrolled at the kiosk. The rest scanned an unknown finger
+                on the kiosk — click <strong>Complete</strong> to set their name, position and rate.
+                Either way, a worker goes active once details and a fingerprint are both on file.
             </div>
             <div class="rm-bulk" data-bulk="pending" hidden>
                 <span class="rm-bulk-count"><strong>0</strong> selected</span>
@@ -315,6 +318,12 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
     font-size:11px; font-weight:600; color:#b45309; background:#fffbeb; border:1px solid #fde68a;
     border-radius:7px; padding:1px 7px; white-space:nowrap; }
 .rm-needs-rate i { font-size:9.5px; }
+
+/* Registered on the web, waiting for the kiosk to read their finger. */
+.rm-awaiting-fp { display:inline-flex; align-items:center; gap:5px; margin-top:3px; margin-left:46px;
+    font-size:11px; font-weight:600; white-space:nowrap; border-radius:7px; padding:1px 7px;
+    color:var(--brand,#1e5c9b); background:var(--brand-subtle,#eff6ff); border:1px solid var(--border,#bfdbfe); }
+.rm-awaiting-fp i { font-size:9.5px; }
 
 /* Stat chips */
 .rm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }

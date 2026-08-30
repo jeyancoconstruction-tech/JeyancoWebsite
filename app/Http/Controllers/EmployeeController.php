@@ -64,13 +64,16 @@ class EmployeeController extends Controller
         $identity  = $this->identityData($request);
         $laborType = $request->filled('labor_type_id') ? LaborType::find($request->labor_type_id) : null;
 
-        // Auto-assign next sequential ID when the field is left blank.
+        // No fingerprint is assigned here. A worker registered on the web is
+        // not enrolled yet: the kiosk is what reads their finger and calls
+        // saveFingerprint, and that is what activates them. Reserving a slot
+        // now would make them look enrolled before anyone had scanned anything.
         $fingerprintId = $request->filled('fingerprint_id')
             ? (string) $request->fingerprint_id
-            : (string) $this->nextFingerprintId();
+            : null;
 
         // Reclaim the slot from a removed or archived worker who still owns it.
-        if ($holder = Employee::releaseFingerprint($fingerprintId)) {
+        if ($fingerprintId && $holder = Employee::releaseFingerprint($fingerprintId)) {
             return back()->withInput()->withErrors([
                 'fingerprint_id' => Employee::fingerprintConflictMessage($holder, $fingerprintId),
             ]);
@@ -92,18 +95,26 @@ class EmployeeController extends Controller
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
             'photo'          => $photoPath,
-            'status'         => Employee::STATUS_ACTIVE,
+            // Pending until the kiosk enrols a finger. An admin filling in a
+            // fingerprint by hand has done that enrolment themselves, so that
+            // case activates immediately.
+            'status'         => $fingerprintId ? Employee::STATUS_ACTIVE : Employee::STATUS_PENDING,
         ], $this->profileData($request), $identity)));
 
         EmployeeAlert::fire(auth()->user(), 'new_employee',
             'New Employee Registered',
-            $employee->name . ' has been added to the system.'
+            $employee->isPending()
+                ? $employee->name . ' is registered and waiting for fingerprint enrolment at the kiosk.'
+                : $employee->name . ' has been added to the system.'
         );
 
         // Back to where the Register Employee button was pressed, on the tab
         // the new worker just landed in.
-        return redirect()->to(route('employees.register') . '#active')
-            ->with('success', $employee->name . ' has been registered and activated.');
+        return $employee->isPending()
+            ? redirect()->to(route('employees.register') . '#pending')
+                ->with('success', $employee->name . ' is registered. They will become active once their fingerprint is enrolled at the kiosk.')
+            : redirect()->to(route('employees.register') . '#active')
+                ->with('success', $employee->name . ' has been registered and activated.');
     }
 
     public function edit($id)
@@ -509,7 +520,11 @@ class EmployeeController extends Controller
             'labor_type_id'  => $request->labor_type_id,
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
-            'status'         => Employee::STATUS_ACTIVE,
+            // Details alone do not activate anyone. A worker the kiosk detected
+            // arrives here with a finger already enrolled and so goes active;
+            // one registered on the web has no finger yet and stays pending
+            // until the kiosk enrols them.
+            'status'         => $fingerprintId ? Employee::STATUS_ACTIVE : Employee::STATUS_PENDING,
         ];
         $data = Employee::withoutMissingColumns($data);
 
@@ -522,13 +537,19 @@ class EmployeeController extends Controller
 
         $employee->update($data);
 
+        $activated = $employee->isActive();
+
         EmployeeAlert::fire(auth()->user(), 'new_employee',
             'Employee Registration Completed',
-            $employee->name . ' is now an active employee.'
+            $activated
+                ? $employee->name . ' is now an active employee.'
+                : $employee->name . ' still needs fingerprint enrolment at the kiosk.'
         );
 
-        return redirect()->route('employees.register')
-            ->with('success', $employee->name . ' has been registered and activated.');
+        return redirect()->to(route('employees.register') . ($activated ? '#active' : '#pending'))
+            ->with('success', $activated
+                ? $employee->name . ' has been registered and activated.'
+                : $employee->name . ' has been saved. They become active once their fingerprint is enrolled at the kiosk.');
     }
 
     /** Manually set an employee's running vale (cash-advance) balance. */

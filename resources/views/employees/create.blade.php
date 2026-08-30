@@ -205,21 +205,23 @@
                             </div>
                         </div>
 
-                        {{-- Fingerprint ID --}}
-                        <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="fingerprint_id">Fingerprint ID</label>
-                            <input type="text" name="fingerprint_id" id="fingerprint_id"
-                                   value="{{ old('fingerprint_id', $nextFingerprintId) }}"
-                                   class="form-control ep-mono @error('fingerprint_id') is-invalid @enderror"
-                                   placeholder="{{ $nextFingerprintId }}">
-                            @error('fingerprint_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <span class="ep-hint">Next free ID pre-filled. Clear to auto-assign.</span>
-                        </div>
-
                         {{-- Photo — camera or gallery, see _photo_picker --}}
                         <div class="col-md-6 col-lg-3">
                             <label class="ep-label">Profile Photo <span class="ep-optional">(optional)</span></label>
                             @include('employees._photo_picker')
+                        </div>
+
+                        {{-- No fingerprint field: the kiosk reads the finger and
+                             assigns the slot, and that enrolment is what makes
+                             the worker active. --}}
+                        <div class="col-12">
+                            <p class="ep-note">
+                                <i class="fas fa-fingerprint"></i>
+                                This worker is saved as <strong>Pending</strong>. Enrol their fingerprint at the
+                                kiosk to activate them — they appear on the kiosk's list of workers needing a
+                                finger, and become active across Attendance, Payroll and the Dashboard the
+                                moment it is scanned.
+                            </p>
                         </div>
                     </div>
                 </div>

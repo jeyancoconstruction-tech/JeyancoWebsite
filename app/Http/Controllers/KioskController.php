@@ -596,13 +596,30 @@ class KioskController extends Controller
         }
 
         $employee->fingerprint_id = $fp;
+
+        // Enrolment is what activates a worker registered on the web. They are
+        // created pending precisely because nobody has read their finger yet;
+        // this call is that moment, so they join the workforce here.
+        //
+        // Only a pending worker is promoted. An archived leaver re-enrolling a
+        // finger must not quietly return to the active roster — bringing
+        // someone back is an admin decision, made on Register & Manage.
+        $activated = $employee->isPending();
+        if ($activated) {
+            $employee->status = Employee::STATUS_ACTIVE;
+        }
+
         $employee->save();
 
         return response()->json([
             'success'       => true,
-            'message'       => $employee->name . ' fingerprint enrolled at ID #' . $fp,
+            'message'       => $activated
+                ? $employee->name . ' is now active — fingerprint enrolled at ID #' . $fp
+                : $employee->name . ' fingerprint enrolled at ID #' . $fp,
             'employee_id'   => $employee->id,
             'fingerprint_id'=> $employee->fingerprint_id,
+            'status'        => $employee->status,
+            'activated'     => $activated,
         ]);
     }
 
