@@ -328,7 +328,12 @@
         function sendMessage(message) {
             appendUserMsg(message);
             showTyping();
-            fetch('ai/chat', {
+            {{-- Absolute, hindi relative. Ang 'ai/chat' ay sinusukat mula sa
+                 kasalukuyang path: sa /dashboard ito ay /ai/chat at gumagana,
+                 pero sa /employees/register ito ay /employees/ai/chat — 404,
+                 kaya tahimik na hindi gumagana ang chatbot sa mga page na may
+                 malalim na URL. --}}
+            fetch('{{ route('ai.chat') }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
                 body: JSON.stringify({ message: message })
