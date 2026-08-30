@@ -73,12 +73,18 @@
     {{-- ═══ PENDING ════════════════════════════════════════════════════════ --}}
     <div class="rm-pane active" data-pane="pending">
         <div class="rm-card">
+            {{-- The text lives in one <span>: .rm-card-note is a flex row, so
+                 loose text nodes and <strong> tags each become their own flex
+                 item and the sentence breaks into columns. --}}
             <div class="rm-card-note">
                 <i class="fas fa-circle-info"></i>
-                Two kinds of worker wait here. Ones marked <strong>awaiting fingerprint</strong> were registered
-                on the web and just need their finger enrolled at the kiosk. The rest scanned an unknown finger
-                on the kiosk — click <strong>Complete</strong> to set their name, position and rate.
-                Either way, a worker goes active once details and a fingerprint are both on file.
+                <span>
+                    A worker goes active once they have <strong>both</strong> their details and an enrolled fingerprint.
+                    <br>
+                    <strong>Awaiting fingerprint</strong> — registered on the web. Enrol their finger at the kiosk to activate them.
+                    <br>
+                    <strong>Needs details</strong> — scanned an unknown finger at the kiosk. Use <strong>Complete</strong> to set their name, position and rate.
+                </span>
             </div>
             <div class="rm-bulk" data-bulk="pending" hidden>
                 <span class="rm-bulk-count"><strong>0</strong> selected</span>
@@ -160,7 +166,7 @@
         <div class="rm-card">
             <div class="rm-card-note">
                 <i class="fas fa-circle-info"></i>
-                Removed records are hidden everywhere but never lost. Restore them, or permanently delete as a last resort.
+                <span>Removed records are hidden everywhere but never lost. Restore them, or permanently delete as a last resort.</span>
             </div>
             <div class="rm-bulk" data-bulk="removed" hidden>
                 <span class="rm-bulk-count"><strong>0</strong> selected</span>
@@ -385,7 +391,11 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 
 .rm-card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; }
 .rm-card-note { display:flex; gap:9px; align-items:flex-start; padding:13px 18px; background:#f8fafc; border-bottom:1px solid #eef2f7; font-size:12.5px; color:#475569; }
-.rm-card-note i { color:#3b82f6; margin-top:2px; }
+/* Keep the copy as ONE flex item — otherwise each text node and <strong>
+   becomes its own item and the sentence lays out as columns. */
+.rm-card-note > span { flex:1; min-width:0; line-height:1.65; }
+.rm-card-note i { color:#3b82f6; margin-top:3px; flex:none; }
+.rm-card-note strong { color:#334155; font-weight:700; }
 
 .rm-table { width:100%; border-collapse:collapse; }
 .rm-table thead th { background:#f8fafc; padding:11px 16px; font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e2e8f0; white-space:nowrap; }
@@ -492,6 +502,7 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 [data-bs-theme="dark"] .rm-btn-reject:hover { background:#3a1a1d; }
 [data-bs-theme="dark"] .rm-card { background:#151d2e; border-color:#283449; }
 [data-bs-theme="dark"] .rm-card-note { background:#0f1a2e; border-bottom-color:#1c2740; color:#9fb0c7; }
+[data-bs-theme="dark"] .rm-card-note strong { color:#dbe4f0; }
 [data-bs-theme="dark"] .rm-table thead th { background:#1c2740; color:#6b7d96; border-bottom-color:#283449; }
 [data-bs-theme="dark"] .rm-table tbody td { border-bottom-color:#1a2336; }
 [data-bs-theme="dark"] .rm-table tbody tr:hover td { background:#1a2336; }

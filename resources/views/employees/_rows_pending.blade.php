@@ -7,9 +7,12 @@
         // A kiosk registration already carries a name + labor type + rate, so the
         // admin only needs to CONFIRM (review + tweak) it. A bare fingerprint
         // detection has none of these and must be COMPLETED (details filled) first.
-        $hasDetails = $named
-            && ! empty($e->labor_type_id)
-            && (float) $e->rate_per_hour > 0;
+        //
+        // A contractual worker is complete without either: they are paid against
+        // a contract total, so they have no labor type and no hourly rate by
+        // design, and must not be flagged as missing one.
+        $hasDetails = $named && ($e->isContractual()
+            || (! empty($e->labor_type_id) && (float) $e->rate_per_hour > 0));
 
         // Named but without a rate: the kiosk offered a position that is not one
         // of the web's labor types (e.g. "Foreman"), so no rate could be looked
