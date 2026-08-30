@@ -794,20 +794,37 @@ class KioskController extends Controller
             $am = $recs->firstWhere('session', 'AM');
             $pm = $recs->firstWhere('session', 'PM');
 
+            // A session still running counts up to now. It used to count as
+            // nothing, so a worker who clocked in at 7am and was still on site
+            // at 8pm showed zero hours and no overtime — the board could only
+            // report overtime after they had already gone home, which is too
+            // late for the foreman standing in front of it.
+            $now      = Carbon::now()->setTimezone('Asia/Manila');
             $totalMin = 0;
             $working  = false;
             $lastIn   = null;
+
             foreach ($recs as $r) {
-                if ($r->time_in && $r->time_out) {
+                if (! $r->time_in) {
+                    continue;
+                }
+
+                if ($r->time_out) {
                     $totalMin += abs(Carbon::parse($r->time_in)->diffInMinutes(Carbon::parse($r->time_out)));
-                } elseif ($r->time_in && !$r->time_out) {
+                } else {
                     $working = true;
                     $lastIn  = $r->time_in;
+                    $totalMin += max(0, Carbon::parse($r->time_in)->diffInMinutes($now, false));
                 }
             }
 
             $totalHours = round($totalMin / 60, 2);
             $overtime   = max(0, round($totalHours - 8, 2));
+
+            // Overtime being earned right now, as opposed to a finished day
+            // that happened to run long. The board marks the two differently:
+            // one is a number to record, the other is a decision to make.
+            $otRunning = $working && $overtime > 0;
 
             $records[] = [
                 'employee_id'    => $empId,
@@ -820,6 +837,7 @@ class KioskController extends Controller
                 'pm_out'         => $this->fmt12($pm?->time_out),
                 'total_hours'    => $totalHours,
                 'overtime_hours' => $overtime,
+                'ot_running'     => $otRunning,
                 'working'        => $working,
                 'since'          => $working ? $this->fmt12($lastIn) : null,
                 'status'         => $working ? 'working' : 'done',
@@ -839,6 +857,9 @@ class KioskController extends Controller
             'working'  => collect($records)->where('working', true)->count(),
             'total'    => count($records),
             'overtime' => collect($records)->where('overtime_hours', '>', 0)->count(),
+            // How many are ON overtime this minute — the number the foreman
+            // can still act on.
+            'ot_now'   => collect($records)->where('ot_running', true)->count(),
             'records'  => $records,
         ]);
     }
