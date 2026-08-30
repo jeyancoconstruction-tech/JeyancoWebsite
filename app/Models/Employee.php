@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class Employee extends Model
 {
@@ -162,6 +164,50 @@ class Employee extends Model
         }
 
         return "Fingerprint #{$fingerprintId} is already assigned to " . $holder->name . '.';
+    }
+
+    /**
+     * Strip attributes whose column the database does not have yet.
+     *
+     * A deploy can land new code before its migration has run — that is
+     * exactly what happened here: the Confirm button on Register & Manage
+     * started answering 500 with "Unknown column 'employment_type'", because
+     * the code was writing a column the live database had not been given.
+     *
+     * Losing the employment type for one save is a far smaller failure than
+     * refusing to save the worker at all. The worker is stored, the type
+     * keeps its default, and it starts sticking the moment the column exists.
+     */
+    public static function withoutMissingColumns(array $attributes): array
+    {
+        foreach (['employment_type', 'contract_rate'] as $column) {
+            if (array_key_exists($column, $attributes) && ! self::tableHas($column)) {
+                unset($attributes[$column]);
+            }
+        }
+
+        return $attributes;
+    }
+
+    /** Cached for the request — one schema query at most, not one per save. */
+    private static function tableHas(string $column): bool
+    {
+        static $seen = [];
+
+        if (! array_key_exists($column, $seen)) {
+            try {
+                $seen[$column] = Schema::hasColumn('employees', $column);
+            } catch (\Throwable $e) {
+                // Treat as absent so a save still goes through — but say so.
+                // Swallowing this silently once turned a missing import into
+                // "the column is not there", and the type stopped saving with
+                // nothing anywhere to explain why.
+                Log::warning("Employee: cannot check column '{$column}' — " . $e->getMessage());
+                $seen[$column] = false;
+            }
+        }
+
+        return $seen[$column];
     }
 
     /** Human label for the employment type. */

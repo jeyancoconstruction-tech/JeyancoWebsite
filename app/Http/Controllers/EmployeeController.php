@@ -83,7 +83,7 @@ class EmployeeController extends Controller
             $photoPath = $request->file('photo')->store('employees', 'public');
         }
 
-        Employee::create([
+        Employee::create(Employee::withoutMissingColumns([
             'name'           => $request->name,
             'position'       => $laborType->name,
             'employment_type' => $request->input('employment_type', Employee::EMPLOYMENT_DAILY),
@@ -94,7 +94,7 @@ class EmployeeController extends Controller
             'fingerprint_id' => $fingerprintId,
             'photo'          => $photoPath,
             'status'         => Employee::STATUS_ACTIVE,
-        ]);
+        ]));
 
         EmployeeAlert::fire(auth()->user(), 'new_employee',
             'New Employee Registered',
@@ -151,6 +151,7 @@ class EmployeeController extends Controller
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
         ];
+        $updateData = Employee::withoutMissingColumns($updateData);
 
         if ($request->hasFile('photo')) {
             if ($employee->photo) {
@@ -298,6 +299,7 @@ class EmployeeController extends Controller
             'fingerprint_id' => $fingerprintId,
             'status'         => Employee::STATUS_ACTIVE,
         ];
+        $data = Employee::withoutMissingColumns($data);
 
         if ($request->hasFile('photo')) {
             if ($employee->photo) {
