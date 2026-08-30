@@ -74,23 +74,17 @@
     <div class="rm-pane active" data-pane="pending">
         <div class="rm-card">
             {{-- The text lives in one <span>: .rm-card-note is a flex row, so
-                 loose text nodes and <strong> tags each become their own flex
-                 item and the sentence breaks into columns. --}}
+                 loose text nodes each become their own flex item and the
+                 sentence breaks into columns. --}}
             <div class="rm-card-note">
                 <i class="fas fa-circle-info"></i>
-                <span>
-                    A worker goes active once they have <strong>both</strong> their details and an enrolled fingerprint.
-                    <br>
-                    <strong>Awaiting fingerprint</strong> — registered on the web. Enrol their finger at the kiosk to activate them.
-                    <br>
-                    <strong>Needs details</strong> — scanned an unknown finger at the kiosk. Use <strong>Complete</strong> to set their name, position and rate.
-                </span>
+                <span>Please scan your fingerprint on the kiosk.</span>
             </div>
             <div class="rm-bulk" data-bulk="pending" hidden>
                 <span class="rm-bulk-count"><strong>0</strong> selected</span>
                 <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
                 <span class="rm-bulk-spacer"></span>
-                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-xmark"></i> Reject selected</button>
+                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-xmark"></i> Cancel selected</button>
             </div>
             <div class="table-responsive">
                 <table class="rm-table">

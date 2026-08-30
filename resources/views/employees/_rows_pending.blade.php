@@ -93,12 +93,12 @@
                 </button>
             @endif
             <form action="{{ route('employees.destroy', $e->id) }}" method="POST" style="display:inline;"
-                  onsubmit="return confirm('Reject and remove {{ addslashes($e->name) }}? It can still be restored from the Removed tab.')">
+                  onsubmit="return confirm('Cancel and remove {{ addslashes($e->name) }}? It can still be restored from the Removed tab.')">
                 @csrf @method('DELETE')
-                <button type="submit" class="rm-btn-reject"><i class="fas fa-xmark"></i> Reject</button>
+                <button type="submit" class="rm-btn-reject"><i class="fas fa-xmark"></i> Cancel</button>
             </form>
         </td>
     </tr>
 @empty
-    @include('employees._empty', ['icon' => 'fingerprint', 'title' => 'No workers awaiting approval', 'sub' => 'When a worker registers or scans a new fingerprint on the kiosk, they appear here for you to Confirm or Reject.'])
+    @include('employees._empty', ['icon' => 'fingerprint', 'title' => 'No workers waiting', 'sub' => 'Newly registered workers and unknown fingerprints scanned at the kiosk appear here.'])
 @endforelse

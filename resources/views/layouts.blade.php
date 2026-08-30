@@ -75,11 +75,20 @@
             <a class="nav-link {{ request()->is('attendance*') ? 'active' : '' }}" href="{{ url('/attendance') }}">
                 <i data-lucide="calendar-check"></i> <span>Attendance</span>
             </a>
-            <a class="nav-link {{ request()->is('employees*') && !request()->routeIs('employees.register') ? 'active' : '' }}" href="{{ url('/employees') }}">
+            @php
+                // Registering and editing a worker are part of Register & Manage,
+                // which is where both flows start and return to. Without this the
+                // sidebar jumps to Employees the moment the form opens, and the
+                // page you came from stops looking current.
+                $onRegisterHub = request()->routeIs('employees.register')
+                    || request()->routeIs('employees.create')
+                    || request()->routeIs('employees.edit');
+            @endphp
+            <a class="nav-link {{ request()->is('employees*') && ! $onRegisterHub ? 'active' : '' }}" href="{{ url('/employees') }}">
                 <i data-lucide="users"></i> <span>Employees</span>
             </a>
             @php $pendingKiosk = \App\Models\Employee::pending()->count(); @endphp
-            <a class="nav-link {{ request()->routeIs('employees.register') ? 'active' : '' }}" href="{{ route('employees.register') }}">
+            <a class="nav-link {{ $onRegisterHub ? 'active' : '' }}" href="{{ route('employees.register') }}">
                 <i data-lucide="user-plus"></i> <span>Register &amp; Manage</span>
                 @if($pendingKiosk > 0)
                     <span class="nav-pending-badge" title="{{ $pendingKiosk }} worker(s) detected by the kiosk awaiting registration">{{ $pendingKiosk }}</span>
