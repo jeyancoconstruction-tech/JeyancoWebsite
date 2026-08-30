@@ -656,20 +656,30 @@ class KioskController extends Controller
             $employee->restore();
         }
 
+        // An unknown finger used to open a pending "Unregistered Worker" here,
+        // back when the kiosk was where a worker registered themselves and an
+        // admin completed the row afterwards.
+        //
+        // Workers now start on the web and the kiosk only attaches a finger to
+        // one, so inventing a person no longer leads anywhere — and it caused
+        // real damage. Enrolling stores the template on the sensor a moment
+        // before the browser reports it, and any read in that gap opened a
+        // placeholder holding the slot. Attaching then quietly stripped that
+        // placeholder and left it behind, nameless, beside the real worker.
+        //
+        // An unknown finger is now simply unknown.
         $isNew = false;
         if (!$employee) {
-            $employee = Employee::create([
-                'name'           => 'Unregistered Worker',
-                'position'       => null,
-                'rate_per_hour'  => 0,
-                'labor_type_id'  => null,
-                'site_id'        => $site?->id,
-                'kiosk_id'       => $kiosk?->id,
-                'status'         => Employee::STATUS_PENDING,
-                'fingerprint_id' => $fp,
+            return response()->json([
+                'success'   => false,
+                'not_found' => true,
+                'message'   => 'Hindi pa nakarehistro ang daliring ito. '
+                             . 'Idagdag muna ang manggagawa sa web, tapos kunin '
+                             . 'ang daliri sa kiosk.',
             ]);
-            $isNew = true;
-        } elseif (!$employee->kiosk_id && $kiosk) {
+        }
+
+        if (!$employee->kiosk_id && $kiosk) {
             // Trace an existing worker back to the kiosk that detected them.
             $employee->forceFill(['kiosk_id' => $kiosk->id])->save();
         }
@@ -775,20 +785,30 @@ class KioskController extends Controller
             $employee->restore();
         }
 
+        // An unknown finger used to open a pending "Unregistered Worker" here,
+        // back when the kiosk was where a worker registered themselves and an
+        // admin completed the row afterwards.
+        //
+        // Workers now start on the web and the kiosk only attaches a finger to
+        // one, so inventing a person no longer leads anywhere — and it caused
+        // real damage. Enrolling stores the template on the sensor a moment
+        // before the browser reports it, and any read in that gap opened a
+        // placeholder holding the slot. Attaching then quietly stripped that
+        // placeholder and left it behind, nameless, beside the real worker.
+        //
+        // An unknown finger is now simply unknown.
         $isNew = false;
         if (!$employee) {
-            $employee = Employee::create([
-                'name'           => 'Unregistered Worker',
-                'position'       => null,
-                'rate_per_hour'  => 0,
-                'labor_type_id'  => null,
-                'site_id'        => $site?->id,
-                'kiosk_id'       => $kiosk?->id,
-                'status'         => Employee::STATUS_PENDING,
-                'fingerprint_id' => $fp,
+            return response()->json([
+                'success'   => false,
+                'not_found' => true,
+                'message'   => 'Hindi pa nakarehistro ang daliring ito. '
+                             . 'Idagdag muna ang manggagawa sa web, tapos kunin '
+                             . 'ang daliri sa kiosk.',
             ]);
-            $isNew = true;
-        } elseif (!$employee->kiosk_id && $kiosk) {
+        }
+
+        if (!$employee->kiosk_id && $kiosk) {
             $employee->forceFill(['kiosk_id' => $kiosk->id])->save();
         }
 

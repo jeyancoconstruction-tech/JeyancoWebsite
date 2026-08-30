@@ -147,7 +147,15 @@ class Employee extends Model
             return null;
         }
 
-        if ($holder->isPending() && $holder->attendances()->count() === 0) {
+        // A leftover placeholder from the old self-registration flow can be
+        // cleared out of the way. A real worker cannot: silently blanking a
+        // named person's fingerprint is how one worker's finger ended up
+        // clocking in as somebody else — the first person simply stopped
+        // being recognised, with nothing anywhere to say why.
+        $isPlaceholder = $holder->isPending()
+            && (trim((string) $holder->name) === '' || $holder->name === 'Unregistered Worker');
+
+        if ($isPlaceholder && $holder->attendances()->count() === 0) {
             $holder->forceFill(['fingerprint_id' => null])->save();
             return null;
         }
