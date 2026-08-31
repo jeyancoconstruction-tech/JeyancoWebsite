@@ -13,45 +13,117 @@
     @endif
 
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
-    <div class="emp-header">
-        <div class="emp-header-left">
-            <h1 class="emp-title">Employee Directory</h1>
-            <span class="emp-count-chip">{{ $employees->count() }} employees</span>
+    <div class="dir-header">
+        <div class="dir-header-text">
+            <h1 class="dir-title"><i class="fas fa-users dir-title-icon"></i> Employee Directory</h1>
+            <p class="dir-sub">Manage and view all employees in the company.</p>
         </div>
-        <div class="emp-header-right">
-            {{-- Search --}}
-            <div class="emp-search-wrap">
-                <i class="fas fa-search emp-search-icon"></i>
-                <input type="text" id="empSearch" class="emp-search" placeholder="Search by name…">
+        <div class="dir-header-actions">
+            <a href="{{ route('employees.export') }}" class="dir-btn-ghost">
+                <i class="fas fa-download"></i> Export
+            </a>
+            <a href="{{ route('employees.create') }}" class="dir-btn-primary">
+                <i class="fas fa-plus"></i> Add Employee
+            </a>
+        </div>
+    </div>
+
+    {{-- ── Summary cards ───────────────────────────────────────────────────────
+         Bawat bilang ay galing sa parehong koleksyon na ipinapakita ng talahanayan
+         sa ibaba, kaya imposibleng magkasalungat ang card at ang mga row. --}}
+    <div class="dir-stats">
+        <div class="dir-stat">
+            <div class="dir-stat-body">
+                <span class="dir-stat-label">Total Employees</span>
+                <span class="dir-stat-value">{{ $stats['total'] }}</span>
+                <span class="dir-stat-foot">Active workforce</span>
             </div>
+            <span class="dir-stat-icon blue"><i class="fas fa-users"></i></span>
+        </div>
 
-            {{-- Site filter --}}
-            <div class="emp-select-wrap">
-                <select id="siteFilter" class="emp-select">
-                    <option value="">All Sites</option>
-                    @foreach($sites as $site)
-                        <option value="{{ $site->id }}">{{ $site->name }}</option>
-                    @endforeach
-                </select>
-                <i class="fas fa-chevron-down emp-select-icon"></i>
+        <div class="dir-stat">
+            <div class="dir-stat-body">
+                <span class="dir-stat-label">Total Rate / HR</span>
+                <span class="dir-stat-value">₱{{ number_format($stats['total_rate'], 2) }}</span>
+                <span class="dir-stat-foot">Combined hourly rate</span>
             </div>
+            <span class="dir-stat-icon green"><i class="fas fa-wallet"></i></span>
+        </div>
 
-            {{-- Selection mode toggle --}}
-            <button type="button" id="selectionModeBtn" class="emp-btn-secondary">
-                <i class="fas fa-check-square"></i>
-                <span>Select</span>
-            </button>
+        <div class="dir-stat">
+            <div class="dir-stat-body">
+                <span class="dir-stat-label">Total Vale Balance</span>
+                <span class="dir-stat-value">₱{{ number_format($stats['total_vale'], 2) }}</span>
+                <span class="dir-stat-foot">Outstanding balance</span>
+            </div>
+            <span class="dir-stat-icon purple"><i class="fas fa-id-card"></i></span>
+        </div>
 
-            {{-- Delete All --}}
-            <button type="button" id="empDeleteAllBtn" class="emp-del-all-btn">
-                <i class="fas fa-trash-alt"></i>
-                <span>Delete All</span>
-            </button>
+        <div class="dir-stat">
+            <div class="dir-stat-body">
+                <span class="dir-stat-label">Avg. Rate / HR</span>
+                <span class="dir-stat-value">₱{{ number_format($stats['avg_rate'], 2) }}</span>
+                <span class="dir-stat-foot">Average hourly rate</span>
+            </div>
+            <span class="dir-stat-icon amber"><i class="fas fa-chart-line"></i></span>
+        </div>
+
+        <div class="dir-stat">
+            <div class="dir-stat-body">
+                <span class="dir-stat-label">With Fingerprint</span>
+                <span class="dir-stat-value">{{ $stats['with_fingerprint'] }}</span>
+                <span class="dir-stat-foot">
+                    @if($stats['no_fingerprint'] > 0)
+                        {{ $stats['no_fingerprint'] }} still to enrol
+                    @else
+                        Enrolled employees
+                    @endif
+                </span>
+            </div>
+            <span class="dir-stat-icon teal"><i class="fas fa-fingerprint"></i></span>
         </div>
     </div>
 
     {{-- ── Table card ──────────────────────────────────────────────────────── --}}
     <div class="emp-card">
+
+        {{-- Toolbar: tabs, search, filter --}}
+        <div class="dir-toolbar">
+            <div class="dir-tabs">
+                <button type="button" class="dir-tab active" data-scope="all">
+                    All Employees <span class="dir-tab-count" id="countAll">{{ $stats['total'] }}</span>
+                </button>
+                <button type="button" class="dir-tab" data-scope="fp">
+                    With Fingerprint <span class="dir-tab-count">{{ $stats['with_fingerprint'] }}</span>
+                </button>
+                @if($pendingCount > 0)
+                <a href="{{ route('employees.register') }}" class="dir-tab dir-tab-link" title="Naghihintay ng pag-apruba sa Register & Manage">
+                    Pending <span class="dir-tab-count warn">{{ $pendingCount }}</span>
+                </a>
+                @endif
+            </div>
+
+            <div class="dir-toolbar-right">
+                <div class="emp-search-wrap">
+                    <i class="fas fa-search emp-search-icon"></i>
+                    <input type="text" id="empSearch" class="emp-search" placeholder="Search by name, position…">
+                </div>
+
+                <div class="emp-select-wrap">
+                    <select id="siteFilter" class="emp-select">
+                        <option value="">All Sites</option>
+                        @foreach($sites as $site)
+                            <option value="{{ $site->id }}">{{ $site->name }}</option>
+                        @endforeach
+                    </select>
+                    <i class="fas fa-filter emp-select-icon"></i>
+                </div>
+
+                <button type="button" id="selectionModeBtn" class="dir-icon-btn" title="Select rows">
+                    <i class="fas fa-list-check"></i>
+                </button>
+            </div>
+        </div>
 
         {{-- Bulk action bar (visible only when rows are checked) --}}
         <div id="bulkActionBar" class="emp-bulk-bar" style="display:none;">
@@ -88,7 +160,9 @@
                 <tbody>
                     @forelse($employees as $emp)
                     <tr data-site="{{ $emp->site_id ?? '' }}"
-                        data-name="{{ strtolower($emp->name) }}">
+                        data-name="{{ strtolower($emp->name) }}"
+                        data-position="{{ strtolower($emp->position ?: ($emp->laborType->name ?? '')) }}"
+                        data-fp="{{ $emp->fingerprint_id ? '1' : '0' }}">
 
                         <td class="emp-col-check">
                             <input type="checkbox" class="emp-row-check" value="{{ $emp->id }}">
@@ -161,6 +235,10 @@
 
                         {{-- Actions --}}
                         <td class="emp-actions-cell">
+                            <a href="{{ route('employees.show', $emp->id) }}"
+                               class="dir-icon-btn dir-view-btn" title="View {{ $emp->name }}">
+                                <i class="fas fa-eye"></i>
+                            </a>
                             <div class="emp-more-wrap">
                                 <button type="button" class="emp-more-btn" aria-label="More options">
                                     <i class="fas fa-ellipsis-v"></i>
@@ -175,14 +253,11 @@
                                             data-vale="{{ $emp->vale ?? 0 }}">
                                         <i class="fas fa-coins"></i> Set Vale
                                     </button>
-                                    <form action="{{ route('employees.destroy', $emp->id) }}" method="POST">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="emp-more-item emp-more-delete"
-                                                onclick="return confirm('Delete {{ addslashes($emp->name) }}? This cannot be undone.')">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </button>
-                                    </form>
+                                    <button type="button" class="emp-more-item emp-more-delete js-emp-delete"
+                                            data-id="{{ $emp->id }}"
+                                            data-name="{{ $emp->name }}">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
                                 </div>
                             </div>
                         </td>
@@ -202,11 +277,51 @@
             </table>
         </div>
 
+        {{-- Ilang ang ipinapakita ngayon. Nagbabago ito habang naghahanap o
+             nagsasala, kaya hindi ito nagsisinungaling tungkol sa nakikita mo. --}}
+        <div class="dir-foot">
+            <span class="dir-foot-text">
+                Showing <strong id="dirShown">{{ $stats['total'] }}</strong>
+                of <strong>{{ $stats['total'] }}</strong> employees
+            </span>
+        </div>
+
         {{-- Filter / search empty state --}}
         <div id="noMatch" class="emp-empty" style="display:none;padding:48px 0;">
             <div class="emp-empty-icon"><i class="fas fa-filter"></i></div>
             <p class="emp-empty-title">No results</p>
             <p class="emp-empty-sub">Try a different name or site filter.</p>
+        </div>
+    </div>
+</div>
+
+{{-- ── Delete confirmation ─────────────────────────────────────────────────
+     Ang pagbura ay tinatanong sa isang modal na nagsasabi ng PANGALAN, hindi
+     sa isang browser prompt na madaling mapindot nang hindi nababasa. --}}
+<div class="modal fade" id="empDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content emp-modal-content">
+            <div class="emp-modal-header">
+                <div>
+                    <h3 class="emp-modal-title">Remove employee</h3>
+                    <p class="emp-modal-sub" id="deleteModalName">—</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <p class="emp-modal-sub" style="color:var(--text-muted);">
+                    Mapupunta siya sa <strong>Removed</strong> sa Register &amp; Manage at
+                    maibabalik mula roon. Mananatili ang attendance at payroll niya.
+                </p>
+                <form id="empDeleteForm" method="POST" class="d-flex justify-content-end gap-2 mt-3">
+                    @csrf
+                    @method('DELETE')
+                    <button type="button" class="emp-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="emp-bulk-delete">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -237,6 +352,160 @@
 
 {{-- ── Styles ──────────────────────────────────────────────────────────────── --}}
 <style>
+/* ═══════════════════════════════════════════════════════════════════════
+   EMPLOYEE DIRECTORY — header, summary cards, toolbar
+   Ang mga kulay ay galing sa enterprise.css tokens, hindi hardcoded,
+   kaya sumusunod ito sa tema ng buong sistema.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Header ── */
+.dir-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap; margin-bottom: 22px;
+}
+.dir-title {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em;
+    color: var(--text, #e8eef7); margin: 0;
+}
+.dir-title-icon {
+    font-size: 1.4rem; color: var(--accent, #2f7fd1);
+}
+.dir-sub {
+    margin: 6px 0 0 40px; font-size: 0.88rem;
+    color: var(--text-muted, #8fa2bd);
+}
+.dir-header-actions { display: flex; align-items: center; gap: 10px; }
+
+.dir-btn-ghost, .dir-btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 18px; border-radius: 10px;
+    font-size: 0.86rem; font-weight: 600; text-decoration: none;
+    cursor: pointer; transition: filter .15s, transform .1s, background .15s;
+    white-space: nowrap;
+}
+.dir-btn-ghost {
+    background: var(--surface-2, #1a2438);
+    border: 1px solid var(--border, #2a3856);
+    color: var(--text, #e8eef7);
+}
+.dir-btn-ghost:hover { background: var(--surface-3, #212d44); color: var(--text, #e8eef7); }
+.dir-btn-primary {
+    background: var(--accent, #2f7fd1); border: 1px solid var(--accent, #2f7fd1);
+    color: #fff; box-shadow: 0 2px 10px rgba(47,127,209,0.28);
+}
+.dir-btn-primary:hover { filter: brightness(1.08); color: #fff; }
+.dir-btn-ghost:active, .dir-btn-primary:active { transform: translateY(1px); }
+.dir-btn-ghost:focus-visible, .dir-btn-primary:focus-visible {
+    outline: 2px solid var(--accent, #2f7fd1); outline-offset: 2px;
+}
+
+/* ── Summary cards ── */
+.dir-stats {
+    display: grid; gap: 14px; margin-bottom: 20px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.dir-stat {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    background: var(--surface, #131c2e);
+    border: 1px solid var(--border, #2a3856);
+    border-radius: 14px; padding: 18px;
+    transition: border-color .18s;
+}
+.dir-stat:hover { border-color: var(--accent, #2f7fd1); }
+.dir-stat-body { display: flex; flex-direction: column; min-width: 0; }
+.dir-stat-label {
+    font-size: 0.74rem; font-weight: 600; color: var(--text-muted, #8fa2bd);
+    letter-spacing: 0.2px;
+}
+.dir-stat-value {
+    font-size: 1.55rem; font-weight: 800; line-height: 1.15; margin-top: 8px;
+    color: var(--text, #e8eef7); font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dir-stat-foot {
+    font-size: 0.7rem; color: var(--text-dim, #5a6b86); margin-top: 6px;
+}
+.dir-stat-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0;
+    font-size: 1.05rem;
+}
+.dir-stat-icon.blue   { background: rgba(47,127,209,0.16);  color: #6fa8dc; }
+.dir-stat-icon.green  { background: rgba(43,182,115,0.16);  color: #4ecb8d; }
+.dir-stat-icon.purple { background: rgba(139,92,246,0.16);  color: #a78bfa; }
+.dir-stat-icon.amber  { background: rgba(232,163,61,0.16);  color: #e8a33d; }
+.dir-stat-icon.teal   { background: rgba(20,184,166,0.16);  color: #2dd4bf; }
+
+/* ── Toolbar: tabs + search + filter ── */
+.dir-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap;
+    padding: 14px 18px; border-bottom: 1px solid var(--border, #2a3856);
+}
+.dir-tabs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.dir-tab {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: none; border: none; border-bottom: 2px solid transparent;
+    padding: 9px 14px; border-radius: 8px 8px 0 0;
+    font-size: 0.85rem; font-weight: 600; color: var(--text-muted, #8fa2bd);
+    cursor: pointer; text-decoration: none; transition: color .15s, border-color .15s;
+}
+.dir-tab:hover { color: var(--text, #e8eef7); }
+.dir-tab.active {
+    color: var(--accent, #2f7fd1); border-bottom-color: var(--accent, #2f7fd1);
+}
+.dir-tab:focus-visible { outline: 2px solid var(--accent, #2f7fd1); outline-offset: 2px; }
+.dir-tab-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px;
+    background: var(--surface-3, #212d44); color: var(--text, #e8eef7);
+    font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.dir-tab.active .dir-tab-count { background: rgba(47,127,209,0.2); color: #6fa8dc; }
+.dir-tab-count.warn { background: rgba(232,163,61,0.18); color: #e8a33d; }
+
+.dir-toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.dir-icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 9px;
+    background: var(--surface-2, #1a2438);
+    border: 1px solid var(--border, #2a3856);
+    color: var(--text-muted, #8fa2bd);
+    cursor: pointer; text-decoration: none; transition: all .15s;
+}
+.dir-icon-btn:hover { color: var(--accent, #2f7fd1); border-color: var(--accent, #2f7fd1); }
+.dir-icon-btn:focus-visible { outline: 2px solid var(--accent, #2f7fd1); outline-offset: 2px; }
+.dir-view-btn { margin-right: 6px; vertical-align: middle; }
+
+/* ── Footer count ── */
+.dir-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-top: 1px solid var(--border, #2a3856);
+}
+.dir-foot-text { font-size: 0.8rem; color: var(--text-muted, #8fa2bd); }
+.dir-foot-text strong { color: var(--text, #e8eef7); font-variant-numeric: tabular-nums; }
+
+/* ── Responsive ── */
+@media (max-width: 1400px) {
+    .dir-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+    .dir-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dir-title { font-size: 1.5rem; }
+    .dir-sub { margin-left: 0; }
+    .dir-header-actions { width: 100%; }
+    .dir-btn-ghost, .dir-btn-primary { flex: 1; justify-content: center; }
+}
+@media (max-width: 560px) {
+    .dir-stats { grid-template-columns: 1fr; }
+    .dir-toolbar { flex-direction: column; align-items: stretch; }
+    .dir-toolbar-right { flex-direction: column; align-items: stretch; }
+    .dir-toolbar-right .emp-search-wrap,
+    .dir-toolbar-right .emp-select-wrap { width: 100%; }
+}
+
 /* ── Page shell ──────────────────────────────────────────────────────────── */
 .emp-page { max-width: none; width: 100%; margin: 0; }
 
@@ -576,6 +845,10 @@
     });
 
     // ── Unified filter (site + search name) ──────────────────────────────────
+    // Aling tab ang bukas. Pinagsasama ito sa search at sa site filter, kaya
+    // ang tatlo ay nagpapaliit nang sabay imbes na maglaban-laban.
+    let dirScope = 'all';
+
     function applyFilter() {
         const siteVal  = document.getElementById('siteFilter').value;
         const query    = document.getElementById('empSearch').value.trim().toLowerCase();
@@ -584,15 +857,54 @@
 
         rows.forEach(r => {
             const siteOk  = !siteVal || r.dataset.site === siteVal;
-            const nameOk  = !query   || r.dataset.name.includes(query);
-            const show    = siteOk && nameOk;
+            const nameOk  = !query   || (r.dataset.name || '').includes(query)
+                                     || (r.dataset.position || '').includes(query);
+            const scopeOk = dirScope !== 'fp' || r.dataset.fp === '1';
+            const show    = siteOk && nameOk && scopeOk;
             r.style.display = show ? '' : 'none';
             if (show) visible++;
         });
 
         document.getElementById('noMatch').style.display = (rows.length > 0 && visible === 0) ? 'block' : 'none';
+
+        // Ang bilang sa ibaba ay dapat sumasalamin sa NAKIKITA, hindi sa
+        // kabuuan — kung hindi, nagsisinungaling ito habang naghahanap ka.
+        const shown = document.getElementById('dirShown');
+        if (shown) shown.textContent = visible;
+
         updateBulkBar();
     }
+
+    // ── Tabs ─────────────────────────────────────────────────────────────────
+    document.querySelectorAll('.dir-tab[data-scope]').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.dir-tab[data-scope]')
+                    .forEach(t => t.classList.toggle('active', t === tab));
+            dirScope = tab.dataset.scope;
+            applyFilter();
+        });
+    });
+
+    // ── Delete: ask in a modal that names the person ─────────────────────────
+    (function () {
+        const modalEl = document.getElementById('empDeleteModal');
+        const form    = document.getElementById('empDeleteForm');
+        const nameEl  = document.getElementById('deleteModalName');
+        if (!modalEl || !form) return;
+
+        const base  = '{{ url('employees') }}';
+        const modal = new bootstrap.Modal(modalEl);
+
+        document.querySelectorAll('.js-emp-delete').forEach(btn => {
+            btn.addEventListener('click', () => {
+                form.action = base + '/' + btn.dataset.id;
+                if (nameEl) nameEl.textContent = btn.dataset.name || '';
+                document.querySelectorAll('.emp-more-menu.open')
+                        .forEach(m => m.classList.remove('open'));
+                modal.show();
+            });
+        });
+    })();
 
     document.getElementById('siteFilter').addEventListener('change', applyFilter);
     document.getElementById('empSearch').addEventListener('input', applyFilter);
@@ -691,9 +1003,6 @@
                     const chk = document.querySelector(`.emp-row-check[value="${id}"]`);
                     if (chk) chk.closest('tr').remove();
                 });
-                const remaining = document.querySelectorAll('#empTable tbody tr[data-site]').length;
-                const chip = document.querySelector('.emp-count-chip');
-                if (chip) chip.textContent = `${remaining} employee${remaining !== 1 ? 's' : ''}`;
                 applyFilter();
                 exitSelectionMode();
                 flashToast(`${data.deleted} employee${data.deleted !== 1 ? 's' : ''} deleted.`, 'success');
@@ -707,33 +1016,9 @@
         }
     });
 
-    // ── Delete All employees ─────────────────────────────────────────────────
-    const deleteAllUrl = '{{ route("employees.delete-all") }}';
-    document.getElementById('empDeleteAllBtn').addEventListener('click', async function () {
-        const total = document.querySelectorAll('#empTable tbody tr[data-site]').length;
-        if (total === 0) { flashToast('No employees to delete.', 'error'); return; }
-        if (!confirm(`Delete ALL ${total} employee${total !== 1 ? 's' : ''}? This cannot be undone.`)) return;
-
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        try {
-            const r    = await fetch(deleteAllUrl, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-            });
-            const data = await r.json();
-            if (data.success) {
-                flashToast(`${data.deleted} employee${data.deleted !== 1 ? 's' : ''} deleted.`, 'success');
-                setTimeout(() => location.reload(), 900);
-            } else {
-                flashToast(data.message || 'Delete failed.', 'error');
-            }
-        } catch { flashToast('Network error — please try again.', 'error'); }
-        finally {
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-trash-alt"></i><span>Delete All</span>';
-        }
-    });
+    // "Delete All" was removed from this page: a single click that wiped the
+    // entire workforce sat one slip away from the ordinary buttons, and bulk
+    // select already covers deleting several people deliberately.
 
     // ── Toast ────────────────────────────────────────────────────────────────
     function flashToast(msg, type) {
