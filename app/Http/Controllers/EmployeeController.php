@@ -41,28 +41,24 @@ class EmployeeController extends Controller
             );
         }
 
-        // Figures for the summary cards. Counted from the same collection the
-        // table renders, so a number on a card can never disagree with the
-        // rows underneath it.
-        $withFingerprint = $employees->filter(fn ($e) => ! empty($e->fingerprint_id))->count();
-        $totalRate       = (float) $employees->sum('rate_per_hour');
-        $totalVale       = (float) $employees->sum(fn ($e) => (float) ($e->vale ?? 0));
+        // Figures for the summary card and the tabs. Counted from the same
+        // collection the table renders, so a number on screen can never
+        // disagree with the rows underneath it.
+        //
+        // Regular and contractual are counted apart because they are PAID
+        // apart: a contractual worker is settled against their contract total
+        // and earns nothing through this payroll, so only their attendance is
+        // tracked here. Splitting them at the directory lets the office see
+        // who actually lands on a payslip without opening each record.
+        $contractual = $employees->filter(fn ($e) => $e->isContractual())->count();
 
         $stats = [
-            'total'            => $employees->count(),
-            'total_rate'       => $totalRate,
-            'total_vale'       => $totalVale,
-            'avg_rate'         => $employees->count() ? $totalRate / $employees->count() : 0.0,
-            'with_fingerprint' => $withFingerprint,
-            'no_fingerprint'   => $employees->count() - $withFingerprint,
+            'total'       => $employees->count(),
+            'regular'     => $employees->count() - $contractual,
+            'contractual' => $contractual,
         ];
 
-        // The directory lists the live workforce. Pending kiosk detections are
-        // counted separately so the tab can say how many are waiting without
-        // mixing them into the table.
-        $pendingCount = Employee::pending()->count();
-
-        return view('employees.index', compact('employees', 'sites', 'stats', 'pendingCount'));
+        return view('employees.index', compact('employees', 'sites', 'stats'));
     }
 
     /**

@@ -51,14 +51,14 @@
                 <button type="button" class="dir-tab active" data-scope="all">
                     All Employees <span class="dir-tab-count" id="countAll">{{ $stats['total'] }}</span>
                 </button>
-                <button type="button" class="dir-tab" data-scope="fp">
-                    With Fingerprint <span class="dir-tab-count">{{ $stats['with_fingerprint'] }}</span>
+                <button type="button" class="dir-tab" data-scope="regular"
+                        title="Oras-oras ang bayad at kasama sa payroll">
+                    Regular <span class="dir-tab-count">{{ $stats['regular'] }}</span>
                 </button>
-                @if($pendingCount > 0)
-                <a href="{{ route('employees.register') }}" class="dir-tab dir-tab-link" title="Naghihintay ng pag-apruba sa Register & Manage">
-                    Pending <span class="dir-tab-count warn">{{ $pendingCount }}</span>
-                </a>
-                @endif
+                <button type="button" class="dir-tab" data-scope="contractual"
+                        title="Bayad ayon sa kontrata — attendance lang ang sinusubaybayan, hindi kasama sa payroll">
+                    Contractual <span class="dir-tab-count">{{ $stats['contractual'] }}</span>
+                </button>
             </div>
 
             <div class="dir-toolbar-right">
@@ -109,7 +109,9 @@
                         <th>Employee</th>
                         <th>Site</th>
                         <th>Labor Type</th>
-                        <th class="text-center">Rate / hr</th>
+                        {{-- "Rate" lang, hindi "Rate / hr": may kada-oras (regular) at
+                             may kabuuan ng kontrata (contractual) sa hanay na ito. --}}
+                        <th class="text-center">Rate</th>
                         <th class="text-center">Vale Balance</th>
                         <th>Fingerprint</th>
                         <th></th>
@@ -120,7 +122,7 @@
                     <tr data-site="{{ $emp->site_id ?? '' }}"
                         data-name="{{ strtolower($emp->name) }}"
                         data-position="{{ strtolower($emp->position ?: ($emp->laborType->name ?? '')) }}"
-                        data-fp="{{ $emp->fingerprint_id ? '1' : '0' }}">
+                        data-type="{{ $emp->isContractual() ? 'contractual' : 'regular' }}">
 
                         <td class="emp-col-check">
                             <input type="checkbox" class="emp-row-check" value="{{ $emp->id }}">
@@ -140,7 +142,14 @@
                                 @endif
                                 <div class="emp-info">
                                     <span class="emp-name">{{ $emp->name }}</span>
-                                    <span class="emp-id-badge">#{{ str_pad($emp->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                    <span class="emp-meta">
+                                        <span class="emp-id-badge">#{{ str_pad($emp->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                        {{-- Nakikita agad kung sino ang wala sa payroll kahit
+                                             nasa "All Employees" tab ka. --}}
+                                        @if($emp->isContractual())
+                                            <span class="emp-type-badge">Contractual</span>
+                                        @endif
+                                    </span>
                                 </div>
                             </div>
                         </td>
@@ -171,7 +180,16 @@
 
                         {{-- Rate --}}
                         <td class="emp-rate">
-                            ₱{{ number_format($emp->rate_per_hour, 2) }}
+                            @if($emp->isContractual())
+                                {{-- Walang oras-oras na rate ang kontrata. Ang ipapakita ay
+                                     ang kabuuan ng kontrata; kung ilalagay dito ang
+                                     rate_per_hour ay ₱0.00 ang lalabas at mukhang walang
+                                     bayad ang tao, gayong bayad siya sa labas ng payroll. --}}
+                                <span class="emp-rate-contract">₱{{ number_format($emp->contract_rate ?? 0, 2) }}</span>
+                                <span class="emp-rate-note">contract</span>
+                            @else
+                                ₱{{ number_format($emp->rate_per_hour, 2) }}
+                            @endif
                         </td>
 
                         {{-- Vale balance --}}
@@ -590,6 +608,15 @@
     color: var(--text-secondary); background: transparent; border: none;
     padding: 0; width: fit-content;
 }
+.emp-meta { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+/* Tahimik na tatak — pantulong sa pagbasa, hindi babala, kaya walang matingkad
+   na kulay. Ang punto lang ay makilala agad ang wala sa payroll. */
+.emp-type-badge {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+    color: #a78bfa; background: rgba(139,92,246,0.14);
+    border: 1px solid rgba(139,92,246,0.28);
+    border-radius: 999px; padding: 1px 7px; white-space: nowrap;
+}
 
 /* ── Badges — one calm, neutral outline style (no colour fills) ──────────── */
 .emp-badge-site, .emp-badge-labor, .emp-badge-fp {
@@ -604,6 +631,13 @@
 
 .emp-dash { color: var(--text-muted); font-size: 13px; }
 .emp-rate { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+/* Ang halaga ng kontrata ay kabuuan, hindi kada-oras — kaya may maliit na
+   pananda sa ilalim para hindi ito mabasa bilang rate kada oras. */
+.emp-rate-contract { display: block; }
+.emp-rate-note {
+    display: block; font-size: 10px; font-weight: 500; letter-spacing: 0.3px;
+    color: var(--text-muted); margin-top: 1px;
+}
 .emp-vale { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .emp-vale.has-vale { color: var(--danger); }
 .emp-actions-cell { text-align: right; white-space: nowrap; }
@@ -810,7 +844,7 @@
             const siteOk  = !siteVal || r.dataset.site === siteVal;
             const nameOk  = !query   || (r.dataset.name || '').includes(query)
                                      || (r.dataset.position || '').includes(query);
-            const scopeOk = dirScope !== 'fp' || r.dataset.fp === '1';
+            const scopeOk = dirScope === 'all' || r.dataset.type === dirScope;
             const show    = siteOk && nameOk && scopeOk;
             r.style.display = show ? '' : 'none';
             if (show) visible++;
