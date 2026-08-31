@@ -28,59 +28,17 @@
         </div>
     </div>
 
-    {{-- ── Summary cards ───────────────────────────────────────────────────────
-         Bawat bilang ay galing sa parehong koleksyon na ipinapakita ng talahanayan
+    {{-- ── Summary card ────────────────────────────────────────────────────────
+         Ang bilang ay galing sa parehong koleksyon na ipinapakita ng talahanayan
          sa ibaba, kaya imposibleng magkasalungat ang card at ang mga row. --}}
     <div class="dir-stats">
         <div class="dir-stat">
+            <span class="dir-stat-icon blue"><i class="fas fa-users"></i></span>
             <div class="dir-stat-body">
                 <span class="dir-stat-label">Total Employees</span>
                 <span class="dir-stat-value">{{ $stats['total'] }}</span>
-                <span class="dir-stat-foot">Active workforce</span>
             </div>
-            <span class="dir-stat-icon blue"><i class="fas fa-users"></i></span>
-        </div>
-
-        <div class="dir-stat">
-            <div class="dir-stat-body">
-                <span class="dir-stat-label">Total Rate / HR</span>
-                <span class="dir-stat-value">₱{{ number_format($stats['total_rate'], 2) }}</span>
-                <span class="dir-stat-foot">Combined hourly rate</span>
-            </div>
-            <span class="dir-stat-icon green"><i class="fas fa-wallet"></i></span>
-        </div>
-
-        <div class="dir-stat">
-            <div class="dir-stat-body">
-                <span class="dir-stat-label">Total Vale Balance</span>
-                <span class="dir-stat-value">₱{{ number_format($stats['total_vale'], 2) }}</span>
-                <span class="dir-stat-foot">Outstanding balance</span>
-            </div>
-            <span class="dir-stat-icon purple"><i class="fas fa-id-card"></i></span>
-        </div>
-
-        <div class="dir-stat">
-            <div class="dir-stat-body">
-                <span class="dir-stat-label">Avg. Rate / HR</span>
-                <span class="dir-stat-value">₱{{ number_format($stats['avg_rate'], 2) }}</span>
-                <span class="dir-stat-foot">Average hourly rate</span>
-            </div>
-            <span class="dir-stat-icon amber"><i class="fas fa-chart-line"></i></span>
-        </div>
-
-        <div class="dir-stat">
-            <div class="dir-stat-body">
-                <span class="dir-stat-label">With Fingerprint</span>
-                <span class="dir-stat-value">{{ $stats['with_fingerprint'] }}</span>
-                <span class="dir-stat-foot">
-                    @if($stats['no_fingerprint'] > 0)
-                        {{ $stats['no_fingerprint'] }} still to enrol
-                    @else
-                        Enrolled employees
-                    @endif
-                </span>
-            </div>
-            <span class="dir-stat-icon teal"><i class="fas fa-fingerprint"></i></span>
+            <span class="dir-stat-foot">Active workforce</span>
         </div>
     </div>
 
@@ -400,42 +358,37 @@
     outline: 2px solid var(--accent, #2f7fd1); outline-offset: 2px;
 }
 
-/* ── Summary cards ── */
-.dir-stats {
-    display: grid; gap: 14px; margin-bottom: 20px;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-}
+/* ── Summary card ──
+   Iisang card na lang, kaya hindi na grid: hinahabaan ito sa buong lapad para
+   pantay ang gilid nito at ng talahanayan sa ibaba. Pahiga ang laman — icon,
+   bilang, tapos ang caption sa kanan — para hindi mukhang kulang ang card. */
+.dir-stats { margin-bottom: 20px; }
 .dir-stat {
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    display: flex; align-items: center; gap: 18px;
     background: var(--surface, #131c2e);
     border: 1px solid var(--border, #2a3856);
-    border-radius: 14px; padding: 18px;
+    border-radius: 14px; padding: 18px 22px;
     transition: border-color .18s;
 }
 .dir-stat:hover { border-color: var(--accent, #2f7fd1); }
 .dir-stat-body { display: flex; flex-direction: column; min-width: 0; }
 .dir-stat-label {
     font-size: 0.74rem; font-weight: 600; color: var(--text-muted, #8fa2bd);
-    letter-spacing: 0.2px;
+    letter-spacing: 0.4px; text-transform: uppercase;
 }
 .dir-stat-value {
-    font-size: 1.55rem; font-weight: 800; line-height: 1.15; margin-top: 8px;
+    font-size: 1.9rem; font-weight: 800; line-height: 1.1; margin-top: 4px;
     color: var(--text, #e8eef7); font-variant-numeric: tabular-nums;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .dir-stat-foot {
-    font-size: 0.7rem; color: var(--text-dim, #5a6b86); margin-top: 6px;
+    margin-left: auto; font-size: 0.78rem; color: var(--text-dim, #5a6b86);
 }
 .dir-stat-icon {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0;
-    font-size: 1.05rem;
+    width: 52px; height: 52px; border-radius: 13px; flex-shrink: 0;
+    font-size: 1.25rem;
 }
 .dir-stat-icon.blue   { background: rgba(47,127,209,0.16);  color: #6fa8dc; }
-.dir-stat-icon.green  { background: rgba(43,182,115,0.16);  color: #4ecb8d; }
-.dir-stat-icon.purple { background: rgba(139,92,246,0.16);  color: #a78bfa; }
-.dir-stat-icon.amber  { background: rgba(232,163,61,0.16);  color: #e8a33d; }
-.dir-stat-icon.teal   { background: rgba(20,184,166,0.16);  color: #2dd4bf; }
 
 /* ── Toolbar: tabs + search + filter ── */
 .dir-toolbar {
@@ -488,18 +441,16 @@
 .dir-foot-text strong { color: var(--text, #e8eef7); font-variant-numeric: tabular-nums; }
 
 /* ── Responsive ── */
-@media (max-width: 1400px) {
-    .dir-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 @media (max-width: 900px) {
-    .dir-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .dir-title { font-size: 1.5rem; }
     .dir-sub { margin-left: 0; }
     .dir-header-actions { width: 100%; }
     .dir-btn-ghost, .dir-btn-primary { flex: 1; justify-content: center; }
 }
 @media (max-width: 560px) {
-    .dir-stats { grid-template-columns: 1fr; }
+    /* Bumababa ang caption sa sariling linya kapag masikip na ang card. */
+    .dir-stat { flex-wrap: wrap; gap: 14px; padding: 16px 18px; }
+    .dir-stat-foot { margin-left: 0; width: 100%; }
     .dir-toolbar { flex-direction: column; align-items: stretch; }
     .dir-toolbar-right { flex-direction: column; align-items: stretch; }
     .dir-toolbar-right .emp-search-wrap,
