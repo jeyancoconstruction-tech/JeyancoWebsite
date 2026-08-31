@@ -202,18 +202,22 @@
 
                         {{-- Actions --}}
                         <td class="emp-actions-cell">
+                            {{-- Nakasulat, hindi mata: ang icon ay kailangan pang
+                                 hulaan, at ang pagbubukas ng buong rekord ay
+                                 hindi dapat pahulaan. --}}
                             <a href="{{ route('employees.show', $emp->id) }}"
-                               class="dir-icon-btn dir-view-btn" title="View {{ $emp->name }}">
-                                <i class="fas fa-eye"></i>
+                               class="emp-view-btn" title="Buksan ang rekord ni {{ $emp->name }}">
+                                View Details
                             </a>
                             <div class="emp-more-wrap">
                                 <button type="button" class="emp-more-btn" aria-label="More options">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
+                                {{-- Walang Edit dito. Ang pagbabago ng rekord ay
+                                     nagsisimula sa View Details, kung saan
+                                     nakikita mo muna ang buong laman bago mo
+                                     ito baguhin. --}}
                                 <div class="emp-more-menu">
-                                    <a href="{{ route('employees.edit', $emp->id) }}" class="emp-more-item">
-                                        <i class="fas fa-pen"></i> Edit
-                                    </a>
                                     <button type="button" class="emp-more-item js-set-vale"
                                             data-id="{{ $emp->id }}"
                                             data-name="{{ $emp->name }}"
@@ -429,17 +433,20 @@
 
 .dir-toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-.dir-icon-btn {
+/* Ang pasukan sa buong rekord. Nakasulat ang gagawin nito, hindi icon lang,
+   dahil dito nagsisimula ang lahat ng pagbabago sa isang empleyado. */
+.emp-view-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 38px; height: 38px; border-radius: 9px;
+    height: 32px; padding: 0 12px; margin-right: 6px; vertical-align: middle;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+    color: var(--text-secondary, #8fa2bd); text-decoration: none;
     background: var(--surface-2, #1a2438);
     border: 1px solid var(--border, #2a3856);
-    color: var(--text-muted, #8fa2bd);
-    cursor: pointer; text-decoration: none; transition: all .15s;
+    border-radius: 8px;
+    transition: color .15s, border-color .15s;
 }
-.dir-icon-btn:hover { color: var(--accent, #2f7fd1); border-color: var(--accent, #2f7fd1); }
-.dir-icon-btn:focus-visible { outline: 2px solid var(--accent, #2f7fd1); outline-offset: 2px; }
-.dir-view-btn { margin-right: 6px; vertical-align: middle; }
+.emp-view-btn:hover { color: var(--accent, #2f7fd1); border-color: var(--accent, #2f7fd1); }
+.emp-view-btn:focus-visible { outline: 2px solid var(--accent, #2f7fd1); outline-offset: 2px; }
 
 /* ── Footer count ── */
 .dir-foot {

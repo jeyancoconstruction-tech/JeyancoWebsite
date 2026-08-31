@@ -144,6 +144,39 @@ class EmployeeDirectorySplitTest extends TestCase
         $this->assertStringNotContainsString('emp-row-check', $html);
     }
 
+    public function test_a_row_opens_the_record_before_it_offers_to_change_it(): void
+    {
+        $employee = $this->regular('Ana Reyes');
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('employees.index'))
+            ->assertOk()
+            ->getContent();
+
+        // The way into a record is spelled out, not drawn as an eye.
+        $this->assertStringContainsString('View Details', $html);
+        $this->assertStringNotContainsString('fa-eye', $html);
+
+        // And editing is not offered from the row: it starts on the details
+        // page, where the whole record is in front of you first.
+        $this->assertStringNotContainsString(
+            route('employees.edit', $employee->id),
+            $html
+        );
+    }
+
+    public function test_the_details_page_is_where_editing_starts(): void
+    {
+        $employee = $this->regular('Ana Reyes');
+
+        // The directory now leans on this button existing. If it ever goes,
+        // there is no route to editing left anywhere.
+        $this->actingAs($this->admin())
+            ->get(route('employees.show', $employee->id))
+            ->assertOk()
+            ->assertSee(route('employees.edit', $employee->id), false);
+    }
+
     public function test_the_payroll_rule_behind_the_split_still_holds(): void
     {
         // The whole reason the directory separates them: contract work earns
