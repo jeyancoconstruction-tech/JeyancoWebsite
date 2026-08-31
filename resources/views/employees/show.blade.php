@@ -26,6 +26,8 @@
     <div class="prof-grid">
 
         {{-- ── Left: who they are ──────────────────────────────────────────── --}}
+        <div class="prof-col">
+
         <div class="emp-card prof-card">
             <div class="prof-id">
                 @if($employee->photo)
@@ -92,6 +94,45 @@
                     </dd>
                 </div>
             </dl>
+        </div>
+
+        {{-- ── Sino siya sa labas ng trabaho ────────────────────────────────
+             Ang tinatanong lang ng opisina — hindi ang buong form. Ang walang
+             laman ay hindi ipinapakita: mas mabuti ang maikling listahan kaysa
+             hanay ng mga gitling na walang sinasabi. --}}
+        @php
+            $personal = array_filter([
+                'Gender'       => $employee->gender,
+                'Age'          => $employee->birth_date?->age,
+                'Birthplace'   => $employee->birth_place,
+                'Address'      => implode(', ', array_filter([
+                                      $employee->address_city,
+                                      $employee->address_province,
+                                  ])),
+                'Civil status' => $employee->civil_status,
+                'Contact'      => $employee->phone,
+            ], fn ($v) => $v !== null && $v !== '');
+        @endphp
+
+        <div class="emp-card prof-card">
+            <div class="prof-card-head"><span>Personal na impormasyon</span></div>
+
+            @if(count($personal))
+                <dl class="prof-facts">
+                    @foreach($personal as $label => $value)
+                        <div class="prof-fact">
+                            <dt>{{ $label }}</dt>
+                            <dd class="prof-val">{{ $value }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+            @else
+                <p class="prof-none">
+                    Wala pang naitatalang personal na detalye. Idadagdag ito sa <strong>Edit</strong>.
+                </p>
+            @endif
+        </div>
+
         </div>
 
         {{-- ── Right: this week, then recent scans ─────────────────────────── --}}
@@ -172,6 +213,52 @@
 </div>
 
 <style>
+/* ── Chrome na hiniram sa directory ───────────────────────────────────────
+   Ginagamit ng pahinang ito ang .dir-header at .dir-btn-primary, pero nasa
+   loob ng <style> ng index.blade.php ang mga kahulugan noon — hindi umaabot
+   dito. Kaya nakapatong-patong ang header at hubad na asul na link lang ang
+   Edit. Nakasulat muli rito ang kailangan; kung magbago ang isa, dapat sabay
+   ang dalawa. (Ang tamang ayos ay ilipat ito sa isang tunay na CSS file,
+   pero iyon ay paglilipat na dumadampi sa buong directory.) */
+.dir-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap; margin-bottom: 22px;
+}
+.dir-title {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em;
+    color: var(--text, #e8eef7); margin: 0;
+}
+.dir-sub {
+    margin: 6px 0 0 40px; font-size: 0.88rem;
+    color: var(--text-muted, #8fa2bd);
+}
+.dir-header-actions { display: flex; align-items: center; gap: 10px; }
+.dir-btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 18px; border-radius: 10px;
+    font-size: 0.86rem; font-weight: 600; text-decoration: none;
+    cursor: pointer; white-space: nowrap;
+    background: var(--accent, #2f7fd1); border: 1px solid var(--accent, #2f7fd1);
+    color: #fff; box-shadow: 0 2px 10px rgba(47,127,209,0.28);
+    transition: filter .15s;
+}
+.dir-btn-primary:hover { filter: brightness(1.08); color: #fff; }
+
+.emp-badge-site, .emp-badge-labor, .emp-badge-fp {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; white-space: nowrap;
+    color: var(--text-secondary) !important; background: transparent !important;
+    border: 1px solid var(--border) !important;
+    padding: 3px 9px; border-radius: 6px;
+}
+.emp-badge-site i, .emp-badge-labor i, .emp-badge-fp i { font-size: 9px; color: var(--text-muted); }
+.emp-badge-fp { font-family: ui-monospace,'SF Mono','Courier New',monospace; }
+.emp-dash { color: var(--text-muted); font-size: 13px; }
+
+/* ── Sariling estilo ng pahinang ito ──────────────────────────────────── */
+.prof-val { font-size: 0.85rem; color: var(--text, #e8eef7); }
+
 .prof-back {
     display: inline-flex; align-items: center; gap: 8px;
     font-size: 0.82rem; font-weight: 600; text-decoration: none;

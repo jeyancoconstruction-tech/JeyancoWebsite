@@ -177,6 +177,43 @@ class EmployeeDirectorySplitTest extends TestCase
             ->assertSee(route('employees.edit', $employee->id), false);
     }
 
+    public function test_the_details_page_shows_the_personal_facts_the_office_asks_for(): void
+    {
+        $employee = $this->regular('Ana Reyes');
+        $employee->update([
+            'gender'           => 'Female',
+            'birth_date'       => '1995-03-04',
+            'birth_place'      => 'Naga City',
+            'address_city'     => 'Pili',
+            'address_province' => 'Camarines Sur',
+            'civil_status'     => 'Single',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->get(route('employees.show', $employee->id))
+            ->assertOk()
+            ->assertSee('Personal na impormasyon')
+            ->assertSee('Female')
+            ->assertSee('Naga City')
+            ->assertSee('Pili, Camarines Sur');
+    }
+
+    public function test_a_blank_personal_field_is_left_out_rather_than_drawn_as_a_dash(): void
+    {
+        $employee = $this->regular('Ana Reyes');
+        $employee->update(['gender' => 'Female']);
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('employees.show', $employee->id))
+            ->assertOk()
+            ->getContent();
+
+        // A column of empty labels says nothing and buries the one fact that
+        // is on file, so only what is filled gets a row.
+        $this->assertStringContainsString('Gender', $html);
+        $this->assertStringNotContainsString('Birthplace', $html);
+    }
+
     public function test_the_payroll_rule_behind_the_split_still_holds(): void
     {
         // The whole reason the directory separates them: contract work earns
