@@ -127,7 +127,7 @@ class EmployeeDirectorySplitTest extends TestCase
         $this->assertStringContainsString('data-view="grid"', $html);
     }
 
-    public function test_the_selection_button_carries_the_label_its_script_rewrites(): void
+    public function test_the_directory_carries_no_bulk_selection_machinery(): void
     {
         $this->regular('Ana Reyes');
 
@@ -136,15 +136,12 @@ class EmployeeDirectorySplitTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        // enterSelectionMode() and exitSelectionMode() both reach for
-        // querySelector('span') on this button. When the span is missing every
-        // click throws a TypeError, and the throw lands before the line that
-        // clears the checkboxes — so selection mode half-applies and never
-        // resets. Cheap to lose in a redesign, so it is pinned here.
-        $this->assertMatchesRegularExpression(
-            '/id="selectionModeBtn".*?<span>.*?<\/span>/s',
-            $html
-        );
+        // Bulk select was removed from this page; deleting is one row at a
+        // time through the Remove modal. Half-removing it once left the grid
+        // showing checkboxes nothing could act on, so the absence is pinned.
+        $this->assertStringNotContainsString('selectionModeBtn', $html);
+        $this->assertStringNotContainsString('bulkActionBar', $html);
+        $this->assertStringNotContainsString('emp-row-check', $html);
     }
 
     public function test_the_payroll_rule_behind_the_split_still_holds(): void

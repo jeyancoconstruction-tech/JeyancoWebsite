@@ -92,29 +92,6 @@
                     </button>
                 </div>
 
-                {{-- Ang <span> ay hindi palamuti: hinahanap ito ng
-                     enterSelectionMode/exitSelectionMode para palitan ang
-                     salita. Kapag wala ito, TypeError ang bawat click. --}}
-                <button type="button" id="selectionModeBtn" class="dir-icon-btn" title="Pumili ng rows">
-                    <i class="fas fa-check-square"></i>
-                    <span>Select</span>
-                </button>
-            </div>
-        </div>
-
-        {{-- Bulk action bar (visible only when rows are checked) --}}
-        <div id="bulkActionBar" class="emp-bulk-bar" style="display:none;">
-            <div class="emp-bulk-info">
-                <i class="fas fa-check-square"></i>
-                <span id="bulkCount">0</span> employee(s) selected
-            </div>
-            <div class="emp-bulk-actions">
-                <button type="button" id="bulkDeselectAll" class="emp-bulk-cancel">
-                    <i class="fas fa-times"></i> Deselect All
-                </button>
-                <button type="button" id="bulkDeleteBtn" class="emp-bulk-delete">
-                    <i class="fas fa-trash"></i> Delete Selected
-                </button>
             </div>
         </div>
 
@@ -122,9 +99,6 @@
             <table class="emp-table" id="empTable">
                 <thead>
                     <tr>
-                        <th class="emp-col-check">
-                            <input type="checkbox" id="selectAll" class="emp-checkbox" title="Select all visible">
-                        </th>
                         <th>Employee</th>
                         <th>Site</th>
                         <th>Labor Type</th>
@@ -142,10 +116,6 @@
                         data-name="{{ strtolower($emp->name) }}"
                         data-position="{{ strtolower($emp->position ?: ($emp->laborType->name ?? '')) }}"
                         data-type="{{ $emp->isContractual() ? 'contractual' : 'regular' }}">
-
-                        <td class="emp-col-check">
-                            <input type="checkbox" class="emp-row-check" value="{{ $emp->id }}">
-                        </td>
 
                         {{-- Employee (avatar + name + ID) --}}
                         <td>
@@ -261,7 +231,7 @@
                     </tr>
                     @empty
                     <tr class="emp-empty-row">
-                        <td colspan="8">
+                        <td colspan="7">
                             <div class="emp-empty">
                                 <div class="emp-empty-icon"><i class="fas fa-users"></i></div>
                                 <p class="emp-empty-title">No employees yet</p>
@@ -663,9 +633,6 @@
 .emp-vale.has-vale { color: var(--danger); }
 .emp-actions-cell { text-align: right; white-space: nowrap; }
 
-/* May salita na ang Select, kaya hindi na ito parisukat na icon lamang. */
-#selectionModeBtn { width: auto; gap: 8px; padding: 0 14px; font-size: 13px; font-weight: 600; }
-
 /* ── View switcher ───────────────────────────────────────────────────────── */
 .dir-viewswitch {
     display: inline-flex; gap: 2px; padding: 2px;
@@ -702,26 +669,12 @@
     transition: border-color .18s;
 }
 .emp-table.view-grid tr:hover { border-color: var(--accent, #2f7fd1); }
-/* Hindi kasama ang checkbox cell dito. Ang ".emp-table.view-grid td" ay may
-   mas mataas na specificity kaysa sa ".emp-col-check { display: none }", kaya
-   kung sasakupin nito ang lahat ng td ay lalabas ang checkbox kahit hindi
-   naka-selection mode — at wala nang magagawa ang Select button. */
-.emp-table.view-grid td:not(.emp-col-check) {
-    display: block; border: none; padding: 0; text-align: left;
-}
-
-/* Nakatago hanggang buksan ng Select, tulad din sa talahanayan. Kailangang
-   tahasan dito para talunin ang panuntunan ng grid sa itaas. */
-.emp-table.view-grid td.emp-col-check { display: none; border: none; }
-
-/* Kapag bukas na, pumapasok ito sa sulok ng card imbes na humati ng linya. */
-.emp-selecting .emp-table.view-grid td.emp-col-check {
-    display: block; position: absolute; top: 10px; left: 10px; z-index: 2;
-    width: auto; padding: 0 !important;
-}
+.emp-table.view-grid td { display: block; border: none; padding: 0; text-align: left; }
 
 /* Pangalan at larawan sa itaas, nakasentro — ito ang mukha ng card. */
-.emp-table.view-grid td:nth-child(2) { text-align: center; margin-bottom: 10px; }
+/* Ang unang cell ang Employee. Hindi nth-child(2) — nauna rito ang checkbox
+   column noon, at nawala na iyon. */
+.emp-table.view-grid td:first-child { text-align: center; margin-bottom: 10px; }
 .emp-table.view-grid .emp-cell { flex-direction: column; align-items: center; gap: 8px; }
 .emp-table.view-grid .emp-avatar-img,
 .emp-table.view-grid .emp-avatar-initials { width: 56px; height: 56px; font-size: 20px; }
@@ -869,41 +822,8 @@
 .site-action-btn.cancel { color: var(--text-secondary); }
 .site-action-btn.del    { color: var(--danger); }
 
-/* ── Checkbox column (hidden until selection mode is active) ─────────────── */
-.emp-col-check { display: none; width: 44px; text-align: center; padding-left: 8px !important; padding-right: 4px !important; }
-.emp-selecting .emp-col-check { display: table-cell; }
-.emp-checkbox, .emp-row-check {
-    width: 16px; height: 16px; cursor: pointer;
-    accent-color: var(--brand); flex-shrink: 0;
-}
-
-/* ── Selection mode active button ────────────────────────────────────────── */
-.emp-btn-selecting {
-    background: var(--brand-subtle) !important; color: var(--brand) !important;
-    border-color: var(--brand) !important;
-}
-.emp-btn-selecting:hover { background: var(--brand-subtle) !important; border-color: var(--brand) !important; }
-
-/* ── Bulk action bar ─────────────────────────────────────────────────────── */
-.emp-bulk-bar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 16px; gap: 12px; flex-wrap: wrap;
-    background: var(--brand-subtle); border-bottom: 1px solid var(--border);
-}
-.emp-bulk-info {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 13px; font-weight: 600; color: var(--brand);
-}
-.emp-bulk-info i { font-size: 14px; }
-.emp-bulk-actions { display: flex; align-items: center; gap: 8px; }
-.emp-bulk-cancel {
-    height: 34px; padding: 0 12px; font-size: 12px; font-weight: 500;
-    background: var(--surface); color: var(--text-secondary);
-    border: 1px solid var(--border); border-radius: 6px;
-    cursor: pointer; transition: background .12s;
-    display: inline-flex; align-items: center; gap: 6px;
-}
-.emp-bulk-cancel:hover { background: var(--bg-subtle); }
+/* Nananatili ang .emp-bulk-delete kahit wala nang bulk select: ito rin ang
+   pindutang Remove sa modal ng bawat empleyado. */
 .emp-bulk-delete {
     height: 34px; padding: 0 14px; font-size: 12px; font-weight: 600;
     background: var(--danger); color: #fff;
@@ -972,8 +892,6 @@
         // kabuuan — kung hindi, nagsisinungaling ito habang naghahanap ka.
         const shown = document.getElementById('dirShown');
         if (shown) shown.textContent = visible;
-
-        updateBulkBar();
     }
 
     // ── Tabs ─────────────────────────────────────────────────────────────────
@@ -1043,116 +961,12 @@
     document.getElementById('siteFilter').addEventListener('change', applyFilter);
     document.getElementById('empSearch').addEventListener('input', applyFilter);
 
-    // ── Selection mode ───────────────────────────────────────────────────────
-    const selectionModeBtn = document.getElementById('selectionModeBtn');
-    const empPage          = document.querySelector('.emp-page');
-    let   selectionMode    = false;
-
-    function enterSelectionMode() {
-        selectionMode = true;
-        empPage.classList.add('emp-selecting');
-        selectionModeBtn.classList.add('emp-btn-selecting');
-        selectionModeBtn.querySelector('i').className = 'fas fa-times';
-        selectionModeBtn.querySelector('span').textContent = 'Cancel';
-    }
-
-    function exitSelectionMode() {
-        selectionMode = false;
-        empPage.classList.remove('emp-selecting');
-        selectionModeBtn.classList.remove('emp-btn-selecting');
-        selectionModeBtn.querySelector('i').className = 'fas fa-check-square';
-        selectionModeBtn.querySelector('span').textContent = 'Select';
-        allRowChecks().forEach(c => { c.checked = false; });
-        updateBulkBar();
-    }
-
-    selectionModeBtn.addEventListener('click', function () {
-        if (selectionMode) exitSelectionMode();
-        else enterSelectionMode();
-    });
-
-    // ── Bulk delete ──────────────────────────────────────────────────────────
-    const bulkUrl         = '{{ route("employees.bulk-delete") }}';
-    const selectAllChk    = document.getElementById('selectAll');
-    const bulkBar         = document.getElementById('bulkActionBar');
-    const bulkCountEl     = document.getElementById('bulkCount');
-    const bulkDeselectBtn = document.getElementById('bulkDeselectAll');
-    const bulkDeleteBtn   = document.getElementById('bulkDeleteBtn');
-
-    function visibleRowChecks() {
-        return Array.from(document.querySelectorAll(
-            '#empTable tbody tr[data-site]:not([style*="display: none"]) .emp-row-check'
-        ));
-    }
-    function allRowChecks() {
-        return Array.from(document.querySelectorAll('#empTable tbody .emp-row-check'));
-    }
-    function checkedIds() {
-        return allRowChecks().filter(c => c.checked).map(c => c.value);
-    }
-    function updateBulkBar() {
-        const ids     = checkedIds();
-        const count   = ids.length;
-        bulkCountEl.textContent  = count;
-        bulkBar.style.display    = count > 0 ? 'flex' : 'none';
-
-        const visible        = visibleRowChecks();
-        const checkedVisible = visible.filter(c => c.checked).length;
-        selectAllChk.checked       = visible.length > 0 && checkedVisible === visible.length;
-        selectAllChk.indeterminate = checkedVisible > 0 && checkedVisible < visible.length;
-    }
-
-    selectAllChk.addEventListener('change', function () {
-        visibleRowChecks().forEach(c => { c.checked = this.checked; });
-        updateBulkBar();
-    });
-
-    document.getElementById('empTable').addEventListener('change', function (e) {
-        if (e.target.classList.contains('emp-row-check')) updateBulkBar();
-    });
-
-    bulkDeselectBtn.addEventListener('click', function () {
-        allRowChecks().forEach(c => { c.checked = false; });
-        updateBulkBar();
-    });
-
-    bulkDeleteBtn.addEventListener('click', async function () {
-        const ids = checkedIds();
-        if (!ids.length) return;
-        const label = ids.length === 1 ? '1 employee' : `${ids.length} employees`;
-        if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
-
-        bulkDeleteBtn.disabled     = true;
-        bulkDeleteBtn.innerHTML    = '<i class="fas fa-spinner fa-spin"></i> Deleting…';
-
-        try {
-            const r = await fetch(bulkUrl, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                body: JSON.stringify({ ids }),
-            });
-            const data = await r.json();
-            if (data.success) {
-                ids.forEach(id => {
-                    const chk = document.querySelector(`.emp-row-check[value="${id}"]`);
-                    if (chk) chk.closest('tr').remove();
-                });
-                applyFilter();
-                exitSelectionMode();
-                flashToast(`${data.deleted} employee${data.deleted !== 1 ? 's' : ''} deleted.`, 'success');
-            } else {
-                flashToast(data.message || 'Bulk delete failed.', 'error');
-            }
-        } catch { flashToast('Network error — please try again.', 'error'); }
-        finally {
-            bulkDeleteBtn.disabled  = false;
-            bulkDeleteBtn.innerHTML = '<i class="fas fa-trash"></i> Delete Selected';
-        }
-    });
-
-    // "Delete All" was removed from this page: a single click that wiped the
-    // entire workforce sat one slip away from the ordinary buttons, and bulk
-    // select already covers deleting several people deliberately.
+    // Walang maramihang pagbura sa pahinang ito. Inalis ang "Delete All" noon
+    // dahil isang pagkakamali lang ang layo nito sa pagbura ng buong workforce,
+    // at inalis ang bulk select dahil hindi naman ito ginagamit. Ang pagbura ay
+    // isa-isa na lang, sa Remove ng bawat row, kung saan may modal na
+    // nagsasabi kung sino ang tatanggalin. Nananatili ang bulk-delete route —
+    // gamit pa rin ito ng Register & Manage para sa Removed nito.
 
     // ── Toast ────────────────────────────────────────────────────────────────
     function flashToast(msg, type) {
