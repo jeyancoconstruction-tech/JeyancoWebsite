@@ -2,25 +2,40 @@
 @section('page_title', $employee->name)
 
 @section('content')
-<div class="emp-page">
+<div class="prof-page">
 
-    {{-- ── Back + actions ──────────────────────────────────────────────────── --}}
-    <div class="dir-header">
-        <div class="dir-header-text">
-            <a href="{{ route('employees.index') }}" class="prof-back">
-                <i class="fas fa-arrow-left"></i> Employee Directory
-            </a>
-            <h1 class="dir-title" style="margin-top:10px;">{{ $employee->name }}</h1>
-            <p class="dir-sub" style="margin-left:0;">
-                ID #{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }}
-                &middot; {{ $employee->position ?: ($employee->laborType->name ?? 'Worker') }}
-            </p>
+    {{-- ── Back + actions ────────────────────────────────────────────────────
+         Sariling klase ang pahinang ito. Humihiram ito dati ng .dir-header at
+         .dir-btn-primary sa index.blade.php, na nasa loob ng <style> nito at
+         hindi naman umaabot dito. --}}
+    <a href="{{ route('employees.index') }}" class="prof-back">
+        <i class="fas fa-arrow-left"></i> Employee Directory
+    </a>
+
+    <div class="prof-head">
+        <div class="prof-head-main">
+            <h1 class="prof-title">{{ $employee->name }}</h1>
+            <div class="prof-meta">
+                <span class="prof-id">#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }}</span>
+                <span class="prof-sep"></span>
+                <span>{{ $employee->position ?: ($employee->laborType->name ?? 'Worker') }}</span>
+                <span class="prof-sep"></span>
+                {{-- Ang dalawang bagay na nagbabago ng pakikitungo sa tao:
+                     paano siya binabayaran, at nakakapasok ba siya. --}}
+                <span class="prof-tag {{ $employee->isContractual() ? 'is-contract' : '' }}">
+                    {{ $employee->employment_label }}
+                </span>
+                @unless($employee->fingerprint_id)
+                    <span class="prof-tag is-warn">
+                        <i class="fas fa-hourglass-half"></i> Walang daliri
+                    </span>
+                @endunless
+            </div>
         </div>
-        <div class="dir-header-actions">
-            <a href="{{ route('employees.edit', $employee->id) }}" class="dir-btn-primary">
-                <i class="fas fa-pen"></i> Edit
-            </a>
-        </div>
+
+        <a href="{{ route('employees.edit', $employee->id) }}" class="prof-edit">
+            <i class="fas fa-pen"></i> Edit
+        </a>
     </div>
 
     <div class="prof-grid">
@@ -28,8 +43,8 @@
         {{-- ── Left: who they are ──────────────────────────────────────────── --}}
         <div class="prof-col">
 
-        <div class="emp-card prof-card">
-            <div class="prof-id">
+        <div class="prof-card">
+            <div class="prof-id-block">
                 @if($employee->photo)
                     <img src="{{ url('storage/' . $employee->photo) }}"
                          alt="{{ $employee->name }}" class="prof-photo">
@@ -47,9 +62,9 @@
                     <dt>Site</dt>
                     <dd>
                         @if($employee->site)
-                            <span class="emp-badge-site"><i class="fas fa-map-marker-alt"></i> {{ $employee->site->name }}</span>
+                            <span class="prof-tag"><i class="fas fa-map-marker-alt"></i> {{ $employee->site->name }}</span>
                         @else
-                            <span class="emp-dash">Hindi pa naka-assign</span>
+                            <span class="prof-dash">Hindi pa naka-assign</span>
                         @endif
                     </dd>
                 </div>
@@ -57,26 +72,31 @@
                     <dt>Labor type</dt>
                     <dd>
                         @if($employee->laborType)
-                            <span class="emp-badge-labor"><i class="fas fa-briefcase"></i> {{ $employee->laborType->name }}</span>
+                            <span class="prof-tag"><i class="fas fa-briefcase"></i> {{ $employee->laborType->name }}</span>
                         @else
-                            <span class="emp-dash">—</span>
+                            <span class="prof-dash">—</span>
                         @endif
                     </dd>
                 </div>
+                {{-- Nasa header na ang Employment; hindi na inuulit dito. --}}
+                @if($employee->isContractual())
                 <div class="prof-fact">
-                    <dt>Employment</dt>
-                    <dd><span class="prof-chip">{{ $employee->employment_label }}</span></dd>
+                    <dt>Contract amount</dt>
+                    {{-- Kabuuan para sa buong proyekto, hindi kada araw — iyon
+                         ang hinihingi ng form ("Total for the whole project").
+                         Ang dating "kada araw" dito ay nagsasabi ng ibang halaga
+                         nang tahimik. --}}
+                    <dd class="prof-money">
+                        ₱{{ number_format($employee->contract_rate ?? 0, 2) }}
+                        <small>buong proyekto</small>
+                    </dd>
                 </div>
-                @if($employee->isContractual() && $employee->contract_rate)
-                <div class="prof-fact">
-                    <dt>Contract rate</dt>
-                    <dd class="prof-money">₱{{ number_format($employee->contract_rate, 2) }} <small>kada araw</small></dd>
-                </div>
-                @endif
+                @else
                 <div class="prof-fact">
                     <dt>Rate / hour</dt>
                     <dd class="prof-money">₱{{ number_format($employee->rate_per_hour, 2) }}</dd>
                 </div>
+                @endif
                 <div class="prof-fact">
                     <dt>Vale balance</dt>
                     <dd class="prof-money {{ ($employee->vale ?? 0) > 0 ? 'warn' : '' }}">
@@ -87,9 +107,9 @@
                     <dt>Fingerprint</dt>
                     <dd>
                         @if($employee->fingerprint_id)
-                            <span class="emp-badge-fp"><i class="fas fa-fingerprint"></i> Enrolled #{{ $employee->fingerprint_id }}</span>
+                            <span class="prof-tag mono"><i class="fas fa-fingerprint"></i> Enrolled #{{ $employee->fingerprint_id }}</span>
                         @else
-                            <span class="prof-chip warn"><i class="fas fa-hourglass-half"></i> Wala pang daliri</span>
+                            <span class="prof-tag is-warn"><i class="fas fa-hourglass-half"></i> Wala pang daliri</span>
                         @endif
                     </dd>
                 </div>
@@ -114,7 +134,7 @@
             ], fn ($v) => $v !== null && $v !== '');
         @endphp
 
-        <div class="emp-card prof-card">
+        <div class="prof-card">
             <div class="prof-card-head"><span>Personal na impormasyon</span></div>
 
             @if(count($personal))
@@ -138,7 +158,7 @@
         {{-- ── Right: this week, then recent scans ─────────────────────────── --}}
         <div class="prof-col">
 
-            <div class="emp-card prof-card">
+            <div class="prof-card">
                 <div class="prof-card-head">
                     <span>Payroll ngayong cutoff</span>
                     <span class="prof-period">{{ $period }}</span>
@@ -176,14 +196,14 @@
                 </div>
             </div>
 
-            <div class="emp-card prof-card">
+            <div class="prof-card">
                 <div class="prof-card-head"><span>Huling mga pasok</span></div>
 
                 @if($attendance->isEmpty())
                     <p class="prof-none">Wala pang naitalang attendance.</p>
                 @else
                 <div class="table-responsive">
-                    <table class="emp-table prof-table">
+                    <table class="prof-table">
                         <thead>
                             <tr><th>Petsa</th><th>Session</th><th>Time in</th><th>Time out</th></tr>
                         </thead>
@@ -191,13 +211,13 @@
                         @foreach($attendance as $a)
                             <tr>
                                 <td>{{ \Carbon\Carbon::parse($a->date)->format('M d, Y') }}</td>
-                                <td><span class="prof-chip">{{ $a->session }}</span></td>
+                                <td><span class="prof-tag">{{ $a->session }}</span></td>
                                 <td>{{ $a->time_in ? \Carbon\Carbon::parse($a->time_in)->format('g:i A') : '—' }}</td>
                                 <td>
                                     @if($a->time_out)
                                         {{ \Carbon\Carbon::parse($a->time_out)->format('g:i A') }}
                                     @else
-                                        <span class="prof-chip warn">Nasa loob pa</span>
+                                        <span class="prof-tag is-live">Nasa loob pa</span>
                                     @endif
                                 </td>
                             </tr>
@@ -213,136 +233,211 @@
 </div>
 
 <style>
-/* ── Chrome na hiniram sa directory ───────────────────────────────────────
-   Ginagamit ng pahinang ito ang .dir-header at .dir-btn-primary, pero nasa
-   loob ng <style> ng index.blade.php ang mga kahulugan noon — hindi umaabot
-   dito. Kaya nakapatong-patong ang header at hubad na asul na link lang ang
-   Edit. Nakasulat muli rito ang kailangan; kung magbago ang isa, dapat sabay
-   ang dalawa. (Ang tamang ayos ay ilipat ito sa isang tunay na CSS file,
-   pero iyon ay paglilipat na dumadampi sa buong directory.) */
-.dir-header {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 20px; flex-wrap: wrap; margin-bottom: 22px;
-}
-.dir-title {
-    display: flex; align-items: center; gap: 12px;
-    font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em;
-    color: var(--text, #e8eef7); margin: 0;
-}
-.dir-sub {
-    margin: 6px 0 0 40px; font-size: 0.88rem;
-    color: var(--text-muted, #8fa2bd);
-}
-.dir-header-actions { display: flex; align-items: center; gap: 10px; }
-.dir-btn-primary {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 11px 18px; border-radius: 10px;
-    font-size: 0.86rem; font-weight: 600; text-decoration: none;
-    cursor: pointer; white-space: nowrap;
-    background: var(--accent, #2f7fd1); border: 1px solid var(--accent, #2f7fd1);
-    color: #fff; box-shadow: 0 2px 10px rgba(47,127,209,0.28);
-    transition: filter .15s;
-}
-.dir-btn-primary:hover { filter: brightness(1.08); color: #fff; }
+/* =============================================================================
+   EMPLOYEE PROFILE
+   -----------------------------------------------------------------------------
+   Sarili ng pahinang ito ang lahat ng klase rito. Humihiram ito dati ng
+   .dir-header, .dir-btn-primary, .emp-card at .emp-table sa index.blade.php —
+   nasa loob iyon ng <style> ng ibang pahina at hindi umaabot dito, kaya walang
+   anyo ang header, ang Edit at ang talahanayan.
 
-.emp-badge-site, .emp-badge-labor, .emp-badge-fp {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 500; white-space: nowrap;
-    color: var(--text-secondary) !important; background: transparent !important;
-    border: 1px solid var(--border) !important;
-    padding: 3px 9px; border-radius: 6px;
-}
-.emp-badge-site i, .emp-badge-labor i, .emp-badge-fp i { font-size: 9px; color: var(--text-muted); }
-.emp-badge-fp { font-family: ui-monospace,'SF Mono','Courier New',monospace; }
-.emp-dash { color: var(--text-muted); font-size: 13px; }
+   Tokens lang ang kulay: --surface, --text-primary, --border at kapatid nito,
+   na muling binibigyang-halaga sa ilalim ng html[data-bs-theme]. Kaya sumusunod
+   ito sa light at dark nang walang hiwalay na panuntunan. (Ang dating code ay
+   tumatawag ng --text, --surface-2, --surface-3, --border-soft at --text-dim,
+   na wala sa alinmang stylesheet — kaya laging ang madilim na fallback ang
+   ginagamit, at nabubura ang pahina sa light mode.)
 
-/* ── Sariling estilo ng pahinang ito ──────────────────────────────────── */
-.prof-val { font-size: 0.85rem; color: var(--text, #e8eef7); }
+   Sumusunod sa sistema ng app: 6px radius, patag na ibabaw, isang brand blue.
+   ========================================================================== */
 
+.prof-page { width: 100%; max-width: none; margin: 0; }
+
+/* --- Balik sa listahan --------------------------------------------------- */
 .prof-back {
     display: inline-flex; align-items: center; gap: 8px;
-    font-size: 0.82rem; font-weight: 600; text-decoration: none;
-    color: var(--text-muted, #8fa2bd);
+    font-size: 0.8rem; font-weight: 600; text-decoration: none;
+    color: var(--text-muted); transition: var(--transition);
 }
-.prof-back:hover { color: var(--accent, #2f7fd1); }
+.prof-back:hover { color: var(--brand); }
+.prof-back i { font-size: 0.72rem; }
 
-.prof-grid { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: start; }
+/* --- Pamagat + Edit ------------------------------------------------------ */
+.prof-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap;
+    margin: 12px 0 20px;
+    padding-bottom: 18px; border-bottom: 1px solid var(--border);
+}
+.prof-head-main { min-width: 0; }
+.prof-title {
+    margin: 0; font-size: 1.6rem; font-weight: 700;
+    letter-spacing: -0.01em; color: var(--text-primary);
+}
+.prof-meta {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 9px; font-size: 0.82rem; color: var(--text-secondary);
+}
+.prof-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-muted);
+}
+/* Tuldok na naghihiwalay - mas tahimik kaysa tunay na bantas. */
+.prof-sep {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: var(--border-md); flex-shrink: 0;
+}
+
+.prof-edit {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: var(--radius-sm);
+    font-size: 0.83rem; font-weight: 600; text-decoration: none;
+    white-space: nowrap; cursor: pointer;
+    background: var(--brand); border: 1px solid var(--brand);
+    color: #fff; transition: var(--transition);
+}
+.prof-edit:hover { background: var(--brand-strong); border-color: var(--brand-strong); color: #fff; }
+.prof-edit:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* --- Tatak ---------------------------------------------------------------
+   Isang hugis para sa lahat ng maliit na pananda sa pahina, kaya hindi
+   nagmumukhang iba't ibang bagay ang magkakatulad na impormasyon. */
+.prof-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 9px; border-radius: var(--radius-sm);
+    font-size: 0.72rem; font-weight: 600; white-space: nowrap;
+    color: var(--text-secondary);
+    background: transparent; border: 1px solid var(--border);
+}
+.prof-tag i { font-size: 0.62rem; color: var(--text-muted); }
+.prof-tag.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 500;
+}
+.prof-tag.is-contract {
+    color: var(--brand); border-color: var(--brand); background: var(--brand-subtle);
+}
+.prof-tag.is-contract i { color: var(--brand); }
+.prof-tag.is-warn   { color: var(--warning); border-color: var(--warning); }
+.prof-tag.is-warn i { color: var(--warning); }
+.prof-tag.is-live   { color: var(--success); border-color: var(--success); }
+
+.prof-dash { color: var(--text-muted); font-size: 0.82rem; }
+
+/* --- Layout -------------------------------------------------------------- */
+.prof-grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
 .prof-col  { display: flex; flex-direction: column; gap: 16px; }
-.prof-card { padding: 20px; }
 
-.prof-id { display: flex; align-items: center; gap: 14px; padding-bottom: 18px;
-           border-bottom: 1px solid var(--border, #2a3856); }
+.prof-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    padding: 18px;
+}
+
+/* --- Pagkakakilanlan ----------------------------------------------------- */
+.prof-id-block {
+    display: flex; align-items: center; gap: 14px;
+    padding-bottom: 16px; margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+}
 .prof-photo, .prof-initials {
-    width: 58px; height: 58px; border-radius: 50%; flex-shrink: 0;
-    object-fit: cover;
+    width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
 }
 .prof-initials {
     display: flex; align-items: center; justify-content: center;
-    background: rgba(47,127,209,0.18); color: #6fa8dc;
-    font-size: 1.5rem; font-weight: 800;
+    background: var(--brand-subtle); color: var(--brand);
+    font-size: 1.35rem; font-weight: 700;
 }
-.prof-name { font-size: 1.1rem; font-weight: 800; color: var(--text, #e8eef7); }
-.prof-role { font-size: 0.8rem; color: var(--text-muted, #8fa2bd); margin-top: 2px; }
+.prof-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+.prof-role { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; }
 
-.prof-facts { margin: 0; padding: 4px 0 0; }
+/* --- Listahan ng datos --------------------------------------------------- */
+.prof-facts { margin: 0; padding: 0; }
 .prof-fact {
     display: flex; align-items: center; justify-content: space-between; gap: 14px;
-    padding: 12px 0; border-bottom: 1px solid var(--border-soft, #223049);
+    padding: 11px 0; border-bottom: 1px solid var(--border);
 }
-.prof-fact:last-child { border-bottom: none; }
-.prof-fact dt { font-size: 0.78rem; color: var(--text-muted, #8fa2bd); margin: 0; font-weight: 500; }
-.prof-fact dd { margin: 0; text-align: right; }
-.prof-money { font-size: 0.95rem; font-weight: 700; color: var(--text, #e8eef7);
-              font-variant-numeric: tabular-nums; }
-.prof-money.warn { color: var(--warning, #e8a33d); }
-.prof-money small { font-size: 0.68rem; font-weight: 500; color: var(--text-dim, #5a6b86); }
-
-.prof-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 10px; border-radius: 8px; font-size: 0.74rem; font-weight: 600;
-    background: var(--surface-3, #212d44); color: var(--text, #e8eef7);
-    border: 1px solid var(--border, #2a3856);
+.prof-fact:last-child { border-bottom: none; padding-bottom: 0; }
+.prof-fact dt {
+    margin: 0; font-size: 0.76rem; font-weight: 500;
+    color: var(--text-muted); flex-shrink: 0;
 }
-.prof-chip.warn {
-    background: rgba(232,163,61,0.14); color: var(--warning, #e8a33d);
-    border-color: var(--warning, #e8a33d);
+.prof-fact dd { margin: 0; text-align: right; min-width: 0; }
+.prof-val   { font-size: 0.83rem; color: var(--text-primary); }
+.prof-money {
+    font-size: 0.9rem; font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.prof-money.warn { color: var(--warning); }
+.prof-money small {
+    display: block; margin-top: 2px;
+    font-size: 0.64rem; font-weight: 500; color: var(--text-muted);
 }
 
+/* --- Ulo ng card --------------------------------------------------------- */
 .prof-card-head {
     display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-    font-size: 0.78rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
-    color: var(--text-muted, #8fa2bd);
-    padding-bottom: 14px; margin-bottom: 14px;
-    border-bottom: 1px solid var(--border, #2a3856);
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-muted);
+    padding-bottom: 13px; margin-bottom: 15px;
+    border-bottom: 1px solid var(--border);
 }
-.prof-period { font-size: 0.72rem; letter-spacing: 0; text-transform: none;
-               color: var(--accent, #2f7fd1); font-weight: 600; }
+.prof-period {
+    font-size: 0.7rem; letter-spacing: 0; text-transform: none;
+    color: var(--brand); font-weight: 600; white-space: nowrap;
+}
 
-.prof-pay { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+/* --- Buod ng payroll ----------------------------------------------------- */
+.prof-pay { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
 .prof-pay-cell {
-    background: var(--surface-2, #1a2438); border: 1px solid var(--border, #2a3856);
-    border-radius: 10px; padding: 13px 14px;
-    display: flex; flex-direction: column; gap: 5px;
+    display: flex; flex-direction: column; gap: 6px;
+    background: var(--bg-subtle); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 13px;
 }
-.prof-pay-k { font-size: 0.7rem; color: var(--text-muted, #8fa2bd); }
-.prof-pay-v { font-size: 1.05rem; font-weight: 800; color: var(--text, #e8eef7);
-              font-variant-numeric: tabular-nums; }
-.prof-pay-v.ot    { color: var(--warning, #e8a33d); }
-.prof-pay-v.minus { color: var(--danger, #e5484d); }
+.prof-pay-k { font-size: 0.68rem; font-weight: 500; color: var(--text-muted); }
+.prof-pay-v {
+    font-size: 1.02rem; font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.prof-pay-v.ot    { color: var(--warning); }
+.prof-pay-v.minus { color: var(--danger); }
+/* Ang Net ang sagot sa tanong ng pahina, kaya isang guhit ang naghihiwalay
+   dito - hindi buong kahon na kulay, na kumakain ng pansin sa katabi. */
 .prof-pay-cell.net {
-    background: rgba(43,182,115,0.10); border-color: var(--success, #2bb673);
+    border-left: 3px solid var(--success);
+    background: var(--surface);
 }
-.prof-pay-cell.net .prof-pay-k,
-.prof-pay-cell.net .prof-pay-v { color: var(--success, #2bb673); }
+.prof-pay-cell.net .prof-pay-v { color: var(--success); }
 
-.prof-table { margin: 0; }
-.prof-none { color: var(--text-muted, #8fa2bd); font-size: 0.85rem; margin: 0; padding: 8px 0; }
+/* --- Talahanayan ng pasok ------------------------------------------------ */
+.prof-table { width: 100%; margin: 0; border-collapse: collapse; }
+.prof-table thead th {
+    padding: 0 0 9px; text-align: left;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-muted); border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+.prof-table tbody td {
+    padding: 11px 0; font-size: 0.82rem; color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+}
+.prof-table tbody tr:last-child td { border-bottom: none; padding-bottom: 0; }
+.prof-table tbody td + td { padding-left: 14px; }
+.prof-table thead th + th { padding-left: 14px; }
 
+.prof-none { margin: 0; padding: 6px 0; font-size: 0.83rem; color: var(--text-muted); }
+
+/* --- Responsive ---------------------------------------------------------- */
 @media (max-width: 1100px) {
     .prof-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
     .prof-pay { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .prof-head { gap: 14px; }
+    .prof-edit { width: 100%; justify-content: center; }
+    .prof-title { font-size: 1.35rem; }
 }
 </style>
 @endsection

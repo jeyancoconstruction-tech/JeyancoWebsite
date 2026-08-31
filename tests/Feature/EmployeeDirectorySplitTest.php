@@ -214,6 +214,21 @@ class EmployeeDirectorySplitTest extends TestCase
         $this->assertStringNotContainsString('Birthplace', $html);
     }
 
+    public function test_a_contract_amount_is_labelled_as_the_project_total_not_a_daily_rate(): void
+    {
+        $employee = $this->contractual('Carlo Diaz', 50000);
+
+        // The form asks for "Contract Amount — Total for the whole project".
+        // The details page used to print that same number as "kada araw",
+        // which reads as ₱50,000 a day against a ₱50,000 contract.
+        $this->actingAs($this->admin())
+            ->get(route('employees.show', $employee->id))
+            ->assertOk()
+            ->assertSee('Contract amount')
+            ->assertSee('buong proyekto')
+            ->assertDontSee('kada araw');
+    }
+
     public function test_the_payroll_rule_behind_the_split_still_holds(): void
     {
         // The whole reason the directory separates them: contract work earns
