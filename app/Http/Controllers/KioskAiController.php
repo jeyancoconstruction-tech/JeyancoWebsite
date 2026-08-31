@@ -36,7 +36,7 @@ class KioskAiController extends Controller
      */
     public function byFinger(int $fingerId): JsonResponse
     {
-        $employee = Employee::with('laborType')
+        $employee = Employee::with(['laborType', 'site'])
             ->where('fingerprint_id', (string) $fingerId)
             ->first();
 
@@ -92,6 +92,41 @@ class KioskAiController extends Controller
 
         $num = fn ($key) => round((float) ($totals[$key] ?? 0), 2);
 
+        // The scans themselves, not just what they add up to.
+        //
+        // The card used to carry totals alone, so a worker who had just
+        // clocked in saw nothing move: payroll only counts a session once it
+        // is closed, and an open one contributes no hours and no pay. The
+        // person standing at the kiosk had every reason to think their scan
+        // had not registered. Their own time-in is the proof it did.
+        $records = Attendance::where('employee_id', $employee->id)
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->orderByDesc('date')
+            ->orderBy('session')
+            ->get()
+            ->map(function (Attendance $a) {
+                $in  = $a->time_in  ? Carbon::parse($a->time_in)  : null;
+                $out = $a->time_out ? Carbon::parse($a->time_out) : null;
+
+                return [
+                    'date'     => Carbon::parse($a->date)->toDateString(),
+                    'day'      => Carbon::parse($a->date)->format('D, M d'),
+                    'session'  => $a->session,
+                    'time_in'  => $in  ? $in->format('g:i A')  : null,
+                    'time_out' => $out ? $out->format('g:i A') : null,
+                    // Still on site: the hours are real but not yet countable,
+                    // and saying so beats showing a silent zero.
+                    'open'     => (bool) ($in && ! $out),
+                    'hours'    => ($in && $out)
+                        ? round(abs($in->diffInMinutes($out)) / 60, 2)
+                        : 0.0,
+                ];
+            })
+            ->values();
+
+        $daysPresent = $records->filter(fn ($r) => $r['time_in'] !== null)
+            ->pluck('date')->unique()->count();
+
         return response()->json([
             'success'  => true,
             'employee' => [
@@ -102,6 +137,31 @@ class KioskAiController extends Controller
                 // for daily and contractual workers until that rule is settled.
                 'employment_type'  => $employee->employment_type,
                 'employment_label' => $employee->employment_label,
+                // Where they are posted, per the office record. The kiosk knows
+                // which site it is standing at; only the web knows where this
+                // person was actually assigned, and they are not always the same.
+                'site'             => $employee->site->name ?? null,
+                // The rate PAYROLL ACTUALLY USED, not the stored field.
+                //
+                // PayrollService takes the labor type's daily_rate and divides
+                // by 8 whenever that is set, and only falls back to the
+                // employee's own rate_per_hour when it is not. Reporting the
+                // stored field meant the card could say "P180 per hour" beside
+                // a gross figure computed at P150 — and a worker who multiplies
+                // the two numbers and gets a third one has every reason to stop
+                // believing the screen. The whole point of this tab is that the
+                // kiosk and the office cannot disagree.
+                'rate_per_hour'    => round(
+                    $employee->laborType?->daily_rate !== null
+                        ? ((float) $employee->laborType->daily_rate) / 8
+                        : (float) ($employee->rate_per_hour ?? 0),
+                    2
+                ),
+                'daily_rate'       => $employee->laborType?->daily_rate !== null
+                    ? round((float) $employee->laborType->daily_rate, 2) : null,
+                'contract_rate'    => $employee->contract_rate !== null
+                    ? round((float) $employee->contract_rate, 2) : null,
+                'fingerprint_id'   => $employee->fingerprint_id,
             ],
             'period' => [
                 'start' => $start->toDateString(),
@@ -117,9 +177,37 @@ class KioskAiController extends Controller
                 'bonus'      => $num('bonus'),
                 'deductions' => $num('totalDeductions'),
                 'net'        => $num('net'),
+                'holiday'    => $num('holidayPay'),
+                'rest_day'   => $num('restDayPay'),
+            ],
+
+            // Itemised, because "Deductions: P240" invites exactly one question
+            // and the kiosk should already be holding the answer.
+            'breakdown' => [
+                'sss'        => $num('sssDeduction'),
+                'philhealth' => $num('philhealthDeduction'),
+                'pagibig'    => $num('pagibigDeduction'),
+                'vale'       => $num('vale'),
+                'manual'     => $num('manualDeductions'),
+            ],
+
+            // Today on its own. It is the thing they just did, and hunting for
+            // it inside a week of rows is work the screen should have done.
+            'today' => [
+                'date'    => Carbon::now()->toDateString(),
+                'label'   => Carbon::now()->format('D, M d'),
+                'records' => $records->where('date', Carbon::now()->toDateString())->values(),
+                'hours'   => round((float) $records->where('date', Carbon::now()->toDateString())
+                                        ->sum('hours'), 2),
+                'open'    => $records->where('date', Carbon::now()->toDateString())
+                                     ->contains(fn ($r) => $r['open']),
             ],
             // Running cash-advance balance, kept off the totals because it is a
             // standing balance rather than part of this week's computation.
+            // Kinuha mula sa mismong attendance rows, kaya tumutugma ito sa
+            // listahan sa ibaba kahit hindi pa tapos ang isang session.
+            'days_present' => $daysPresent,
+            'attendance'   => $records,
             'vale' => round((float) ($employee->vale ?? 0), 2),
             // So the kiosk can say why the chat is quiet instead of looking broken.
             'assistant_available' => ! empty(config('services.anthropic.key')),
