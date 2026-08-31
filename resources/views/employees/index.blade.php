@@ -702,9 +702,19 @@
     transition: border-color .18s;
 }
 .emp-table.view-grid tr:hover { border-color: var(--accent, #2f7fd1); }
-.emp-table.view-grid td { display: block; border: none; padding: 0; text-align: left; }
+/* Hindi kasama ang checkbox cell dito. Ang ".emp-table.view-grid td" ay may
+   mas mataas na specificity kaysa sa ".emp-col-check { display: none }", kaya
+   kung sasakupin nito ang lahat ng td ay lalabas ang checkbox kahit hindi
+   naka-selection mode — at wala nang magagawa ang Select button. */
+.emp-table.view-grid td:not(.emp-col-check) {
+    display: block; border: none; padding: 0; text-align: left;
+}
 
-/* Ang checkbox ay pumapasok sa sulok ng card imbes na humati ng linya. */
+/* Nakatago hanggang buksan ng Select, tulad din sa talahanayan. Kailangang
+   tahasan dito para talunin ang panuntunan ng grid sa itaas. */
+.emp-table.view-grid td.emp-col-check { display: none; border: none; }
+
+/* Kapag bukas na, pumapasok ito sa sulok ng card imbes na humati ng linya. */
 .emp-selecting .emp-table.view-grid td.emp-col-check {
     display: block; position: absolute; top: 10px; left: 10px; z-index: 2;
     width: auto; padding: 0 !important;
