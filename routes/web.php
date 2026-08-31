@@ -65,6 +65,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     // "/employees/{employee}" wildcard further down.
     Route::patch ('/employees/bulk-restore',      [EmployeeController::class, 'bulkRestore'])->name('employees.bulk-restore');
     Route::delete('/employees/bulk-force-delete', [EmployeeController::class, 'bulkForceDelete'])->name('employees.bulk-force-delete');
+    // Literal path — must stay above "/employees/{employee}".
+    Route::get('/employees/export', [EmployeeController::class, 'export'])->name('employees.export');
     Route::get('/employees/register', [EmployeeController::class, 'register'])->name('employees.register');
     Route::get('/employees/register/live', [EmployeeController::class, 'registerLive'])->name('employees.register.live');
 

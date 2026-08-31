@@ -197,13 +197,27 @@ class KioskController extends Controller
                 // finger is missing — not the admin-approval status, which the
                 // worker standing at the kiosk has no way to act on.
                 'state'            => $enrolled ? 'enrolled' : 'pending',
+                // Lets the kiosk mark a just-added name so the person holding
+                // the tablet can see their new hire arrive without reloading.
+                'added_at'         => optional($e->created_at)->toIso8601String(),
+                'is_new'           => $e->created_at
+                    && $e->created_at->greaterThan(now()->subHours(24)),
             ];
         });
 
-        // Needs-a-finger first; alphabetical within each group.
+        // Needs-a-finger first, newest of those at the very top; everyone
+        // already enrolled follows alphabetically.
+        //
+        // The order follows the actual job. Someone is standing at the kiosk
+        // because a name was just added in the office, and that name is the one
+        // they are looking for — putting it under "A" in a fifty-row list makes
+        // them hunt for the thing they came to do. The enrolled half is a
+        // reference list instead, so alphabetical is right there.
         $sorted = $rows->sortBy([
             fn ($a, $b) => ($a['enrolled'] ? 1 : 0) <=> ($b['enrolled'] ? 1 : 0),
-            fn ($a, $b) => strcasecmp($a['name'], $b['name']),
+            fn ($a, $b) => $a['enrolled']
+                ? strcasecmp($a['name'], $b['name'])
+                : strcmp((string) $b['added_at'], (string) $a['added_at']),
         ])->values();
 
         return response()->json([

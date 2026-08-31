@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use App\Models\Employee;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use App\Models\Attendance;
 use App\Models\LaborType;
 use App\Models\Site;
 use App\Notifications\EmployeeAlert;
@@ -38,7 +41,111 @@ class EmployeeController extends Controller
             );
         }
 
-        return view('employees.index', compact('employees', 'sites'));
+        // Figures for the summary cards. Counted from the same collection the
+        // table renders, so a number on a card can never disagree with the
+        // rows underneath it.
+        $withFingerprint = $employees->filter(fn ($e) => ! empty($e->fingerprint_id))->count();
+        $totalRate       = (float) $employees->sum('rate_per_hour');
+        $totalVale       = (float) $employees->sum(fn ($e) => (float) ($e->vale ?? 0));
+
+        $stats = [
+            'total'            => $employees->count(),
+            'total_rate'       => $totalRate,
+            'total_vale'       => $totalVale,
+            'avg_rate'         => $employees->count() ? $totalRate / $employees->count() : 0.0,
+            'with_fingerprint' => $withFingerprint,
+            'no_fingerprint'   => $employees->count() - $withFingerprint,
+        ];
+
+        // The directory lists the live workforce. Pending kiosk detections are
+        // counted separately so the tab can say how many are waiting without
+        // mixing them into the table.
+        $pendingCount = Employee::pending()->count();
+
+        return view('employees.index', compact('employees', 'sites', 'stats', 'pendingCount'));
+    }
+
+    /**
+     * The directory as a CSV, matching the columns on screen.
+     *
+     * Streamed rather than built in memory, and plain CSV rather than a real
+     * workbook: xlsx is a zip archive, and the deployment image has no zip
+     * extension to build one with.
+     */
+    public function export()
+    {
+        $employees = Employee::active()->with(['laborType', 'site'])->orderBy('name')->get();
+
+        $filename = 'employee-directory_' . now()->format('Y-m-d') . '.csv';
+        $columns  = ['Employee ID', 'Name', 'Site', 'Position / Labor Type',
+                     'Employment Type', 'Rate per Hour', 'Vale Balance', 'Fingerprint'];
+
+        return response()->streamDownload(function () use ($employees, $columns) {
+            $out = fopen('php://output', 'w');
+
+            // Excel reads a bare UTF-8 CSV as Windows-1252 and turns the peso
+            // sign into mojibake. The byte-order mark tells it otherwise.
+            fwrite($out, "\xEF\xBB\xBF");
+
+            fputcsv($out, ['Jeyanco Construction — Employee Directory']);
+            fputcsv($out, ['Generated', now()->format('M d, Y g:i A')]);
+            fputcsv($out, []);
+            fputcsv($out, $columns);
+
+            foreach ($employees as $e) {
+                fputcsv($out, [
+                    '#' . str_pad((string) $e->id, 4, '0', STR_PAD_LEFT),
+                    $e->name,
+                    $e->site->name ?? '',
+                    $e->position ?: ($e->laborType->name ?? ''),
+                    $e->employment_label,
+                    number_format((float) $e->rate_per_hour, 2, '.', ''),
+                    number_format((float) ($e->vale ?? 0), 2, '.', ''),
+                    $e->fingerprint_id ? 'Enrolled (#' . $e->fingerprint_id . ')' : 'Not enrolled',
+                ]);
+            }
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * One worker's profile: who they are, and what this week has come to.
+     *
+     * The route was registered but the method never written, so the directory's
+     * View button answered 500. The pay figures come from PayrollService — the
+     * same call behind Payroll Records — so this page cannot quote a number the
+     * payroll disagrees with.
+     */
+    public function show(Employee $employee, \App\Services\PayrollService $payroll)
+    {
+        $employee->load(['laborType', 'site', 'kiosk']);
+
+        $start = Carbon::now()->startOfWeek(Carbon::MONDAY);
+        $end   = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+
+        $totals = [];
+        try {
+            foreach ($payroll->computeForRange($start->toDateString(), $end->toDateString())['employees'] ?? [] as $row) {
+                if ((int) ($row['employee_id'] ?? 0) === (int) $employee->id) {
+                    $totals = $row['totals'] ?? [];
+                    break;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Employee profile: payroll compute failed — ' . $e->getMessage());
+        }
+
+        $attendance = Attendance::where('employee_id', $employee->id)
+            ->orderByDesc('date')->orderBy('session')
+            ->limit(12)->get();
+
+        return view('employees.show', [
+            'employee'   => $employee,
+            'totals'     => $totals,
+            'period'     => $start->format('M d') . ' – ' . $end->format('M d, Y'),
+            'attendance' => $attendance,
+        ]);
     }
 
     public function create()
