@@ -113,6 +113,40 @@ class EmployeeDirectorySplitTest extends TestCase
         $this->assertStringContainsString('<span class="emp-rate-note">contract</span>', $html);
     }
 
+    public function test_the_toolbar_offers_both_layouts(): void
+    {
+        $this->regular('Ana Reyes');
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('employees.index'))
+            ->assertOk()
+            ->getContent();
+
+        // The script toggles on these exact values.
+        $this->assertStringContainsString('data-view="table"', $html);
+        $this->assertStringContainsString('data-view="grid"', $html);
+    }
+
+    public function test_the_selection_button_carries_the_label_its_script_rewrites(): void
+    {
+        $this->regular('Ana Reyes');
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('employees.index'))
+            ->assertOk()
+            ->getContent();
+
+        // enterSelectionMode() and exitSelectionMode() both reach for
+        // querySelector('span') on this button. When the span is missing every
+        // click throws a TypeError, and the throw lands before the line that
+        // clears the checkboxes — so selection mode half-applies and never
+        // resets. Cheap to lose in a redesign, so it is pinned here.
+        $this->assertMatchesRegularExpression(
+            '/id="selectionModeBtn".*?<span>.*?<\/span>/s',
+            $html
+        );
+    }
+
     public function test_the_payroll_rule_behind_the_split_still_holds(): void
     {
         // The whole reason the directory separates them: contract work earns

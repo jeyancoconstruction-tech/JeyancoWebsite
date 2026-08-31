@@ -77,8 +77,27 @@
                     <i class="fas fa-filter emp-select-icon"></i>
                 </div>
 
-                <button type="button" id="selectionModeBtn" class="dir-icon-btn" title="Select rows">
-                    <i class="fas fa-list-check"></i>
+                {{-- Paano nakahanay ang listahan. Iisang <table> lang ang
+                     pinagmumulan ng dalawang anyo — CSS lang ang nagbabago —
+                     kaya hindi sila puwedeng magkaiba ng laman, at patuloy na
+                     gumagana ang search, salain at checkbox sa dalawa. --}}
+                <div class="dir-viewswitch" role="group" aria-label="Ayos ng listahan">
+                    <button type="button" class="dir-view-opt active" data-view="table"
+                            title="Talahanayan" aria-pressed="true">
+                        <i class="fas fa-list"></i>
+                    </button>
+                    <button type="button" class="dir-view-opt" data-view="grid"
+                            title="Grid" aria-pressed="false">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                </div>
+
+                {{-- Ang <span> ay hindi palamuti: hinahanap ito ng
+                     enterSelectionMode/exitSelectionMode para palitan ang
+                     salita. Kapag wala ito, TypeError ang bawat click. --}}
+                <button type="button" id="selectionModeBtn" class="dir-icon-btn" title="Pumili ng rows">
+                    <i class="fas fa-check-square"></i>
+                    <span>Select</span>
                 </button>
             </div>
         </div>
@@ -154,8 +173,9 @@
                             </div>
                         </td>
 
-                        {{-- Site --}}
-                        <td>
+                        {{-- Site. Ang data-label ay walang epekto sa talahanayan;
+                             sa grid ito ang nagiging pangalan ng linya sa card. --}}
+                        <td data-label="Site">
                             @if($emp->site)
                                 <span class="emp-badge-site">
                                     <i class="fas fa-map-marker-alt"></i>
@@ -167,7 +187,7 @@
                         </td>
 
                         {{-- Labor Type --}}
-                        <td>
+                        <td data-label="Labor Type">
                             @if($emp->laborType)
                                 <span class="emp-badge-labor">
                                     <i class="fas fa-briefcase"></i>
@@ -179,7 +199,7 @@
                         </td>
 
                         {{-- Rate --}}
-                        <td class="emp-rate">
+                        <td class="emp-rate" data-label="Rate">
                             @if($emp->isContractual())
                                 {{-- Walang oras-oras na rate ang kontrata. Ang ipapakita ay
                                      ang kabuuan ng kontrata; kung ilalagay dito ang
@@ -193,12 +213,13 @@
                         </td>
 
                         {{-- Vale balance --}}
-                        <td class="emp-vale {{ ($emp->vale ?? 0) > 0 ? 'has-vale' : '' }}" data-vale-cell="{{ $emp->id }}">
+                        <td class="emp-vale {{ ($emp->vale ?? 0) > 0 ? 'has-vale' : '' }}"
+                            data-vale-cell="{{ $emp->id }}" data-label="Vale">
                             ₱{{ number_format($emp->vale ?? 0, 2) }}
                         </td>
 
                         {{-- Fingerprint --}}
-                        <td>
+                        <td data-label="Fingerprint">
                             @if($emp->fingerprint_id)
                                 <span class="emp-badge-fp">
                                     <i class="fas fa-fingerprint"></i>
@@ -642,6 +663,91 @@
 .emp-vale.has-vale { color: var(--danger); }
 .emp-actions-cell { text-align: right; white-space: nowrap; }
 
+/* May salita na ang Select, kaya hindi na ito parisukat na icon lamang. */
+#selectionModeBtn { width: auto; gap: 8px; padding: 0 14px; font-size: 13px; font-weight: 600; }
+
+/* ── View switcher ───────────────────────────────────────────────────────── */
+.dir-viewswitch {
+    display: inline-flex; gap: 2px; padding: 2px;
+    background: var(--surface-2, #1a2438);
+    border: 1px solid var(--border, #2a3856);
+    border-radius: 9px;
+}
+.dir-view-opt {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border: none; background: none;
+    border-radius: 7px; color: var(--text-muted, #8fa2bd);
+    cursor: pointer; transition: background .15s, color .15s;
+}
+.dir-view-opt:hover { color: var(--text-primary, #e8eef7); }
+.dir-view-opt.active { background: rgba(47,127,209,0.18); color: #6fa8dc; }
+.dir-view-opt:focus-visible { outline: 2px solid var(--accent, #2f7fd1); outline-offset: 2px; }
+
+/* ── Grid view ───────────────────────────────────────────────────────────────
+   Parehong <table> ang pinagmumulan ng talahanayan at ng grid — CSS lang ang
+   nagbabago. Walang pangalawang kopya ng bawat row, kaya imposibleng maglihis
+   ang dalawa, at patuloy na gumagana ang search, salain at checkbox dahil
+   pareho pa rin ang mga <tr> na tinatago o ipinapakita ng filter. */
+.emp-table.view-grid { display: block; }
+.emp-table.view-grid thead { display: none; }
+.emp-table.view-grid tbody {
+    display: grid; gap: 14px; padding: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+}
+.emp-table.view-grid tr {
+    display: flex; flex-direction: column; gap: 2px; position: relative;
+    background: var(--surface, #131c2e);
+    border: 1px solid var(--border, #2a3856);
+    border-radius: 12px; padding: 16px 14px 10px;
+    transition: border-color .18s;
+}
+.emp-table.view-grid tr:hover { border-color: var(--accent, #2f7fd1); }
+.emp-table.view-grid td { display: block; border: none; padding: 0; text-align: left; }
+
+/* Ang checkbox ay pumapasok sa sulok ng card imbes na humati ng linya. */
+.emp-selecting .emp-table.view-grid td.emp-col-check {
+    display: block; position: absolute; top: 10px; left: 10px; z-index: 2;
+    width: auto; padding: 0 !important;
+}
+
+/* Pangalan at larawan sa itaas, nakasentro — ito ang mukha ng card. */
+.emp-table.view-grid td:nth-child(2) { text-align: center; margin-bottom: 10px; }
+.emp-table.view-grid .emp-cell { flex-direction: column; align-items: center; gap: 8px; }
+.emp-table.view-grid .emp-avatar-img,
+.emp-table.view-grid .emp-avatar-initials { width: 56px; height: 56px; font-size: 20px; }
+.emp-table.view-grid .emp-info { align-items: center; }
+.emp-table.view-grid .emp-name { white-space: normal; text-align: center; }
+.emp-table.view-grid .emp-meta { justify-content: center; flex-wrap: wrap; }
+
+/* Bawat hanay ng talahanayan ay nagiging isang linya sa card: pangalan ng
+   hanay sa kaliwa, halaga sa kanan. Ang ::before ang humahalili sa <thead>
+   na nakatago sa anyong ito. */
+.emp-table.view-grid td[data-label] {
+    display: flex; align-items: baseline; justify-content: flex-end;
+    gap: 6px; font-size: 12px; padding: 5px 0;
+    border-top: 1px dashed var(--border, #2a3856);
+}
+.emp-table.view-grid td[data-label]::before {
+    content: attr(data-label);
+    margin-right: auto; flex-shrink: 0;
+    font-size: 11px; font-weight: 600; letter-spacing: .3px;
+    color: var(--text-muted, #8fa2bd);
+}
+/* Sa card, magkatabi ang halaga at ang "contract" na pananda. */
+.emp-table.view-grid .emp-rate-contract,
+.emp-table.view-grid .emp-rate-note { display: inline; }
+
+.emp-table.view-grid td.emp-actions-cell {
+    display: flex; justify-content: flex-end; align-items: center; gap: 6px;
+    margin-top: 6px; padding-top: 8px;
+    border-top: 1px solid var(--border, #2a3856);
+}
+
+/* Ang "walang laman" ay mensahe, hindi card — kaya buong lapad at hubad. */
+.emp-table.view-grid tr.emp-empty-row {
+    grid-column: 1 / -1; background: none; border: none; padding: 0;
+}
+
 /* ── Empty state ─────────────────────────────────────────────────────────── */
 .emp-empty {
     display: flex; flex-direction: column; align-items: center;
@@ -869,6 +975,39 @@
             applyFilter();
         });
     });
+
+    // ── View switch: talahanayan o grid ──────────────────────────────────────
+    // Isang klase lang sa <table> ang ipinapalit. Hindi ginagalaw ang mga row,
+    // kaya hindi kailangang muling patakbuhin ang filter pagkatapos lumipat —
+    // ang itinago nito ay nananatiling nakatago sa dalawang anyo.
+    (function () {
+        const table = document.getElementById('empTable');
+        const opts  = document.querySelectorAll('.dir-view-opt[data-view]');
+        if (!table || !opts.length) return;
+
+        const KEY = 'jeyanco.employees.view';
+
+        function apply(view) {
+            table.classList.toggle('view-grid', view === 'grid');
+            opts.forEach(o => {
+                const on = o.dataset.view === view;
+                o.classList.toggle('active', on);
+                o.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+        }
+
+        // Napipili ito ng bawat tao para sa sarili niyang browser — hindi ito
+        // setting ng buong opisina. Nakabalot sa try dahil sa mga browser na
+        // nakasara ang site storage, kung saan nagtatapon ito ng error.
+        let saved = 'table';
+        try { saved = localStorage.getItem(KEY) || 'table'; } catch (e) {}
+        apply(saved);
+
+        opts.forEach(o => o.addEventListener('click', () => {
+            apply(o.dataset.view);
+            try { localStorage.setItem(KEY, o.dataset.view); } catch (e) {}
+        }));
+    })();
 
     // ── Delete: ask in a modal that names the person ─────────────────────────
     (function () {
