@@ -212,4 +212,64 @@ class EmployeeProfileRequiredTest extends TestCase
                  ->assertSessionHasErrors($field);
         }
     }
+
+    /**
+     * Position follows Labor Type for a regular worker. The form fills it and
+     * locks it, so this is about the other door: a post that went around the
+     * browser must not be able to store a title the labor type denies.
+     */
+    public function test_a_regular_workers_position_is_taken_from_the_labor_type(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('employees.store'), $this->completeProfile([
+                 'job_title' => 'Something Else Entirely',
+             ]))
+             ->assertSessionHasNoErrors();
+
+        $employee = Employee::firstOrFail();
+
+        $this->assertSame('Mason', $employee->job_title);
+        $this->assertSame('Mason', $employee->position, 'position and job title must agree');
+    }
+
+    /** A contractual worker has no labor type, so their title is their own. */
+    public function test_a_contractual_workers_position_is_left_as_typed(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('employees.store'), $this->completeProfile([
+                 'employment_type' => Employee::EMPLOYMENT_CONTRACTUAL,
+                 'labor_type_id'   => null,
+                 'rate_per_hour'   => null,
+                 'contract_rate'   => 300000,
+                 'end_of_contract' => '2026-12-31',
+                 'job_title'       => 'Project Foreman',
+             ]))
+             ->assertSessionHasNoErrors();
+
+        $this->assertSame('Project Foreman', Employee::firstOrFail()->job_title);
+    }
+
+    /**
+     * The modal posts a labor type but has no Position field. It must not have
+     * one invented for it — that is the same overreach profileData() exists to
+     * prevent everywhere else.
+     */
+    public function test_the_quick_edit_modal_does_not_rewrite_the_position(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('employees.store'), $this->completeProfile());
+
+        $employee = Employee::firstOrFail();
+        $employee->update(['job_title' => 'Kept By Hand']);
+
+        $this->actingAs($this->admin())
+             ->put(route('employees.update', $employee->id), [
+                 'name'          => $employee->name,
+                 'labor_type_id' => $this->laborType()->id,
+                 'rate_per_hour' => 150,
+             ])
+             ->assertSessionHasNoErrors();
+
+        $this->assertSame('Kept By Hand', $employee->fresh()->job_title);
+    }
 }

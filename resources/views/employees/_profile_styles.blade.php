@@ -139,6 +139,15 @@
     color: var(--text-muted, #8a929b);
 }
 
+/* A field the form fills for you. design-tokens.css paints every .form-control
+   with the plain surface and !important, so this needs the extra class to win
+   — without it a locked field looks exactly like one you can type in. */
+.form-control.ep-locked {
+    background: var(--bg-subtle, #f1f3f5) !important;
+    color: var(--text-secondary, #66707c) !important;
+    cursor: not-allowed;
+}
+
 /* ── Address suggestions ──────────────────────────────────────────────── */
 /* The list is positioned against .ap-field, not the grid column: a column is
    as tall as the tallest field in its row, so anchoring there would drop the

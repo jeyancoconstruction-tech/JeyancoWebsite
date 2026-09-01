@@ -202,7 +202,7 @@ class EmployeeController extends Controller
             // fingerprint by hand has done that enrolment themselves, so that
             // case activates immediately.
             'status'         => $fingerprintId ? Employee::STATUS_ACTIVE : Employee::STATUS_PENDING,
-        ], $this->profileData($request), $identity)));
+        ], $this->profileData($request, $laborType), $identity)));
 
         EmployeeAlert::fire(auth()->user(), 'new_employee',
             'New Employee Registered',
@@ -262,7 +262,7 @@ class EmployeeController extends Controller
             'labor_type_id'  => $request->labor_type_id ?: $employee->labor_type_id,
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
-        ], $this->profileData($request), $identity);
+        ], $this->profileData($request, $laborType), $identity);
         $updateData = Employee::withoutMissingColumns($updateData);
 
         if ($request->hasFile('photo')) {
@@ -466,7 +466,7 @@ class EmployeeController extends Controller
      * emptied list becomes null rather than [], so "no education on file"
      * reads the same whether it was never entered or later cleared.
      */
-    private function profileData(Request $request): array
+    private function profileData(Request $request, ?LaborType $laborType = null): array
     {
         $data = [];
 
@@ -508,6 +508,21 @@ class EmployeeController extends Controller
                 ->all();
 
             $data['skills'] = $skills ?: null;
+        }
+
+        // Last word on Position for a regular worker: it is their labor type.
+        // `position`, the column payroll actually reads, is derived from the
+        // labor type on save whatever the Position box said, so leaving the two
+        // free to disagree only ever produced a record that contradicted
+        // itself. The form fills that box from the labor type and locks it;
+        // this is the same rule applied again on arrival, so a post that went
+        // around the browser cannot store a job title the labor type denies.
+        // Held only against the full forms, and only when a labor type came
+        // with them — the quick-edit modal has no Position field to keep in
+        // step, and must not have one invented for it.
+        $contractual = $request->input('employment_type') === Employee::EMPLOYMENT_CONTRACTUAL;
+        if ($laborType && ! $contractual && $request->boolean('profile_form')) {
+            $data['job_title'] = $laborType->name;
         }
 
         return $data;

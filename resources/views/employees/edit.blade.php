@@ -71,28 +71,9 @@
                             @error('last_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
-                        {{-- Position / Job Title. Descriptive only — `position` is
-                             derived from the labor type and is what payroll reads. --}}
-                        <div class="col-md-6 col-lg-2">
-                            <label class="ep-label" for="job_title">Position / Job Title <span class="ep-req">*</span></label>
-                            <input type="text" id="job_title" name="job_title" required
-                                   value="{{ old('job_title', $employee->job_title) }}"
-                                   class="form-control @error('job_title') is-invalid @enderror"
-                                   placeholder="e.g. Mason">
-                            @error('job_title')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-
-                        <div class="col-md-6 col-lg-2">
-                            <label class="ep-label" for="date_hired">Date Hired <span class="ep-req">*</span></label>
-                            <input type="date" id="date_hired" name="date_hired" required
-                                   value="{{ old('date_hired', $employee->date_hired?->format('Y-m-d')) }}"
-                                   class="form-control @error('date_hired') is-invalid @enderror">
-                            @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-
                         {{-- Employee type drives the fields below it. --}}
                         <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="employment_type">Employee Type</label>
+                            <label class="ep-label" for="employment_type">Employee Type <span class="ep-req">*</span></label>
                             <select name="employment_type" id="employment_type" required
                                     class="form-select @error('employment_type') is-invalid @enderror">
                                 @foreach(\App\Models\Employee::EMPLOYMENT_TYPES as $val => $label)
@@ -105,27 +86,54 @@
                             @error('employment_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
-                        {{-- ── Regular only ── --}}
+                        {{-- ── Regular only ──
+                             Labor Type comes before Position because it answers it:
+                             the position IS the labor type for a regular worker, and
+                             `position` — the column payroll reads — is derived from
+                             it on save either way. --}}
                         <div class="col-md-6 col-lg-4 js-regular-only">
                             <label class="ep-label" for="labor_type_select">Labor Type <span class="ep-req">*</span></label>
                             <select id="labor_type_select" name="labor_type_id" class="form-select">
                                 <option value="">— Select Labor Type —</option>
                                 @foreach($laborTypes as $labor)
                                     <option value="{{ $labor->id }}"
+                                            data-name="{{ $labor->name }}"
                                             data-daily="{{ $labor->daily_rate }}"
                                             {{ $employee->labor_type_id == $labor->id ? 'selected' : '' }}>
                                         {{ $labor->name }}
                                     </option>
                                 @endforeach
                             </select>
+                            <span class="ep-hint">Choose a Labor Type to automatically fill the Position.</span>
                         </div>
 
                         <div class="col-md-6 col-lg-2 js-regular-only">
-                            <label class="ep-label" for="rate_per_hour">Rate Per Hour</label>
+                            <label class="ep-label" for="rate_per_hour">Rate Per Hour <span class="ep-req">*</span></label>
                             <input type="number" step="0.01" id="rate_per_hour" name="rate_per_hour"
                                    value="{{ $employee->rate_per_hour }}"
                                    class="form-control" style="cursor:not-allowed;" readonly>
                             <span class="ep-hint">Calculated from Labor Type (Daily ÷ 8).</span>
+                        </div>
+
+                        {{-- Filled from the labor type and locked for a regular
+                             worker, typed by hand for a contractual one, who has no
+                             labor type to take it from. The toggle owns that switch. --}}
+                        <div class="col-md-6 col-lg-3">
+                            <label class="ep-label" for="job_title">Position / Job Title <span class="ep-req">*</span></label>
+                            <input type="text" id="job_title" name="job_title" required
+                                   value="{{ old('job_title', $employee->job_title) }}"
+                                   class="form-control @error('job_title') is-invalid @enderror"
+                                   placeholder="e.g. Mason">
+                            @error('job_title')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <span class="ep-hint js-position-hint"></span>
+                        </div>
+
+                        <div class="col-md-6 col-lg-3">
+                            <label class="ep-label" for="date_hired">Date Hired <span class="ep-req">*</span></label>
+                            <input type="date" id="date_hired" name="date_hired" required
+                                   value="{{ old('date_hired', $employee->date_hired?->format('Y-m-d')) }}"
+                                   class="form-control @error('date_hired') is-invalid @enderror">
+                            @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
                         {{-- ── Contractual only ── --}}
