@@ -425,7 +425,7 @@
     background: var(--border); color: var(--text-primary);
     font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums;
 }
-.dir-tab.active .dir-tab-count { background: var(--surface); color: var(--brand); }
+.dir-tab.active .dir-tab-count { background: var(--brand-subtle); color: var(--brand); }
 .dir-tab-count.warn { background: rgba(232,163,61,0.18); color: #e8a33d; }
 
 .dir-toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

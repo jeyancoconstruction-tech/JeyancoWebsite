@@ -176,10 +176,11 @@ html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 14px 
 .nav-tabs .nav-link.active, .an-tab.active {
     color: var(--brand) !important; border-bottom: 2px solid var(--brand) !important; background: none !important;
 }
-/* Employees and Register & Manage use a pill instead of the underline: a
-   brand-tinted fill with a 4px brand bar down the left edge — the same accent
-   language the alerts already speak. The inactive tab carries the very same
-   borders in transparent, so activating one can never shift its label. */
+/* Employees and Register & Manage use a pill instead of the underline: the
+   page surface lifted out of the background, ringed thinly, with a 4px brand
+   bar down the left edge. The blue belongs on the edge and the label, not in
+   the fill — a brand-tinted fill read as a heavy box. The inactive tab carries
+   the very same borders in transparent, so activating one cannot shift it. */
 .rm-tab, .dir-tab {
     border: 1px solid transparent !important;
     border-left: 4px solid transparent !important;
@@ -187,16 +188,16 @@ html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 14px 
 }
 .rm-tab.active, .dir-tab.active {
     color: var(--brand) !important;
-    background: var(--brand-subtle) !important;
+    background: var(--surface) !important;
     border-left-color: var(--brand) !important;
 }
 /* The ring is the theme's own brand at low alpha; there is no token for it,
-   and a neutral --border reads grey against the tinted fill. */
+   and a neutral --border reads grey against the surface fill. */
 html[data-bs-theme="light"] .rm-tab.active, html[data-bs-theme="light"] .dir-tab.active {
-    border-color: rgba(30,92,155,0.28) !important; border-left-color: var(--brand) !important;
+    border-color: rgba(30,92,155,0.22) !important; border-left-color: var(--brand) !important;
 }
 html[data-bs-theme="dark"] .rm-tab.active, html[data-bs-theme="dark"] .dir-tab.active {
-    border-color: rgba(91,149,207,0.30) !important; border-left-color: var(--brand) !important;
+    border-color: rgba(91,149,207,0.22) !important; border-left-color: var(--brand) !important;
 }
 .mode-btn.active {
     background: var(--brand-subtle) !important; color: var(--brand) !important; border-color: var(--brand) !important;
