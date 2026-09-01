@@ -243,6 +243,18 @@
 @include('employees._profile_styles')
 
 <script src="{{ asset('js/site-location-picker.js') }}"></script>
+<script src="{{ asset('js/address-picker.js') }}"></script>
+<script>
+    // Province -> City / Municipality -> Barangay, from the PSGC tables in
+    // public/psgc. If those files cannot be reached the three inputs simply
+    // stay the plain text fields they were before.
+    JeyancoAddress.init({
+        base:     '{{ asset('psgc') }}',
+        province: document.getElementById('address_province'),
+        city:     document.getElementById('address_city'),
+        barangay: document.getElementById('address_barangay'),
+    });
+</script>
 <script>
 (function () {
     const csrfToken   = '{{ csrf_token() }}';

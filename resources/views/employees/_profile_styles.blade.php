@@ -139,6 +139,40 @@
     color: var(--text-muted, #8a929b);
 }
 
+/* ── Address suggestions ──────────────────────────────────────────────── */
+/* The list is positioned against .ap-field, not the grid column: a column is
+   as tall as the tallest field in its row, so anchoring there would drop the
+   suggestions below a validation message on a neighbouring input. */
+.ap-field { position: relative; }
+.ap-list {
+    position: absolute;
+    z-index: 30;
+    left: 0; right: 0; top: calc(100% + 4px);
+    max-height: 264px;
+    overflow-y: auto;
+    padding: 4px;
+    background: var(--bg-elevated, #fff);
+    border: 1px solid var(--border, #e3e6e9);
+    border-radius: var(--radius-sm, 6px);
+    box-shadow: var(--shadow-lg, 0 2px 8px rgba(0,0,0,.10));
+}
+.ap-list[hidden] { display: none; }
+.ap-opt {
+    padding: 7px 10px;
+    border-radius: var(--radius-sm, 6px);
+    font-size: .86rem;
+    color: var(--text-primary, #1b2430);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ap-opt:hover,
+.ap-opt.is-active {
+    background: var(--brand-subtle, #edf3f9);
+    color: var(--brand, #1e5c9b);
+}
+
 @media (max-width: 576px) {
     .ep-section { padding: 16px 14px; }
     .ep-actions { flex-wrap: wrap; }

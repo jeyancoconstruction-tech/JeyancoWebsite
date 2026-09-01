@@ -147,36 +147,52 @@
         </div>
     </header>
 
+    {{-- Province leads, because the three that follow are answers to it: the
+         city list is whatever is inside the chosen province, and the barangay
+         list whatever is inside the chosen city. Filling them in the other
+         order would mean typing a barangay before anything knows where to look
+         for it. House No. / Street is last of the cascade and plain text —
+         there is no register of street names to suggest from.
+         The lists come from PSGC via public/js/address-picker.js. --}}
     <div class="row g-3">
-        <div class="col-md-6 col-lg-4">
+        <div class="col-md-6 col-lg-3">
+            <label class="ep-label" for="address_province">Province</label>
+            <div class="ap-field">
+                <input type="text" id="address_province" name="address_province"
+                       class="form-control @error('address_province') is-invalid @enderror"
+                       value="{{ $val('address_province') }}"
+                       placeholder="Type to search, e.g. Camarines">
+            </div>
+            @error('address_province')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <label class="ep-label" for="address_city">City / Municipality</label>
+            <div class="ap-field">
+                <input type="text" id="address_city" name="address_city"
+                       class="form-control @error('address_city') is-invalid @enderror"
+                       value="{{ $val('address_city') }}"
+                       placeholder="Pick a province first">
+            </div>
+            @error('address_city')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        </div>
+        <div class="col-md-6 col-lg-2">
+            <label class="ep-label" for="address_barangay">Barangay</label>
+            <div class="ap-field">
+                <input type="text" id="address_barangay" name="address_barangay"
+                       class="form-control @error('address_barangay') is-invalid @enderror"
+                       value="{{ $val('address_barangay') }}"
+                       placeholder="Pick a city first">
+            </div>
+            @error('address_barangay')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        </div>
+        <div class="col-md-6 col-lg-3">
             <label class="ep-label" for="address_street">House No. / Street</label>
             <input type="text" id="address_street" name="address_street"
                    class="form-control @error('address_street') is-invalid @enderror"
                    value="{{ $val('address_street') }}" placeholder="e.g. 123 Rizal St.">
             @error('address_street')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
-        <div class="col-md-6 col-lg-2">
-            <label class="ep-label" for="address_barangay">Barangay</label>
-            <input type="text" id="address_barangay" name="address_barangay"
-                   class="form-control @error('address_barangay') is-invalid @enderror"
-                   value="{{ $val('address_barangay') }}">
-            @error('address_barangay')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-        </div>
-        <div class="col-md-6 col-lg-2">
-            <label class="ep-label" for="address_city">City / Municipality</label>
-            <input type="text" id="address_city" name="address_city"
-                   class="form-control @error('address_city') is-invalid @enderror"
-                   value="{{ $val('address_city') }}">
-            @error('address_city')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-        </div>
-        <div class="col-md-6 col-lg-2">
-            <label class="ep-label" for="address_province">Province</label>
-            <input type="text" id="address_province" name="address_province"
-                   class="form-control @error('address_province') is-invalid @enderror"
-                   value="{{ $val('address_province') }}">
-            @error('address_province')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-        </div>
-        <div class="col-md-6 col-lg-2">
+        <div class="col-md-6 col-lg-1">
             <label class="ep-label" for="address_postal">ZIP Code</label>
             <input type="text" id="address_postal" name="address_postal"
                    class="form-control @error('address_postal') is-invalid @enderror"
