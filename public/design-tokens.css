@@ -210,13 +210,27 @@ html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 14px 
 }
 .table tbody tr:hover td, .rm-table tbody tr:hover td { background: var(--brand-subtle) !important; }
 
-/* ── 13 · FLOATING AI BUTTON · flat, monochrome, no glow ────────────────── */
+/* ── 13 · FLOATING AI BUTTON · brand blue, sized down, no pulse ring ───── */
 .chatbot-fab {
     background: var(--surface) !important; border: 1px solid var(--border) !important;
     color: var(--text-secondary) !important; box-shadow: none !important;
     width: 44px !important; height: 44px !important;
 }
 .chatbot-fab i { color: var(--text-secondary) !important; }
+/* Light mode had no override for the rule above, so the FAB rendered as a
+   white circle on a white page — present and clickable, but invisible. Dark
+   never showed the bug because enterprise.css repaints the button blue there;
+   light now gets the same treatment so the two themes agree. */
+html[data-bs-theme="light"] .chatbot-fab {
+    background: linear-gradient(135deg, #2563EB, #4f46e5) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+    box-shadow: 0 6px 18px -6px rgba(37,99,235,0.55) !important;
+}
+html[data-bs-theme="light"] .chatbot-fab:hover {
+    box-shadow: 0 10px 24px -6px rgba(37,99,235,0.65) !important;
+}
+html[data-bs-theme="light"] .chatbot-fab i { color: #fff !important; }
 .fab-pulse-ring { display: none !important; }
 
 /* ── 14 · MODALS · 6px, 1px border, plain header ───────────────────────── */

@@ -337,7 +337,7 @@
 .dir-title {
     display: flex; align-items: center; gap: 12px;
     font-size: 1.85rem; font-weight: 800; letter-spacing: -0.02em;
-    color: var(--text, #e8eef7); margin: 0;
+    color: var(--text-primary); margin: 0;
 }
 .dir-title-icon {
     font-size: 1.4rem; color: var(--accent, #2f7fd1);
@@ -356,11 +356,11 @@
     white-space: nowrap;
 }
 .dir-btn-ghost {
-    background: var(--surface-2, #1a2438);
+    background: var(--bg-subtle);
     border: 1px solid var(--border, #2a3856);
-    color: var(--text, #e8eef7);
+    color: var(--text-primary);
 }
-.dir-btn-ghost:hover { background: var(--surface-3, #212d44); color: var(--text, #e8eef7); }
+.dir-btn-ghost:hover { background: var(--border); color: var(--text-primary); }
 .dir-btn-primary {
     background: var(--accent, #2f7fd1); border: 1px solid var(--accent, #2f7fd1);
     color: #fff; box-shadow: 0 2px 10px rgba(47,127,209,0.28);
@@ -391,10 +391,10 @@
 }
 .dir-stat-value {
     font-size: 1.9rem; font-weight: 800; line-height: 1.1; margin-top: 4px;
-    color: var(--text, #e8eef7); font-variant-numeric: tabular-nums;
+    color: var(--text-primary); font-variant-numeric: tabular-nums;
 }
 .dir-stat-foot {
-    margin-left: auto; font-size: 0.78rem; color: var(--text-dim, #5a6b86);
+    margin-left: auto; font-size: 0.78rem; color: var(--text-muted);
 }
 .dir-stat-icon {
     display: inline-flex; align-items: center; justify-content: center;
@@ -417,7 +417,7 @@
     font-size: 0.85rem; font-weight: 600; color: var(--text-muted, #8fa2bd);
     cursor: pointer; text-decoration: none; transition: color .15s, border-color .15s;
 }
-.dir-tab:hover { color: var(--text, #e8eef7); }
+.dir-tab:hover { color: var(--text-primary); }
 .dir-tab.active {
     color: var(--accent, #2f7fd1); border-bottom-color: var(--accent, #2f7fd1);
 }
@@ -425,7 +425,7 @@
 .dir-tab-count {
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px;
-    background: var(--surface-3, #212d44); color: var(--text, #e8eef7);
+    background: var(--border); color: var(--text-primary);
     font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .dir-tab.active .dir-tab-count { background: rgba(47,127,209,0.2); color: #6fa8dc; }
@@ -440,7 +440,7 @@
     height: 32px; padding: 0 12px; margin-right: 6px; vertical-align: middle;
     font-size: 12px; font-weight: 600; white-space: nowrap;
     color: var(--text-secondary, #8fa2bd); text-decoration: none;
-    background: var(--surface-2, #1a2438);
+    background: var(--bg-subtle);
     border: 1px solid var(--border, #2a3856);
     border-radius: 8px;
     transition: color .15s, border-color .15s;
@@ -454,7 +454,7 @@
     padding: 14px 18px; border-top: 1px solid var(--border, #2a3856);
 }
 .dir-foot-text { font-size: 0.8rem; color: var(--text-muted, #8fa2bd); }
-.dir-foot-text strong { color: var(--text, #e8eef7); font-variant-numeric: tabular-nums; }
+.dir-foot-text strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
@@ -643,7 +643,7 @@
 /* ── View switcher ───────────────────────────────────────────────────────── */
 .dir-viewswitch {
     display: inline-flex; gap: 2px; padding: 2px;
-    background: var(--surface-2, #1a2438);
+    background: var(--bg-subtle);
     border: 1px solid var(--border, #2a3856);
     border-radius: 9px;
 }
