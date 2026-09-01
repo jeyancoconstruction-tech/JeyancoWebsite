@@ -77,6 +77,16 @@
          empty — so it sits second rather than in front of the common case. --}}
     <div class="rm-pane active" data-pane="active">
         <div class="rm-card">
+            {{-- Bulk removal is destructive, so it is something you opt into.
+                 Until "Select" is pressed the checkbox column stays hidden —
+                 a page used mostly for looking a worker up should not open
+                 with an empty tickbox sitting in front of every row. --}}
+            <div class="rm-tools">
+                <span class="rm-tools-spacer"></span>
+                <button type="button" class="rm-btn-ghost js-select-toggle">
+                    <i class="fas fa-list-check"></i> <span class="js-select-label">Select</span>
+                </button>
+            </div>
             <div class="rm-bulk" data-bulk="active" hidden>
                 <span class="rm-bulk-count"><strong>0</strong> selected</span>
                 <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
@@ -136,6 +146,12 @@
                 <i class="fas fa-circle-info"></i>
                 <span>Please scan your fingerprint on the kiosk.</span>
             </div>
+            <div class="rm-tools">
+                <span class="rm-tools-spacer"></span>
+                <button type="button" class="rm-btn-ghost js-select-toggle">
+                    <i class="fas fa-list-check"></i> <span class="js-select-label">Select</span>
+                </button>
+            </div>
             <div class="rm-bulk" data-bulk="pending" hidden>
                 <span class="rm-bulk-count"><strong>0</strong> selected</span>
                 <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
@@ -165,6 +181,12 @@
             <div class="rm-card-note">
                 <i class="fas fa-circle-info"></i>
                 <span>Removed records are hidden everywhere but never lost. Restore them, or permanently delete as a last resort.</span>
+            </div>
+            <div class="rm-tools">
+                <span class="rm-tools-spacer"></span>
+                <button type="button" class="rm-btn-ghost js-select-toggle">
+                    <i class="fas fa-list-check"></i> <span class="js-select-label">Select</span>
+                </button>
             </div>
             <div class="rm-bulk" data-bulk="removed" hidden>
                 <span class="rm-bulk-count"><strong>0</strong> selected</span>
@@ -353,15 +375,28 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 .rm-tab.active .rm-tab-count { background:#eff6ff; color:#2563eb; }
 
 /* ── Bulk selection ─────────────────────────────────────────────────────── */
-.rm-check-col { width:38px; text-align:center; padding-left:14px !important; padding-right:0 !important; }
+/* The checkbox column only exists while the pane is in selection mode. It is
+   hidden on both the <th> and the <td>, so the column collapses entirely
+   rather than leaving an empty gutter. */
+.rm-check-col { display:none; width:38px; text-align:center; padding-left:14px !important; padding-right:0 !important; }
+.rm-pane.selecting .rm-check-col { display:table-cell; }
 .rm-check, .rm-check-all {
     width:16px; height:16px; cursor:pointer; accent-color:var(--brand,#1e5c9b); vertical-align:middle;
 }
 .rm-check-all:disabled { cursor:not-allowed; opacity:.4; }
 
+/* Toolbar strip that carries the Select toggle. */
+.rm-tools { display:flex; align-items:center; gap:10px; padding:11px 16px; border-bottom:1px solid #eef2f7; }
+.rm-tools-spacer { flex:1 1 auto; }
+/* Pressed state: the button stays visible as "Done" while selecting, so the
+   way out of selection mode is the same control that got you in. */
+.js-select-toggle.is-on { background:#1e5c9b; border-color:#1e5c9b; color:#fff; }
+.js-select-toggle.is-on:hover { background:#17497c; color:#fff; }
+.js-select-toggle:disabled { opacity:.5; cursor:not-allowed; }
+
 .rm-bulk {
     display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    margin:0 0 12px; padding:10px 14px; border-radius:10px;
+    margin:12px 16px; padding:10px 14px; border-radius:10px;
     background:rgba(30,92,155,0.08); border:1px solid rgba(30,92,155,0.28);
 }
 .rm-bulk[hidden] { display:none; }
@@ -512,6 +547,11 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 [data-bs-theme="dark"] .rm-badge-site { color:#86efac; background:#052e16; border-color:#166534; }
 [data-bs-theme="dark"] .rm-btn-ghost { background:#1c2740; border-color:#283449; color:#94a3b8; }
 [data-bs-theme="dark"] .rm-btn-ghost:hover { background:#283449; color:#e2e8f0; }
+/* Must come after the .rm-btn-ghost dark rule above — same specificity, so
+   whichever is written last wins, and the pressed state has to. */
+[data-bs-theme="dark"] .rm-tools { border-bottom-color:#1c2740; }
+[data-bs-theme="dark"] .js-select-toggle.is-on { background:#2563eb; border-color:#2563eb; color:#fff; }
+[data-bs-theme="dark"] .js-select-toggle.is-on:hover { background:#1d4ed8; color:#fff; }
 [data-bs-theme="dark"] .rm-menu-btn { background:#1c2740; border-color:#283449; color:#94a3b8; }
 [data-bs-theme="dark"] .rm-menu-btn:hover, [data-bs-theme="dark"] .rm-menu-btn.active { background:#172554; border-color:#1d4ed8; color:#93c5fd; }
 [data-bs-theme="dark"] .rm-menu { background:#1c2740; border-color:#283449; box-shadow:0 8px 24px rgba(0,0,0,.4); }
@@ -761,22 +801,56 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 
     function sync(pane) {
         if (!pane) return;
-        const boxes  = boxesIn(pane);
-        const picked = pickedIn(pane);
-        const all    = pane.querySelector('.rm-check-all');
-        const bar    = pane.querySelector('.rm-bulk');
+        const boxes     = boxesIn(pane);
+        const picked    = pickedIn(pane);
+        const all       = pane.querySelector('.rm-check-all');
+        const bar       = pane.querySelector('.rm-bulk');
+        const toggle    = pane.querySelector('.js-select-toggle');
+        const selecting = pane.classList.contains('selecting');
 
         if (all) {
             all.disabled      = boxes.length === 0;
             all.checked       = boxes.length > 0 && picked.length === boxes.length;
             all.indeterminate = picked.length > 0 && picked.length < boxes.length;
         }
+        // Nothing to select on an empty tab, so the toggle has no job there.
+        if (toggle) toggle.disabled = boxes.length === 0 && !selecting;
         if (bar) {
-            bar.hidden = picked.length === 0;
+            // The bar rides along with selection mode rather than appearing on
+            // the first tick: entering the mode should show what can be done
+            // with a selection, not hide it until something is already chosen.
+            bar.hidden = !selecting;
             const n = bar.querySelector('.rm-bulk-count strong');
             if (n) n.textContent = picked.length;
+            bar.querySelectorAll('button').forEach(b => { b.disabled = picked.length === 0; });
         }
     }
+
+    // Entering the mode reveals the checkbox column; leaving it drops whatever
+    // was ticked, so a stale selection can never survive out of sight.
+    function setSelecting(pane, on) {
+        if (!pane) return;
+        pane.classList.toggle('selecting', on);
+        const toggle = pane.querySelector('.js-select-toggle');
+        if (toggle) {
+            toggle.classList.toggle('is-on', on);
+            const label = toggle.querySelector('.js-select-label');
+            if (label) label.textContent = on ? 'Done' : 'Select';
+        }
+        if (!on) {
+            boxesIn(pane).forEach(b => { b.checked = false; });
+            const all = pane.querySelector('.rm-check-all');
+            if (all) { all.checked = false; all.indeterminate = false; }
+        }
+        sync(pane);
+    }
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.js-select-toggle');
+        if (!btn) return;
+        const pane = paneOf(btn);
+        setSelecting(pane, !pane.classList.contains('selecting'));
+    });
 
     function syncAll() { document.querySelectorAll('.rm-pane').forEach(sync); }
 
@@ -849,8 +923,10 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
             alert('Network error — please try again.');
         }
 
-        pane.querySelectorAll('.rm-bulk button').forEach(b => { b.disabled = false; });
+        // Hand the buttons back to sync() rather than blanket-enabling them —
+        // it is the one place that knows whether anything is still selected.
         btn.innerHTML = label;
+        sync(pane);
     });
 
     // The pending rows are swapped out wholesale by the 5-second live refresh,
