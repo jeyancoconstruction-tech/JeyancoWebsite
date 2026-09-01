@@ -30,10 +30,16 @@
         setGroup(regular, !contractual);
         setGroup(contract, contractual);
 
-        // Only demand a labor type and rate while they are on screen.
+        // Only demand a field while it is on screen. A hidden `required` input
+        // cannot be focused, so the browser refuses to submit the form and
+        // shows nothing to explain why — the pay fields must follow the toggle.
         ['labor_type_selector', 'rate_per_hour', 'labor_type_select'].forEach(function (id) {
             const field = document.getElementById(id);
             if (field) field.required = !contractual;
+        });
+        ['contract_rate', 'end_of_contract'].forEach(function (id) {
+            const field = document.getElementById(id);
+            if (field) field.required = contractual;
         });
     }
 

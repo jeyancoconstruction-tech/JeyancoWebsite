@@ -155,10 +155,10 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $request->validate(array_merge($this->identityRules($request), [
-            'site_id'        => 'nullable|exists:sites,id',
+            'site_id'        => $request->boolean('profile_form') ? 'required|exists:sites,id' : 'nullable|exists:sites,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ], $this->profileRules()), [
+        ], $this->profileRules($request)), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
             'first_name.required_without' => 'The first name is required.',
             'last_name.required_with'     => 'The last name is required.',
@@ -233,9 +233,9 @@ class EmployeeController extends Controller
         $employee = Employee::findOrFail($id);
 
         $request->validate(array_merge($this->identityRules($request), [
-            'site_id'        => 'nullable|exists:sites,id',
+            'site_id'        => $request->boolean('profile_form') ? 'required|exists:sites,id' : 'nullable|exists:sites,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
-        ], $this->profileRules()), [
+        ], $this->profileRules($request)), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
             'first_name.required_without' => 'The first name is required.',
             'last_name.required_with'     => 'The last name is required.',
@@ -295,11 +295,14 @@ class EmployeeController extends Controller
     private function identityRules(Request $request): array
     {
         $contractual = $request->input('employment_type') === Employee::EMPLOYMENT_CONTRACTUAL;
+        // See profileRules(): only the two full forms are held to filling
+        // everything in, and they are the ones that post this flag.
+        $full = $request->boolean('profile_form');
 
         return [
             'name'        => 'required_without:first_name|nullable|string|max:255',
             'first_name'  => 'required_without:name|nullable|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
+            'middle_name' => $full ? 'required|string|max:100' : 'nullable|string|max:100',
             'last_name'   => 'required_with:first_name|nullable|string|max:100',
 
             'labor_type_id' => $contractual
@@ -309,9 +312,13 @@ class EmployeeController extends Controller
                 ? 'nullable|numeric|min:0'
                 : 'required|numeric|min:0.01',
 
-            'employment_type' => ['nullable', Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
-            'contract_rate'   => ['nullable', 'numeric', 'min:0'],
-            'end_of_contract' => ['nullable', 'date'],
+            'employment_type' => [$full ? 'required' : 'nullable', Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
+
+            // Only demanded of a contractual worker, and only on a full form.
+            // The employment-type toggle disables whichever pay group is off
+            // screen, so a Regular worker never posts these at all.
+            'contract_rate'   => [$full && $contractual ? 'required' : 'nullable', 'numeric', 'min:0'],
+            'end_of_contract' => [$full && $contractual ? 'required' : 'nullable', 'date'],
         ];
     }
 
@@ -367,45 +374,60 @@ class EmployeeController extends Controller
     /**
      * Validation for the resume-style half of the registration form.
      *
-     * Everything here is optional on purpose. A worker the kiosk picked up from
-     * a fingerprint scan has none of it, and payroll must never stall waiting
-     * for a birthday or a barangay — the office completes the profile later.
+     * A post carrying `profile_form` came from Register Employee or Edit
+     * Employee — the two full forms — and the office's rule is that those are
+     * filled in completely. Nothing else may be held to that rule. The
+     * quick-edit modal on Register & Manage posts five pay fields, and the
+     * kiosk's complete endpoint posts what it read off a finger; demanding a
+     * birthday there would stall an enrolment that has nothing to do with one.
+     * So the same rule set is strict or lenient depending on who is posting.
+     *
+     * Government IDs are the standing exception, alongside the photo: a new
+     * hire is often still waiting to be issued an SSS or Pag-IBIG number, and
+     * registration must not be blocked on a number nobody can supply yet.
+     *
+     * Religion and the repeatable education / work history / skills / notes
+     * lists stay optional whoever is posting — they have no inputs on the form,
+     * so requiring them would fail a submission over a field nobody can see.
      */
-    private function profileRules(): array
+    private function profileRules(Request $request): array
     {
+        // Every rule below opens with one or the other.
+        $need = $request->boolean('profile_form') ? 'required' : 'nullable';
+
         return [
             // Personal
-            'birth_date'   => 'nullable|date|before:today',
-            'birth_place'  => 'nullable|string|max:180',
-            'gender'       => ['nullable', Rule::in(Employee::GENDERS)],
-            'civil_status' => ['nullable', Rule::in(Employee::CIVIL_STATUSES)],
-            'nationality'  => 'nullable|string|max:60',
+            'birth_date'   => "$need|date|before:today",
+            'birth_place'  => "$need|string|max:180",
+            'gender'       => [$need, Rule::in(Employee::GENDERS)],
+            'civil_status' => [$need, Rule::in(Employee::CIVIL_STATUSES)],
+            'nationality'  => "$need|string|max:60",
             'religion'     => 'nullable|string|max:60',
-            'blood_type'   => 'nullable|string|max:5',
+            'blood_type'   => "$need|string|max:5",
 
             // Contact
-            'phone'                      => 'nullable|string|max:30',
-            'email'                      => 'nullable|email|max:150',
-            'emergency_contact_name'     => 'nullable|string|max:150',
-            'emergency_contact_relation' => 'nullable|string|max:60',
-            'emergency_contact_phone'    => 'nullable|string|max:30',
+            'phone'                      => "$need|string|max:30",
+            'email'                      => "$need|email|max:150",
+            'emergency_contact_name'     => "$need|string|max:150",
+            'emergency_contact_relation' => "$need|string|max:60",
+            'emergency_contact_phone'    => "$need|string|max:30",
 
             // Address
-            'address_street'   => 'nullable|string|max:200',
-            'address_barangay' => 'nullable|string|max:120',
-            'address_city'     => 'nullable|string|max:120',
-            'address_province' => 'nullable|string|max:120',
-            'address_postal'   => 'nullable|string|max:20',
+            'address_street'   => "$need|string|max:200",
+            'address_barangay' => "$need|string|max:120",
+            'address_city'     => "$need|string|max:120",
+            'address_province' => "$need|string|max:120",
+            'address_postal'   => "$need|string|max:20",
 
-            // Government IDs
+            // Government IDs — optional by design, see above.
             'sss_number'        => 'nullable|string|max:40',
             'philhealth_number' => 'nullable|string|max:40',
             'pagibig_number'    => 'nullable|string|max:40',
             'tin_number'        => 'nullable|string|max:40',
 
             // Job
-            'job_title'  => 'nullable|string|max:150',
-            'date_hired' => 'nullable|date',
+            'job_title'  => "$need|string|max:150",
+            'date_hired' => "$need|date",
 
             // Education (repeatable)
             'education'                  => 'nullable|array|max:10',

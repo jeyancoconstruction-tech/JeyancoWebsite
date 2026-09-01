@@ -59,8 +59,8 @@
                             @error('first_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4 col-lg-2">
-                            <label class="ep-label" for="middle_name">Middle Name</label>
-                            <input type="text" id="middle_name" name="middle_name" value="{{ $middle }}"
+                            <label class="ep-label" for="middle_name">Middle Name <span class="ep-req">*</span></label>
+                            <input type="text" id="middle_name" name="middle_name" required value="{{ $middle }}"
                                    class="form-control @error('middle_name') is-invalid @enderror">
                             @error('middle_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
@@ -74,8 +74,8 @@
                         {{-- Position / Job Title. Descriptive only — `position` is
                              derived from the labor type and is what payroll reads. --}}
                         <div class="col-md-6 col-lg-2">
-                            <label class="ep-label" for="job_title">Position / Job Title</label>
-                            <input type="text" id="job_title" name="job_title"
+                            <label class="ep-label" for="job_title">Position / Job Title <span class="ep-req">*</span></label>
+                            <input type="text" id="job_title" name="job_title" required
                                    value="{{ old('job_title', $employee->job_title) }}"
                                    class="form-control @error('job_title') is-invalid @enderror"
                                    placeholder="e.g. Mason">
@@ -83,8 +83,8 @@
                         </div>
 
                         <div class="col-md-6 col-lg-2">
-                            <label class="ep-label" for="date_hired">Date Hired</label>
-                            <input type="date" id="date_hired" name="date_hired"
+                            <label class="ep-label" for="date_hired">Date Hired <span class="ep-req">*</span></label>
+                            <input type="date" id="date_hired" name="date_hired" required
                                    value="{{ old('date_hired', $employee->date_hired?->format('Y-m-d')) }}"
                                    class="form-control @error('date_hired') is-invalid @enderror">
                             @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -93,7 +93,7 @@
                         {{-- Employee type drives the fields below it. --}}
                         <div class="col-md-6 col-lg-3">
                             <label class="ep-label" for="employment_type">Employee Type</label>
-                            <select name="employment_type" id="employment_type"
+                            <select name="employment_type" id="employment_type" required
                                     class="form-select @error('employment_type') is-invalid @enderror">
                                 @foreach(\App\Models\Employee::EMPLOYMENT_TYPES as $val => $label)
                                     <option value="{{ $val }}"
@@ -130,7 +130,7 @@
 
                         {{-- ── Contractual only ── --}}
                         <div class="col-md-6 col-lg-3 js-contract-only" hidden>
-                            <label class="ep-label" for="contract_rate">Contract Amount</label>
+                            <label class="ep-label" for="contract_rate">Contract Amount <span class="ep-req">*</span></label>
                             <input type="number" step="0.01" min="0" name="contract_rate" id="contract_rate"
                                    class="form-control @error('contract_rate') is-invalid @enderror"
                                    value="{{ old('contract_rate', $employee->contract_rate) }}"
@@ -140,7 +140,7 @@
                         </div>
 
                         <div class="col-md-6 col-lg-3 js-contract-only" hidden>
-                            <label class="ep-label" for="end_of_contract">End of Contract</label>
+                            <label class="ep-label" for="end_of_contract">End of Contract <span class="ep-req">*</span></label>
                             <input type="date" id="end_of_contract" name="end_of_contract"
                                    value="{{ old('end_of_contract', $employee->end_of_contract?->format('Y-m-d')) }}"
                                    class="form-control @error('end_of_contract') is-invalid @enderror">
@@ -157,12 +157,12 @@
 
                         {{-- Site Assignment --}}
                         <div class="col-md-6 col-lg-6">
-                            <label class="ep-label" for="site_select">Site Assignment</label>
+                            <label class="ep-label" for="site_select">Site Assignment <span class="ep-req">*</span></label>
                             <div class="d-flex gap-2 align-items-start flex-wrap">
-                                <select name="site_id" id="site_select"
+                                <select name="site_id" id="site_select" required
                                         class="form-select"
                                         style="flex:1;min-width:160px;">
-                                    <option value="">— Unassigned —</option>
+                                    <option value="">— Select a site —</option>
                                     @foreach($sites as $site)
                                         <option value="{{ $site->id }}"
                                                 {{ $employee->site_id == $site->id ? 'selected' : '' }}>
