@@ -66,7 +66,8 @@ class SettingsController extends Controller
     public function update(Request $request)
     {
         $request->validate([
-            'ot_multiplier' => 'nullable|numeric|min:0|max:10',
+            'ot_multiplier'         => 'nullable|numeric|min:0|max:10',
+            'ot_premium_multiplier' => 'nullable|numeric|min:0|max:10',
             'bonus'         => 'nullable|numeric|min:0',
             'sss'           => 'nullable|numeric|min:0',
             'philhealth'    => 'nullable|numeric|min:0',
@@ -95,6 +96,7 @@ class SettingsController extends Controller
             ['id' => 1],
             [
                 'ot_multiplier'           => $request->ot_multiplier ?? 1.25,
+                'ot_premium_multiplier'   => $request->ot_premium_multiplier ?? 1.30,
                 'bonus'                   => $request->bonus         ?? 0,
                 'sunday_rest_day_enabled' => $newRestEnabled,
                 'sss'                     => $request->sss           ?? 0,

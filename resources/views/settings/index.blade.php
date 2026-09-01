@@ -80,7 +80,63 @@
                                         <span class="input-group-text ps-ig-text">×</span>
                                     </div>
                                     @error('ot_multiplier')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    <small class="text-muted d-block mt-1">Multiplied against hourly rate for overtime hours.</small>
+                                    <small class="text-muted d-block mt-1">Overtime on an <strong>ordinary working day</strong>. DOLE minimum is 1.25 (+25%).</small>
+                                </div>
+                                {{-- Overtime carries a different premium on a premium day: +30% of
+                                     that day's rate, not +25%. Payroll used one figure for both,
+                                     which paid 250% for overtime on a regular holiday where the
+                                     law calls for 260%. --}}
+                                <div class="mb-4">
+                                    <label class="ps-label" for="ot_premium_multiplier">Overtime Multiplier — Premium Days</label>
+                                    <div class="input-group">
+                                        <input type="number" step="0.01" min="0" max="10"
+                                               class="form-control ps-input @error('ot_premium_multiplier') is-invalid @enderror"
+                                               id="ot_premium_multiplier" name="ot_premium_multiplier"
+                                               value="{{ $settings->ot_premium_multiplier ?? 1.30 }}">
+                                        <span class="input-group-text ps-ig-text">×</span>
+                                    </div>
+                                    @error('ot_premium_multiplier')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    <small class="text-muted d-block mt-1">Overtime on a <strong>rest day, special day or holiday</strong> — applied to that day's rate, not the ordinary one. DOLE minimum is 1.30 (+30%).</small>
+                                </div>
+
+                                {{-- What the two multipliers above actually pay, per day type.
+                                     Computed from the saved values rather than written out, so
+                                     the table can never claim a rate payroll does not use. --}}
+                                @php
+                                    $otOrdinary = (float) ($settings->ot_multiplier ?? 1.25);
+                                    $otPremium  = (float) ($settings->ot_premium_multiplier ?? 1.30);
+                                    $dayTypes = [
+                                        ['Ordinary day',                    1.00, false],
+                                        ['Rest day / special non-working',  1.30, true],
+                                        ['Special day on a rest day',       1.50, true],
+                                        ['Regular holiday',                 2.00, true],
+                                        ['Regular holiday on a rest day',   2.60, true],
+                                    ];
+                                @endphp
+                                <div class="mb-4">
+                                    <label class="ps-label">Resulting Rates</label>
+                                    <div class="table-responsive">
+                                        <table class="ps-dole-table">
+                                            <thead>
+                                                <tr><th>Day type</th><th class="text-end">First 8 hrs</th><th class="text-end">Overtime</th></tr>
+                                            </thead>
+                                            <tbody>
+                                            @foreach($dayTypes as [$label, $factor, $isPremium])
+                                                <tr>
+                                                    <td>{{ $label }}</td>
+                                                    <td class="text-end">{{ number_format($factor * 100, 0) }}%</td>
+                                                    <td class="text-end">{{ number_format($factor * ($isPremium ? $otPremium : $otOrdinary) * 100, 0) }}%</td>
+                                                </tr>
+                                            @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">
+                                        Percentages of the worker's ordinary hourly rate. The day-type
+                                        rates are fixed by the Labor Code and are not editable here;
+                                        only the two overtime multipliers above are, and raising them
+                                        pays above the statutory minimum.
+                                    </small>
                                 </div>
                                 <div class="mb-4">
                                     <label class="ps-label" for="bonus">Bonus (per period)</label>
@@ -1380,6 +1436,21 @@
 .ps-input { border-color:#e2e8f0 !important; }
 .ps-input:focus { border-color:#6366f1 !important; box-shadow:0 0 0 3px rgba(99,102,241,.1) !important; }
 .ps-ig-text { background:#f8fafc !important; border-color:#e2e8f0 !important; font-weight:600; color:#374151; }
+
+/* Statutory rate reference. Tokens, not the hardcoded greys the rest of this
+   sheet still uses, so it reads in both themes without a second rule. */
+.ps-dole-table { width:100%; border-collapse:collapse; font-size:.82rem; }
+.ps-dole-table thead th {
+    font-weight:700; text-transform:uppercase; letter-spacing:.4px; font-size:.7rem;
+    color:var(--text-secondary,#66707c); padding:8px 10px;
+    border-bottom:1px solid var(--border,#e3e6e9);
+}
+.ps-dole-table tbody td {
+    padding:8px 10px; color:var(--text-primary,#1b2430);
+    border-bottom:1px solid var(--border,#e3e6e9);
+}
+.ps-dole-table tbody tr:last-child td { border-bottom:none; }
+.ps-dole-table tbody td:not(:first-child) { font-variant-numeric:tabular-nums; font-weight:600; }
 
 /* Toggle switch (Sunday rest day) */
 .ps-toggle-row { display:flex; align-items:center; gap:12px; padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px; }

@@ -30,14 +30,58 @@ class PayrollService
             'philhealth'     => $settings->philhealth ?? 0,
             'pagibig'        => $settings->pagibig ?? 0,
             'otMultiplier'   => $settings?->ot_multiplier ?? 1.25,
+            // Overtime carries two premiums under the Labor Code: +25% on an
+            // ordinary day, +30% of that day's rate on a rest day, special day
+            // or holiday. Both are in Settings; the defaults are the statutory
+            // minimums, and a company policy or CBA may only go above them.
+            'otPremium'      => $settings?->ot_premium_multiplier ?? 1.30,
             'bonus'          => $settings?->bonus ?? 0,
             'sundayRestDay'  => $settings?->sunday_rest_day_enabled ?? true,
-            // Per-type multipliers (fixed by PH labor law; not admin-configurable):
-            //   Regular holidays → 200% (full premium = day earnings × 1.0 extra)
-            //   Special (non-working) holidays → 130% (premium = day earnings × 0.3 extra)
-            //   Custom holidays default to Regular (200%)
+            // Day-type multipliers are fixed by PH labor law, not configurable.
+            // See doleFactors() for the whole table.
             'holidayTypeMap' => Holiday::typeMap(),   // 'Y-m-d' => 'regular'|'special'|'custom'
         ];
+    }
+
+    /**
+     * The DOLE pay factors for one day: what an hour is worth, and what an
+     * overtime hour is worth.
+     *
+     *   Day type                          first 8h    overtime
+     *   ─────────────────────────────────────────────────────────
+     *   Ordinary day                        100%        125%
+     *   Rest day OR special non-working     130%        169%
+     *   Special day falling on a rest day   150%        195%
+     *   Regular holiday                     200%        260%
+     *   Regular holiday on a rest day       260%        338%
+     *
+     * The overtime column is not a separate table: it is the day's own factor
+     * times the overtime premium — 1.25 on an ordinary day, 1.30 on any premium
+     * day. That distinction is what this method exists for. Payroll used to
+     * apply 1.25 to every overtime hour and then multiply the whole day by the
+     * holiday factor, which paid 250% for overtime on a regular holiday and
+     * 162.5% on a rest day, both short of the law.
+     *
+     * A "custom" holiday is treated as a regular holiday, matching how the rest
+     * of the app reads that flag.
+     *
+     * @return array{0: float, 1: float}  [regular-hour factor, overtime factor]
+     */
+    private function doleFactors(?string $holidayType, bool $isRestDay, array $cfg): array
+    {
+        $regular = match (true) {
+            $holidayType === 'special' && $isRestDay => 1.50,
+            $holidayType === 'special'               => 1.30,
+            $holidayType !== null && $isRestDay      => 2.60,  // regular / custom holiday on a rest day
+            $holidayType !== null                    => 2.00,
+            $isRestDay                               => 1.30,
+            default                                  => 1.00,
+        };
+
+        $premiumDay = $holidayType !== null || $isRestDay;
+        $overtime   = $regular * ($premiumDay ? $cfg['otPremium'] : $cfg['otMultiplier']);
+
+        return [$regular, $overtime];
     }
 
     /**
@@ -128,29 +172,34 @@ class PayrollService
             $otPay    = $ot_hours * $ot_rate;
         }
 
+        // What the day would pay if it were an ordinary working day. Everything
+        // above this is premium, and is reported separately on the payslip.
         $dayEarnings = $basicPay + $otPay;
 
-        // Holiday premium — rate depends on holiday type (PH labor law):
-        //   Regular → 200% total pay (premium = earnings × 1.0)
-        //   Special (non-working) → 130% total pay (premium = earnings × 0.3)
-        //   Custom → treated as Regular (200%)
         $dateStr     = Carbon::parse($rec->date)->toDateString();
         $holidayType = $cfg['holidayTypeMap'][$dateStr] ?? null;
         $isHoliday   = $holidayType !== null;
-        $hMultiplier = match ($holidayType) {
-            'special' => 1.3,
-            default   => 2.0,  // regular + custom
-        };
-        $holidayPay  = $isHoliday ? $dayEarnings * ($hMultiplier - 1) : 0;
 
-        // Sunday rest day premium (130% of day earnings = +30% on top).
-        // Applies even when the day is also a holiday (stacks per PH labor law).
-        // A frozen per-record decision (rest_day_applied) wins so past Sundays
-        // never recalculate when the global setting is toggled; null means
-        // "follow the current global setting" (current week + future).
+        // Sunday rest day. A frozen per-record decision (rest_day_applied) wins
+        // so past Sundays never recalculate when the global setting is toggled;
+        // null means "follow the current global setting" (current week + future).
         $isSunday    = Carbon::parse($rec->date)->dayOfWeek === Carbon::SUNDAY;
         $applyRest   = $rec->rest_day_applied !== null ? (bool) $rec->rest_day_applied : $cfg['sundayRestDay'];
-        $restDayPay  = ($isSunday && $applyRest) ? $dayEarnings * 0.30 : 0;
+        $isRestDay   = $isSunday && $applyRest;
+
+        [$hMultiplier, $otFactor] = $this->doleFactors($holidayType, $isRestDay, $cfg);
+
+        // The law states one combined figure for a day that is both — a regular
+        // holiday on a rest day pays 260%, not 200% plus 30% — so the premium is
+        // computed once and then attributed, rather than added up from parts
+        // that would double-count. The holiday is named as the cause when there
+        // is one, because that is the rate being applied.
+        $doleGross = $onContract ? 0.0
+            : ($regular_hours * $rate * $hMultiplier) + ($ot_hours * $rate * $otFactor);
+        $premium   = $doleGross - $dayEarnings;
+
+        $holidayPay = $isHoliday ? $premium : 0.0;
+        $restDayPay = (! $isHoliday && $isRestDay) ? $premium : 0.0;
 
         $gross       = $dayEarnings + $holidayPay + $restDayPay;
 

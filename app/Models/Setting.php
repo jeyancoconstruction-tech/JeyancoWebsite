@@ -9,6 +9,7 @@ class Setting extends Model
     protected $fillable = [
         'daily_rate',
         'ot_multiplier',
+        'ot_premium_multiplier',
         'holiday_multiplier',
         'bonus',
         'sunday_rest_day_enabled',
@@ -20,6 +21,7 @@ class Setting extends Model
     protected $casts = [
         'daily_rate'               => 'float',
         'ot_multiplier'            => 'float',
+        'ot_premium_multiplier'    => 'float',
         'holiday_multiplier'       => 'float',
         'bonus'                    => 'float',
         'sunday_rest_day_enabled'  => 'boolean',
