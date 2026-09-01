@@ -412,15 +412,12 @@
 .dir-tabs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .dir-tab {
     display: inline-flex; align-items: center; gap: 8px;
-    background: none; border: none; border-bottom: 2px solid transparent;
-    padding: 9px 14px; border-radius: 8px 8px 0 0;
+    background: none;
+    padding: 9px 14px;
     font-size: 0.85rem; font-weight: 600; color: var(--text-muted, #8fa2bd);
-    cursor: pointer; text-decoration: none; transition: color .15s, border-color .15s;
+    cursor: pointer; text-decoration: none; transition: color .15s, background .15s, border-color .15s;
 }
 .dir-tab:hover { color: var(--text-primary); }
-.dir-tab.active {
-    color: var(--accent, #2f7fd1); border-bottom-color: var(--accent, #2f7fd1);
-}
 .dir-tab:focus-visible { outline: 2px solid var(--accent, #2f7fd1); outline-offset: 2px; }
 .dir-tab-count {
     display: inline-flex; align-items: center; justify-content: center;
@@ -428,7 +425,7 @@
     background: var(--border); color: var(--text-primary);
     font-size: 0.72rem; font-weight: 700; font-variant-numeric: tabular-nums;
 }
-.dir-tab.active .dir-tab-count { background: rgba(47,127,209,0.2); color: #6fa8dc; }
+.dir-tab.active .dir-tab-count { background: var(--surface); color: var(--brand); }
 .dir-tab-count.warn { background: rgba(232,163,61,0.18); color: #e8a33d; }
 
 .dir-toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

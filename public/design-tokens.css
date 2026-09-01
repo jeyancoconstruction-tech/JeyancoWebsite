@@ -172,9 +172,31 @@ html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 14px 
 }
 
 /* ── 8 · TABS · underline, 2px brand active, no fills/icons ─────────────── */
-.rm-tab.active, .pr-tabs .nav-link.active, .att-tabs .nav-link.active,
+.pr-tabs .nav-link.active, .att-tabs .nav-link.active,
 .nav-tabs .nav-link.active, .an-tab.active {
     color: var(--brand) !important; border-bottom: 2px solid var(--brand) !important; background: none !important;
+}
+/* Employees and Register & Manage use a pill instead of the underline: a
+   brand-tinted fill with a 4px brand bar down the left edge — the same accent
+   language the alerts already speak. The inactive tab carries the very same
+   borders in transparent, so activating one can never shift its label. */
+.rm-tab, .dir-tab {
+    border: 1px solid transparent !important;
+    border-left: 4px solid transparent !important;
+    border-radius: var(--radius-sm) !important;
+}
+.rm-tab.active, .dir-tab.active {
+    color: var(--brand) !important;
+    background: var(--brand-subtle) !important;
+    border-left-color: var(--brand) !important;
+}
+/* The ring is the theme's own brand at low alpha; there is no token for it,
+   and a neutral --border reads grey against the tinted fill. */
+html[data-bs-theme="light"] .rm-tab.active, html[data-bs-theme="light"] .dir-tab.active {
+    border-color: rgba(30,92,155,0.28) !important; border-left-color: var(--brand) !important;
+}
+html[data-bs-theme="dark"] .rm-tab.active, html[data-bs-theme="dark"] .dir-tab.active {
+    border-color: rgba(91,149,207,0.30) !important; border-left-color: var(--brand) !important;
 }
 .mode-btn.active {
     background: var(--brand-subtle) !important; color: var(--brand) !important; border-color: var(--brand) !important;
