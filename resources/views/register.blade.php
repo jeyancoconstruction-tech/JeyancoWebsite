@@ -49,13 +49,13 @@
 
     {{-- ── Stat chips (also switch tabs) ───────────────────────────────────── --}}
     <div class="rm-stats">
-        <button class="rm-stat rm-stat-pending active" data-tab="pending">
-            <span class="rm-stat-num">{{ $pending->count() }}</span>
-            <span class="rm-stat-lbl"><i class="fas fa-fingerprint"></i> Pending from kiosk</span>
-        </button>
-        <button class="rm-stat rm-stat-active" data-tab="active">
+        <button class="rm-stat rm-stat-active active" data-tab="active">
             <span class="rm-stat-num">{{ $active->count() }}</span>
             <span class="rm-stat-lbl"><i class="fas fa-user-check"></i> Active</span>
+        </button>
+        <button class="rm-stat rm-stat-pending" data-tab="pending">
+            <span class="rm-stat-num">{{ $pending->count() }}</span>
+            <span class="rm-stat-lbl"><i class="fas fa-fingerprint"></i> Pending from kiosk</span>
         </button>
         <button class="rm-stat rm-stat-removed" data-tab="removed">
             <span class="rm-stat-num">{{ $removed->count() }}</span>
@@ -65,46 +65,17 @@
 
     {{-- ── Tabs ────────────────────────────────────────────────────────────── --}}
     <div class="rm-tabs">
-        <button class="rm-tab active" data-tab="pending">Pending <span class="rm-tab-count">{{ $pending->count() }}</span></button>
-        <button class="rm-tab" data-tab="active">Active <span class="rm-tab-count">{{ $active->count() }}</span></button>
+        <button class="rm-tab active" data-tab="active">Active <span class="rm-tab-count">{{ $active->count() }}</span></button>
+        <button class="rm-tab" data-tab="pending">Pending <span class="rm-tab-count">{{ $pending->count() }}</span></button>
         <button class="rm-tab" data-tab="removed">Removed <span class="rm-tab-count">{{ $removed->count() }}</span></button>
     </div>
 
-    {{-- ═══ PENDING ════════════════════════════════════════════════════════ --}}
-    <div class="rm-pane active" data-pane="pending">
-        <div class="rm-card">
-            {{-- The text lives in one <span>: .rm-card-note is a flex row, so
-                 loose text nodes each become their own flex item and the
-                 sentence breaks into columns. --}}
-            <div class="rm-card-note">
-                <i class="fas fa-circle-info"></i>
-                <span>Please scan your fingerprint on the kiosk.</span>
-            </div>
-            <div class="rm-bulk" data-bulk="pending" hidden>
-                <span class="rm-bulk-count"><strong>0</strong> selected</span>
-                <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
-                <span class="rm-bulk-spacer"></span>
-                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-xmark"></i> Cancel selected</button>
-            </div>
-            <div class="table-responsive">
-                <table class="rm-table">
-                    <thead>
-                        <tr>
-                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="Select all"></th>
-                            <th>Worker</th><th>Fingerprint</th><th>Site</th>
-                            <th>First seen</th><th class="text-center">Logs</th><th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="rmPendingBody">
-                        @include('employees._rows_pending', ['pending' => $pending])
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
     {{-- ═══ ACTIVE ═════════════════════════════════════════════════════════ --}}
-    <div class="rm-pane" data-pane="active">
+    {{-- Active leads the page: the day-to-day job here is looking up a worker
+         who is already on the payroll. Pending is the exception queue, and the
+         stat chip plus the sidebar badge already announce it when it is not
+         empty — so it sits second rather than in front of the common case. --}}
+    <div class="rm-pane active" data-pane="active">
         <div class="rm-card">
             <div class="rm-bulk" data-bulk="active" hidden>
                 <span class="rm-bulk-count"><strong>0</strong> selected</span>
@@ -149,6 +120,39 @@
                     @empty
                         @include('employees._empty', ['icon' => 'users', 'title' => 'No active employees', 'sub' => 'Complete a pending detection, or use Register Employee to get started.'])
                     @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {{-- ═══ PENDING ════════════════════════════════════════════════════════ --}}
+    <div class="rm-pane" data-pane="pending">
+        <div class="rm-card">
+            {{-- The text lives in one <span>: .rm-card-note is a flex row, so
+                 loose text nodes each become their own flex item and the
+                 sentence breaks into columns. --}}
+            <div class="rm-card-note">
+                <i class="fas fa-circle-info"></i>
+                <span>Please scan your fingerprint on the kiosk.</span>
+            </div>
+            <div class="rm-bulk" data-bulk="pending" hidden>
+                <span class="rm-bulk-count"><strong>0</strong> selected</span>
+                <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
+                <span class="rm-bulk-spacer"></span>
+                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-xmark"></i> Cancel selected</button>
+            </div>
+            <div class="table-responsive">
+                <table class="rm-table">
+                    <thead>
+                        <tr>
+                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="Select all"></th>
+                            <th>Worker</th><th>Fingerprint</th><th>Site</th>
+                            <th>First seen</th><th class="text-center">Logs</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="rmPendingBody">
+                        @include('employees._rows_pending', ['pending' => $pending])
                     </tbody>
                 </table>
             </div>
@@ -538,9 +542,11 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
     }
     document.querySelectorAll('.rm-tab, .rm-stat').forEach(el => el.addEventListener('click', () => switchTab(el.dataset.tab)));
     // Open the tab from the URL hash, defaulting to whichever has items.
+    // The markup opens on Active; fall back to Pending only on a fresh system
+    // where nobody is active yet, so the page never opens on an empty table.
     const hash = (location.hash || '').replace('#', '');
     if (['pending','active','removed'].includes(hash)) switchTab(hash);
-    else if ({{ $pending->count() }} === 0 && {{ $active->count() }} > 0) switchTab('active');
+    else if ({{ $active->count() }} === 0 && {{ $pending->count() }} > 0) switchTab('pending');
 
     // ── Kebab menus ──────────────────────────────────────────────────────────
     document.addEventListener('click', function (e) {
