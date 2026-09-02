@@ -22,12 +22,12 @@
 </style>
 
 <nav class="sys-tabs">
-    <a class="sys-tab {{ request()->is('system-settings*') ? 'active' : '' }}"
-       href="{{ route('system-settings.index') }}">
-        <i class="fas fa-sliders"></i> General
-    </a>
     <a class="sys-tab {{ request()->is('accounts*') ? 'active' : '' }}"
        href="{{ route('accounts.index') }}">
         <i class="fas fa-user-gear"></i> Accounts
+    </a>
+    <a class="sys-tab {{ request()->is('system-settings*') ? 'active' : '' }}"
+       href="{{ route('system-settings.index') }}">
+        <i class="fas fa-shield-halved"></i> Security
     </a>
 </nav>
