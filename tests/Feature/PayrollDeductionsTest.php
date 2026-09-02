@@ -220,4 +220,18 @@ class PayrollDeductionsTest extends TestCase
         $this->assertSame(0.0, round($out['sssDeduction'], 2));
         $this->assertSame(0.0, round($out['withholdingTax'], 2));
     }
+
+    public function test_a_zero_floor_is_no_floor(): void
+    {
+        // The opening row is seeded from a settings table whose daily_rate
+        // defaults to 0.00. Read as a real floor it would say every labour
+        // type is worth at least nothing, and read as one on screen it would
+        // look like a figure somebody chose.
+        $this->rate('2026-01-01', ['daily_rate' => 0]);
+
+        $out = $this->compute($this->record('2026-03-04', 500));
+
+        $this->assertSame(500.0, round($out['gross'], 2));
+        $this->assertNull(PayrollRate::current()->toRates()['daily_rate']);
+    }
 }

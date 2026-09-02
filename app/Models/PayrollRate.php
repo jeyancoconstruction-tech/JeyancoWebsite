@@ -132,9 +132,14 @@ class PayrollRate extends Model
      */
     public function toRates(): array
     {
+        // A floor of 0 is no floor. The opening row is seeded from a settings
+        // table whose daily_rate defaults to 0.00, and a zero read as a real
+        // floor would show on screen as one somebody had chosen.
+        $floor = (float) ($this->daily_rate ?? 0);
+
         return $this->toMultipliers()
             + $this->toDeductionRates()
-            + ['daily_rate' => $this->daily_rate === null ? null : (float) $this->daily_rate];
+            + ['daily_rate' => $floor > 0 ? $floor : null];
     }
 
     /**

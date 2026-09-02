@@ -132,7 +132,7 @@
                                     <input type="number" step="0.01" min="0"
                                            id="daily_rate" name="daily_rate" placeholder="none set"
                                            class="form-control ps-input @error('daily_rate') is-invalid @enderror"
-                                           value="{{ old('daily_rate', $rate->daily_rate ?? null) }}">
+                                           value="{{ old('daily_rate', ($rate?->daily_rate ?? 0) > 0 ? $rate->daily_rate : null) }}">
                                     @error('daily_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="pr-field">
