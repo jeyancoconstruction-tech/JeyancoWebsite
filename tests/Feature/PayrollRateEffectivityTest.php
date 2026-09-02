@@ -341,20 +341,24 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertSame(round($out['gross'] - $out['totalDeductions'], 2), round($out['net'], 2));
     }
 
-    /** The bonus has its own tab now, and its own action sets it. */
-    public function test_the_bonus_tab_sets_the_bonus(): void
+    /**
+     * The standing bonus has no field any more — "Give a bonus" names its
+     * people instead — so a ceiling save must carry it forward rather than
+     * silently stopping a bonus an earlier row is still paying.
+     */
+    public function test_saving_the_ceiling_keeps_the_standing_bonus(): void
     {
         $this->rate('2026-09-01', ['bonus' => 750]);
 
         $this->actingAs($this->admin())
-             ->put(route('settings.bonus.update'), ['bonus' => 999, 'vale_ceiling_percent' => 100])
+             ->put(route('settings.bonus.update'), ['vale_ceiling_percent' => 60])
              ->assertSessionHasNoErrors();
 
-        $this->assertSame(999.0, (float) PayrollRate::current()->bonus);
-        $this->assertSame(750.0, (float) PayrollRate::effectiveOn('2026-09-01')->bonus,
-            'the earlier row is untouched');
-    }
+        $saved = PayrollRate::current();
 
+        $this->assertSame(60, (int) $saved->vale_ceiling_percent);
+        $this->assertSame(750.0, (float) $saved->bonus, 'carried forward, not dropped');
+    }
     /** And the premium form carries it forward rather than dropping it. */
     public function test_saving_the_premiums_keeps_the_bonus_and_the_ceiling(): void
     {

@@ -593,54 +593,52 @@ class SettingsController extends Controller
     public function updateBonus(Request $request)
     {
         $data = $request->validate([
-            'bonus'                => 'nullable|numeric|min:0|max:1000000',
             'vale_ceiling_percent' => 'required|integer|min:0|max:100',
         ], [
             'vale_ceiling_percent.max' => 'A ceiling over 100% is not a ceiling.',
         ]);
 
         $current = PayrollRate::current();
-
-        // An empty bonus box is zero, not null — the column is what payroll adds.
-        $bonus   = (float) ($data['bonus'] ?? 0);
         $ceiling = (int) $data['vale_ceiling_percent'];
 
         // Unchanged, nothing is written: saving the tab twice should not fill
         // the rate history with rows that say the same thing.
-        $same = $current
-            && (float) $current->bonus === $bonus
-            && (int) $current->vale_ceiling_percent === $ceiling;
-
-        if (! $same) {
-            PayrollRate::create([
-                'effective_from'             => Carbon::now()->toDateString(),
-                'ot_multiplier'              => $current?->ot_multiplier,
-                'night_diff_multiplier'      => $current?->night_diff_multiplier,
-                'rest_day_multiplier'        => $current?->rest_day_multiplier,
-                'regular_holiday_multiplier' => $current?->regular_holiday_multiplier,
-                'daily_rate'                 => $current?->daily_rate,
-                'sss_rate'                   => $current?->sss_rate,
-                'philhealth_rate'            => $current?->philhealth_rate,
-                'pagibig_rate'               => $current?->pagibig_rate,
-                'withholding_tax'            => $current?->withholding_tax ?? true,
-                'uses_defaults'              => (bool) $current?->uses_defaults,
-                'bonus'                      => $bonus,
-                'vale_ceiling_percent'       => $ceiling,
-                'created_by'                 => auth()->user()->name ?? auth()->user()->username ?? 'admin',
-            ]);
+        if ($current && (int) $current->vale_ceiling_percent === $ceiling) {
+            return redirect()->route('settings.index', ['tab' => 'bonus'])
+                ->with('success', 'Vale ceiling updated!');
         }
 
+        PayrollRate::create([
+            'effective_from'             => Carbon::now()->toDateString(),
+            'ot_multiplier'              => $current?->ot_multiplier,
+            'night_diff_multiplier'      => $current?->night_diff_multiplier,
+            'rest_day_multiplier'        => $current?->rest_day_multiplier,
+            'regular_holiday_multiplier' => $current?->regular_holiday_multiplier,
+            'daily_rate'                 => $current?->daily_rate,
+            'sss_rate'                   => $current?->sss_rate,
+            'philhealth_rate'            => $current?->philhealth_rate,
+            'pagibig_rate'               => $current?->pagibig_rate,
+            'withholding_tax'            => $current?->withholding_tax ?? true,
+            'uses_defaults'              => (bool) $current?->uses_defaults,
+
+            // The standing bonus has no field any more — "Give a bonus" names
+            // its people instead. Carried forward so a ceiling change cannot
+            // stop a bonus that some earlier row is still paying.
+            'bonus'                      => $current?->bonus ?? 0,
+
+            'vale_ceiling_percent'       => $ceiling,
+            'created_by'                 => auth()->user()->name ?? auth()->user()->username ?? 'admin',
+        ]);
+
         return redirect()->route('settings.index', ['tab' => 'bonus'])
-            ->with('success', 'Bonus and vale settings updated!');
+            ->with('success', 'Vale ceiling updated!');
     }
 
     /**
      * Give a bonus to named people for one pay period.
      *
-     * The standing bonus above is the same amount to everybody, every period.
-     * This is the other kind, and it is a record rather than a setting: it is
-     * created and deleted, never edited, so a period recomputed next year still
-     * matches the payslip that went with it.
+     * A record rather than a setting: created and deleted, never edited, so a
+     * period recomputed next year still matches the payslip that went with it.
      */
     public function storeBonusGrant(Request $request)
     {

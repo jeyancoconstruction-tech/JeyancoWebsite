@@ -1522,38 +1522,13 @@
         </div>
 
         <!-- BONUS & VALE TAB -->
-        {{-- Its own form, because a form cannot span two tab panes. Saving adds
-             a dated rate row like the card above does, carrying the premiums
-             and the contributions in force forward — so a bonus raised today
-             cannot reach into a week already paid. --}}
+        {{-- Two forms, because one cannot span two tab panes and because they do
+             different things: the ceiling is a setting that adds a dated rate
+             row, a bonus is a record of something given. --}}
         <div class="tab-pane fade {{ $tab === 'bonus' ? 'show active' : '' }}" id="bonus" role="tabpanel">
             <form method="POST" action="{{ route('settings.bonus.update') }}">
                 @csrf
                 @method('PUT')
-
-                <div class="ps-card mb-4">
-                    <div class="ps-card-header">
-                        <i class="fas fa-gift"></i>
-                        <div>
-                            <h6>{{ __('Bonus') }}</h6>
-                            <p>{{ __('A flat amount added once per employee each pay period') }}</p>
-                        </div>
-                    </div>
-                    <div class="ps-card-body">
-                        <div class="mb-0" style="max-width:320px;">
-                            <label class="ps-label" for="bonus">{{ __('Bonus per period') }}</label>
-                            <div class="input-group">
-                                <span class="input-group-text ps-ig-text">₱</span>
-                                <input type="number" step="0.01" min="0" max="1000000"
-                                       class="form-control ps-input @error('bonus') is-invalid @enderror"
-                                       id="bonus" name="bonus" placeholder="0.00"
-                                       value="{{ old('bonus', ($currentRate?->bonus ?? 0) > 0 ? $currentRate->bonus : null) }}">
-                            </div>
-                            @error('bonus')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <small class="text-muted d-block mt-2">{{ __('Added to net pay, not to gross — it is not wages, so no contribution or tax is computed on it.') }}</small>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="ps-card mb-4">
                     <div class="ps-card-header">
@@ -1581,11 +1556,11 @@
 
                 <div class="pr-note mb-4">
                     <i class="fas fa-calendar-check"></i>
-                    <span>{{ __('Neither is statutory — nobody is obliged to pay a bonus or to lend against wages — so both stay editable while Statutory defaults is on. A change takes effect today and adds a dated row; earlier payroll is unchanged.') }}</span>
+                    <span>{{ __('Lending against wages is not statutory, so the ceiling stays editable while Statutory defaults is on. A change takes effect today and adds a dated row; earlier payroll is unchanged.') }}</span>
                 </div>
 
                 <button type="submit" class="btn ps-save-btn">
-                    <i class="fas fa-save me-2"></i>{{ __('Save Bonus & Vale') }}
+                    <i class="fas fa-save me-2"></i>{{ __('Save vale ceiling') }}
                 </button>
             </form>
 
