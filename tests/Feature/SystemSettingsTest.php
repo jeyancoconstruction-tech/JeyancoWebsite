@@ -242,6 +242,7 @@ class SystemSettingsTest extends TestCase
     {
         $pages = [
             route('settings.index'),
+            route('system-settings.attendance'),
             route('system-settings.about'),
             route('system-settings.security'),
             route('accounts.index'),
@@ -264,5 +265,43 @@ class SystemSettingsTest extends TestCase
              ->assertOk()
              ->assertSee('System Settings')
              ->assertDontSee('<span>Accounts</span>', false);
+    }
+
+    // ── Attendance ───────────────────────────────────────────────────────────
+
+    public function test_saving_attendance_writes_the_day_shape(): void
+    {
+        $this->actingAs($this->admin())
+             ->put(route('system-settings.attendance.update'), [
+                 'expected_time_in'       => '07:30',
+                 'grace_period_minutes'   => 10,
+                 'standard_hours_per_day' => 10,
+                 'week_starts_on'         => 0,
+                 'payroll_cycle'          => 'daily',
+             ])
+             ->assertSessionHasNoErrors();
+
+        SystemSetting::forget();
+        $s = SystemSetting::current();
+
+        $this->assertSame(10, $s->grace_period_minutes);
+        $this->assertSame(10.0, $s->standard_hours_per_day);
+        $this->assertSame(0, $s->week_starts_on);
+        $this->assertSame('daily', $s->payroll_cycle);
+        $this->assertFalse($s->auto_count_overtime, 'an unticked box is the off answer');
+    }
+
+    /** A day of no hours would divide the daily rate by nothing. */
+    public function test_a_zero_hour_day_is_refused(): void
+    {
+        $this->actingAs($this->admin())
+             ->put(route('system-settings.attendance.update'), [
+                 'expected_time_in'       => '08:00',
+                 'grace_period_minutes'   => 15,
+                 'standard_hours_per_day' => 0,
+                 'week_starts_on'         => 1,
+                 'payroll_cycle'          => 'weekly',
+             ])
+             ->assertSessionHasErrors('standard_hours_per_day');
     }
 }

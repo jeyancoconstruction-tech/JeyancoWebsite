@@ -56,4 +56,25 @@
         background: var(--brand); color: #fff; font-weight: 600; font-size: .85rem; cursor: pointer;
     }
     .sy-save:hover { background: var(--brand-strong); }
+
+    /* The toggle. The payroll settings page has one styled inside its own
+       template, which does not reach here — so it is written again, in tokens
+       rather than the hardcoded greys that one uses. */
+    .ps-toggle-row {
+        display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+        background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 6px;
+    }
+    .ps-toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; margin: 0; }
+    .ps-toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .ps-toggle-slider {
+        position: absolute; inset: 0; border-radius: 99px; cursor: pointer;
+        background: var(--border-md); transition: background .2s;
+    }
+    .ps-toggle-slider::before {
+        content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px;
+        background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+    .ps-toggle-switch input:checked + .ps-toggle-slider { background: var(--success); }
+    .ps-toggle-switch input:checked + .ps-toggle-slider::before { transform: translateX(20px); }
+    .ps-toggle-label { font-size: .85rem; color: var(--text-secondary); line-height: 1.4; }
 </style>

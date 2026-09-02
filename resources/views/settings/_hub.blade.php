@@ -4,10 +4,10 @@
      panel — the forms post, the accounts list paginates, and both need a real
      address to come back to.
 
-     Only the categories that are backed by something are here. Attendance,
-     Notifications, Appearance and Data & backup have nothing behind them yet,
-     and a control that does not reach anything is worse than a missing one:
-     it says a decision was made that was never applied. --}}
+     Only the categories that are backed by something are here. Notifications,
+     Appearance and Data & backup have nothing behind them yet, and a control
+     that does not reach anything is worse than a missing one: it says a
+     decision was made that was never applied. --}}
 <style>
     .hub { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; align-items: start; }
     @media (max-width: 860px) { .hub { grid-template-columns: 1fr; } }
@@ -43,12 +43,16 @@
     $onCompany  = request()->routeIs('system-settings.about');
     $onAccounts = request()->is('accounts*');
     $onSecurity = request()->routeIs('system-settings.security');
+    $onAttendance = request()->routeIs('system-settings.attendance');
 @endphp
 
 <nav class="hub-nav">
     <div class="hub-sec">Payroll</div>
     <a class="hub-item {{ $onPayroll ? 'on' : '' }}" href="{{ route('settings.index') }}">
         <i class="fas fa-wallet"></i> Payroll
+    </a>
+    <a class="hub-item {{ $onAttendance ? 'on' : '' }}" href="{{ route('system-settings.attendance') }}">
+        <i class="fas fa-clock"></i> Attendance
     </a>
 
     <div class="hub-sec">Organization</div>

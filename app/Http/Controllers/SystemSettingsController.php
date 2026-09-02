@@ -77,6 +77,34 @@ class SystemSettingsController extends Controller
 
         return $this->save($settings, $data, 'system-settings.security');
     }
+    public function attendance()
+    {
+        return view('settings.attendance', ['system' => SystemSetting::current()]);
+    }
+
+    public function updateAttendance(Request $request)
+    {
+        $data = $request->validate([
+            'expected_time_in'       => ['required', 'date_format:H:i'],
+            'grace_period_minutes'   => ['required', 'integer', 'min:0', 'max:120'],
+
+            // A day of zero hours would divide the daily rate by nothing.
+            'standard_hours_per_day' => ['required', 'numeric', 'min:1', 'max:24'],
+
+            'week_starts_on'         => ['required', 'integer', 'min:0', 'max:6'],
+            'payroll_cycle'          => ['required', 'in:weekly,daily'],
+        ], [
+            'standard_hours_per_day.min' => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
+            'grace_period_minutes.max'   => 'Two hours of grace is not a grace period.',
+        ]);
+
+        // An unticked checkbox posts nothing, which is the off answer.
+        $data['auto_count_overtime'] = $request->boolean('auto_count_overtime');
+
+        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
+
+        return $this->save($settings, $data, 'system-settings.attendance');
+    }
 
     /** Write the row and drop the memo, so the next read sees what was saved. */
     private function save(SystemSetting $settings, array $data, string $back)

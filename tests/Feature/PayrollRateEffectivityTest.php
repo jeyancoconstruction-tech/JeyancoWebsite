@@ -557,4 +557,96 @@ class PayrollRateEffectivityTest extends TestCase
 
         $this->assertTrue(PayrollRate::newestFirst()->first()->withholding_tax);
     }
+
+    // ── The shape of a working day ───────────────────────────────────────────
+
+    /** The config the compute() helper builds, with the day settings on it. */
+    private function dayCfg(array $overrides = []): array
+    {
+        \App\Models\SystemSetting::forget();
+        \App\Models\SystemSetting::create(\App\Models\SystemSetting::DEFAULTS)->update($overrides);
+        \App\Models\SystemSetting::forget();
+
+        return ['day' => \App\Models\SystemSetting::current()];
+    }
+
+    /**
+     * Eight hours was a bare number in the service. It divides the daily rate
+     * into an hourly one and marks where overtime begins, so moving it has to
+     * move both — a ten-hour day at ₱800 is ₱80/hr with no overtime, not ₱100
+     * with two hours of it.
+     */
+    public function test_the_standard_day_sets_the_hourly_rate_and_the_ot_line(): void
+    {
+        $this->rate('2026-01-01');
+
+        $out = $this->compute(
+            $this->record('2026-03-04', '08:00:00', 10),
+            $this->dayCfg(['standard_hours_per_day' => 10])
+        );
+
+        $this->assertSame(80.0, round($out['rate'], 2), '800 ÷ 10');
+        $this->assertSame(0.0, round($out['ot_hours'], 2), 'ten hours is a full day now');
+        $this->assertSame(800.0, round($out['gross'], 2));
+    }
+
+    /** Off, the extra hours still pay — at the plain rate, not the premium. */
+    public function test_overtime_is_not_assumed_when_auto_count_is_off(): void
+    {
+        $this->rate('2026-01-01');
+
+        $out = $this->compute(
+            $this->record('2026-03-04', '08:00:00', 10),
+            $this->dayCfg(['auto_count_overtime' => false])
+        );
+
+        $this->assertSame(0.0, round($out['ot_hours'], 2));
+        $this->assertSame(10.0, round($out['regular_hours'], 2), 'the hours are still worked');
+        $this->assertSame(1000.0, round($out['gross'], 2), '10h × ₱100, no premium');
+    }
+
+    /** On, they are overtime, which is what it did before the setting existed. */
+    public function test_overtime_is_still_counted_by_default(): void
+    {
+        $this->rate('2026-01-01');
+
+        $out = $this->compute($this->record('2026-03-04', '08:00:00', 10), $this->dayCfg());
+
+        $this->assertSame(2.0, round($out['ot_hours'], 2));
+        $this->assertSame(250.0, round($out['otPay'], 2), '2h × ₱100 × 1.25');
+    }
+
+    // ── Lateness ─────────────────────────────────────────────────────────────
+
+    /** Inside the grace period is not late. */
+    public function test_arriving_within_grace_is_not_late(): void
+    {
+        $this->rate('2026-01-01');
+
+        $out = $this->compute($this->record('2026-03-04', '08:10:00', 8), $this->dayCfg());
+
+        $this->assertSame(0, $out['lateMinutes']);
+    }
+
+    /** Past it, the whole lateness is counted — not just the part past grace. */
+    public function test_arriving_past_grace_counts_from_the_expected_time(): void
+    {
+        $this->rate('2026-01-01');
+
+        $out = $this->compute($this->record('2026-03-04', '08:45:00', 8), $this->dayCfg());
+
+        $this->assertSame(45, $out['lateMinutes']);
+    }
+
+    /** And it is reported, not deducted: the pay is the hours worked. */
+    public function test_lateness_does_not_touch_pay(): void
+    {
+        $this->rate('2026-01-01');
+
+        $onTime = $this->compute($this->record('2026-03-04', '08:00:00', 8), $this->dayCfg());
+        $late   = $this->compute($this->record('2026-03-05', '09:30:00', 8), $this->dayCfg());
+
+        $this->assertSame(90, $late['lateMinutes']);
+        $this->assertSame(round($onTime['gross'], 2), round($late['gross'], 2));
+    }
 }

@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Setting;
 use App\Models\Holiday;
 use App\Models\PayrollRate;
+use App\Models\SystemSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -37,6 +38,12 @@ class PayrollService
             // Day-type multipliers are fixed by PH labor law, not configurable.
             // See doleFactors() for the whole table.
             'holidayTypeMap' => Holiday::typeMap(),   // 'Y-m-d' => 'regular'|'special'|'custom'
+
+            // The shape of a working day. Not dated: these describe how the
+            // office runs rather than what a circular says it must pay, and a
+            // shift that starts at 8 has always started at 8 as far as payroll
+            // is concerned.
+            'day' => SystemSetting::current(),
         ];
     }
 
@@ -249,11 +256,20 @@ class PayrollService
             }
         }
 
+        // The hours a daily rate buys, and where overtime begins. Both were the
+        // bare number 8 — right for this office, but not a decision anybody
+        // could see. An office that has turned auto-overtime off pays the extra
+        // hours at the plain rate: the hours are worked either way, but they are
+        // not overtime until somebody says so.
+        $day        = $cfg['day'] ?? null;
+        $standard   = max(1.0, (float) ($day->standard_hours_per_day ?? 8));
+        $autoOt     = (bool) ($day->auto_count_overtime ?? true);
+
         // Round worked hours to 2 decimals BEFORE computing pay so the
         // displayed hours reconcile exactly with gross (hours × rate = gross).
         $hours         = round(max(0, $hours), 2);
-        $regular_hours = min(8, $hours);
-        $ot_hours      = max(0, $hours - 8);
+        $regular_hours = $autoOt ? min($standard, $hours) : $hours;
+        $ot_hours      = $autoOt ? max(0, $hours - $standard) : 0.0;
 
         // The multipliers in force on the day being computed, not today's.
         $dateStr = Carbon::parse($rec->date)->toDateString();
@@ -272,7 +288,7 @@ class PayrollService
         $configured = $employee->laborType?->daily_rate;
         $dailyRate  = $configured !== null
             ? (float) $configured
-            : ((float) ($employee->rate_per_hour ?? 0)) * 8;
+            : ((float) ($employee->rate_per_hour ?? 0)) * $standard;
 
         // The wage order's daily floor for that day, if one is on file. A
         // labour type still carrying last year's rate is paid at the floor
@@ -283,7 +299,7 @@ class PayrollService
             $dailyRate = (float) $wageFloor;
         }
 
-        $rate    = $dailyRate / 8;
+        $rate    = $dailyRate / $standard;
         $ot_rate = $rate * $rates['ot_multiplier'];
 
         // Contractual workers are settled against their contract, not through
@@ -372,8 +388,26 @@ class PayrollService
         $totalDeductions = $autoDeductions + $vale + $manualDeductions;
         $net             = $gross - $totalDeductions;
 
+        // How late the shift started, past the grace period. Reported, not
+        // deducted: nothing in payroll has ever docked pay for it, and turning
+        // a new figure into a deduction would quietly cut wages the day the
+        // setting was saved. A worker is already paid only for hours worked.
+        $lateMinutes = 0;
+
+        if ($rec->time_in && $day) {
+            $in       = Carbon::parse($rec->time_in);
+            $expected = Carbon::parse($rec->date)->setTimeFromTimeString((string) $day->expected_time_in);
+            $allowed  = $expected->copy()->addMinutes((int) $day->grace_period_minutes);
+
+            $actual = $expected->copy()->setTime((int) $in->format('G'), (int) $in->format('i'), 0);
+
+            if ($actual->greaterThan($allowed)) {
+                $lateMinutes = (int) round($expected->diffInMinutes($actual));
+            }
+        }
+
         return compact(
-            'hours', 'regular_hours', 'ot_hours', 'night_hours', 'rate', 'ot_rate', 'basicPay', 'otPay',
+            'hours', 'regular_hours', 'ot_hours', 'night_hours', 'lateMinutes', 'rate', 'ot_rate', 'basicPay', 'otPay',
             'dayEarnings', 'isHoliday', 'holidayType', 'hMultiplier', 'holidayPay', 'isSunday', 'restDayPay',
             'nightDiffPay', 'rates',
             'gross', 'dailyRate',
@@ -383,15 +417,21 @@ class PayrollService
     }
 
     /**
-     * Group records by week (Sunday start), then by employee within the week.
+     * Group records by week, then by employee within the week. The week opens
+     * on the day System Settings names.
      * Output shape matches the original $payrollWeeks exactly.
      */
     private function groupByWeek($records, array $cfg): array
     {
-        // Weeks run Monday–Sunday across the whole system.
-        $recordsByWeek = $records->groupBy(function ($item) {
-            $start = Carbon::parse($item->date)->startOfWeek(Carbon::MONDAY)->format('m/d/Y');
-            $end   = Carbon::parse($item->date)->endOfWeek(Carbon::SUNDAY)->format('m/d/Y');
+        // Which day a pay week opens on is a setting; it was Monday everywhere
+        // as a bare constant. The last day is whatever comes six days later, so
+        // the two can never drift apart.
+        $weekStart = (int) ($cfg['day']->week_starts_on ?? Carbon::MONDAY);
+        $weekEnd   = ($weekStart + 6) % 7;
+
+        $recordsByWeek = $records->groupBy(function ($item) use ($weekStart, $weekEnd) {
+            $start = Carbon::parse($item->date)->startOfWeek($weekStart)->format('m/d/Y');
+            $end   = Carbon::parse($item->date)->endOfWeek($weekEnd)->format('m/d/Y');
             return "$start - $end";
         });
 
@@ -406,7 +446,7 @@ class PayrollService
             // is paid. A bonus raised mid-week takes effect on the period that
             // ends after it, and never on one already paid.
             $weekBonus = $this->ratesOn(
-                Carbon::parse($weekGroup->first()->date)->endOfWeek(Carbon::SUNDAY)->toDateString(),
+                Carbon::parse($weekGroup->first()->date)->endOfWeek($weekEnd)->toDateString(),
                 $cfg
             )['bonus'] ?? 0;
 

@@ -25,6 +25,12 @@ class SystemSetting extends Model
         'password_min_length',
         'max_login_attempts',
         'lockout_seconds',
+        'expected_time_in',
+        'grace_period_minutes',
+        'standard_hours_per_day',
+        'auto_count_overtime',
+        'week_starts_on',
+        'payroll_cycle',
     ];
 
     protected $casts = [
@@ -32,6 +38,10 @@ class SystemSetting extends Model
         'password_min_length'     => 'integer',
         'max_login_attempts'      => 'integer',
         'lockout_seconds'         => 'integer',
+        'grace_period_minutes'    => 'integer',
+        'standard_hours_per_day'  => 'float',
+        'auto_count_overtime'     => 'boolean',
+        'week_starts_on'          => 'integer',
     ];
 
     /**
@@ -48,6 +58,12 @@ class SystemSetting extends Model
         'password_min_length'     => 8,
         'max_login_attempts'      => 5,
         'lockout_seconds'         => 60,
+        'expected_time_in'        => '08:00:00',
+        'grace_period_minutes'    => 15,
+        'standard_hours_per_day'  => 8,
+        'auto_count_overtime'     => true,
+        'week_starts_on'          => 1,
+        'payroll_cycle'           => 'weekly',
     ];
 
     /** The container key the resolved row is memoised under. */
