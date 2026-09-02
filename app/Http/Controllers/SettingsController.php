@@ -73,8 +73,7 @@ class SettingsController extends Controller
 
     /**
      * Record a new set of payroll numbers — the premiums and the employee-share
-     * contributions — effective from a date. The daily wage is on the same
-     * timeline but is set on the card below this one.
+     * contributions — effective from a date.
      *
      * Deliberately an INSERT. These lived on the single settings row, so
      * raising one rewrote history: reopening last month's payroll recomputed it
@@ -106,9 +105,11 @@ class SettingsController extends Controller
         // the Labor Code states outright, so the row takes the column default
         // rather than the office being offered a setting to get wrong.
         //
-        // The wage floor is not on this form either — it is set on the card
-        // below it. It still belongs on the row, so carry the one in force
-        // forward: changing a premium must not quietly drop the wage order.
+        // The wage floor is not on this form either — nothing sets it any more,
+        // because a labour type carries its own daily wage. Any floor already
+        // on file still belongs on the row, so carry the one in force forward:
+        // changing a premium must not quietly drop a wage order the office is
+        // still being held to.
         $data['daily_rate'] = PayrollRate::effectiveOn($data['effective_from'])?->daily_rate;
         $data['created_by'] = auth()->user()->name ?? auth()->user()->username ?? 'admin';
 
@@ -125,15 +126,11 @@ class SettingsController extends Controller
 
     public function update(Request $request)
     {
-        // Contributions used to be saved here. They are dated now and live on
-        // the payroll rate row, so this form is down to the daily wage and the
-        // rest-day rule. The period bonus is no longer set here — it stays on
-        // the payslip at whatever it was last saved as.
-        $data = $request->validate([
-            'daily_rate' => 'nullable|numeric|min:0|max:100000',
-        ], [
-            'daily_rate.max' => 'A daily wage that high is a typo more often than it is a wage.',
-        ]);
+        // Everything that was a number moved off this form. The premiums and
+        // the contributions are dated and live on the payroll rate row; the
+        // daily wage belongs to the labour type, which carries its own; and the
+        // period bonus, though still computed and still on the payslip, is no
+        // longer set anywhere. What is left is the one rule that is not a rate.
 
         // Capture the previous Sunday rest-day state BEFORE saving so we can
         // detect a toggle and freeze history accordingly.
@@ -153,33 +150,6 @@ class SettingsController extends Controller
                 ->update(['rest_day_applied' => $oldRestEnabled]);
         }
 
-        // The wage moved off the dated card, but it is still a dated number: a
-        // wage order takes effect on a day and does not reach backwards. So a
-        // change adds a rate row effective today, carrying the premiums and the
-        // contributions in force forward, and every earlier row — and the
-        // payroll it already answered for — is left alone. When the wage has
-        // not changed nothing is written: toggling the rest day should not fill
-        // the rate history with duplicates. A floor of 0 is no floor, which is
-        // what an empty box means, so the two compare as the same thing.
-        $floorOf  = fn ($v) => ($v !== null && (float) $v > 0) ? (float) $v : null;
-        $current  = PayrollRate::current();
-        $newFloor = $floorOf($data['daily_rate'] ?? null);
-
-        if ($newFloor !== $floorOf($current?->daily_rate)) {
-            PayrollRate::create([
-                'effective_from'             => Carbon::now()->toDateString(),
-                'ot_multiplier'              => $current?->ot_multiplier,
-                'night_diff_multiplier'      => $current?->night_diff_multiplier,
-                'rest_day_multiplier'        => $current?->rest_day_multiplier,
-                'regular_holiday_multiplier' => $current?->regular_holiday_multiplier,
-                'daily_rate'                 => $newFloor,
-                'sss_rate'                   => $current?->sss_rate,
-                'philhealth_rate'            => $current?->philhealth_rate,
-                'pagibig_rate'               => $current?->pagibig_rate,
-                'created_by'                 => auth()->user()->name ?? auth()->user()->username ?? 'admin',
-            ]);
-        }
-
         Setting::updateOrCreate(
             ['id' => 1],
             [
@@ -189,7 +159,7 @@ class SettingsController extends Controller
 
         SettingsChanged::fireOnce(auth()->user(), 'rates_updated',
             'Payroll Rates Updated',
-            'The daily wage and rest-day settings have been changed.'
+            'The rest-day setting has been changed.'
         );
 
         return redirect()->route('settings.index')->with('success', 'Settings updated!');

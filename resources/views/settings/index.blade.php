@@ -135,7 +135,7 @@
                                     @error('effective_from')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                             </div>
-                            <p class="pr-block-hint">The date applies to the premiums and the deductions on this card. The daily wage is set below and carries forward unchanged.</p>
+                            <p class="pr-block-hint">The date applies to the premiums and the deductions on this card.</p>
                         </section>
 
                         {{-- Deductions --}}
@@ -273,35 +273,21 @@
                 @csrf
                 @method('PUT')
 
-                {{-- Daily wage + rest day. The premiums and the contributions
-                     live in the dated card above; the wage sits here because it
-                     is the one number the office changes on its own, apart from
-                     a labour type's own rate. Saving it still adds a dated rate
-                     row, so a period already paid keeps the wage it was paid
-                     at. --}}
+                {{-- Rest day. Nothing else is set here any more: the premiums
+                     and the contributions are on the dated card above, and the
+                     daily wage belongs to the labour type, which carries its
+                     own rate. --}}
                 <div class="row g-4 mb-4">
                     <div class="col-12">
                         <div class="ps-card h-100" id="ot_rate_section">
                             <div class="ps-card-header">
                                 <i class="fas fa-sliders-h"></i>
                                 <div>
-                                    <h6>Daily Wage & Rest Day</h6>
-                                    <p>The premiums and the contributions all live in the dated card above.</p>
+                                    <h6>Rest Day</h6>
+                                    <p>The premiums and the contributions live in the dated card above; each labour type carries its own daily wage.</p>
                                 </div>
                             </div>
                             <div class="ps-card-body">
-                                <div class="mb-4">
-                                    <label class="ps-label" for="daily_rate">Daily Wage (₱)</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text ps-ig-text">₱</span>
-                                        <input type="number" step="0.01" min="0"
-                                               class="form-control ps-input @error('daily_rate') is-invalid @enderror"
-                                               id="daily_rate" name="daily_rate" placeholder="none set"
-                                               value="{{ old('daily_rate', ($currentRate?->daily_rate ?? 0) > 0 ? $currentRate->daily_rate : null) }}">
-                                    </div>
-                                    @error('daily_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    <small class="text-muted d-block mt-1">DOLE minimum wage floor. A labour type paying less than this is lifted to it; leave it empty and each labour type keeps its own daily rate. A change takes effect today — payroll already paid is not recomputed.</small>
-                                </div>
                                 <div class="mb-0">
                                     <label class="ps-label">Sunday Rest Day Pay</label>
                                     <div class="ps-toggle-row">
