@@ -24,6 +24,7 @@ class PayrollRate extends Model
         'regular_holiday_multiplier',
         'daily_rate',
         'bonus',
+        'uses_defaults',
         'sss_rate',
         'philhealth_rate',
         'pagibig_rate',
@@ -38,6 +39,7 @@ class PayrollRate extends Model
         'regular_holiday_multiplier' => 'float',
         'daily_rate'                 => 'float',
         'bonus'                      => 'float',
+        'uses_defaults'              => 'boolean',
         'sss_rate'                   => 'float',
         'philhealth_rate'            => 'float',
         'pagibig_rate'               => 'float',
@@ -96,10 +98,19 @@ class PayrollRate extends Model
      * anything missing, so callers never have to null-check one. A multiplier
      * below 1 would pay less than the plain rate, so it is treated as missing.
      *
+     * A row on defaults answers with the constants rather than its own columns,
+     * so raising a statutory figure here reaches every such row at once. That
+     * is the whole point of the switch: an office that never chose its own
+     * numbers should not be left on last year's.
+     *
      * @return array<string, float>
      */
     public function toMultipliers(): array
     {
+        if ($this->uses_defaults) {
+            return self::DEFAULTS;
+        }
+
         $out = [];
         foreach (self::DEFAULTS as $key => $default) {
             $value = $this->{$key};
@@ -112,12 +123,17 @@ class PayrollRate extends Model
     /**
      * Contribution rates as a plain array. Unlike a multiplier, 0 is kept: an
      * office that deducts nothing has said so, and substituting 5% would take
-     * money off a payslip nobody agreed to.
+     * money off a payslip nobody agreed to — unless the row is on defaults, in
+     * which case nobody chose 0 and the circular's rate is the answer.
      *
      * @return array<string, float>
      */
     public function toDeductionRates(): array
     {
+        if ($this->uses_defaults) {
+            return self::DEDUCTION_DEFAULTS;
+        }
+
         $out = [];
         foreach (self::DEDUCTION_DEFAULTS as $key => $default) {
             $value = $this->{$key};

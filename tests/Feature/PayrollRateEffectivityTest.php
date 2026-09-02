@@ -385,4 +385,87 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertSame($total, $response->viewData('payrollRateTotal'), 'the full count is still reported');
         $this->assertSame('2026-06-01', $shown->first()->effective_from->toDateString(), 'newest first');
     }
+
+    // ── The DOLE defaults switch ─────────────────────────────────────────────
+
+    public function test_saving_on_defaults_records_the_statutory_figures(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), [
+                 'effective_from' => '2026-10-01',
+                 'uses_defaults'  => 1,
+                 'bonus'          => 300,
+             ])
+             ->assertSessionHasNoErrors();
+
+        $saved = PayrollRate::newestFirst()->first();
+
+        $this->assertTrue($saved->uses_defaults);
+        $this->assertSame(1.25, (float) $saved->ot_multiplier);
+        $this->assertSame(5.00, (float) $saved->sss_rate);
+        $this->assertSame(300.0, (float) $saved->bonus, 'the bonus is still the office\'s own');
+    }
+
+    /** The rate fields are locked on screen, so they are not validated. */
+    public function test_on_defaults_the_rate_fields_are_not_required(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), [
+                 'effective_from' => '2026-10-01',
+                 'uses_defaults'  => 1,
+             ])
+             ->assertSessionHasNoErrors();
+    }
+
+    /** Off defaults they are, or a blank form would save a row of nothing. */
+    public function test_off_defaults_the_rate_fields_are_still_required(): void
+    {
+        $before = PayrollRate::count();
+
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), ['effective_from' => '2026-10-01'])
+             ->assertSessionHasErrors(['ot_multiplier', 'sss_rate']);
+
+        $this->assertSame($before, PayrollRate::count());
+    }
+
+    /**
+     * The point of the switch: a row on it reads the constants at compute time,
+     * so a statutory figure that moves reaches it without anyone retyping.
+     */
+    public function test_a_row_on_defaults_answers_with_the_constants(): void
+    {
+        $row = $this->rate('2026-01-01', [
+            'uses_defaults'       => true,
+            'ot_multiplier'       => 9.99,   // stale columns the flag overrides
+            'sss_rate'            => 99.00,
+        ]);
+
+        $this->assertSame(1.25, $row->toMultipliers()['ot_multiplier']);
+        $this->assertSame(5.00, $row->toDeductionRates()['sss_rate']);
+    }
+
+    /** Off it, the office's own numbers are the answer — even a deliberate 0%. */
+    public function test_a_row_off_defaults_keeps_its_own_numbers(): void
+    {
+        $row = $this->rate('2026-01-01', ['ot_multiplier' => 1.50, 'sss_rate' => 0]);
+
+        $this->assertSame(1.50, $row->toMultipliers()['ot_multiplier']);
+        $this->assertSame(0.0, $row->toDeductionRates()['sss_rate']);
+    }
+
+    /** And payroll pays at them, not at the columns the row is carrying. */
+    public function test_payroll_pays_a_defaults_row_at_the_statutory_premium(): void
+    {
+        $this->rate('2026-01-01', [
+            'uses_defaults' => true,
+            'ot_multiplier' => 5.00,
+            'sss_rate'      => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0,
+        ]);
+
+        $out = $this->compute($this->record('2026-03-04', '08:00:00', 10));
+
+        // 2 OT hours at 100/hr x 1.25 — not the 5.00 sitting in the column.
+        $this->assertSame(250.0, round($out['otPay'], 2));
+    }
 }

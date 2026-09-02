@@ -92,7 +92,20 @@
                                 <p>Premiums, bonus and deductions</p>
                             </div>
                         </div>
-                        <span class="pr-admin"><i class="fas fa-lock"></i> Admin</span>
+                        <div class="pr-head-right">
+                            {{-- On defaults the row stops naming numbers and reads
+                                 the statutory ones at compute time, so a circular
+                                 that moves reaches it without anyone retyping. --}}
+                            <label class="pr-defaults" title="Follow the statutory premiums and contribution rates automatically">
+                                <span class="ps-toggle-switch">
+                                    <input type="checkbox" name="uses_defaults" value="1" id="uses_defaults"
+                                           {{ old('uses_defaults', $rate?->uses_defaults ?? false) ? 'checked' : '' }}>
+                                    <span class="ps-toggle-slider"></span>
+                                </span>
+                                <span class="pr-defaults-text">DOLE defaults</span>
+                            </label>
+                            <span class="pr-admin"><i class="fas fa-lock"></i> Admin</span>
+                        </div>
                     </div>
 
                     <div class="ps-card-body">
@@ -256,18 +269,24 @@
                                     </thead>
                                     <tbody>
                                     @foreach($payrollRates as $i => $r)
+                                        {{-- A row on defaults answers with the
+                                             statutory constants, not its own
+                                             columns, so the history has to read
+                                             them the same way payroll does. --}}
+                                        @php $rr = $r->toRates(); @endphp
                                         <tr class="{{ $i === 0 ? 'pr-history-current' : '' }}">
                                             <td>
                                                 {{ $r->effective_from->format('M d, Y') }}
                                                 @if($i === 0)<span class="pr-in-force">in force</span>@endif
+                                                @if($r->uses_defaults)<span class="pr-on-defaults">defaults</span>@endif
                                             </td>
-                                            <td class="text-end">{{ $r->bonus ? '₱' . number_format($r->bonus, 2) : '—' }}</td>
-                                            <td class="text-end">{{ number_format($r->ot_multiplier, 2) }}</td>
-                                            <td class="text-end">{{ number_format($r->night_diff_multiplier, 2) }}</td>
-                                            <td class="text-end">{{ number_format($r->rest_day_multiplier, 2) }}</td>
-                                            <td class="text-end">{{ number_format($r->sss_rate, 2) }}%</td>
-                                            <td class="text-end">{{ number_format($r->philhealth_rate, 2) }}%</td>
-                                            <td class="text-end">{{ number_format($r->pagibig_rate, 2) }}%</td>
+                                            <td class="text-end">{{ $rr['bonus'] ? '₱' . number_format($rr['bonus'], 2) : '—' }}</td>
+                                            <td class="text-end">{{ number_format($rr['ot_multiplier'], 2) }}</td>
+                                            <td class="text-end">{{ number_format($rr['night_diff_multiplier'], 2) }}</td>
+                                            <td class="text-end">{{ number_format($rr['rest_day_multiplier'], 2) }}</td>
+                                            <td class="text-end">{{ number_format($rr['sss_rate'], 2) }}%</td>
+                                            <td class="text-end">{{ number_format($rr['philhealth_rate'], 2) }}%</td>
+                                            <td class="text-end">{{ number_format($rr['pagibig_rate'], 2) }}%</td>
                                             <td>{{ $r->created_by ?: '—' }}</td>
                                         </tr>
                                     @endforeach
@@ -1521,6 +1540,24 @@
 .pr-head-left > i { font-size:1.05rem; color:var(--text-secondary,#66707c); margin-top:2px; }
 .pr-head h6 { margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary,#1b2430); }
 .pr-head p  { margin:2px 0 0; font-size:.8rem; color:var(--text-secondary,#66707c); }
+.pr-head-right { flex:none; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+/* The switch itself is the one from the old rest-day card, reused rather than
+   drawn again — it was left behind styled and unused when that card came off. */
+.pr-defaults {
+    display:inline-flex; align-items:center; gap:8px; margin:0; cursor:pointer;
+    padding:4px 11px 4px 6px; border-radius:999px;
+    border:1px solid var(--border,#e3e6e9); background:var(--bg-subtle,#f7f8fa);
+}
+.pr-defaults-text {
+    font-size:.75rem; font-weight:600; color:var(--text-secondary,#66707c);
+}
+.pr-defaults:has(input:checked) .pr-defaults-text { color:var(--success,#16a34a); }
+/* A field the office cannot type in should not look like one that is simply
+   empty — otherwise the switch reads as having wiped the numbers. */
+.pr-locked {
+    opacity:.72; cursor:not-allowed;
+    background:var(--bg-subtle,#f7f8fa) !important;
+}
 .pr-admin {
     flex:none; display:inline-flex; align-items:center; gap:6px;
     font-size:.75rem; font-weight:600; padding:5px 11px;
@@ -1605,6 +1642,13 @@
     margin-left:7px; font-size:.65rem; font-weight:700; letter-spacing:.4px;
     text-transform:uppercase; padding:1px 7px; border-radius:999px;
     background:var(--brand-subtle,#edf3f9); color:var(--brand,#1e5c9b);
+}
+/* Green, like the switch that set it: the row is following the statutory
+   figures rather than naming its own. */
+.pr-on-defaults {
+    margin-left:7px; font-size:.65rem; font-weight:700; letter-spacing:.4px;
+    text-transform:uppercase; padding:1px 7px; border-radius:999px;
+    background:rgba(22,163,74,.12); color:var(--success,#16a34a);
 }
 
 .pr-foot {
@@ -1887,6 +1931,37 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.innerHTML = origHtml;
         }
     });
+})();
+</script>
+
+<script>
+// ── DOLE defaults switch ────────────────────────────────────────────────────
+// On defaults the office is not choosing numbers, so the rate inputs are filled
+// with the statutory ones and locked. They stay readonly rather than disabled
+// because a disabled input is not submitted, and the server still wants to see
+// the form it validated. Whatever they carry is replaced server-side anyway —
+// this is so the screen agrees with what will be saved.
+(function () {
+    const chk = document.getElementById('uses_defaults');
+    if (!chk) return;
+
+    const form = chk.closest('form');
+    if (!form) return;
+
+    const DEFAULTS = @json($statutoryDefaults);
+
+    function apply() {
+        Object.keys(DEFAULTS).forEach(function (name) {
+            const el = form.querySelector('[name="' + name + '"]');
+            if (!el) return;                      // not every constant has a field
+            if (chk.checked) el.value = DEFAULTS[name];
+            el.readOnly = chk.checked;
+            el.classList.toggle('pr-locked', chk.checked);
+        });
+    }
+
+    chk.addEventListener('change', apply);
+    apply();
 })();
 </script>
 @endsection

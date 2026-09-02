@@ -38,6 +38,11 @@ class SettingsController extends Controller
         $payrollRateTotal = PayrollRate::count();
         $currentRate      = PayrollRate::current();
 
+        // The statutory figures, for the form to fill in and lock when the
+        // office is on defaults. Handed to the view rather than reached for
+        // from the template, so the constants stay named in one place.
+        $statutoryDefaults = PayrollRate::DEFAULTS + PayrollRate::DEDUCTION_DEFAULTS;
+
         // Holiday calendar: official PH holidays for the selected year merged
         // with manual entries (auto-recognised, admin-overridable).
         $holidayYear = (int) $request->input('year', now()->year);
@@ -77,7 +82,7 @@ class SettingsController extends Controller
 
         return view('settings.index', compact(
             'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap',
-            'payrollRates', 'payrollRateTotal', 'currentRate'
+            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults'
         ));
     }
 
@@ -94,18 +99,32 @@ class SettingsController extends Controller
      */
     public function storePayrollRate(Request $request)
     {
-        $data = $request->validate([
-            'effective_from'        => 'required|date',
-            'ot_multiplier'         => 'required|numeric|min:1|max:10',
-            'night_diff_multiplier' => 'required|numeric|min:1|max:10',
-            'rest_day_multiplier'   => 'required|numeric|min:1|max:10',
+        // On defaults the office is not entering numbers at all, so the rate
+        // rules come off: the inputs are locked on screen and whatever they
+        // carried is replaced below. Validating them would only turn a switch
+        // into an error message about a field nobody can type in.
+        $onDefaults = $request->boolean('uses_defaults');
+
+        $rules = [
+            'effective_from' => 'required|date',
             // A flat amount per employee per pay period. Optional on the form,
             // but never null on the row: an office paying no bonus has said 0.
-            'bonus'                 => 'nullable|numeric|min:0|max:1000000',
-            'sss_rate'              => 'required|numeric|min:0|max:100',
-            'philhealth_rate'       => 'required|numeric|min:0|max:100',
-            'pagibig_rate'          => 'required|numeric|min:0|max:100',
-        ], [
+            'bonus'          => 'nullable|numeric|min:0|max:1000000',
+            'uses_defaults'  => 'nullable|boolean',
+        ];
+
+        if (! $onDefaults) {
+            $rules += [
+                'ot_multiplier'         => 'required|numeric|min:1|max:10',
+                'night_diff_multiplier' => 'required|numeric|min:1|max:10',
+                'rest_day_multiplier'   => 'required|numeric|min:1|max:10',
+                'sss_rate'              => 'required|numeric|min:0|max:100',
+                'philhealth_rate'       => 'required|numeric|min:0|max:100',
+                'pagibig_rate'          => 'required|numeric|min:0|max:100',
+            ];
+        }
+
+        $data = $request->validate($rules, [
             'ot_multiplier.min'         => 'A multiplier below 1.00 would pay less than the plain rate.',
             'night_diff_multiplier.min' => 'A multiplier below 1.00 would pay less than the plain rate.',
             'rest_day_multiplier.min'   => 'A multiplier below 1.00 would pay less than the plain rate.',
@@ -113,6 +132,15 @@ class SettingsController extends Controller
             'philhealth_rate.max'       => 'A contribution rate is a percentage of gross pay.',
             'pagibig_rate.max'          => 'A contribution rate is a percentage of gross pay.',
         ]);
+
+        // The flag is what payroll reads, but the statutory figures go onto the
+        // row as well: the rate history is meant to say what a period was paid
+        // at, and a row of blanks does not.
+        $data['uses_defaults'] = $onDefaults;
+
+        if ($onDefaults) {
+            $data += PayrollRate::DEFAULTS + PayrollRate::DEDUCTION_DEFAULTS;
+        }
 
         // The regular-holiday multiplier is not on the form. 200% is the figure
         // the Labor Code states outright, so the row takes the column default
