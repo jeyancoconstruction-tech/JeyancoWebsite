@@ -33,6 +33,7 @@ class SystemSetting extends Model
         'payroll_cycle',
         'default_theme',
         'locale',
+        'shift',
     ];
 
     protected $casts = [
@@ -68,6 +69,7 @@ class SystemSetting extends Model
         'payroll_cycle'           => 'weekly',
         'default_theme'           => 'dark',
         'locale'                  => 'en',
+        'shift'                   => 'day',
     ];
 
     /** The container key the resolved row is memoised under. */

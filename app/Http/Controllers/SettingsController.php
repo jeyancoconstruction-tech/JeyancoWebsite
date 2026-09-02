@@ -556,6 +556,7 @@ class SettingsController extends Controller
     public function updateAttendance(Request $request)
     {
         $data = $request->validate([
+            'shift'                  => ['required', 'in:day,night'],
             'expected_time_in'       => ['required', 'date_format:H:i'],
             'grace_period_minutes'   => ['required', 'integer', 'min:0', 'max:120'],
 

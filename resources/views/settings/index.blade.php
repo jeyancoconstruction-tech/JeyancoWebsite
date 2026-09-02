@@ -347,6 +347,33 @@
                         </div>
                     </div>
                     <div class="ps-card-body">
+                        {{-- Which shift the office runs. Not decoration beside
+                             the time-in: a night shift crosses midnight, and
+                             lateness has to know that or a worker clocking in at
+                             half past midnight against a 10 PM start reads as
+                             twenty-one hours early instead of two and a half
+                             hours late. --}}
+                        @php $shift = old('shift', $system->shift ?? 'day'); @endphp
+                        <label class="ps-label">{{ __('Shift') }}</label>
+                        <div class="sh-pick mb-3">
+                            <label class="sh-opt {{ $shift === 'day' ? 'on' : '' }}">
+                                <input type="radio" name="shift" value="day" {{ $shift === 'day' ? 'checked' : '' }}>
+                                <i class="fas fa-sun"></i>
+                                <span>
+                                    <b>{{ __('Day shift') }}</b>
+                                    <small>{{ __('Starts and ends on the same date') }}</small>
+                                </span>
+                            </label>
+                            <label class="sh-opt {{ $shift === 'night' ? 'on' : '' }}">
+                                <input type="radio" name="shift" value="night" {{ $shift === 'night' ? 'checked' : '' }}>
+                                <i class="fas fa-moon"></i>
+                                <span>
+                                    <b>{{ __('Night shift') }}</b>
+                                    <small>{{ __('Crosses midnight into the next morning') }}</small>
+                                </span>
+                            </label>
+                        </div>
+
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="ps-label" for="expected_time_in">{{ __('Expected time-in') }}</label>
@@ -1683,6 +1710,25 @@
 </div>
 
 <style>
+/* ── Shift picker ──────────────────────────────────────────────────────────
+   Two cards rather than a dropdown: the choice changes how lateness is
+   measured, which is worth a sentence each rather than one word in a list. */
+.sh-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .sh-pick { grid-template-columns: 1fr; } }
+.sh-opt {
+    display: flex; align-items: center; gap: 12px; margin: 0; cursor: pointer;
+    padding: 12px 14px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg-subtle);
+}
+.sh-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.sh-opt > i { font-size: 1.1rem; color: var(--text-muted); flex: none; }
+.sh-opt b { display: block; font-size: .9rem; color: var(--text-primary); }
+.sh-opt small { display: block; font-size: .75rem; color: var(--text-secondary); line-height: 1.4; }
+.sh-opt.on, .sh-opt:has(input:checked) {
+    border-color: var(--brand); background: var(--brand-subtle);
+}
+.sh-opt.on > i, .sh-opt:has(input:checked) > i { color: var(--brand); }
+
 /* ── Bonus grants ──────────────────────────────────────────────────────────
    The picker is a wall of names, so it scrolls rather than pushing the Give
    button off the screen; and a chosen name is filled, not just ticked, so the

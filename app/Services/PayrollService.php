@@ -424,6 +424,15 @@ class PayrollService
 
             $actual = $expected->copy()->setTime((int) $in->format('G'), (int) $in->format('i'), 0);
 
+            // A night shift crosses midnight, so a clock-in long before the
+            // expected time is the small hours of the next morning rather than
+            // an arrival most of a day early. Twelve hours is the line: a worker
+            // fifteen minutes early is still early, one at 12:30 AM against a
+            // 10 PM start is two and a half hours late.
+            if (($day->shift ?? 'day') === 'night' && $expected->diffInHours($actual, false) < -12) {
+                $actual->addDay();
+            }
+
             if ($actual->greaterThan($allowed)) {
                 $lateMinutes = (int) round($expected->diffInMinutes($actual));
             }

@@ -272,6 +272,7 @@ class SystemSettingsTest extends TestCase
     {
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
+                 'shift'                  => 'day',
                  'expected_time_in'       => '07:30',
                  'grace_period_minutes'   => 10,
                  'standard_hours_per_day' => 10,
@@ -295,6 +296,7 @@ class SystemSettingsTest extends TestCase
     {
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
+                 'shift'                  => 'day',
                  'expected_time_in'       => '08:00',
                  'grace_period_minutes'   => 15,
                  'standard_hours_per_day' => 0,
@@ -312,6 +314,7 @@ class SystemSettingsTest extends TestCase
     {
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
+                 'shift'                  => 'day',
                  'expected_time_in'       => '08:00',
                  'grace_period_minutes'   => 15,
                  'standard_hours_per_day' => 8,

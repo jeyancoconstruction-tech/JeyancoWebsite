@@ -940,4 +940,81 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertFalse($grant->all_employees);
         $this->assertSame([$rec->employee_id], $grant->employees->pluck('id')->all());
     }
+
+    // ── Day shift and night shift ────────────────────────────────────────────
+
+    /**
+     * A night shift crosses midnight. Measured on the clock alone, a worker
+     * who starts at 12:30 AM against a 10 PM shift reads as twenty-one hours
+     * early — so the day comes back with nobody late at all.
+     */
+    public function test_a_night_shift_counts_lateness_across_midnight(): void
+    {
+        $this->rate('2026-01-01');
+
+        $out = $this->compute(
+            $this->record('2026-03-04', '00:30:00', 8),
+            $this->dayCfg(['shift' => 'night', 'expected_time_in' => '22:00:00', 'grace_period_minutes' => 15])
+        );
+
+        $this->assertSame(150, $out['lateMinutes'], 'two and a half hours after a 10 PM start');
+    }
+
+    /** Arriving before the shift is still early, not almost a day late. */
+    public function test_a_night_shift_does_not_punish_arriving_early(): void
+    {
+        $this->rate('2026-01-01');
+
+        $out = $this->compute(
+            $this->record('2026-03-04', '21:45:00', 8),
+            $this->dayCfg(['shift' => 'night', 'expected_time_in' => '22:00:00', 'grace_period_minutes' => 15])
+        );
+
+        $this->assertSame(0, $out['lateMinutes']);
+    }
+
+    /** On a day shift the same clock-in is what it looks like: very early. */
+    public function test_a_day_shift_reads_the_clock_straight(): void
+    {
+        $this->rate('2026-01-01');
+
+        $out = $this->compute(
+            $this->record('2026-03-04', '00:30:00', 8),
+            $this->dayCfg(['shift' => 'day', 'expected_time_in' => '08:00:00', 'grace_period_minutes' => 15])
+        );
+
+        $this->assertSame(0, $out['lateMinutes'], 'before the shift, so not late');
+    }
+
+    /** The night differential is the clock's, not the shift setting's. */
+    public function test_the_night_differential_does_not_depend_on_the_shift(): void
+    {
+        $this->rate('2026-01-01', ['night_diff_multiplier' => 1.10]);
+
+        $day = $this->compute(
+            $this->record('2026-03-04', '22:00:00', 8),
+            $this->dayCfg(['shift' => 'day'])
+        );
+        $night = $this->compute(
+            $this->record('2026-03-05', '22:00:00', 8),
+            $this->dayCfg(['shift' => 'night', 'expected_time_in' => '22:00:00'])
+        );
+
+        $this->assertSame(round($day['nightDiffPay'], 2), round($night['nightDiffPay'], 2));
+        $this->assertGreaterThan(0, $day['nightDiffPay'], '10 PM to 6 AM is night whoever is working');
+    }
+
+    public function test_an_unknown_shift_is_refused(): void
+    {
+        $this->actingAs($this->admin())
+             ->put(route('settings.attendance.update'), [
+                 'shift'                  => 'graveyard',
+                 'expected_time_in'       => '22:00',
+                 'grace_period_minutes'   => 15,
+                 'standard_hours_per_day' => 8,
+                 'week_starts_on'         => 1,
+                 'payroll_cycle'          => 'weekly',
+             ])
+             ->assertSessionHasErrors('shift');
+    }
 }
