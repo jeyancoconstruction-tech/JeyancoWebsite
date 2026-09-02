@@ -13,6 +13,8 @@
         <p class="acct-header-sub">Create logins for your staff, change their details, and control who can sign in.</p>
     </div>
 
+    @include('settings._system-tabs')
+
     {{-- ── Flash messages ──────────────────────────────────────────────────── --}}
     @if(session('success'))
         <div class="acct-flash ok"><i class="fas fa-check-circle"></i> {{ session('success') }}</div>

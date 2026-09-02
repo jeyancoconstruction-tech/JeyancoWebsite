@@ -198,4 +198,35 @@ class SystemSettingsTest extends TestCase
 
         $this->assertGuest();
     }
+
+    // ── Accounts as a tab ────────────────────────────────────────────────────
+
+    /**
+     * Accounts is a tab of System Settings now. The tabs are links rather than
+     * panes — the accounts list filters and paginates through the query string,
+     * which a hidden pane would fight — so both pages have to carry the strip
+     * or the tab you are on disappears when you use it.
+     */
+    public function test_both_pages_carry_the_tab_strip(): void
+    {
+        $this->actingAs($this->admin())
+             ->get(route('system-settings.index'))
+             ->assertOk()
+             ->assertSee(route('accounts.index'), false);
+
+        $this->actingAs($this->admin())
+             ->get(route('accounts.index'))
+             ->assertOk()
+             ->assertSee(route('system-settings.index'), false);
+    }
+
+    /** And the sidebar keeps one entry lit on either of them. */
+    public function test_the_sidebar_entry_covers_both(): void
+    {
+        $this->actingAs($this->admin())
+             ->get(route('accounts.index'))
+             ->assertOk()
+             ->assertSee('System Settings')
+             ->assertDontSee('<span>Accounts</span>', false);
+    }
 }

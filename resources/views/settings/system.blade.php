@@ -72,6 +72,8 @@
         <p>Company identity and account security. Pay rates are in Payroll Settings.</p>
     </div>
 
+    @include('settings._system-tabs')
+
     @if(session('success'))
         <div class="alert alert-success d-flex align-items-center gap-2" role="alert">
             <i class="fas fa-circle-check"></i> {{ session('success') }}

@@ -122,13 +122,10 @@
             </a>
 
             @if(auth()->user()?->isAdmin())
+                {{-- Accounts is a tab of System Settings now, so one entry
+                     covers both and stays lit on either. --}}
                 <div class="menu-section">SYSTEM</div>
-                <a class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}" href="{{ route('accounts.index') }}">
-                    <i data-lucide="user-cog"></i> <span>Accounts</span>
-                </a>
-
-                <div class="menu-section">SYSTEM SETTINGS</div>
-                <a class="nav-link {{ request()->is('system-settings*') ? 'active' : '' }}" href="{{ route('system-settings.index') }}">
+                <a class="nav-link {{ request()->is('system-settings*') || request()->is('accounts*') ? 'active' : '' }}" href="{{ route('system-settings.index') }}">
                     <i data-lucide="sliders-horizontal"></i> <span>System Settings</span>
                 </a>
             @endif
