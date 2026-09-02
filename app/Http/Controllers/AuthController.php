@@ -6,12 +6,29 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use App\Models\SystemSetting;
 
 class AuthController extends Controller
 {
-    /** Max failed attempts before a temporary lockout, and the lockout window. */
+    /**
+     * Max failed attempts before a temporary lockout, and the lockout window.
+     * Both are set in System Settings; these are the fallback for a checkout
+     * whose settings table does not exist yet, and they are the values that
+     * were hardcoded here before it did.
+     */
     private const MAX_ATTEMPTS = 5;
     private const DECAY_SECONDS = 60;
+
+    /** The two throttle numbers in force, [attempts, seconds]. */
+    private function throttleLimits(): array
+    {
+        $settings = SystemSetting::current();
+
+        return [
+            $settings->max_login_attempts ?: self::MAX_ATTEMPTS,
+            $settings->lockout_seconds ?: self::DECAY_SECONDS,
+        ];
+    }
 
     // Ipakita ang Login Form
     public function showLoginForm() {
@@ -43,8 +60,9 @@ class AuthController extends Controller
 
         // Brute-force protection: throttle by identifier + IP.
         $throttleKey = Str::lower($login) . '|' . $request->ip();
+        [$maxAttempts, $decaySeconds] = $this->throttleLimits();
 
-        if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_ATTEMPTS)) {
+        if (RateLimiter::tooManyAttempts($throttleKey, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($throttleKey);
 
             return $this->failed($request, "Too many failed attempts. Please try again in {$seconds} second(s).");
@@ -66,7 +84,7 @@ class AuthController extends Controller
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+                RateLimiter::hit($throttleKey, $decaySeconds);
 
                 return $this->failed($request, 'This account has been deactivated. Please contact your administrator.');
             }
@@ -81,7 +99,7 @@ class AuthController extends Controller
         }
 
         // Failed attempt — record it and return a generic message.
-        RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+        RateLimiter::hit($throttleKey, $decaySeconds);
 
         return $this->failed($request, 'Invalid username/email or password.');
     }

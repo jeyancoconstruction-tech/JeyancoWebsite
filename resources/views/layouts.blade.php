@@ -59,9 +59,9 @@
     <div class="sidebar-top">
         <div class="brand-title mb-4">
             <div class="logo-wrapper">
-                <img src="/images/JeyancoLogo.png" class="brand-icon" alt="Logo">
+                <img src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" class="brand-icon" alt="Logo">
             </div>
-            <span class="brand-text typing">Jeyanco Construction</span>
+            <span class="brand-text typing">{{ $company?->company_name ?? 'Jeyanco Construction' }}</span>
         </div>
 
         <nav class="nav-menu">
@@ -128,7 +128,7 @@
                 </a>
 
                 <div class="menu-section">SYSTEM SETTINGS</div>
-                <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
+                <a class="nav-link {{ request()->is('system-settings*') ? 'active' : '' }}" href="{{ route('system-settings.index') }}">
                     <i data-lucide="sliders-horizontal"></i> <span>System Settings</span>
                 </a>
             @endif

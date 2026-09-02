@@ -99,10 +99,11 @@
             @forelse($slips as $s)
                 <div class="slip">
                     <div class="slip-head">
-                        <img class="slip-logo" src="{{ asset('images/JeyancoLogo.png') }}" alt="">
+                        <img class="slip-logo" src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" alt="">
                         <div class="slip-co">
-                            <div class="name">JEYANCO CONSTRUCTION</div>
-                            <div class="sub">Payroll Dept. &middot; Panganiban, PH</div>
+                            <div class="name">{{ $company?->company_name ?? 'JEYANCO CONSTRUCTION' }}</div>
+                            <div class="sub">{{ $company?->company_tagline ?? 'Payroll Dept. · Panganiban, PH' }}</div>
+                            @if($company?->company_address)<div class="sub">{{ $company->company_address }}</div>@endif
                         </div>
                         <div class="slip-doc">
                             <div class="lbl">PAYSLIP</div>

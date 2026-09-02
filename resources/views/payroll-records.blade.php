@@ -337,10 +337,10 @@
                     <div class="modal-body p-3 p-md-4">
                         <div class="emp-slip" style="border:none;padding:0;">
                             <div class="emp-slip-head">
-                                <img class="emp-slip-logo" src="{{ asset('images/JeyancoLogo.png') }}" alt="">
+                                <img class="emp-slip-logo" src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" alt="">
                                 <div class="emp-slip-co">
-                                    <div class="co">JEYANCO CONSTRUCTION</div>
-                                    <div class="sub">Payroll Dept. &middot; Panganiban, PH</div>
+                                    <div class="co">{{ $company?->company_name ?? 'JEYANCO CONSTRUCTION' }}</div>
+                                    <div class="sub">{{ $company?->company_tagline ?? 'Payroll Dept. · Panganiban, PH' }}</div>
                                 </div>
                                 <div class="emp-slip-doc">
                                     <div class="lbl">PAYSLIP</div>

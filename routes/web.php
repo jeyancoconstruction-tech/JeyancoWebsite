@@ -9,6 +9,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SystemSettingsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\AIController;
 use App\Http\Controllers\SiteController;
@@ -146,6 +147,10 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::put   ('/accounts/{account}',       [AccountController::class, 'update'])->name('accounts.update');
     Route::patch ('/accounts/{account}/toggle',[AccountController::class, 'toggle'])->name('accounts.toggle');
     Route::delete('/accounts/{account}',       [AccountController::class, 'destroy'])->name('accounts.destroy');
+
+    // --- SYSTEM SETTINGS (not payroll: company identity, login rules) ---
+    Route::get('/system-settings', [SystemSettingsController::class, 'index'])->name('system-settings.index');
+    Route::put('/system-settings', [SystemSettingsController::class, 'update'])->name('system-settings.update');
 
     // --- SETTINGS MODULE ---
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');

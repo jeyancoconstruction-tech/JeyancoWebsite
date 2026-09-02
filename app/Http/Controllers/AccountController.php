@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -198,7 +199,8 @@ class AccountController extends Controller
             'password' => [
                 $account ? 'nullable' : 'required',
                 'confirmed',
-                Password::min(8)->letters()->numbers(),
+                // The minimum is a system setting; the rule it composes is not.
+                Password::min(SystemSetting::current()->password_min_length)->letters()->numbers(),
             ],
         ];
     }
