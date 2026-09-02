@@ -36,7 +36,7 @@
     <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="payroll-tab" data-bs-toggle="tab" data-bs-target="#payroll" type="button" role="tab" aria-selected="true">
-                <i data-lucide="wallet" class="me-2"></i>Payroll Settings
+                <i data-lucide="wallet" class="me-2"></i>Multipliers and Deductions
             </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -88,11 +88,8 @@
                         <div class="pr-head-left">
                             <i class="fas fa-gear"></i>
                             <div>
-                                <h6>Multipliers and Deductions</h6>
-                                {{-- The name says what is in the card, so the line
-                                     under it says the thing the name cannot: these
-                                     are dated, and saving adds a row. --}}
-                                <p>Effectivity-dated &middot; a change adds a row, it never edits one</p>
+                                <h6>Payroll settings</h6>
+                                <p>Premiums and deductions</p>
                             </div>
                         </div>
                         <div class="pr-head-right">
