@@ -72,6 +72,27 @@
     .emp-slip-net { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border: 1.5px solid var(--brand); border-radius: 6px; padding: 8px 12px; background: var(--brand-subtle); }
     .emp-slip-net .k { font-size: 11px; font-weight: 800; letter-spacing: .5px; color: var(--brand); }
     .emp-slip-net .v { font-size: 1.15rem; font-weight: 900; color: var(--brand); font-variant-numeric: tabular-nums; }
+
+    /* ── Table readability ───────────────────────────────────────────────────
+       enterprise.css paints every table body cell --text-secondary and every
+       header --text-muted. That is a caption colour, and on a payroll table the
+       names and the figures are the content, not a caption. Both themes are
+       written here so neither drifts from the other later. */
+    html[data-bs-theme="dark"]  .table-card .table tbody td,
+    html[data-bs-theme="light"] .table-card .table tbody td { color: var(--text-primary); }
+    html[data-bs-theme="dark"]  .table-card .table thead th,
+    html[data-bs-theme="light"] .table-card .table thead th { color: var(--text-secondary) !important; }
+
+    /* Bootstrap paints a row hover with an inset box-shadow, not a background,
+       so the background override in enterprise.css never reaches it — the row
+       washed out to near-white and took the text with it. These are the two
+       variables it actually reads. */
+    /* Page-scoped, so it reaches the payslip and export tables in the modals
+       too — they hover the same way and washed out the same way. */
+    .table {
+        --bs-table-hover-bg: var(--brand-subtle);
+        --bs-table-hover-color: var(--text-primary);
+    }
 </style>
 @endpush
 
@@ -258,7 +279,7 @@
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['bonus'], 2) }}</td>
-                                    <td class="text-end" style="color:var(--text-secondary);">&#8369;{{ number_format($d['gross'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['gross'], 2) }}</td>
                                     <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($d['totalDeductions'], 2) }}</td>
                                     <td class="text-end pe-4 fw-semibold" style="color:var(--brand);">&#8369;{{ number_format($d['net'], 2) }}</td>
                                 </tr>
