@@ -80,7 +80,7 @@
 
         {{-- ── Access ──────────────────────────────────────────────────────── --}}
         <div class="acctf-section">
-            <div class="acctf-section-label"><i class="fas fa-shield-halved"></i> Access Level</div>
+            <div class="acctf-section-label"><i class="fas fa-lock"></i> Access Level</div>
 
             @if($isSelf)
                 <div class="acctf-note">

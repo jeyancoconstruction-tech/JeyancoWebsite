@@ -37,7 +37,7 @@
 
         <div class="sy-card">
             <div class="sy-card-head">
-                <i class="fas fa-shield-halved"></i>
+                <i class="fas fa-lock"></i>
                 <div>
                     <h6>Account &amp; security</h6>
                     <p>Applied to every login and to the next password set or reset</p>

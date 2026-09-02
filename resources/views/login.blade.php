@@ -50,7 +50,7 @@
         </button>
 
         <div class="secure-note">
-            <i class="fas fa-shield-halved"></i> Secured administrator access &middot; authorized personnel only
+            <i class="fas fa-lock"></i> Secured administrator access &middot; authorized personnel only
         </div>
     </form>
 @endsection

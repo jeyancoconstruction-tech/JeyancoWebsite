@@ -28,7 +28,7 @@
     </a>
     <a class="sys-tab {{ request()->routeIs('system-settings.security') ? 'active' : '' }}"
        href="{{ route('system-settings.security') }}">
-        <i class="fas fa-shield-halved"></i> Security
+        <i class="fas fa-lock"></i> Security
     </a>
     <a class="sys-tab {{ request()->routeIs('system-settings.about') ? 'active' : '' }}"
        href="{{ route('system-settings.about') }}">
