@@ -741,11 +741,15 @@
 }
 .emp-more-btn:hover        { background: var(--brand-subtle); border-color: var(--border-md); color: var(--text-primary); }
 .emp-more-btn.active       { background: var(--brand-subtle); border-color: var(--brand); color: var(--brand); }
+/* Fixed, not absolute. The card and the table's scroll wrapper both clip what
+   escapes them, so an absolutely positioned menu opened inside the row and was
+   never seen. Fixed leaves the clipping behind; the JS below puts it under the
+   button it belongs to. */
 .emp-more-menu {
-    display: none; position: absolute; right: 0; top: calc(100% + 6px);
+    display: none; position: fixed;
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 6px; box-shadow: var(--shadow-lg);
-    z-index: 100; min-width: 150px; overflow: hidden;
+    z-index: 1080; min-width: 150px; overflow: hidden;
 }
 .emp-more-menu.open { display: block; }
 .emp-more-item {
@@ -852,22 +856,54 @@
     const csrf = '{{ csrf_token() }}';
 
     // ── Three-dot menus ──────────────────────────────────────────────────────
+    // The menu is position:fixed, so it has to be placed by hand — under the
+    // button, right edges aligned, and flipped above it when there is no room
+    // below. Fixed is what gets it out of the card and the scroll wrapper,
+    // both of which clip anything that escapes them.
+    function placeMenu(btn, menu) {
+        const r = btn.getBoundingClientRect();
+        const below = window.innerHeight - r.bottom;
+
+        menu.style.left = Math.max(8, r.right - menu.offsetWidth) + 'px';
+        menu.style.top  = (below < menu.offsetHeight + 12)
+            ? (r.top - menu.offsetHeight - 6) + 'px'
+            : (r.bottom + 6) + 'px';
+    }
+
+    function closeMenus() {
+        document.querySelectorAll('.emp-more-menu.open').forEach(m => {
+            m.classList.remove('open');
+            m.previousElementSibling?.classList.remove('active');
+        });
+    }
+
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.emp-more-btn');
+
         document.querySelectorAll('.emp-more-menu.open').forEach(m => {
             if (!btn || m !== btn.nextElementSibling) {
                 m.classList.remove('open');
-                m.previousElementSibling.classList.remove('active');
+                m.previousElementSibling?.classList.remove('active');
             }
         });
+
         if (btn) {
             e.stopPropagation();
             const menu    = btn.nextElementSibling;
             const opening = !menu.classList.contains('open');
+
             menu.classList.toggle('open', opening);
             btn.classList.toggle('active', opening);
+
+            // Measured after it is shown, or the width and height are both zero.
+            if (opening) placeMenu(btn, menu);
         }
     });
+
+    // A fixed menu does not travel with the row it belongs to, so it closes
+    // rather than drifting away from its button.
+    window.addEventListener('scroll', closeMenus, true);
+    window.addEventListener('resize', closeMenus);
 
     // ── Unified filter (site + search name) ──────────────────────────────────
     // Aling tab ang bukas. Pinagsasama ito sa search at sa site filter, kaya
@@ -955,8 +991,7 @@
             btn.addEventListener('click', () => {
                 form.action = base + '/' + btn.dataset.id;
                 if (nameEl) nameEl.textContent = btn.dataset.name || '';
-                document.querySelectorAll('.emp-more-menu.open')
-                        .forEach(m => m.classList.remove('open'));
+                closeMenus();
                 modal.show();
             });
         });
@@ -1005,10 +1040,7 @@
         valeEmpId = btn.dataset.id;
         document.getElementById('valeModalName').textContent = btn.dataset.name;
         document.getElementById('valeInput').value = parseFloat(btn.dataset.vale || 0).toFixed(2);
-        document.querySelectorAll('.emp-more-menu.open').forEach(m => {
-            m.classList.remove('open');
-            if (m.previousElementSibling) m.previousElementSibling.classList.remove('active');
-        });
+        closeMenus();
         const m = getValeModal(); if (m) m.show();
         setTimeout(() => document.getElementById('valeInput').focus(), 250);
     });

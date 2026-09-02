@@ -473,7 +473,10 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 .rm-menu-wrap { position:relative; display:inline-block; }
 .rm-menu-btn { width:34px; height:34px; border-radius:8px; border:1.5px solid #e2e8f0; background:#f8fafc; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .12s; }
 .rm-menu-btn:hover, .rm-menu-btn.active { background:#eff6ff; border-color:#bfdbfe; color:#2563eb; }
-.rm-menu { display:none; position:absolute; right:0; top:calc(100% + 6px); background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.1); z-index:120; min-width:172px; overflow:hidden; }
+/* Fixed, not absolute: .rm-card and the table's scroll wrapper both clip what
+   escapes them, so the menu opened inside the row and was never seen. Placed
+   by the script below. */
+.rm-menu { display:none; position:fixed; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.1); z-index:1080; min-width:172px; overflow:hidden; }
 .rm-menu.open { display:block; }
 .rm-menu-item { display:flex; align-items:center; gap:9px; padding:10px 14px; font-size:13px; font-weight:500; color:#374151; background:none; border:none; width:100%; text-align:left; cursor:pointer; text-decoration:none; transition:background .1s; }
 .rm-menu-item:hover { background:#f8fafc; }
@@ -586,17 +589,48 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
     else if ({{ $active->count() }} === 0 && {{ $pending->count() }} > 0) switchTab('pending');
 
     // ── Kebab menus ──────────────────────────────────────────────────────────
+    // Fixed, so placed by hand: under the button, right edges aligned, flipped
+    // above when there is no room below.
+    function placeRmMenu(btn, menu) {
+        const r = btn.getBoundingClientRect();
+        const below = window.innerHeight - r.bottom;
+
+        menu.style.left = Math.max(8, r.right - menu.offsetWidth) + 'px';
+        menu.style.top  = (below < menu.offsetHeight + 12)
+            ? (r.top - menu.offsetHeight - 6) + 'px'
+            : (r.bottom + 6) + 'px';
+    }
+
+    function closeRmMenus() {
+        document.querySelectorAll('.rm-menu.open').forEach(m => {
+            m.classList.remove('open');
+            m.previousElementSibling?.classList.remove('active');
+        });
+    }
+
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.rm-menu-btn');
         document.querySelectorAll('.rm-menu.open').forEach(m => {
-            if (!btn || m !== btn.nextElementSibling) { m.classList.remove('open'); m.previousElementSibling.classList.remove('active'); }
+            if (!btn || m !== btn.nextElementSibling) {
+                m.classList.remove('open');
+                m.previousElementSibling?.classList.remove('active');
+            }
         });
         if (btn) {
             e.stopPropagation();
             const menu = btn.nextElementSibling, opening = !menu.classList.contains('open');
-            menu.classList.toggle('open', opening); btn.classList.toggle('active', opening);
+            menu.classList.toggle('open', opening);
+            btn.classList.toggle('active', opening);
+
+            // Measured after it is shown, or width and height are both zero.
+            if (opening) placeRmMenu(btn, menu);
         }
     });
+
+    // A fixed menu does not travel with its row, so it closes rather than
+    // drifting away from the button it belongs to.
+    window.addEventListener('scroll', closeRmMenus, true);
+    window.addEventListener('resize', closeRmMenus);
 
     // ── Employee form modal (add / complete / edit) ──────────────────────────
     const storeUrl = "{{ route('employees.store') }}";
