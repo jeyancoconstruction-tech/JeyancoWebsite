@@ -159,12 +159,26 @@
                                 </div>
                             @endforeach
 
+                            {{-- The table itself is not a setting — the BIR
+                                 writes it. Whether the office withholds is,
+                                 and it is dated like everything else here. On
+                                 statutory defaults the answer is yes and the
+                                 switch is locked with the rest of the block. --}}
                             <div class="pr-ded-row">
                                 <div class="pr-ded-name">
                                     <span>Withholding tax</span>
                                     <small>BIR graduated table, daily column</small>
                                 </div>
-                                <div class="pr-ded-input"><span class="pr-auto">auto</span></div>
+                                <div class="pr-ded-input">
+                                    <label class="pr-tax-toggle">
+                                        <span class="ps-toggle-switch">
+                                            <input type="checkbox" name="withholding_tax" value="1" id="withholding_tax"
+                                                   {{ old('withholding_tax', $rate?->withholding_tax ?? true) ? 'checked' : '' }}>
+                                            <span class="ps-toggle-slider"></span>
+                                        </span>
+                                        <span class="pr-tax-state">{{ old('withholding_tax', $rate?->withholding_tax ?? true) ? 'auto' : 'off' }}</span>
+                                    </label>
+                                </div>
                             </div>
                         </section>
 
@@ -246,6 +260,7 @@
                                             <th class="text-end">Rest day</th>
                                             <th class="text-end">SSS</th><th class="text-end">PH</th>
                                             <th class="text-end">Pag-IBIG</th>
+                                            <th class="text-end">Tax</th>
                                             <th>Set by</th>
                                         </tr>
                                     </thead>
@@ -269,6 +284,7 @@
                                             <td class="text-end">{{ number_format($rr['sss_rate'], 2) }}%</td>
                                             <td class="text-end">{{ number_format($rr['philhealth_rate'], 2) }}%</td>
                                             <td class="text-end">{{ number_format($rr['pagibig_rate'], 2) }}%</td>
+                                            <td class="text-end">{{ $rr['withholding_tax'] ? 'auto' : 'off' }}</td>
                                             <td>{{ $r->created_by ?: '—' }}</td>
                                         </tr>
                                     @endforeach
@@ -1700,6 +1716,19 @@
 [data-bs-theme="dark"] .ps-toggle-label { color:#cbd5e1; }
 [data-bs-theme="dark"] .ps-toggle-slider { background:#374357; }
 
+/* The withholding row's switch. Smaller than the one it borrows from — it sits
+   in a table row of percentages, not on a card of its own — and it keeps the
+   word beside it, because "off" is the part somebody has to notice. */
+.pr-tax-toggle { display:inline-flex; align-items:center; gap:8px; margin:0; cursor:pointer; }
+.pr-tax-toggle .ps-toggle-switch { width:36px; height:20px; }
+.pr-tax-toggle .ps-toggle-slider::before { width:14px; height:14px; left:3px; top:3px; }
+.pr-tax-toggle input:checked + .ps-toggle-slider::before { transform:translateX(16px); }
+.pr-tax-state {
+    min-width:24px; font-size:.78rem; font-style:italic;
+    color:var(--text-secondary,#66707c);
+}
+.pr-card-locked .pr-tax-toggle { cursor:not-allowed; }
+
 /* Derived rate chips (single display — no duplicate) */
 .ps-rates-row { display:flex; gap:10px; flex-wrap:wrap; }
 .ps-rate-chip { flex:1; min-width:130px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; }
@@ -1955,6 +1984,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const card = form && form.querySelector('.pr-card');
     if (!form || !card) return;
 
+    const tax      = document.getElementById('withholding_tax');
+    const taxState = form.querySelector('.pr-tax-state');
+
     const DEFAULTS = @json($statutoryDefaults);
 
     function apply() {
@@ -1967,8 +1999,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         card.classList.toggle('pr-card-locked', chk.checked);
+
+        // Withholding goes with the block it sits in: on defaults the office
+        // withholds, so the switch is forced on and taken out of reach. It is
+        // disabled rather than readonly — a checkbox has no readonly — and the
+        // server sets the value itself either way, so nothing is lost by the
+        // box not being submitted.
+        if (tax) {
+            if (chk.checked) tax.checked = true;
+            tax.disabled = chk.checked;
+            paintTax();
+        }
     }
 
+    // The word beside the switch is the part somebody has to notice.
+    function paintTax() {
+        if (taxState && tax) taxState.textContent = tax.checked ? 'auto' : 'off';
+    }
+
+    if (tax) tax.addEventListener('change', paintTax);
     chk.addEventListener('change', apply);
     apply();
 })();

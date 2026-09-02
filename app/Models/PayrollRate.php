@@ -25,6 +25,7 @@ class PayrollRate extends Model
         'daily_rate',
         'bonus',
         'uses_defaults',
+        'withholding_tax',
         'sss_rate',
         'philhealth_rate',
         'pagibig_rate',
@@ -40,6 +41,7 @@ class PayrollRate extends Model
         'daily_rate'                 => 'float',
         'bonus'                      => 'float',
         'uses_defaults'              => 'boolean',
+        'withholding_tax'            => 'boolean',
         'sss_rate'                   => 'float',
         'philhealth_rate'            => 'float',
         'pagibig_rate'               => 'float',
@@ -163,6 +165,12 @@ class PayrollRate extends Model
             + [
                 'daily_rate' => $floor > 0 ? $floor : null,
                 'bonus'      => max(0.0, (float) ($this->bonus ?? 0)),
+                // Whether to withhold is a decision, not a rate — and on
+                // defaults the decision is the statutory one: an office on
+                // defaults withholds.
+                'withholding_tax' => $this->uses_defaults
+                    ? true
+                    : (bool) ($this->withholding_tax ?? true),
             ];
     }
 
@@ -176,7 +184,7 @@ class PayrollRate extends Model
     public static function fallbackRates(): array
     {
         return self::DEFAULTS
-            + ['sss_rate' => 0.0, 'philhealth_rate' => 0.0, 'pagibig_rate' => 0.0, 'daily_rate' => null, 'bonus' => 0.0];
+            + ['sss_rate' => 0.0, 'philhealth_rate' => 0.0, 'pagibig_rate' => 0.0, 'daily_rate' => null, 'bonus' => 0.0, 'withholding_tax' => true];
     }
 
     /**

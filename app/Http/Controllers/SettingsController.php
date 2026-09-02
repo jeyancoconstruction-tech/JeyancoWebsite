@@ -106,8 +106,9 @@ class SettingsController extends Controller
         $onDefaults = $request->boolean('uses_defaults');
 
         $rules = [
-            'effective_from' => 'required|date',
-            'uses_defaults'  => 'nullable|boolean',
+            'effective_from'  => 'required|date',
+            'uses_defaults'   => 'nullable|boolean',
+            'withholding_tax' => 'nullable|boolean',
         ];
 
         if (! $onDefaults) {
@@ -134,6 +135,10 @@ class SettingsController extends Controller
         // row as well: the rate history is meant to say what a period was paid
         // at, and a row of blanks does not.
         $data['uses_defaults'] = $onDefaults;
+
+        // Whether to withhold is the office's to decide, but not while it is on
+        // defaults: withholding is what the statutory answer is.
+        $data['withholding_tax'] = $onDefaults ? true : $request->boolean('withholding_tax');
 
         if ($onDefaults) {
             $data += PayrollRate::DEFAULTS + PayrollRate::DEDUCTION_DEFAULTS;

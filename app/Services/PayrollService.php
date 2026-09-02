@@ -353,7 +353,13 @@ class PayrollService
         // table, applied to what is left after the mandatory contributions —
         // which is the base the table is written against. Attendance here is
         // daily, so the daily column is the one that applies.
-        $withholdingTax = $onContract ? 0.0 : $this->withholdingTaxOn($gross - $contributions);
+        //
+        // Whether to withhold at all is a decision, and it is dated like the
+        // rest: switching it off does not go back and un-withhold a period
+        // already paid and already remitted.
+        $withholdingTax = ($onContract || ! ($rates['withholding_tax'] ?? true))
+            ? 0.0
+            : $this->withholdingTaxOn($gross - $contributions);
 
         $autoDeductions = $contributions + $withholdingTax;
 

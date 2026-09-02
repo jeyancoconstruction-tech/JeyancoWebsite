@@ -477,4 +477,84 @@ class PayrollRateEffectivityTest extends TestCase
         // 2 OT hours at 100/hr x 1.25 — not the 5.00 sitting in the column.
         $this->assertSame(250.0, round($out['otPay'], 2));
     }
+
+    // ── The withholding tax switch ───────────────────────────────────────────
+
+    /** The tax table is the BIR's; whether the office withholds is not. */
+    public function test_the_tax_is_withheld_by_default(): void
+    {
+        $this->rate('2026-01-01', ['sss_rate' => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0]);
+
+        $out = $this->compute($this->record('2026-03-04', '08:00:00', 8));
+
+        $this->assertGreaterThan(0, $out['withholdingTax'], '₱800 a day is above the exempt floor');
+    }
+
+    public function test_switching_the_tax_off_stops_withholding(): void
+    {
+        $this->rate('2026-01-01', [
+            'withholding_tax' => false,
+            'sss_rate' => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0,
+        ]);
+
+        $out = $this->compute($this->record('2026-03-04', '08:00:00', 8));
+
+        $this->assertSame(0.0, round($out['withholdingTax'], 2));
+        $this->assertSame(800.0, round($out['net'], 2), 'nothing is deducted at all');
+    }
+
+    /** Dated like the rest: switching it off does not un-withhold a paid week. */
+    public function test_switching_the_tax_off_does_not_reach_backwards(): void
+    {
+        $this->rate('2026-01-01', ['sss_rate' => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0]);
+        $this->rate('2026-06-01', [
+            'withholding_tax' => false,
+            'sss_rate' => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0,
+        ]);
+
+        $march = $this->compute($this->record('2026-03-04', '08:00:00', 8));
+        $july  = $this->compute($this->record('2026-07-01', '08:00:00', 8));
+
+        $this->assertGreaterThan(0, $march['withholdingTax'], 'March was withheld and remitted');
+        $this->assertSame(0.0, round($july['withholdingTax'], 2));
+    }
+
+    /** On statutory defaults the answer is yes, whatever the column says. */
+    public function test_a_row_on_defaults_withholds_regardless(): void
+    {
+        $row = $this->rate('2026-01-01', [
+            'uses_defaults'   => true,
+            'withholding_tax' => false,
+        ]);
+
+        $this->assertTrue($row->toRates()['withholding_tax']);
+    }
+
+    public function test_the_form_saves_the_tax_switch(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), $this->payload())
+             ->assertSessionHasNoErrors();
+
+        $this->assertFalse(PayrollRate::newestFirst()->first()->withholding_tax,
+            'an unticked box posts nothing, which is the off answer');
+
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), $this->payload(['withholding_tax' => 1]))
+             ->assertSessionHasNoErrors();
+
+        $this->assertTrue(PayrollRate::newestFirst()->first()->withholding_tax);
+    }
+
+    public function test_saving_on_defaults_forces_the_tax_on(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), [
+                 'effective_from' => '2026-10-01',
+                 'uses_defaults'  => 1,
+             ])
+             ->assertSessionHasNoErrors();
+
+        $this->assertTrue(PayrollRate::newestFirst()->first()->withholding_tax);
+    }
 }
