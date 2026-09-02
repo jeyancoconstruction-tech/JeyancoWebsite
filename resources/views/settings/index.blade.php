@@ -88,8 +88,11 @@
                         <div class="pr-head-left">
                             <i class="fas fa-gear"></i>
                             <div>
-                                <h6>Payroll settings</h6>
-                                <p>Premiums and deductions</p>
+                                <h6>Multipliers and Deductions</h6>
+                                {{-- The name says what is in the card, so the line
+                                     under it says the thing the name cannot: these
+                                     are dated, and saving adds a row. --}}
+                                <p>Effectivity-dated &middot; a change adds a row, it never edits one</p>
                             </div>
                         </div>
                         <div class="pr-head-right">
