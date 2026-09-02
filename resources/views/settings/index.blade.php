@@ -246,7 +246,6 @@
                                     <thead>
                                         <tr>
                                             <th>Effective from</th>
-                                            <th class="text-end">Daily</th>
                                             <th class="text-end">Bonus</th>
                                             <th class="text-end">OT</th><th class="text-end">Night</th>
                                             <th class="text-end">Rest day</th>
@@ -262,7 +261,6 @@
                                                 {{ $r->effective_from->format('M d, Y') }}
                                                 @if($i === 0)<span class="pr-in-force">in force</span>@endif
                                             </td>
-                                            <td class="text-end">{{ $r->daily_rate ? '₱' . number_format($r->daily_rate, 2) : '—' }}</td>
                                             <td class="text-end">{{ $r->bonus ? '₱' . number_format($r->bonus, 2) : '—' }}</td>
                                             <td class="text-end">{{ number_format($r->ot_multiplier, 2) }}</td>
                                             <td class="text-end">{{ number_format($r->night_diff_multiplier, 2) }}</td>
