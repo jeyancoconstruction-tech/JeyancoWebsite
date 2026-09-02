@@ -153,13 +153,14 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::put('/system-settings',          [SystemSettingsController::class, 'updateAbout'])->name('system-settings.about.update');
     Route::get('/system-settings/security', [SystemSettingsController::class, 'security'])->name('system-settings.security');
     Route::put('/system-settings/security', [SystemSettingsController::class, 'updateSecurity'])->name('system-settings.security.update');
-    Route::get('/system-settings/attendance', [SystemSettingsController::class, 'attendance'])->name('system-settings.attendance');
-    Route::put('/system-settings/attendance', [SystemSettingsController::class, 'updateAttendance'])->name('system-settings.attendance.update');
 
     // --- SETTINGS MODULE ---
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings/update', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('/settings/payroll-rates', [SettingsController::class, 'storePayrollRate'])->name('payroll-rates.store');
+
+    // Attendance is a payroll setting: it shapes the day payroll computes.
+    Route::put('/settings/attendance', [SettingsController::class, 'updateAttendance'])->name('settings.attendance.update');
     
     // Labor Types
     Route::post('/labor-types/store', [SettingsController::class, 'storeLaborType'])->name('labor-types.store');

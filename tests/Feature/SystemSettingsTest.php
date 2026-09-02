@@ -241,8 +241,6 @@ class SystemSettingsTest extends TestCase
     public function test_every_settings_page_carries_the_category_nav(): void
     {
         $pages = [
-            route('settings.index'),
-            route('system-settings.attendance'),
             route('system-settings.about'),
             route('system-settings.security'),
             route('accounts.index'),
@@ -272,7 +270,7 @@ class SystemSettingsTest extends TestCase
     public function test_saving_attendance_writes_the_day_shape(): void
     {
         $this->actingAs($this->admin())
-             ->put(route('system-settings.attendance.update'), [
+             ->put(route('settings.attendance.update'), [
                  'expected_time_in'       => '07:30',
                  'grace_period_minutes'   => 10,
                  'standard_hours_per_day' => 10,
@@ -295,7 +293,7 @@ class SystemSettingsTest extends TestCase
     public function test_a_zero_hour_day_is_refused(): void
     {
         $this->actingAs($this->admin())
-             ->put(route('system-settings.attendance.update'), [
+             ->put(route('settings.attendance.update'), [
                  'expected_time_in'       => '08:00',
                  'grace_period_minutes'   => 15,
                  'standard_hours_per_day' => 0,
@@ -303,5 +301,22 @@ class SystemSettingsTest extends TestCase
                  'payroll_cycle'          => 'weekly',
              ])
              ->assertSessionHasErrors('standard_hours_per_day');
+    }
+
+    /**
+     * Saving Attendance comes back to the tab it was saved from. Landing on
+     * Multipliers after saving the second tab reads as the save being lost.
+     */
+    public function test_saving_attendance_returns_to_its_tab(): void
+    {
+        $this->actingAs($this->admin())
+             ->put(route('settings.attendance.update'), [
+                 'expected_time_in'       => '08:00',
+                 'grace_period_minutes'   => 15,
+                 'standard_hours_per_day' => 8,
+                 'week_starts_on'         => 1,
+                 'payroll_cycle'          => 'weekly',
+             ])
+             ->assertRedirect(route('settings.index', ['tab' => 'attendance']));
     }
 }

@@ -4,10 +4,8 @@
      panel — the forms post, the accounts list paginates, and both need a real
      address to come back to.
 
-     Only the categories that are backed by something are here. Notifications,
-     Appearance and Data & backup have nothing behind them yet, and a control
-     that does not reach anything is worse than a missing one: it says a
-     decision was made that was never applied. --}}
+     Payroll and Attendance are not here: they configure pay, so they live on
+     the Payroll Settings page with the multipliers they work with. --}}
 <style>
     .hub { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; align-items: start; }
     @media (max-width: 860px) { .hub { grid-template-columns: 1fr; } }
@@ -39,22 +37,12 @@
 @php
     // routeIs() rather than a path match: Accounts lives on its own route, and
     // Company and Security share a path prefix.
-    $onPayroll  = request()->routeIs('settings.index');
     $onCompany  = request()->routeIs('system-settings.about');
     $onAccounts = request()->is('accounts*');
     $onSecurity = request()->routeIs('system-settings.security');
-    $onAttendance = request()->routeIs('system-settings.attendance');
 @endphp
 
 <nav class="hub-nav">
-    <div class="hub-sec">Payroll</div>
-    <a class="hub-item {{ $onPayroll ? 'on' : '' }}" href="{{ route('settings.index') }}">
-        <i class="fas fa-wallet"></i> Payroll
-    </a>
-    <a class="hub-item {{ $onAttendance ? 'on' : '' }}" href="{{ route('system-settings.attendance') }}">
-        <i class="fas fa-clock"></i> Attendance
-    </a>
-
     <div class="hub-sec">Organization</div>
     <a class="hub-item {{ $onCompany ? 'on' : '' }}" href="{{ route('system-settings.about') }}">
         <i class="fas fa-building"></i> Company

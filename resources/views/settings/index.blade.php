@@ -33,23 +33,28 @@
         </div>
     @endif
 
-    <div class="hub">
-    @include('settings._hub')
-    <div>
+    {{-- Which tab opens. The forms redirect back here, and landing on the first
+         one after saving the fourth reads as the save having been lost. --}}
+    @php $tab = in_array(request('tab'), ['attendance', 'labor', 'holiday'], true) ? request('tab') : 'payroll'; @endphp
 
     <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="payroll-tab" data-bs-toggle="tab" data-bs-target="#payroll" type="button" role="tab" aria-selected="true">
+            <button class="nav-link {{ $tab === 'payroll' ? 'active' : '' }}" id="payroll-tab" data-bs-toggle="tab" data-bs-target="#payroll" type="button" role="tab">
                 <i data-lucide="wallet" class="me-2"></i>Multipliers and Deductions
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="labor-tab" data-bs-toggle="tab" data-bs-target="#labor" type="button" role="tab" aria-selected="false">
+            <button class="nav-link {{ $tab === 'attendance' ? 'active' : '' }}" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
+                <i data-lucide="clock" class="me-2"></i>Attendance
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {{ $tab === 'labor' ? 'active' : '' }}" id="labor-tab" data-bs-toggle="tab" data-bs-target="#labor" type="button" role="tab">
                 <i data-lucide="briefcase" class="me-2"></i>Labor Types
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="holiday-tab" data-bs-toggle="tab" data-bs-target="#holiday" type="button" role="tab" aria-selected="false">
+            <button class="nav-link {{ $tab === 'holiday' ? 'active' : '' }}" id="holiday-tab" data-bs-toggle="tab" data-bs-target="#holiday" type="button" role="tab">
                 <i data-lucide="calendar" class="me-2"></i>Holidays
             </button>
         </li>
@@ -57,7 +62,7 @@
 
     <div class="tab-content settings-content">
         <!-- PAYROLL SETTINGS TAB -->
-        <div class="tab-pane fade show active" id="payroll" role="tabpanel">
+        <div class="tab-pane fade {{ $tab === 'payroll' ? 'show active' : '' }}" id="payroll" role="tabpanel">
 
             {{-- ══ Payroll settings ════════════════════════════════════════════
                  Its own form, outside the settings one below: saving here does
@@ -320,8 +325,114 @@
             </form>
         </div>
 
+        <!-- ATTENDANCE TAB -->
+        <div class="tab-pane fade {{ $tab === 'attendance' ? 'show active' : '' }}" id="attendance" role="tabpanel">
+            <form method="POST" action="{{ route('settings.attendance.update') }}">
+                @csrf
+                @method('PUT')
+
+                <div class="ps-card mb-4">
+                    <div class="ps-card-header">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <h6>Work schedule</h6>
+                            <p>When a shift is meant to start, and what a day's rate buys</p>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="ps-label" for="expected_time_in">Expected time-in</label>
+                                <input type="time" class="form-control ps-input @error('expected_time_in') is-invalid @enderror"
+                                       id="expected_time_in" name="expected_time_in"
+                                       value="{{ old('expected_time_in', substr($system->expected_time_in, 0, 5)) }}" required>
+                                @error('expected_time_in')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label class="ps-label" for="grace_period_minutes">Grace period (minutes)</label>
+                                <input type="number" min="0" max="120"
+                                       class="form-control ps-input @error('grace_period_minutes') is-invalid @enderror"
+                                       id="grace_period_minutes" name="grace_period_minutes"
+                                       value="{{ old('grace_period_minutes', $system->grace_period_minutes) }}" required>
+                                @error('grace_period_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label class="ps-label" for="standard_hours_per_day">Standard hours / day</label>
+                                <input type="number" step="0.25" min="1" max="24"
+                                       class="form-control ps-input @error('standard_hours_per_day') is-invalid @enderror"
+                                       id="standard_hours_per_day" name="standard_hours_per_day"
+                                       value="{{ old('standard_hours_per_day', $system->standard_hours_per_day) }}" required>
+                                @error('standard_hours_per_day')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-3">
+                            The standard hours divide a labour type's daily rate into an hourly one, and mark where
+                            overtime begins. Lateness is <strong>reported, not deducted</strong> — a worker is already
+                            paid only for the hours they worked, and docking on top would cut the same wage twice.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="ps-card mb-4">
+                    <div class="ps-card-header">
+                        <i class="fas fa-calendar-week"></i>
+                        <div>
+                            <h6>Payroll cutoff</h6>
+                            <p>Which days a pay period covers</p>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="ps-label" for="payroll_cycle">Cycle</label>
+                                <select class="form-control ps-input" id="payroll_cycle" name="payroll_cycle" required>
+                                    <option value="weekly" @selected(old('payroll_cycle', $system->payroll_cycle) === 'weekly')>Weekly</option>
+                                    <option value="daily"  @selected(old('payroll_cycle', $system->payroll_cycle) === 'daily')>Daily</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="ps-label" for="week_starts_on">Week starts</label>
+                                <select class="form-control ps-input" id="week_starts_on" name="week_starts_on" required>
+                                    @foreach([1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday',
+                                              5 => 'Friday', 6 => 'Saturday', 0 => 'Sunday'] as $n => $label)
+                                        <option value="{{ $n }}" @selected((int) old('week_starts_on', $system->week_starts_on) === $n)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="ps-label">Auto-count OT beyond standard</label>
+                            <div class="ps-toggle-row">
+                                <label class="ps-toggle-switch">
+                                    <input type="checkbox" name="auto_count_overtime" value="1" id="auto_count_overtime"
+                                           {{ old('auto_count_overtime', $system->auto_count_overtime) ? 'checked' : '' }}>
+                                    <span class="ps-toggle-slider"></span>
+                                </label>
+                                <div class="ps-toggle-label">
+                                    Hours past the standard become overtime on their own
+                                </div>
+                            </div>
+                        </div>
+
+                        <small class="text-muted d-block mt-3">
+                            The cycle is the period Payroll Records opens on. Changing where the week starts regroups
+                            every period on screen — it does not alter what any day was paid, but a week already
+                            handed out will be split differently from the payslip that went with it.
+                            Turn auto-overtime off and the extra hours still pay, at the plain rate.
+                        </small>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn ps-save-btn">
+                    <i class="fas fa-save me-2"></i>Save Attendance Settings
+                </button>
+            </form>
+        </div>
+
+
         <!-- LABOR TYPES TAB -->
-        <div class="tab-pane fade" id="labor" role="tabpanel">
+        <div class="tab-pane fade {{ $tab === 'labor' ? 'show active' : '' }}" id="labor" role="tabpanel">
             <div class="row g-4">
 
                 {{-- Add New Labor Type --}}
@@ -459,7 +570,7 @@
         </div>
 
         <!-- HOLIDAYS TAB -->
-        <div class="tab-pane fade" id="holiday" role="tabpanel">
+        <div class="tab-pane fade {{ $tab === 'holiday' ? 'show active' : '' }}" id="holiday" role="tabpanel">
 
             {{-- Info banner --}}
             <div class="hc-info-banner mb-4">
@@ -1402,8 +1513,6 @@
             })();
             </script>
         </div>
-    </div>
-    </div>
     </div>
 </div>
 

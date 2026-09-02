@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\SystemSetting;
 use App\Models\Setting;
 use App\Models\LaborType;
 use App\Models\Holiday;
@@ -43,6 +44,10 @@ class SettingsController extends Controller
         // from the template, so the constants stay named in one place.
         $statutoryDefaults = PayrollRate::DEFAULTS + PayrollRate::DEDUCTION_DEFAULTS;
 
+        // The Attendance tab edits the system row's payroll half: the standard
+        // day, the grace period, and where a pay week starts.
+        $system = SystemSetting::current();
+
         // Holiday calendar: official PH holidays for the selected year merged
         // with manual entries (auto-recognised, admin-overridable).
         $holidayYear = (int) $request->input('year', now()->year);
@@ -82,7 +87,7 @@ class SettingsController extends Controller
 
         return view('settings.index', compact(
             'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap',
-            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults'
+            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system'
         ));
     }
 
@@ -527,5 +532,42 @@ class SettingsController extends Controller
                 'formatted_hourly_rate' => $laborType->getFormattedHourlyRate(),
             ]
         ]);
+    }
+
+    /**
+     * The shape of a working day: when a shift starts, what a day's rate buys,
+     * and which days a pay period covers.
+     *
+     * It sits with the payroll settings because that is what it configures —
+     * the standard hours divide a labour type's rate into an hourly one and
+     * mark where overtime begins, and the week start decides what a period is.
+     * The row itself is the system one; only this half of it is payroll's.
+     */
+    public function updateAttendance(Request $request)
+    {
+        $data = $request->validate([
+            'expected_time_in'       => ['required', 'date_format:H:i'],
+            'grace_period_minutes'   => ['required', 'integer', 'min:0', 'max:120'],
+
+            // A day of zero hours would divide the daily rate by nothing.
+            'standard_hours_per_day' => ['required', 'numeric', 'min:1', 'max:24'],
+
+            'week_starts_on'         => ['required', 'integer', 'min:0', 'max:6'],
+            'payroll_cycle'          => ['required', 'in:weekly,daily'],
+        ], [
+            'standard_hours_per_day.min' => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
+            'grace_period_minutes.max'   => 'Two hours of grace is not a grace period.',
+        ]);
+
+        // An unticked checkbox posts nothing, which is the off answer.
+        $data['auto_count_overtime'] = $request->boolean('auto_count_overtime');
+
+        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
+        $settings->fill($data)->save();
+        SystemSetting::forget();
+
+        // Back to the tab it was saved from, or the save reads as lost.
+        return redirect()->route('settings.index', ['tab' => 'attendance'])
+            ->with('success', 'Attendance settings updated!');
     }
 }
