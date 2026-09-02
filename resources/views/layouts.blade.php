@@ -126,6 +126,11 @@
                 <a class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}" href="{{ route('accounts.index') }}">
                     <i data-lucide="user-cog"></i> <span>Accounts</span>
                 </a>
+
+                <div class="menu-section">SYSTEM SETTINGS</div>
+                <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
+                    <i data-lucide="sliders-horizontal"></i> <span>System Settings</span>
+                </a>
             @endif
 
         </nav>
