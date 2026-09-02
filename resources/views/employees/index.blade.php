@@ -850,7 +850,14 @@
 }
 </style>
 
-{{-- ── Script ───────────────────────────────────────────────────────────────── --}}
+@endsection
+
+{{-- ── Script ─────────────────────────────────────────────────────────────────
+     Pushed rather than left in the content, because the content renders above
+     Bootstrap's bundle: `new bootstrap.Modal(...)` at parse time threw here,
+     which took the rest of the block with it and left the Delete item in the
+     three-dot menu bound to nothing. --}}
+@push('scripts')
 <script>
 (function () {
     const csrf = '{{ csrf_token() }}';
@@ -1070,4 +1077,4 @@
     }
 })();
 </script>
-@endsection
+@endpush
