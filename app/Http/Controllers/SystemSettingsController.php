@@ -85,4 +85,20 @@ class SystemSettingsController extends Controller
 
         return redirect()->route($back)->with('success', 'Saved.');
     }
+
+    public function appearance()
+    {
+        return view('settings.appearance', ['system' => SystemSetting::current()]);
+    }
+
+    public function updateAppearance(Request $request)
+    {
+        $data = $request->validate([
+            'default_theme' => ['required', 'in:dark,light'],
+        ]);
+
+        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
+
+        return $this->save($settings, $data, 'system-settings.appearance');
+    }
 }

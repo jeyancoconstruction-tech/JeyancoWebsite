@@ -5,16 +5,17 @@
     <title>@yield('page_title') | Jeyanco Payroll</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    {{-- Apply saved theme BEFORE paint to prevent a flash of the wrong theme --}}
+    {{-- Apply the theme BEFORE paint to prevent a flash of the wrong one. The
+         fallback is the office's default from System Settings; a viewer who has
+         used the toggle has their own choice in this browser, and it wins. --}}
     <script>
         (function () {
+            var fallback = @json($company?->default_theme ?? 'dark');
             try {
                 var stored = localStorage.getItem('jeyanco-theme');
-                // Enterprise dark is the default experience; a saved choice still wins.
-                var theme = stored || 'dark';
-                document.documentElement.setAttribute('data-bs-theme', theme);
+                document.documentElement.setAttribute('data-bs-theme', stored || fallback);
             } catch (e) {
-                document.documentElement.setAttribute('data-bs-theme', 'dark');
+                document.documentElement.setAttribute('data-bs-theme', fallback);
             }
         })();
     </script>

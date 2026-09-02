@@ -243,6 +243,7 @@ class SystemSettingsTest extends TestCase
         $pages = [
             route('system-settings.about'),
             route('system-settings.security'),
+            route('system-settings.appearance'),
             route('accounts.index'),
         ];
 
@@ -318,5 +319,38 @@ class SystemSettingsTest extends TestCase
                  'payroll_cycle'          => 'weekly',
              ])
              ->assertRedirect(route('settings.index', ['tab' => 'attendance']));
+    }
+
+    // ── Appearance ───────────────────────────────────────────────────────────
+
+    /**
+     * The theme a screen opens on before anybody has chosen. The boot script
+     * had 'dark' written into it, so a setting that does not reach the script
+     * would be a preference nobody's browser ever sees.
+     */
+    public function test_the_default_theme_reaches_the_boot_script(): void
+    {
+        SystemSetting::create(SystemSetting::DEFAULTS)->update(['default_theme' => 'light']);
+        SystemSetting::forget();
+
+        $this->actingAs($this->admin())
+             ->get(route('system-settings.appearance'))
+             ->assertOk()
+             ->assertSee('var fallback = "light"', false);
+    }
+
+    public function test_the_theme_falls_back_to_dark_with_no_row(): void
+    {
+        $this->actingAs($this->admin())
+             ->get(route('system-settings.appearance'))
+             ->assertOk()
+             ->assertSee('var fallback = "dark"', false);
+    }
+
+    public function test_an_unknown_theme_is_refused(): void
+    {
+        $this->actingAs($this->admin())
+             ->put(route('system-settings.appearance.update'), ['default_theme' => 'neon'])
+             ->assertSessionHasErrors('default_theme');
     }
 }

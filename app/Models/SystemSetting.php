@@ -31,6 +31,7 @@ class SystemSetting extends Model
         'auto_count_overtime',
         'week_starts_on',
         'payroll_cycle',
+        'default_theme',
     ];
 
     protected $casts = [
@@ -64,6 +65,7 @@ class SystemSetting extends Model
         'auto_count_overtime'     => true,
         'week_starts_on'          => 1,
         'payroll_cycle'           => 'weekly',
+        'default_theme'           => 'dark',
     ];
 
     /** The container key the resolved row is memoised under. */

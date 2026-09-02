@@ -39,7 +39,8 @@
     // Company and Security share a path prefix.
     $onCompany  = request()->routeIs('system-settings.about');
     $onAccounts = request()->is('accounts*');
-    $onSecurity = request()->routeIs('system-settings.security');
+    $onSecurity   = request()->routeIs('system-settings.security');
+    $onAppearance = request()->routeIs('system-settings.appearance');
 @endphp
 
 <nav class="hub-nav">
@@ -52,6 +53,9 @@
     </a>
 
     <div class="hub-sec">System</div>
+    <a class="hub-item {{ $onAppearance ? 'on' : '' }}" href="{{ route('system-settings.appearance') }}">
+        <i class="fas fa-palette"></i> Appearance
+    </a>
     <a class="hub-item {{ $onSecurity ? 'on' : '' }}" href="{{ route('system-settings.security') }}">
         <i class="fas fa-lock"></i> Security
     </a>
