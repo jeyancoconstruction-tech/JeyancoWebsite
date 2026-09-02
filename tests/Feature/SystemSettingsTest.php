@@ -233,26 +233,31 @@ class SystemSettingsTest extends TestCase
     // ── Accounts as a tab ────────────────────────────────────────────────────
 
     /**
-     * Accounts is a tab of System Settings now. The tabs are links rather than
-     * panes — the accounts list filters and paginates through the query string,
-     * which a hidden pane would fight — so both pages have to carry the strip
-     * or the tab you are on disappears when you use it.
+     * Every settings page carries the same category nav down its left. They are
+     * links rather than panes — the forms post and the accounts list paginates,
+     * and both need a real address to come back to — so each page has to render
+     * the whole nav or the one you are on loses its way back.
      */
-    public function test_both_pages_carry_the_tab_strip(): void
+    public function test_every_settings_page_carries_the_category_nav(): void
     {
-        $this->actingAs($this->admin())
-             ->get(route('system-settings.about'))
-             ->assertOk()
-             ->assertSee(route('accounts.index'), false);
+        $pages = [
+            route('settings.index'),
+            route('system-settings.about'),
+            route('system-settings.security'),
+            route('accounts.index'),
+        ];
 
-        $this->actingAs($this->admin())
-             ->get(route('accounts.index'))
-             ->assertOk()
-             ->assertSee(route('system-settings.about'), false);
+        foreach ($pages as $page) {
+            $response = $this->actingAs($this->admin())->get($page)->assertOk();
+
+            foreach ($pages as $link) {
+                $response->assertSee($link, false);
+            }
+        }
     }
 
-    /** And the sidebar keeps one entry lit on either of them. */
-    public function test_the_sidebar_entry_covers_both(): void
+    /** And the sidebar keeps one entry lit on any of them. */
+    public function test_the_sidebar_entry_covers_them_all(): void
     {
         $this->actingAs($this->admin())
              ->get(route('accounts.index'))

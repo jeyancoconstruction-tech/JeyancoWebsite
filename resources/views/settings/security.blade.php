@@ -14,7 +14,9 @@
         <p>How long a session lasts, and how hard it is to guess a password.</p>
     </div>
 
-    @include('settings._system-tabs')
+    <div class="hub">
+    @include('settings._hub')
+    <div>
 
     @if(session('success'))
         <div class="alert alert-success d-flex align-items-center gap-2" role="alert">
@@ -87,5 +89,7 @@
             <button type="submit" class="sy-save"><i class="fas fa-floppy-disk me-1"></i> Save</button>
         </div>
     </form>
+    </div>
+    </div>
 </div>
 @endsection

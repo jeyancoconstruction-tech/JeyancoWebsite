@@ -1,6 +1,6 @@
 @extends('layouts')
 
-@section('page_title', 'About')
+@section('page_title', 'Company')
 
 @push('styles')
 @include('settings._system-styles')
@@ -10,11 +10,13 @@
 <div class="sy-page">
 
     <div class="sy-header mb-3">
-        <h1>About</h1>
+        <h1>Company</h1>
         <p>Who the company says it is on a payslip, a receipt and an export.</p>
     </div>
 
-    @include('settings._system-tabs')
+    <div class="hub">
+    @include('settings._hub')
+    <div>
 
     @if(session('success'))
         <div class="alert alert-success d-flex align-items-center gap-2" role="alert">
@@ -90,5 +92,7 @@
             <button type="submit" class="sy-save"><i class="fas fa-floppy-disk me-1"></i> Save</button>
         </div>
     </form>
+    </div>
+    </div>
 </div>
 @endsection

@@ -13,7 +13,9 @@
         <p class="acct-header-sub">Create logins for your staff, change their details, and control who can sign in.</p>
     </div>
 
-    @include('settings._system-tabs')
+    <div class="hub">
+    @include('settings._hub')
+    <div>
 
     {{-- ── Flash messages ──────────────────────────────────────────────────── --}}
     @if(session('success'))
@@ -160,6 +162,8 @@
         @if($accounts->hasPages())
             <div class="acct-pager">{{ $accounts->links() }}</div>
         @endif
+    </div>
+    </div>
     </div>
 </div>
 

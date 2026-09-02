@@ -8,8 +8,8 @@
     <div class="settings-header mb-4">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1>System Settings</h1>
-                <p>Manage payroll configurations and labor type definitions</p>
+                <h1>Settings</h1>
+                <p>Payroll, company, accounts and system configuration</p>
             </div>
         </div>
     </div>
@@ -32,6 +32,10 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+
+    <div class="hub">
+    @include('settings._hub')
+    <div>
 
     <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
         <li class="nav-item" role="presentation">
@@ -1398,6 +1402,8 @@
             })();
             </script>
         </div>
+    </div>
+    </div>
     </div>
 </div>
 
