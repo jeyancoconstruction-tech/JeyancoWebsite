@@ -748,4 +748,192 @@ class PayrollRateEffectivityTest extends TestCase
              ->put(route('settings.bonus.update'), ['vale_ceiling_percent' => 150])
              ->assertSessionHasErrors('vale_ceiling_percent');
     }
+
+    // ── Bonuses given to named people ────────────────────────────────────────
+
+    /** A second worker, so a grant can name one and miss the other. */
+    private function otherWorker(string $date): Attendance
+    {
+        $labor = LaborType::firstOrCreate(['name' => 'Mason'], ['daily_rate' => 800, 'ot_rate' => 125]);
+
+        $employee = Employee::create([
+            'name'          => 'Pedro Reyes',
+            'position'      => 'Mason',
+            'labor_type_id' => $labor->id,
+            'rate_per_hour' => self::HOURLY,
+            'status'        => Employee::STATUS_ACTIVE,
+        ]);
+
+        return Attendance::create([
+            'employee_id' => $employee->id,
+            'date'        => $date,
+            'session'     => 'whole',
+            'time_in'     => '08:00:00',
+            'time_out'    => '16:00:00',
+        ]);
+    }
+
+    /**
+     * The week's summary for every worker in it, keyed by employee id.
+     *
+     * groupByWeek() directly rather than computeForRange(), which reaches
+     * config() and so Holiday::typeMap() — MySQL's YEAR(), which SQLite has no
+     * answer for. The grouping is the part under test either way.
+     */
+    private function weekByEmployee(string $date): array
+    {
+        $records = Attendance::with('employee.laborType')->whereDate('date', $date)->get();
+
+        $m = new ReflectionMethod(PayrollService::class, 'groupByWeek');
+        $m->setAccessible(true);
+
+        $weeks = $m->invoke(app(PayrollService::class), $records, [
+            'sss' => 0, 'philhealth' => 0, 'pagibig' => 0,
+            'rateTimeline'   => PayrollRate::timeline(),
+            'sundayRestDay'  => true,
+            'holidayTypeMap' => [],
+            'day'            => \App\Models\SystemSetting::current(),
+            'bonusGrants'    => \App\Models\Bonus::inRange('2000-01-01', '2099-12-31'),
+        ]);
+
+        $out = [];
+        foreach ($weeks[0]['details'] ?? [] as $d) {
+            $out[$d['employee_id']] = $d;
+        }
+
+        return $out;
+    }
+    public function test_a_grant_pays_only_the_people_it_names(): void
+    {
+        $this->rate('2026-01-01');
+
+        $mine  = $this->record('2026-03-04', '08:00:00', 8);
+        $other = $this->otherWorker('2026-03-04');
+
+        \App\Models\Bonus::create([
+            'amount' => 500, 'effective_on' => '2026-03-04', 'all_employees' => false,
+        ])->employees()->sync([$mine->employee_id]);
+
+        $week = $this->weekByEmployee('2026-03-04');
+
+        $this->assertSame(500.0, round($week[$mine->employee_id]['bonus'], 2));
+        $this->assertSame(0.0, round($week[$other->employee_id]['bonus'], 2), 'the other worker was not named');
+    }
+
+    /** Two names, two payments. */
+    public function test_a_grant_can_name_more_than_one(): void
+    {
+        $this->rate('2026-01-01');
+
+        $mine  = $this->record('2026-03-04', '08:00:00', 8);
+        $other = $this->otherWorker('2026-03-04');
+
+        \App\Models\Bonus::create([
+            'amount' => 300, 'effective_on' => '2026-03-04', 'all_employees' => false,
+        ])->employees()->sync([$mine->employee_id, $other->employee_id]);
+
+        $week = $this->weekByEmployee('2026-03-04');
+
+        $this->assertSame(300.0, round($week[$mine->employee_id]['bonus'], 2));
+        $this->assertSame(300.0, round($week[$other->employee_id]['bonus'], 2));
+    }
+
+    /** "Everybody" names nobody, so it reaches whoever worked the period. */
+    public function test_an_everybody_grant_needs_no_names(): void
+    {
+        $this->rate('2026-01-01');
+
+        $mine  = $this->record('2026-03-04', '08:00:00', 8);
+        $other = $this->otherWorker('2026-03-04');
+
+        \App\Models\Bonus::create([
+            'amount' => 250, 'effective_on' => '2026-03-04', 'all_employees' => true,
+        ]);
+
+        $week = $this->weekByEmployee('2026-03-04');
+
+        $this->assertSame(250.0, round($week[$mine->employee_id]['bonus'], 2));
+        $this->assertSame(250.0, round($week[$other->employee_id]['bonus'], 2));
+    }
+
+    /** It lands in the period containing its date, not on the day itself. */
+    public function test_a_grant_pays_across_the_whole_period(): void
+    {
+        $this->rate('2026-01-01');
+
+        // Worked Monday; the grant is dated Wednesday of the same week.
+        $mine = $this->record('2026-03-02', '08:00:00', 8);
+
+        \App\Models\Bonus::create([
+            'amount' => 400, 'effective_on' => '2026-03-04', 'all_employees' => true,
+        ]);
+
+        $week = $this->weekByEmployee('2026-03-02');
+
+        $this->assertSame(400.0, round($week[$mine->employee_id]['bonus'], 2));
+    }
+
+    /** A grant for another week is not this week's. */
+    public function test_a_grant_stays_in_its_own_period(): void
+    {
+        $this->rate('2026-01-01');
+
+        $mine = $this->record('2026-03-04', '08:00:00', 8);
+
+        \App\Models\Bonus::create([
+            'amount' => 900, 'effective_on' => '2026-03-18', 'all_employees' => true,
+        ]);
+
+        $week = $this->weekByEmployee('2026-03-04');
+
+        $this->assertSame(0.0, round($week[$mine->employee_id]['bonus'], 2));
+    }
+
+    /** It stacks on the standing bonus rather than replacing it. */
+    public function test_a_grant_adds_to_the_standing_bonus(): void
+    {
+        $this->rate('2026-01-01', ['bonus' => 100]);
+
+        $mine = $this->record('2026-03-04', '08:00:00', 8);
+
+        \App\Models\Bonus::create([
+            'amount' => 500, 'effective_on' => '2026-03-04', 'all_employees' => true,
+        ]);
+
+        $week = $this->weekByEmployee('2026-03-04');
+
+        $this->assertSame(600.0, round($week[$mine->employee_id]['bonus'], 2));
+    }
+
+    /** A grant naming nobody would pay nobody, and look like it had. */
+    public function test_a_grant_with_no_recipients_is_refused(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('bonus-grants.store'), [
+                 'amount' => 500, 'effective_on' => '2026-03-04',
+             ])
+             ->assertSessionHasErrors('employees');
+
+        $this->assertSame(0, \App\Models\Bonus::count());
+    }
+
+    public function test_the_form_gives_a_bonus_to_the_chosen_people(): void
+    {
+        $rec = $this->record('2026-03-04', '08:00:00', 8);
+
+        $this->actingAs($this->admin())
+             ->post(route('bonus-grants.store'), [
+                 'amount'       => 750,
+                 'effective_on' => '2026-03-04',
+                 'note'         => 'Perfect attendance',
+                 'employees'    => [$rec->employee_id],
+             ])
+             ->assertSessionHasNoErrors();
+
+        $grant = \App\Models\Bonus::first();
+
+        $this->assertSame(750.0, (float) $grant->amount);
+        $this->assertFalse($grant->all_employees);
+        $this->assertSame([$rec->employee_id], $grant->employees->pluck('id')->all());
+    }
 }

@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Setting;
 use App\Models\Holiday;
 use App\Models\PayrollRate;
+use App\Models\Bonus;
 use App\Models\SystemSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -210,6 +211,16 @@ class PayrollService
             $query->where('date', '<=', $to);
         }
         $records = $query->get();
+
+        // The one-off grants that land anywhere in this range, loaded once. A
+        // query per employee per week would be thousands for a month of a full
+        // crew. The dates come from the records rather than the arguments,
+        // which may be open-ended.
+        $dates = $records->pluck('date')->map(fn ($d) => Carbon::parse($d)->toDateString());
+
+        $cfg['bonusGrants'] = $dates->isEmpty()
+            ? []
+            : Bonus::inRange($dates->min(), $dates->max());
 
         $weeks = $this->groupByWeek($records, $cfg);
 
@@ -462,6 +473,17 @@ class PayrollService
                 $cfg
             )['bonus'] ?? 0;
 
+            // The one-off grants that land inside this week. A grant names its
+            // people, or says everybody — which is not the same as listing them,
+            // because a list goes stale the day somebody is hired.
+            $weekOpens  = Carbon::parse($weekGroup->first()->date)->startOfWeek($weekStart)->toDateString();
+            $weekCloses = Carbon::parse($weekGroup->first()->date)->endOfWeek($weekEnd)->toDateString();
+
+            $grants = array_filter(
+                $cfg['bonusGrants'] ?? [],
+                fn ($g) => $g['on'] >= $weekOpens && $g['on'] <= $weekCloses
+            );
+
             $employeeGroups = $weekGroup->groupBy(fn ($item) => $item->employee_id);
 
             $empWeekRecords = null;
@@ -499,9 +521,19 @@ class PayrollService
                 if ($employee) {
                     $totalDeductions = $sumAuto + $sumVale + $sumManual;
 
-                    // Flat bonus applied once per employee per pay period (week)
+                    // The standing bonus, plus whatever this worker was granted
+                    // for this period by name. Both are paid once per period,
+                    // and both are added to net rather than to gross — a bonus
+                    // is not wages, so nothing is withheld on it.
                     $empBonus = $weekBonus;
-                    $sumNet  += $empBonus;
+
+                    foreach ($grants as $grant) {
+                        if ($grant['all'] || in_array($empId, $grant['employees'])) {
+                            $empBonus += $grant['amount'];
+                        }
+                    }
+
+                    $sumNet += $empBonus;
 
                     $employeeSummaries[] = [
                         'employee_id'         => $empId,

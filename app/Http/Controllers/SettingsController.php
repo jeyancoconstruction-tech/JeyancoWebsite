@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Bonus;
 use App\Models\SystemSetting;
 use App\Models\Setting;
 use App\Models\LaborType;
@@ -48,6 +49,15 @@ class SettingsController extends Controller
         // day, the grace period, and where a pay week starts.
         $system = SystemSetting::current();
 
+        // The Bonus tab: the grants already given, newest first, and the people
+        // who can be given one. Twenty is enough to see what was paid recently
+        // without loading years of them onto a settings page.
+        $bonusGrants = Bonus::with('employees:id,name')
+            ->orderByDesc('effective_on')->orderByDesc('id')
+            ->limit(20)->get();
+
+        $activeEmployees = Employee::active()->orderBy('name')->get(['id', 'name', 'position']);
+
         // Holiday calendar: official PH holidays for the selected year merged
         // with manual entries (auto-recognised, admin-overridable).
         $holidayYear = (int) $request->input('year', now()->year);
@@ -87,7 +97,7 @@ class SettingsController extends Controller
 
         return view('settings.index', compact(
             'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap',
-            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system'
+            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system', 'bonusGrants', 'activeEmployees'
         ));
     }
 
@@ -622,5 +632,68 @@ class SettingsController extends Controller
 
         return redirect()->route('settings.index', ['tab' => 'bonus'])
             ->with('success', 'Bonus and vale settings updated!');
+    }
+
+    /**
+     * Give a bonus to named people for one pay period.
+     *
+     * The standing bonus above is the same amount to everybody, every period.
+     * This is the other kind, and it is a record rather than a setting: it is
+     * created and deleted, never edited, so a period recomputed next year still
+     * matches the payslip that went with it.
+     */
+    public function storeBonusGrant(Request $request)
+    {
+        $data = $request->validate([
+            'amount'        => 'required|numeric|min:0.01|max:1000000',
+            'effective_on'  => 'required|date',
+            'note'          => 'nullable|string|max:160',
+            'all_employees' => 'nullable|boolean',
+            'employees'     => 'array',
+            'employees.*'   => 'integer|exists:employees,id',
+        ], [
+            'amount.min' => 'A bonus of nothing is not a bonus.',
+        ]);
+
+        $all = $request->boolean('all_employees');
+
+        // Everybody, or somebody — a grant that names nobody and is not for
+        // everybody would pay out to no one and sit in the list looking as
+        // though it had.
+        if (! $all && empty($data['employees'])) {
+            return back()
+                ->withErrors(['employees' => 'Choose who gets it, or tick everybody.'])
+                ->withInput();
+        }
+
+        $bonus = Bonus::create([
+            'amount'        => $data['amount'],
+            'effective_on'  => $data['effective_on'],
+            'all_employees' => $all,
+            'note'          => $data['note'] ?? null,
+            'created_by'    => auth()->user()->name ?? auth()->user()->username ?? 'admin',
+        ]);
+
+        if (! $all) {
+            $bonus->employees()->sync($data['employees']);
+        }
+
+        return redirect()->route('settings.index', ['tab' => 'bonus'])
+            ->with('success', 'Bonus given.');
+    }
+
+    /**
+     * Take a grant back.
+     *
+     * Deleted rather than zeroed: a grant that was a mistake should leave no
+     * trace on the period, and one that was real is never removed after it has
+     * been paid out — the office has the payslip either way.
+     */
+    public function destroyBonusGrant(Bonus $bonus)
+    {
+        $bonus->delete();
+
+        return redirect()->route('settings.index', ['tab' => 'bonus'])
+            ->with('success', 'Bonus removed.');
     }
 }

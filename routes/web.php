@@ -164,6 +164,10 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     // Attendance is a payroll setting: it shapes the day payroll computes.
     Route::put('/settings/attendance', [SettingsController::class, 'updateAttendance'])->name('settings.attendance.update');
     Route::put('/settings/bonus',      [SettingsController::class, 'updateBonus'])->name('settings.bonus.update');
+
+    // Bonuses given to named people. Created and deleted, never edited.
+    Route::post  ('/settings/bonus/grants',          [SettingsController::class, 'storeBonusGrant'])->name('bonus-grants.store');
+    Route::delete('/settings/bonus/grants/{bonus}',  [SettingsController::class, 'destroyBonusGrant'])->name('bonus-grants.destroy');
     
     // Labor Types
     Route::post('/labor-types/store', [SettingsController::class, 'storeLaborType'])->name('labor-types.store');

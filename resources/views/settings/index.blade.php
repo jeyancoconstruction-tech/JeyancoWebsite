@@ -1588,11 +1588,166 @@
                     <i class="fas fa-save me-2"></i>{{ __('Save Bonus & Vale') }}
                 </button>
             </form>
+
+            {{-- Bonuses given to named people. Its own form: this one creates a
+                 record, the one above changes a setting, and posting them
+                 together would make one save mean two different things. --}}
+            <form method="POST" action="{{ route('bonus-grants.store') }}">
+                @csrf
+
+                <div class="ps-card mb-4">
+                    <div class="ps-card-header">
+                        <i class="fas fa-user-check"></i>
+                        <div>
+                            <h6>{{ __('Give a bonus') }}</h6>
+                            <p>{{ __('An amount for one pay period, to the people you choose') }}</p>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <label class="ps-label" for="grant_amount">{{ __('Amount') }}</label>
+                                <div class="input-group">
+                                    <span class="input-group-text ps-ig-text">₱</span>
+                                    <input type="number" step="0.01" min="0.01" max="1000000"
+                                           class="form-control ps-input @error('amount') is-invalid @enderror"
+                                           id="grant_amount" name="amount" placeholder="0.00"
+                                           value="{{ old('amount') }}" required>
+                                </div>
+                                @error('amount')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-3">
+                                <label class="ps-label" for="grant_date">{{ __('For the period containing') }}</label>
+                                <input type="date" class="form-control ps-input @error('effective_on') is-invalid @enderror"
+                                       id="grant_date" name="effective_on"
+                                       value="{{ old('effective_on', now()->toDateString()) }}" required>
+                                @error('effective_on')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="ps-label" for="grant_note">{{ __('Reason') }} <span class="text-muted">{{ __('(optional)') }}</span></label>
+                                <input type="text" maxlength="160" class="form-control ps-input"
+                                       id="grant_note" name="note" placeholder="{{ __('e.g. Perfect attendance') }}"
+                                       value="{{ old('note') }}">
+                            </div>
+                        </div>
+
+                        <label class="ps-label">{{ __('Who gets it') }}</label>
+                        <div class="ps-toggle-row mb-2">
+                            <label class="ps-toggle-switch">
+                                <input type="checkbox" name="all_employees" value="1" id="grant_all"
+                                       {{ old('all_employees') ? 'checked' : '' }}>
+                                <span class="ps-toggle-slider"></span>
+                            </label>
+                            <div class="ps-toggle-label">
+                                {{ __('Everybody active') }} —
+                                <span class="text-muted">{{ __('not the same as ticking them all: anyone hired before the period is included') }}</span>
+                            </div>
+                        </div>
+
+                        @error('employees')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
+
+                        <div class="bg-picker" id="grantPicker">
+                            @forelse($activeEmployees as $emp)
+                                <label class="bg-pick">
+                                    <input type="checkbox" name="employees[]" value="{{ $emp->id }}"
+                                           {{ in_array($emp->id, (array) old('employees', [])) ? 'checked' : '' }}>
+                                    <span class="bg-pick-name">{{ $emp->name }}</span>
+                                    @if($emp->position)<span class="bg-pick-role">{{ $emp->position }}</span>@endif
+                                </label>
+                            @empty
+                                <p class="text-muted mb-0">{{ __('No active employees yet.') }}</p>
+                            @endforelse
+                        </div>
+
+                        <button type="submit" class="btn ps-save-btn mt-3">
+                            <i class="fas fa-gift me-2"></i>{{ __('Give bonus') }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="ps-card mb-4">
+                <div class="ps-card-header">
+                    <i class="fas fa-clock-rotate-left"></i>
+                    <div>
+                        <h6>{{ __('Bonuses given') }}</h6>
+                        <p>{{ __('The twenty most recent') }}</p>
+                    </div>
+                </div>
+                <div class="ps-card-body">
+                    @forelse($bonusGrants as $grant)
+                        <div class="bg-row">
+                            <div class="bg-row-main">
+                                <span class="bg-amount">&#8369;{{ number_format($grant->amount, 2) }}</span>
+                                <span class="bg-when">{{ $grant->effective_on->format('M d, Y') }}</span>
+                                @if($grant->note)<span class="bg-note">{{ $grant->note }}</span>@endif
+                            </div>
+                            <div class="bg-row-who">
+                                @if($grant->all_employees)
+                                    <span class="bg-all">{{ __('Everybody active') }}</span>
+                                @else
+                                    {{ $grant->employees->pluck('name')->join(', ') }}
+                                @endif
+                            </div>
+                            <form method="POST" action="{{ route('bonus-grants.destroy', $grant) }}"
+                                  onsubmit="return confirm('{{ __('Remove this bonus? The period recomputes without it.') }}');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="bg-remove" title="{{ __('Remove') }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    @empty
+                        <p class="text-muted mb-0">{{ __('No bonuses given yet.') }}</p>
+                    @endforelse
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <style>
+/* ── Bonus grants ──────────────────────────────────────────────────────────
+   The picker is a wall of names, so it scrolls rather than pushing the Give
+   button off the screen; and a chosen name is filled, not just ticked, so the
+   selection reads at a glance. */
+.bg-picker {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px; max-height: 260px; overflow-y: auto;
+    padding: 12px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg-subtle);
+}
+.bg-pick {
+    display: flex; align-items: center; gap: 9px; margin: 0;
+    padding: 8px 10px; border-radius: 6px; cursor: pointer;
+    border: 1px solid transparent; background: var(--surface);
+}
+.bg-pick:hover { border-color: var(--border-md); }
+.bg-pick:has(input:checked) { border-color: var(--brand); background: var(--brand-subtle); }
+.bg-pick-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.bg-pick-role { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+
+.bg-row {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 11px 0; border-bottom: 1px solid var(--border);
+}
+.bg-row:last-child { border-bottom: 0; }
+.bg-row-main { display: flex; align-items: baseline; gap: 10px; flex: none; }
+.bg-amount { font-size: 15px; font-weight: 700; color: var(--brand); font-variant-numeric: tabular-nums; }
+.bg-when   { font-size: 12px; color: var(--text-secondary); }
+.bg-note   { font-size: 12px; font-style: italic; color: var(--text-muted); }
+.bg-row-who { flex: 1; min-width: 160px; font-size: 12.5px; color: var(--text-secondary); }
+.bg-all {
+    font-size: 11px; font-weight: 700; letter-spacing: .3px; padding: 2px 9px;
+    border-radius: 999px; background: var(--brand-subtle); color: var(--brand);
+}
+.bg-remove {
+    flex: none; border: 1px solid var(--border); background: transparent;
+    color: var(--danger); border-radius: 6px; padding: 5px 10px; cursor: pointer;
+}
+.bg-remove:hover { background: rgba(212,117,111,.12); }
+
 .settings-wrapper {
     background: white;
     border-radius: 0.5rem;
