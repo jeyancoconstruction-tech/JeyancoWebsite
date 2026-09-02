@@ -26,12 +26,12 @@
        href="{{ route('accounts.index') }}">
         <i class="fas fa-user-gear"></i> Accounts
     </a>
-    <a class="sys-tab {{ request()->routeIs('system-settings.about') ? 'active' : '' }}"
-       href="{{ route('system-settings.about') }}">
-        <i class="fas fa-building"></i> About
-    </a>
     <a class="sys-tab {{ request()->routeIs('system-settings.security') ? 'active' : '' }}"
        href="{{ route('system-settings.security') }}">
         <i class="fas fa-shield-halved"></i> Security
+    </a>
+    <a class="sys-tab {{ request()->routeIs('system-settings.about') ? 'active' : '' }}"
+       href="{{ route('system-settings.about') }}">
+        <i class="fas fa-building"></i> About
     </a>
 </nav>
