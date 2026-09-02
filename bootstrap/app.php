@@ -18,6 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Laravel honours X-Forwarded-Proto and generates https:// URLs.
         $middleware->trustProxies(at: '*');
 
+        // The system's language, resolved per request rather than at boot: a
+        // long-lived process would otherwise keep the language it started with.
+        $middleware->web(append: [
+            \App\Http\Middleware\SetLocale::class,
+        ]);
+
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
             'active'   => \App\Http\Middleware\EnsureAccountIsActive::class,

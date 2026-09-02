@@ -10,8 +10,8 @@
 <div class="sy-page">
 
     <div class="sy-header mb-3">
-        <h1>Appearance</h1>
-        <p>How the system looks before anybody has chosen for themselves.</p>
+        <h1>{{ __('Appearance') }}</h1>
+        <p>{{ __('How the system looks before anybody has chosen for themselves.') }}</p>
     </div>
 
     <div class="hub">
@@ -41,17 +41,24 @@
             <div class="sy-card-head">
                 <i class="fas fa-palette"></i>
                 <div>
-                    <h6>Display</h6>
+                    <h6>{{ __('Display') }}</h6>
                     <p>The theme a screen opens on the first time it is used</p>
                 </div>
             </div>
             <div class="sy-card-body">
                 <div class="sy-grid">
                     <div class="sy-field">
-                        <label for="default_theme">Default theme</label>
+                        <label for="default_theme">{{ __('Default theme') }}</label>
                         <select class="sy-input" id="default_theme" name="default_theme" required>
-                            <option value="dark"  @selected(old('default_theme', $system->default_theme) === 'dark')>Dark</option>
-                            <option value="light" @selected(old('default_theme', $system->default_theme) === 'light')>Light</option>
+                            <option value="dark"  @selected(old('default_theme', $system->default_theme) === 'dark')>{{ __('Dark') }}</option>
+                            <option value="light" @selected(old('default_theme', $system->default_theme) === 'light')>{{ __('Light') }}</option>
+                        </select>
+                    </div>
+                    <div class="sy-field">
+                        <label for="locale">{{ __('Language') }}</label>
+                        <select class="sy-input" id="locale" name="locale" required>
+                            <option value="en" @selected(old('locale', $system->locale) === 'en')>{{ __('English') }}</option>
+                            <option value="tl" @selected(old('locale', $system->locale) === 'tl')>{{ __('Tagalog') }}</option>
                         </select>
                     </div>
                 </div>
@@ -92,7 +99,7 @@
                     Never changed — showing the built-in defaults
                 @endif
             </span>
-            <button type="submit" class="sy-save"><i class="fas fa-floppy-disk me-1"></i> Save</button>
+            <button type="submit" class="sy-save"><i class="fas fa-floppy-disk me-1"></i> {{ __('Save') }}</button>
         </div>
     </form>
 

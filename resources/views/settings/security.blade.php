@@ -10,8 +10,8 @@
 <div class="sy-page">
 
     <div class="sy-header mb-3">
-        <h1>Security</h1>
-        <p>How long a session lasts, and how hard it is to guess a password.</p>
+        <h1>{{ __('Security') }}</h1>
+        <p>{{ __('How long a session lasts, and how hard it is to guess a password.') }}</p>
     </div>
 
     <div class="hub">
@@ -26,7 +26,7 @@
 
     @if($errors->any())
         <div class="alert alert-danger" role="alert">
-            <strong>Nothing was saved.</strong>
+            <strong>{{ __('Nothing was saved.') }}</strong>
             <ul class="mb-0 mt-1">
                 @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
             </ul>
@@ -41,7 +41,7 @@
             <div class="sy-card-head">
                 <i class="fas fa-lock"></i>
                 <div>
-                    <h6>Account &amp; security</h6>
+                    <h6>{{ __('Account & security') }}</h6>
                     <p>Applied to every login and to the next password set or reset</p>
                 </div>
             </div>
@@ -83,10 +83,10 @@
                 @if($system->exists)
                     Last updated {{ $system->updated_at?->format('Y-m-d') }}
                 @else
-                    Never changed — showing the built-in defaults
+                    {{ __('Never changed — showing the built-in defaults') }}
                 @endif
             </span>
-            <button type="submit" class="sy-save"><i class="fas fa-floppy-disk me-1"></i> Save</button>
+            <button type="submit" class="sy-save"><i class="fas fa-floppy-disk me-1"></i> {{ __('Save') }}</button>
         </div>
     </form>
     </div>

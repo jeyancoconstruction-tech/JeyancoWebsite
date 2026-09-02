@@ -10,8 +10,8 @@
 <div class="sy-page">
 
     <div class="sy-header mb-3">
-        <h1>Company</h1>
-        <p>Who the company says it is on a payslip, a receipt and an export.</p>
+        <h1>{{ __('Company') }}</h1>
+        <p>{{ __('Who the company says it is on a payslip, a receipt and an export.') }}</p>
     </div>
 
     <div class="hub">
@@ -26,7 +26,7 @@
 
     @if($errors->any())
         <div class="alert alert-danger" role="alert">
-            <strong>Nothing was saved.</strong>
+            <strong>{{ __('Nothing was saved.') }}</strong>
             <ul class="mb-0 mt-1">
                 @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
             </ul>
@@ -41,7 +41,7 @@
             <div class="sy-card-head">
                 <i class="fas fa-building"></i>
                 <div>
-                    <h6>Company identity</h6>
+                    <h6>{{ __('Company identity') }}</h6>
                     <p>What the payslips, the receipt and the exports say the company is</p>
                 </div>
             </div>
@@ -86,10 +86,10 @@
                 @if($system->exists)
                     Last updated {{ $system->updated_at?->format('Y-m-d') }}
                 @else
-                    Never changed — showing the built-in defaults
+                    {{ __('Never changed — showing the built-in defaults') }}
                 @endif
             </span>
-            <button type="submit" class="sy-save"><i class="fas fa-floppy-disk me-1"></i> Save</button>
+            <button type="submit" class="sy-save"><i class="fas fa-floppy-disk me-1"></i> {{ __('Save') }}</button>
         </div>
     </form>
     </div>

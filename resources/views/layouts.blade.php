@@ -81,14 +81,14 @@
 
         <nav class="nav-menu">
 
-            <div class="menu-section">MAIN</div>
+            <div class="menu-section">{{ __('MAIN') }}</div>
             <a class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}" href="{{ url('/dashboard') }}">
-                <i data-lucide="layout-dashboard"></i> <span>Dashboard</span>
+                <i data-lucide="layout-dashboard"></i> <span>{{ __('Dashboard') }}</span>
             </a>
 
-            <div class="menu-section">WORKFORCE</div>
+            <div class="menu-section">{{ __('WORKFORCE') }}</div>
             <a class="nav-link {{ request()->is('attendance*') ? 'active' : '' }}" href="{{ url('/attendance') }}">
-                <i data-lucide="calendar-check"></i> <span>Attendance</span>
+                <i data-lucide="calendar-check"></i> <span>{{ __('Attendance') }}</span>
             </a>
             @php
                 // Registering and editing a worker are part of Register & Manage,
@@ -100,48 +100,48 @@
                     || request()->routeIs('employees.edit');
             @endphp
             <a class="nav-link {{ request()->is('employees*') && ! $onRegisterHub ? 'active' : '' }}" href="{{ url('/employees') }}">
-                <i data-lucide="users"></i> <span>Employees</span>
+                <i data-lucide="users"></i> <span>{{ __('Employees') }}</span>
             </a>
             @php $pendingKiosk = \App\Models\Employee::pending()->count(); @endphp
             <a class="nav-link {{ $onRegisterHub ? 'active' : '' }}" href="{{ route('employees.register') }}">
-                <i data-lucide="user-plus"></i> <span>Register &amp; Manage</span>
+                <i data-lucide="user-plus"></i> <span>{{ __('Register & Manage') }}</span>
                 @if($pendingKiosk > 0)
                     <span class="nav-pending-badge" title="{{ $pendingKiosk }} worker(s) detected by the kiosk awaiting registration">{{ $pendingKiosk }}</span>
                 @endif
             </a>
 
-            <div class="menu-section">PROJECT</div>
+            <div class="menu-section">{{ __('PROJECT') }}</div>
             <a class="nav-link {{ request()->is('sites*') ? 'active' : '' }}" href="{{ route('sites.index') }}">
-                <i data-lucide="map-pin"></i> <span>Sites</span>
+                <i data-lucide="map-pin"></i> <span>{{ __('Sites') }}</span>
             </a>
 
-            <div class="menu-section">PAYROLL</div>
+            <div class="menu-section">{{ __('PAYROLL') }}</div>
             <a class="nav-link {{ request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
-                <i data-lucide="receipt"></i> <span>Payroll Records</span>
+                <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
             </a>
             {{-- Admin only, like the rest of the settings page it opens. It sits
                  under Payroll Records rather than in SYSTEM because that is what
                  it configures. --}}
             @if(auth()->user()?->isAdmin())
                 <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
-                    <i data-lucide="settings"></i> <span>Payroll Settings</span>
+                    <i data-lucide="settings"></i> <span>{{ __('Payroll Settings') }}</span>
                 </a>
             @endif
 
-            <div class="menu-section">INSIGHTS</div>
+            <div class="menu-section">{{ __('INSIGHTS') }}</div>
             <a class="nav-link {{ request()->is('analytics*') ? 'active' : '' }}" href="{{ url('/analytics') }}">
-                <i data-lucide="bar-chart-3"></i> <span>Analytics</span>
+                <i data-lucide="bar-chart-3"></i> <span>{{ __('Analytics') }}</span>
             </a>
             <a class="nav-link {{ request()->is('ai-assistant*') ? 'active' : '' }}" href="{{ url('/ai-assistant') }}">
-                <i data-lucide="bot"></i> <span>Jeyanco AI</span>
+                <i data-lucide="bot"></i> <span>{{ __('Jeyanco AI') }}</span>
             </a>
 
             @if(auth()->user()?->isAdmin())
                 {{-- Accounts is a tab of System Settings now, so one entry
                      covers both and stays lit on either. --}}
-                <div class="menu-section">SYSTEM</div>
+                <div class="menu-section">{{ __('SYSTEM') }}</div>
                 <a class="nav-link {{ request()->is('system-settings*') || request()->is('accounts*') ? 'active' : '' }}" href="{{ route('system-settings.about') }}">
-                    <i data-lucide="sliders-horizontal"></i> <span>System Settings</span>
+                    <i data-lucide="sliders-horizontal"></i> <span>{{ __('System Settings') }}</span>
                 </a>
             @endif
 

@@ -350,7 +350,7 @@ class SystemSettingsTest extends TestCase
     public function test_an_unknown_theme_is_refused(): void
     {
         $this->actingAs($this->admin())
-             ->put(route('system-settings.appearance.update'), ['default_theme' => 'neon'])
+             ->put(route('system-settings.appearance.update'), ['default_theme' => 'neon', 'locale' => 'en'])
              ->assertSessionHasErrors('default_theme');
     }
 
@@ -362,12 +362,43 @@ class SystemSettingsTest extends TestCase
     public function test_saving_the_theme_switches_the_saver_too(): void
     {
         $this->actingAs($this->admin())
-             ->put(route('system-settings.appearance.update'), ['default_theme' => 'light'])
+             ->put(route('system-settings.appearance.update'), ['default_theme' => 'light', 'locale' => 'en'])
              ->assertSessionHas('theme_changed', 'light');
 
         $this->actingAs($this->admin())
              ->get(route('system-settings.appearance'))
              ->assertOk()
              ->assertSee("localStorage.setItem('jeyanco-theme', picked)", false);
+    }
+
+    // ── Language ─────────────────────────────────────────────────────────────
+
+    /**
+     * The switch has to reach the strings, not just the row. A setting that
+     * saves 'tl' and leaves the screen in English is a preference nobody sees.
+     */
+    public function test_the_locale_switches_the_navigation(): void
+    {
+        $this->actingAs($this->admin())
+             ->get(route('system-settings.appearance'))
+             ->assertOk()
+             ->assertSee('Payroll Records')
+             ->assertDontSee('Talaan ng Sahod');
+
+        SystemSetting::create(SystemSetting::DEFAULTS)->update(['locale' => 'tl']);
+        SystemSetting::forget();
+
+        $this->actingAs($this->admin())
+             ->get(route('system-settings.appearance'))
+             ->assertOk()
+             ->assertSee('Talaan ng Sahod')
+             ->assertSee('Seguridad');
+    }
+
+    public function test_an_unknown_locale_is_refused(): void
+    {
+        $this->actingAs($this->admin())
+             ->put(route('system-settings.appearance.update'), ['default_theme' => 'dark', 'locale' => 'fr'])
+             ->assertSessionHasErrors('locale');
     }
 }

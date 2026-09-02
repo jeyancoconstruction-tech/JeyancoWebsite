@@ -95,6 +95,7 @@ class SystemSettingsController extends Controller
     {
         $data = $request->validate([
             'default_theme' => ['required', 'in:dark,light'],
+            'locale'        => ['required', 'in:en,tl'],
         ]);
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);

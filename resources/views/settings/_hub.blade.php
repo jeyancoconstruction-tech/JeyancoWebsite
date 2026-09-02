@@ -44,19 +44,19 @@
 @endphp
 
 <nav class="hub-nav">
-    <div class="hub-sec">Organization</div>
+    <div class="hub-sec">{{ __('Organization') }}</div>
     <a class="hub-item {{ $onCompany ? 'on' : '' }}" href="{{ route('system-settings.about') }}">
-        <i class="fas fa-building"></i> Company
+        <i class="fas fa-building"></i> {{ __('Company') }}
     </a>
     <a class="hub-item {{ $onAccounts ? 'on' : '' }}" href="{{ route('accounts.index') }}">
-        <i class="fas fa-users"></i> Accounts &amp; roles
+        <i class="fas fa-users"></i> {{ __('Accounts & roles') }}
     </a>
 
-    <div class="hub-sec">System</div>
+    <div class="hub-sec">{{ __('System') }}</div>
     <a class="hub-item {{ $onAppearance ? 'on' : '' }}" href="{{ route('system-settings.appearance') }}">
-        <i class="fas fa-palette"></i> Appearance
+        <i class="fas fa-palette"></i> {{ __('Appearance') }}
     </a>
     <a class="hub-item {{ $onSecurity ? 'on' : '' }}" href="{{ route('system-settings.security') }}">
-        <i class="fas fa-lock"></i> Security
+        <i class="fas fa-lock"></i> {{ __('Security') }}
     </a>
 </nav>

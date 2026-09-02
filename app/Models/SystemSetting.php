@@ -32,6 +32,7 @@ class SystemSetting extends Model
         'week_starts_on',
         'payroll_cycle',
         'default_theme',
+        'locale',
     ];
 
     protected $casts = [
@@ -66,6 +67,7 @@ class SystemSetting extends Model
         'week_starts_on'          => 1,
         'payroll_cycle'           => 'weekly',
         'default_theme'           => 'dark',
+        'locale'                  => 'en',
     ];
 
     /** The container key the resolved row is memoised under. */
