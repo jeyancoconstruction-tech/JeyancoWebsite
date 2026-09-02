@@ -1,13 +1,8 @@
-{{-- Shared by the About and Security tabs. Self-contained: the payroll
-     settings page's .pr-* chrome lives inside its own template, so borrowing it
-     here would render unstyled. Same design language, written once for both. --}}
+{{-- The cards and fields the Company, Security and Appearance tabs share. The
+     page shell around them lives in _hub, which every tab includes, so all four
+     line up. Self-contained: the payroll page's .pr-* chrome is inside its own
+     template and would render unstyled here. --}}
 <style>
-    .sy-page { padding: 20px 28px 48px; }
-    @media (max-width: 768px) { .sy-page { padding: 16px; } }
-
-    .sy-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin: 0; letter-spacing: -0.3px; }
-    .sy-header p  { color: var(--text-secondary); font-size: 0.9rem; margin: 2px 0 0; }
-
     .sy-card {
         background: var(--surface); border: 1px solid var(--border);
         border-radius: 6px; margin-bottom: 18px; overflow: hidden;

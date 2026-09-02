@@ -7,9 +7,9 @@
 @endpush
 
 @section('content')
-<div class="sy-page">
+<div class="hub-page">
 
-    <div class="sy-header mb-3">
+    <div class="hub-head">
         <h1>{{ __('Appearance') }}</h1>
         <p>{{ __('How the system looks before anybody has chosen for themselves.') }}</p>
     </div>

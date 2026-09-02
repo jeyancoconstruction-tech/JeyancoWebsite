@@ -7,9 +7,9 @@
 @endpush
 
 @section('content')
-<div class="sy-page">
+<div class="hub-page">
 
-    <div class="sy-header mb-3">
+    <div class="hub-head">
         <h1>{{ __('Company') }}</h1>
         <p>{{ __('Who the company says it is on a payslip, a receipt and an export.') }}</p>
     </div>

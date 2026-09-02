@@ -2,15 +2,16 @@
 @section('page_title', 'Accounts')
 
 @section('content')
-<div class="acct-page">
+<div class="hub-page">
 
-    {{-- ── Page header ─────────────────────────────────────────────────────── --}}
-    <div class="acct-header">
+    {{-- The same header shell the other three tabs use, so nothing shifts when
+         you move between them. The count chip is this page's own. --}}
+    <div class="hub-head">
         <div class="acct-header-left">
-            <h1 class="acct-title">{{ __('Account Management') }}</h1>
+            <h1>{{ __('Account Management') }}</h1>
             <span class="acct-count-chip">{{ $stats['total'] }} account{{ $stats['total'] !== 1 ? 's' : '' }}</span>
         </div>
-        <p class="acct-header-sub">{{ __('Create logins for your staff, change their details, and control who can sign in.') }}</p>
+        <p>{{ __('Create logins for your staff, change their details, and control who can sign in.') }}</p>
     </div>
 
     <div class="hub">
@@ -169,17 +170,12 @@
 
 {{-- ── Styles ──────────────────────────────────────────────────────────────── --}}
 <style>
-.acct-page { max-width: none; width: 100%; margin: 0; }
-
-.acct-header { margin-bottom: 20px; }
 .acct-header-left { display: flex; align-items: center; gap: 12px; }
-.acct-title { font-size: 1.45rem; font-weight: 700; color: #0f172a; margin: 0; }
 .acct-count-chip {
     font-size: 12px; font-weight: 600; color: #1e40af;
     background: #eff6ff; border: 1px solid #bfdbfe;
     padding: 3px 10px; border-radius: 20px;
 }
-.acct-header-sub { font-size: 13.5px; color: #64748b; margin: 6px 0 0; }
 
 /* Flash */
 .acct-flash {
@@ -295,8 +291,6 @@
 .acct-pager .pagination { margin: 0; justify-content: center; }
 
 /* Dark mode */
-[data-bs-theme="dark"] .acct-title       { color: #e8edf5; }
-[data-bs-theme="dark"] .acct-header-sub  { color: #6b7d96; }
 [data-bs-theme="dark"] .acct-count-chip  { background: #172554; border-color: #1e3a8a; color: #93c5fd; }
 [data-bs-theme="dark"] .acct-stat        { background: #151d2e; border-color: #283449; }
 [data-bs-theme="dark"] .acct-stat-label  { color: #6b7d96; }

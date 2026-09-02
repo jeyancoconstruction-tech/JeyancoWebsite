@@ -7,6 +7,19 @@
      Payroll and Attendance are not here: they configure pay, so they live on
      the Payroll Settings page with the multipliers they work with. --}}
 <style>
+    /* One shell for all four, so nothing moves when you change tab. They used
+       to bring their own: the accounts page had no page padding and a smaller
+       heading than the settings ones, so the nav and the title both jumped. */
+    .hub-page { padding: 20px 28px 48px; }
+    @media (max-width: 768px) { .hub-page { padding: 16px; } }
+
+    .hub-head { margin-bottom: 16px; }
+    .hub-head h1 {
+        margin: 0; font-size: 1.6rem; font-weight: 800;
+        letter-spacing: -0.3px; color: var(--text-primary);
+    }
+    .hub-head p { margin: 2px 0 0; font-size: 0.9rem; color: var(--text-secondary); }
+
     .hub { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; align-items: start; }
     @media (max-width: 860px) { .hub { grid-template-columns: 1fr; } }
 

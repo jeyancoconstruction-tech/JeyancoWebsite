@@ -7,9 +7,9 @@
 @endpush
 
 @section('content')
-<div class="sy-page">
+<div class="hub-page">
 
-    <div class="sy-header mb-3">
+    <div class="hub-head">
         <h1>{{ __('Security') }}</h1>
         <p>{{ __('How long a session lasts, and how hard it is to guess a password.') }}</p>
     </div>
