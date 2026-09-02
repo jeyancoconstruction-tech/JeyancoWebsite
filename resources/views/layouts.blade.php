@@ -104,6 +104,14 @@
             <a class="nav-link {{ request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>Payroll Records</span>
             </a>
+            {{-- Admin only, like the rest of the settings page it opens. It sits
+                 under Payroll Records rather than in SYSTEM because that is what
+                 it configures. --}}
+            @if(auth()->user()?->isAdmin())
+                <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
+                    <i data-lucide="settings"></i> <span>Payroll Settings</span>
+                </a>
+            @endif
 
             <div class="menu-section">INSIGHTS</div>
             <a class="nav-link {{ request()->is('analytics*') ? 'active' : '' }}" href="{{ url('/analytics') }}">
@@ -117,9 +125,6 @@
                 <div class="menu-section">SYSTEM</div>
                 <a class="nav-link {{ request()->is('accounts*') ? 'active' : '' }}" href="{{ route('accounts.index') }}">
                     <i data-lucide="user-cog"></i> <span>Accounts</span>
-                </a>
-                <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
-                    <i data-lucide="settings"></i> <span>Settings</span>
                 </a>
             @endif
 
