@@ -133,25 +133,6 @@
                             <p class="pr-block-hint">Night differential: 10:00 PM – 6:00 AM. A regular holiday is fixed at 200% by the Labor Code and is not set here.</p>
                         </section>
 
-                        {{-- Effectivity --}}
-                        <section class="pr-block">
-                            <div class="pr-block-head">
-                                <i class="fas fa-calendar-day"></i>
-                                <span>Effectivity</span>
-                                <small>Applies to this card</small>
-                            </div>
-                            <div class="pr-grid pr-grid-2">
-                                <div class="pr-field">
-                                    <label class="pr-field-label" for="effective_from">Effective from</label>
-                                    <input type="date" id="effective_from" name="effective_from"
-                                           class="form-control ps-input @error('effective_from') is-invalid @enderror"
-                                           value="{{ old('effective_from', now()->toDateString()) }}" required>
-                                    @error('effective_from')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
-                            </div>
-                            <p class="pr-block-hint">The date applies to the premiums and the deductions on this card.</p>
-                        </section>
-
                         {{-- Deductions --}}
                         <section class="pr-block pr-block-statutory">
                             <div class="pr-block-head">
@@ -185,6 +166,25 @@
                                 </div>
                                 <div class="pr-ded-input"><span class="pr-auto">auto</span></div>
                             </div>
+                        </section>
+
+                        {{-- Effectivity --}}
+                        <section class="pr-block">
+                            <div class="pr-block-head">
+                                <i class="fas fa-calendar-day"></i>
+                                <span>Effectivity</span>
+                                <small>Applies to this card</small>
+                            </div>
+                            <div class="pr-grid pr-grid-2">
+                                <div class="pr-field">
+                                    <label class="pr-field-label" for="effective_from">Effective from</label>
+                                    <input type="date" id="effective_from" name="effective_from"
+                                           class="form-control ps-input @error('effective_from') is-invalid @enderror"
+                                           value="{{ old('effective_from', now()->toDateString()) }}" required>
+                                    @error('effective_from')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <p class="pr-block-hint">The date applies to the premiums and the deductions above.</p>
                         </section>
 
                         {{-- What the numbers above add up to, in the order payroll applies them --}}
