@@ -5,8 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One dated set of payroll numbers: the premiums, the daily wage floor, and the
- * employee-share contribution rates.
+ * One dated set of payroll numbers: the premiums, the daily wage floor, the
+ * period bonus, and the employee-share contribution rates.
  *
  * A change is a new row, not an edit. Payroll asks for the row in force on the
  * day it is computing, so reopening an old period recomputes it at the numbers
@@ -23,6 +23,7 @@ class PayrollRate extends Model
         'rest_day_multiplier',
         'regular_holiday_multiplier',
         'daily_rate',
+        'bonus',
         'sss_rate',
         'philhealth_rate',
         'pagibig_rate',
@@ -36,6 +37,7 @@ class PayrollRate extends Model
         'rest_day_multiplier'        => 'float',
         'regular_holiday_multiplier' => 'float',
         'daily_rate'                 => 'float',
+        'bonus'                      => 'float',
         'sss_rate'                   => 'float',
         'philhealth_rate'            => 'float',
         'pagibig_rate'               => 'float',
@@ -137,9 +139,15 @@ class PayrollRate extends Model
         // floor would show on screen as one somebody had chosen.
         $floor = (float) ($this->daily_rate ?? 0);
 
+        // Unlike the floor, a bonus of 0 is a real answer: an office that pays
+        // none has said so, and inventing one would put money on a payslip
+        // nobody agreed to.
         return $this->toMultipliers()
             + $this->toDeductionRates()
-            + ['daily_rate' => $floor > 0 ? $floor : null];
+            + [
+                'daily_rate' => $floor > 0 ? $floor : null,
+                'bonus'      => max(0.0, (float) ($this->bonus ?? 0)),
+            ];
     }
 
     /**
@@ -152,7 +160,7 @@ class PayrollRate extends Model
     public static function fallbackRates(): array
     {
         return self::DEFAULTS
-            + ['sss_rate' => 0.0, 'philhealth_rate' => 0.0, 'pagibig_rate' => 0.0, 'daily_rate' => null];
+            + ['sss_rate' => 0.0, 'philhealth_rate' => 0.0, 'pagibig_rate' => 0.0, 'daily_rate' => null, 'bonus' => 0.0];
     }
 
     /**

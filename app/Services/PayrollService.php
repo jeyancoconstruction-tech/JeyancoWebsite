@@ -27,13 +27,12 @@ class PayrollService
         $settings = Setting::first();
 
         return [
-            // Multipliers, the wage floor and the contribution rates are all
-            // dated. A change adds a row rather than editing one, so a period
-            // reopened next year still computes at the numbers that applied
-            // then. Loaded once as a timeline and resolved per attendance date
-            // — a query per record would be thousands.
+            // Multipliers, the wage floor, the period bonus and the
+            // contribution rates are all dated. A change adds a row rather than
+            // editing one, so a period reopened next year still computes at the
+            // numbers that applied then. Loaded once as a timeline and resolved
+            // per attendance date — a query per record would be thousands.
             'rateTimeline'   => PayrollRate::timeline(),
-            'bonus'          => $settings?->bonus ?? 0,
             'sundayRestDay'  => $settings?->sunday_rest_day_enabled ?? true,
             // Day-type multipliers are fixed by PH labor law, not configurable.
             // See doleFactors() for the whole table.
@@ -396,6 +395,15 @@ class PayrollService
             $weeklyTotalSalary = 0;
             $employeeSummaries = [];
 
+            // The bonus is a figure for the whole period, not for a day, so it
+            // resolves once — on the last day of the week, the day the period
+            // is paid. A bonus raised mid-week takes effect on the period that
+            // ends after it, and never on one already paid.
+            $weekBonus = $this->ratesOn(
+                Carbon::parse($weekGroup->first()->date)->endOfWeek(Carbon::SUNDAY)->toDateString(),
+                $cfg
+            )['bonus'] ?? 0;
+
             $employeeGroups = $weekGroup->groupBy(fn ($item) => $item->employee_id);
 
             $empWeekRecords = null;
@@ -434,7 +442,7 @@ class PayrollService
                     $totalDeductions = $sumAuto + $sumVale + $sumManual;
 
                     // Flat bonus applied once per employee per pay period (week)
-                    $empBonus = $cfg['bonus'];
+                    $empBonus = $weekBonus;
                     $sumNet  += $empBonus;
 
                     $employeeSummaries[] = [
@@ -507,7 +515,7 @@ class PayrollService
                     'holidayPay'          => round($r['holidayPay'], 2),
                     'restDayPay'          => round($r['restDayPay'], 2),
                     'nightDiffPay'        => round($r['nightDiffPay'], 2),
-                    'bonus'               => round($cfg['bonus'], 2),
+                    'bonus'               => round($this->ratesOn($date, $cfg)['bonus'] ?? 0, 2),
                     'is_holiday'          => $r['isHoliday'],
                     'holiday_type'        => $r['holidayType'],
                     'gross'               => round($r['gross'], 2),

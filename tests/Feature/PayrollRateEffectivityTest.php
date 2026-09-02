@@ -84,7 +84,6 @@ class PayrollRateEffectivityTest extends TestCase
         $cfg = array_merge([
             'sss' => 0, 'philhealth' => 0, 'pagibig' => 0,
             'rateTimeline'   => PayrollRate::timeline(),
-            'bonus'          => 0,
             'sundayRestDay'  => true,
             'holidayTypeMap' => [],
         ], $cfgOverrides);
@@ -274,5 +273,90 @@ class PayrollRateEffectivityTest extends TestCase
         $saved = PayrollRate::newestFirst()->first();
         $this->assertSame(1.50, (float) $saved->ot_multiplier);
         $this->assertSame(645.0, (float) $saved->daily_rate, 'the wage rode along');
+    }
+
+    // ── The period bonus ─────────────────────────────────────────────────────
+
+    /** The week's summary, straight from the grouping the payroll page uses. */
+    private function week(Attendance $rec): array
+    {
+        $m = new ReflectionMethod(PayrollService::class, 'groupByWeek');
+        $m->setAccessible(true);
+
+        $weeks = $m->invoke(app(PayrollService::class), collect([$rec]), [
+            'sss' => 0, 'philhealth' => 0, 'pagibig' => 0,
+            'rateTimeline'   => PayrollRate::timeline(),
+            'sundayRestDay'  => true,
+            'holidayTypeMap' => [],
+        ]);
+
+        return $weeks[0]['details'][0];
+    }
+
+    public function test_the_period_bonus_comes_from_the_rate_set(): void
+    {
+        $this->rate('2026-01-01', ['bonus' => 500]);
+
+        $out = $this->week($this->record('2026-03-04', '08:00:00', 8));
+
+        $this->assertSame(500.0, round($out['bonus'], 2));
+        $this->assertSame(round($out['gross'] - $out['totalDeductions'] + 500, 2), round($out['net'], 2), 'the bonus lands in net');
+    }
+
+    /**
+     * The reason the bonus moved onto the dated row at all: raising it used to
+     * rewrite every payslip already issued.
+     */
+    public function test_a_later_bonus_does_not_reach_a_period_already_paid(): void
+    {
+        $this->rate('2026-01-01', ['bonus' => 500]);
+        $this->rate('2026-06-01', ['bonus' => 900]);
+
+        $march = $this->week($this->record('2026-03-04', '08:00:00', 8));
+        $this->assertSame(500.0, round($march['bonus'], 2), 'March was paid at the old bonus');
+
+        $july = $this->week($this->record('2026-07-01', '08:00:00', 8));
+        $this->assertSame(900.0, round($july['bonus'], 2));
+    }
+
+    /** A bonus is granted for the period, so it resolves on the day it is paid. */
+    public function test_the_bonus_resolves_on_the_last_day_of_the_week(): void
+    {
+        $this->rate('2026-01-01', ['bonus' => 500]);
+        // Effective Saturday, mid-week: the period ends Sunday, so it counts.
+        $this->rate('2026-03-07', ['bonus' => 900]);
+
+        $out = $this->week($this->record('2026-03-04', '08:00:00', 8));
+
+        $this->assertSame(900.0, round($out['bonus'], 2));
+    }
+
+    public function test_no_bonus_is_added_when_none_is_set(): void
+    {
+        $this->rate('2026-01-01');
+
+        $out = $this->week($this->record('2026-03-04', '08:00:00', 8));
+
+        $this->assertSame(0.0, round($out['bonus'], 2));
+        $this->assertSame(round($out['gross'] - $out['totalDeductions'], 2), round($out['net'], 2));
+    }
+
+    public function test_saving_the_form_puts_the_bonus_on_the_row(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), $this->payload(['bonus' => 750]))
+             ->assertSessionHasNoErrors();
+
+        $this->assertSame(750.0, (float) PayrollRate::newestFirst()->first()->bonus);
+    }
+
+    /** An empty box is zero, not a null the column will not take. */
+    public function test_an_empty_bonus_saves_as_zero(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), $this->payload(['bonus' => '']))
+             ->assertSessionHasNoErrors();
+
+        $this->assertSame(0.0, (float) PayrollRate::newestFirst()->first()->bonus);
     }
 }

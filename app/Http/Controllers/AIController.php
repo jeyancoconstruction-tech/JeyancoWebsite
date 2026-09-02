@@ -441,7 +441,7 @@ class AIController extends Controller
         // ===== SETTINGS / DEDUCTIONS =====
         $needsSettings = $any('system settings', 'payroll settings', 'deduction', 'all rates', 'deduction rate',
                               'sss', 'philhealth', 'pagibig', 'contribution', 'ot multiplier',
-                              'overtime rate', 'holiday rate', 'daily wage', 'daily rate', 'rest day')
+                              'overtime rate', 'holiday rate', 'daily wage', 'daily rate', 'bonus', 'rest day')
                        || $has('settings', 'system');
 
         if ($needsSettings) {
@@ -478,6 +478,7 @@ class AIController extends Controller
             $restM   = number_format($rate->rest_day_multiplier ?? 1.30, 2);
             $holiday = number_format($rate->regular_holiday_multiplier ?? 2, 2);
             $since   = $rate?->effective_from?->format('M d, Y') ?? '—';
+            $bonus   = number_format($rate->bonus ?? 0, 2);
             $rest    = (isset($s->sunday_rest_day_enabled) && $s->sunday_rest_day_enabled) ? 'On (Sunday)' : 'Off';
 
             return "SYSTEM SETTINGS\n━━━━━━━━━━━━━━━\n"
@@ -487,6 +488,7 @@ class AIController extends Controller
                 . "Night differential: {$night}×\n"
                 . "Rest day:           {$restM}×\n"
                 . "Holiday multiplier: {$holiday}×\n"
+                . "Bonus / period:     ₱{$bonus}\n"
                 . "Sunday rest day:    {$rest}\n"
                 . "SSS:                {$sss}%\n"
                 . "PhilHealth:         {$phil}%\n"

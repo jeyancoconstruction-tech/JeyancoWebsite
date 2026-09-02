@@ -199,7 +199,7 @@ class SearchController extends Controller
             ['title' => 'Payroll Records', 'subtitle' => 'Reports, payroll & pay periods',  'url' => route('payroll-records'),                   'keywords' => 'payroll reports payslip pay period weekly daily salary records gross net deductions overtime bonus'],
             ['title' => 'Analytics',       'subtitle' => 'Insights & charts',               'url' => route('analytics'),                         'keywords' => 'analytics insights charts graphs'],
             ['title' => 'Jeyanco AI',      'subtitle' => 'AI assistant',                    'url' => route('ai-assistant'),                      'keywords' => 'ai assistant chatbot jeyanco intelligence'],
-            ['title' => 'Settings',        'subtitle' => 'Payroll config, labor, holidays', 'url' => route('settings.index'),                    'keywords' => 'settings config sss philhealth pagibig overtime daily wage holiday labor rate multiplier'],
+            ['title' => 'Settings',        'subtitle' => 'Payroll config, labor, holidays', 'url' => route('settings.index'),                    'keywords' => 'settings config sss philhealth pagibig overtime bonus holiday labor rate multiplier'],
         ];
     }
 }

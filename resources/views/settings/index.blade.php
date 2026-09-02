@@ -89,7 +89,7 @@
                             <i class="fas fa-gear"></i>
                             <div>
                                 <h6>Payroll settings</h6>
-                                <p>Premiums and deductions</p>
+                                <p>Premiums, bonus and deductions</p>
                             </div>
                         </div>
                         <span class="pr-admin"><i class="fas fa-lock"></i> Admin</span>
@@ -117,6 +117,26 @@
                                 @endforeach
                             </div>
                             <p class="pr-block-hint">Night differential: 10:00 PM – 6:00 AM. A regular holiday is fixed at 200% by the Labor Code and is not set here.</p>
+                        </section>
+
+                        {{-- Bonus --}}
+                        <section class="pr-block">
+                            <div class="pr-block-head">
+                                <i class="fas fa-gift"></i>
+                                <span>Bonus</span>
+                                <small>Per pay period</small>
+                            </div>
+                            <div class="pr-grid pr-grid-2">
+                                <div class="pr-field">
+                                    <label class="pr-field-label" for="bonus">Bonus (per period) ₱</label>
+                                    <input type="number" step="0.01" min="0"
+                                           id="bonus" name="bonus"
+                                           class="form-control ps-input @error('bonus') is-invalid @enderror"
+                                           value="{{ $rval('bonus', 0) }}">
+                                    @error('bonus')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <p class="pr-block-hint">A flat amount added once per employee each pay period, on top of the week's pay. It follows the date on this card, so raising it never reaches a period already paid.</p>
                         </section>
 
                         {{-- Effectivity --}}
@@ -222,6 +242,7 @@
                                         <tr>
                                             <th>Effective from</th>
                                             <th class="text-end">Daily</th>
+                                            <th class="text-end">Bonus</th>
                                             <th class="text-end">OT</th><th class="text-end">Night</th>
                                             <th class="text-end">Rest day</th>
                                             <th class="text-end">SSS</th><th class="text-end">PH</th>
@@ -237,6 +258,7 @@
                                                 @if($i === 0)<span class="pr-in-force">in force</span>@endif
                                             </td>
                                             <td class="text-end">{{ $r->daily_rate ? '₱' . number_format($r->daily_rate, 2) : '—' }}</td>
+                                            <td class="text-end">{{ $r->bonus ? '₱' . number_format($r->bonus, 2) : '—' }}</td>
                                             <td class="text-end">{{ number_format($r->ot_multiplier, 2) }}</td>
                                             <td class="text-end">{{ number_format($r->night_diff_multiplier, 2) }}</td>
                                             <td class="text-end">{{ number_format($r->rest_day_multiplier, 2) }}</td>
