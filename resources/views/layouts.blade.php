@@ -102,7 +102,7 @@
 
             <div class="menu-section">PAYROLL</div>
             <a class="nav-link {{ request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
-                <i data-lucide="line-chart"></i> <span>Reports</span>
+                <i data-lucide="receipt"></i> <span>Payroll Records</span>
             </a>
 
             <div class="menu-section">INSIGHTS</div>

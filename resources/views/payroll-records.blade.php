@@ -121,7 +121,7 @@
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
     <div class="pr-header d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h1>Reports</h1>
+            <h1>Payroll Records</h1>
             <p>Daily breakdown of pay, for the period below</p>
         </div>
         <button type="button" class="btn btn-success fw-600"
