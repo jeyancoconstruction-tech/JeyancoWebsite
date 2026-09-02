@@ -100,9 +100,20 @@
                 <i data-lucide="map-pin"></i> <span>Sites</span>
             </a>
 
+            @php
+                // Reports is the daily breakdown, reached with ?tab=reports on the
+                // same route. Two links to one URL would both light up, so each
+                // one asks for the half it owns.
+                $onPayrollReports = request()->is('payroll-records') && request('tab') === 'reports';
+                $onPayroll = (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*'))
+                    && ! $onPayrollReports;
+            @endphp
             <div class="menu-section">PAYROLL</div>
-            <a class="nav-link {{ request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
+            <a class="nav-link {{ $onPayroll ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>Payroll Records</span>
+            </a>
+            <a class="nav-link {{ $onPayrollReports ? 'active' : '' }}" href="{{ url('/payroll-records?tab=reports') }}">
+                <i data-lucide="line-chart"></i> <span>Reports</span>
             </a>
 
             <div class="menu-section">INSIGHTS</div>

@@ -78,11 +78,16 @@
 @section('content')
 <div class="pr-page">
 
-    {{-- ── Page header ─────────────────────────────────────────────────────── --}}
+    {{-- ── Page header ───────────────────────────────────────────────────────
+         Reports is its own destination in the sidebar now, so the page says
+         which one you are on rather than naming all three. --}}
+    @php $onReports = request('tab') === 'reports'; @endphp
     <div class="pr-header d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h1>Payroll Records</h1>
-            <p>Reports, employee payroll, and pay periods — all in one place</p>
+            <h1>{{ $onReports ? 'Reports' : 'Payroll Records' }}</h1>
+            <p>{{ $onReports
+                ? 'Daily breakdown of pay, for the period below'
+                : 'Employee payroll and pay periods — all in one place' }}</p>
         </div>
         <button type="button" class="btn btn-success fw-600"
                 data-bs-toggle="modal" data-bs-target="#exportPreviewModal">
@@ -93,6 +98,8 @@
     {{-- ── Filter bar ──────────────────────────────────────────────────────── --}}
     <div class="filter-bar mb-3">
         <form method="GET" action="{{ route('payroll-records') }}" id="prFilter">
+            {{-- Applying a filter must not drop you back onto the other page. --}}
+            @if($onReports)<input type="hidden" name="tab" value="reports">@endif
             <input type="hidden" name="mode" id="mode" value="{{ $period['mode'] }}">
 
             <div class="report-modes mb-3">
@@ -191,15 +198,14 @@
         </div>
     </div>
 
-    {{-- ── Tabs ─────────────────────────────────────────────────────────────── --}}
+    {{-- ── Tabs ─────────────────────────────────────────────────────────────
+         Reports moved to the sidebar, so it is a destination now rather than a
+         tab: on ?tab=reports the strip has nothing to offer and comes off, and
+         the page is the daily breakdown under the same filters. --}}
+    @unless($onReports)
     <ul class="nav nav-tabs pr-tabs" role="tablist">
         <li class="nav-item">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-reports" type="button">
-                <i class="fas fa-chart-line me-1"></i> Reports
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-employees" type="button">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-employees" type="button">
                 <i class="fas fa-users me-1"></i> By Employee
             </button>
         </li>
@@ -209,11 +215,12 @@
             </button>
         </li>
     </ul>
+    @endunless
 
     <div class="tab-content">
 
         {{-- ===== REPORTS: daily breakdown table ============================= --}}
-        <div class="tab-pane fade show active" id="tab-reports" role="tabpanel">
+        <div class="tab-pane fade @if($onReports) show active @endif" id="tab-reports" role="tabpanel">
             <div class="card table-card">
                 <div class="table-card-header">
                     <h6><i class="fas fa-calendar-day"></i> Daily Breakdown</h6>
@@ -260,7 +267,7 @@
         </div>
 
         {{-- ===== BY EMPLOYEE ============================================== --}}
-        <div class="tab-pane fade" id="tab-employees" role="tabpanel">
+        <div class="tab-pane fade @unless($onReports) show active @endunless" id="tab-employees" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <h6 class="mb-0"><i class="fas fa-users me-1"></i> By Employee
                     <span class="text-muted small fw-normal">&middot; <span id="empSlipCount">{{ count($employees) }}</span> employee(s)</span>
