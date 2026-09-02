@@ -125,7 +125,7 @@
                 {{-- Accounts is a tab of System Settings now, so one entry
                      covers both and stays lit on either. --}}
                 <div class="menu-section">SYSTEM</div>
-                <a class="nav-link {{ request()->is('system-settings*') || request()->is('accounts*') ? 'active' : '' }}" href="{{ route('system-settings.index') }}">
+                <a class="nav-link {{ request()->is('system-settings*') || request()->is('accounts*') ? 'active' : '' }}" href="{{ route('system-settings.about') }}">
                     <i data-lucide="sliders-horizontal"></i> <span>System Settings</span>
                 </a>
             @endif

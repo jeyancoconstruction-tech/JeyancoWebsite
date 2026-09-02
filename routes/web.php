@@ -149,8 +149,10 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::delete('/accounts/{account}',       [AccountController::class, 'destroy'])->name('accounts.destroy');
 
     // --- SYSTEM SETTINGS (not payroll: company identity, login rules) ---
-    Route::get('/system-settings', [SystemSettingsController::class, 'index'])->name('system-settings.index');
-    Route::put('/system-settings', [SystemSettingsController::class, 'update'])->name('system-settings.update');
+    Route::get('/system-settings',          [SystemSettingsController::class, 'about'])->name('system-settings.about');
+    Route::put('/system-settings',          [SystemSettingsController::class, 'updateAbout'])->name('system-settings.about.update');
+    Route::get('/system-settings/security', [SystemSettingsController::class, 'security'])->name('system-settings.security');
+    Route::put('/system-settings/security', [SystemSettingsController::class, 'updateSecurity'])->name('system-settings.security.update');
 
     // --- SETTINGS MODULE ---
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');

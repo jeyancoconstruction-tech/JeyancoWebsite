@@ -40,8 +40,6 @@ class SystemSettingsTest extends TestCase
     private function payload(array $overrides = []): array
     {
         return array_merge([
-            'company_name'            => 'JEYANCO CONSTRUCTION',
-            'company_tagline'         => 'Payroll Dept. · Panganiban, PH',
             'session_timeout_minutes' => 120,
             'password_min_length'     => 8,
             'max_login_attempts'      => 5,
@@ -77,29 +75,44 @@ class SystemSettingsTest extends TestCase
 
     // ── The page ─────────────────────────────────────────────────────────────
 
-    public function test_an_admin_can_open_it(): void
+    public function test_an_admin_can_open_about(): void
     {
         $this->actingAs($this->admin())
-             ->get(route('system-settings.index'))
+             ->get(route('system-settings.about'))
              ->assertOk()
-             ->assertSee('Company identity')
+             ->assertSee('Company identity');
+    }
+
+    public function test_an_admin_can_open_security(): void
+    {
+        $this->actingAs($this->admin())
+             ->get(route('system-settings.security'))
+             ->assertOk()
              ->assertSee('Account &amp; security', false);
     }
 
     public function test_staff_cannot(): void
     {
         $this->actingAs($this->staff())
-             ->get(route('system-settings.index'))
+             ->get(route('system-settings.about'))
              ->assertStatus(403);
     }
 
-    public function test_saving_writes_the_row(): void
+    /**
+     * The two tabs are separate actions on one row, so each has to write its own
+     * half without disturbing the other's.
+     */
+    public function test_about_writes_the_identity_and_leaves_security_alone(): void
     {
+        SystemSetting::create(SystemSetting::DEFAULTS)->update(['max_login_attempts' => 7]);
+        SystemSetting::forget();
+
         $this->actingAs($this->admin())
-             ->put(route('system-settings.update'), $this->payload([
+             ->put(route('system-settings.about.update'), [
                  'company_name'    => 'JEYANCO BUILDERS',
+                 'company_tagline' => 'Payroll Dept. · Panganiban, PH',
                  'company_address' => 'Panganiban, Camarines Sur',
-             ]))
+             ])
              ->assertSessionHasNoErrors();
 
         SystemSetting::forget();
@@ -107,14 +120,32 @@ class SystemSettingsTest extends TestCase
 
         $this->assertSame('JEYANCO BUILDERS', $s->company_name);
         $this->assertSame('Panganiban, Camarines Sur', $s->company_address);
+        $this->assertSame(7, $s->max_login_attempts, 'the security half is untouched');
         $this->assertSame(1, SystemSetting::count(), 'one row, edited, not appended');
     }
+
+    public function test_security_writes_its_own_half_and_leaves_the_identity_alone(): void
+    {
+        SystemSetting::create(SystemSetting::DEFAULTS)->update(['company_name' => 'JEYANCO BUILDERS']);
+        SystemSetting::forget();
+
+        $this->actingAs($this->admin())
+             ->put(route('system-settings.security.update'), $this->payload(['max_login_attempts' => 9]))
+             ->assertSessionHasNoErrors();
+
+        SystemSetting::forget();
+        $s = SystemSetting::current();
+
+        $this->assertSame(9, $s->max_login_attempts);
+        $this->assertSame('JEYANCO BUILDERS', $s->company_name, 'the identity is untouched');
+    }
+
 
     /** A session of a minute logs the office out mid-payroll. */
     public function test_an_absurd_session_timeout_is_refused(): void
     {
         $this->actingAs($this->admin())
-             ->put(route('system-settings.update'), $this->payload(['session_timeout_minutes' => 2]))
+             ->put(route('system-settings.security.update'), $this->payload(['session_timeout_minutes' => 2]))
              ->assertSessionHasErrors('session_timeout_minutes');
 
         $this->assertSame(0, SystemSetting::count());
@@ -124,7 +155,7 @@ class SystemSettingsTest extends TestCase
     public function test_a_shorter_password_minimum_is_refused(): void
     {
         $this->actingAs($this->admin())
-             ->put(route('system-settings.update'), $this->payload(['password_min_length' => 4]))
+             ->put(route('system-settings.security.update'), $this->payload(['password_min_length' => 4]))
              ->assertSessionHasErrors('password_min_length');
     }
 
@@ -210,14 +241,14 @@ class SystemSettingsTest extends TestCase
     public function test_both_pages_carry_the_tab_strip(): void
     {
         $this->actingAs($this->admin())
-             ->get(route('system-settings.index'))
+             ->get(route('system-settings.about'))
              ->assertOk()
              ->assertSee(route('accounts.index'), false);
 
         $this->actingAs($this->admin())
              ->get(route('accounts.index'))
              ->assertOk()
-             ->assertSee(route('system-settings.index'), false);
+             ->assertSee(route('system-settings.about'), false);
     }
 
     /** And the sidebar keeps one entry lit on either of them. */

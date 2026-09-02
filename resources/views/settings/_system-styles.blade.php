@@ -1,0 +1,59 @@
+{{-- Shared by the About and Security tabs. Self-contained: the payroll
+     settings page's .pr-* chrome lives inside its own template, so borrowing it
+     here would render unstyled. Same design language, written once for both. --}}
+<style>
+    .sy-page { padding: 20px 28px 48px; }
+    @media (max-width: 768px) { .sy-page { padding: 16px; } }
+
+    .sy-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin: 0; letter-spacing: -0.3px; }
+    .sy-header p  { color: var(--text-secondary); font-size: 0.9rem; margin: 2px 0 0; }
+
+    .sy-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 6px; margin-bottom: 18px; overflow: hidden;
+    }
+    .sy-card-head {
+        display: flex; align-items: flex-start; gap: 12px;
+        padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .sy-card-head > i { font-size: 1.05rem; color: var(--brand); margin-top: 2px; }
+    .sy-card-head h6 { margin: 0; font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+    .sy-card-head p  { margin: 2px 0 0; font-size: .8rem; color: var(--text-secondary); }
+    .sy-card-body { padding: 18px 20px; }
+
+    .sy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    @media (max-width: 700px) { .sy-grid { grid-template-columns: 1fr; } }
+
+    .sy-field label {
+        display: block; margin-bottom: 4px;
+        font-size: .78rem; font-weight: 600; color: var(--text-secondary);
+    }
+    .sy-input {
+        width: 100%; padding: 9px 12px; border-radius: 6px;
+        border: 1px solid var(--border); background: var(--bg-subtle);
+        color: var(--text-primary); font-size: .9rem;
+    }
+    .sy-input:focus { outline: none; border-color: var(--brand); }
+    .sy-hint { margin: 10px 0 0; font-size: .75rem; line-height: 1.6; color: var(--text-muted); }
+
+    /* The logo is the one setting you can only check by looking at it. */
+    .sy-logo-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .sy-logo-preview {
+        width: 56px; height: 56px; border-radius: 50%; object-fit: cover;
+        border: 1px solid var(--border); background: var(--bg-subtle); flex: none;
+    }
+
+    .sy-foot {
+        display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        padding-top: 16px; border-top: 1px solid var(--border);
+    }
+    .sy-updated {
+        margin-right: auto; display: inline-flex; align-items: center; gap: 7px;
+        font-size: .78rem; color: var(--text-muted);
+    }
+    .sy-save {
+        padding: 9px 22px; border: none; border-radius: 6px;
+        background: var(--brand); color: #fff; font-weight: 600; font-size: .85rem; cursor: pointer;
+    }
+    .sy-save:hover { background: var(--brand-strong); }
+</style>

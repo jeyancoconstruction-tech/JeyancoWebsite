@@ -8,25 +8,54 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * The settings that are not payroll: who the company says it is, and how strict
- * the login is. The payroll page next to it answers for pay.
+ * the login is. The payroll page answers for pay.
+ *
+ * One row behind two tabs. They are separate actions rather than one form split
+ * in half, so each validates only what it posts — a bad session timeout must not
+ * refuse a corrected address.
  */
 class SystemSettingsController extends Controller
 {
-    public function index()
+    public function about()
     {
-        return view('settings.system', [
-            'system' => SystemSetting::current(),
-        ]);
+        return view('settings.about', ['system' => SystemSetting::current()]);
     }
 
-    public function update(Request $request)
+    public function security()
+    {
+        return view('settings.security', ['system' => SystemSetting::current()]);
+    }
+
+    public function updateAbout(Request $request)
     {
         $data = $request->validate([
-            'company_name'            => ['required', 'string', 'max:120'],
-            'company_tagline'         => ['required', 'string', 'max:160'],
-            'company_address'         => ['nullable', 'string', 'max:255'],
-            'logo'                    => ['nullable', 'image', 'max:2048'],
+            'company_name'    => ['required', 'string', 'max:120'],
+            'company_tagline' => ['required', 'string', 'max:160'],
+            'company_address' => ['nullable', 'string', 'max:255'],
+            'logo'            => ['nullable', 'image', 'max:2048'],
+        ]);
 
+        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
+
+        // The old file goes only once the new one is stored, so a failed upload
+        // does not leave the payslips with no logo at all.
+        if ($request->hasFile('logo')) {
+            $old = $settings->logo_path;
+            $data['logo_path'] = $request->file('logo')->store('branding', 'public');
+
+            if ($old) {
+                Storage::disk('public')->delete($old);
+            }
+        }
+
+        unset($data['logo']);
+
+        return $this->save($settings, $data, 'system-settings.about');
+    }
+
+    public function updateSecurity(Request $request)
+    {
+        $data = $request->validate([
             // A session that never expires is not a setting anybody wants by
             // accident, and one of a minute logs the office out mid-payroll.
             'session_timeout_minutes' => ['required', 'integer', 'min:5', 'max:1440'],
@@ -44,24 +73,17 @@ class SystemSettingsController extends Controller
             'max_login_attempts.min'      => 'Fewer than three locks people out for a typo.',
         ]);
 
-        $settings = SystemSetting::first() ?? new SystemSetting();
+        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 
-        // The old file goes only once the new one is stored, so a failed upload
-        // does not leave the payslips with no logo at all.
-        if ($request->hasFile('logo')) {
-            $old = $settings->logo_path;
-            $data['logo_path'] = $request->file('logo')->store('branding', 'public');
+        return $this->save($settings, $data, 'system-settings.security');
+    }
 
-            if ($old) {
-                Storage::disk('public')->delete($old);
-            }
-        }
-
-        unset($data['logo']);
-
+    /** Write the row and drop the memo, so the next read sees what was saved. */
+    private function save(SystemSetting $settings, array $data, string $back)
+    {
         $settings->fill($data)->save();
         SystemSetting::forget();
 
-        return redirect()->route('system-settings.index')->with('success', 'System settings updated!');
+        return redirect()->route($back)->with('success', 'Saved.');
     }
 }
