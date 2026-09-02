@@ -26,31 +26,16 @@
     .pr-stat .v { font-size: 1.15rem; font-weight: 600; line-height: 1.2; color: var(--text-primary); font-variant-numeric: tabular-nums; }
     @media (max-width: 768px) { .pr-stat { min-width: 50%; border-bottom: 1px solid var(--border); } }
 
-    /* ── Tabs ────────────────────────────────────────────────────────────── */
-    .pr-tabs { border-bottom: 2px solid var(--border); margin: 4px 0 20px; gap: 4px; }
-    .pr-tabs .nav-link { color: var(--text-secondary); border: none; padding: 12px 20px; font-weight: 700; font-size: 14px; }
-    .pr-tabs .nav-link:hover  { color: var(--brand); }
-    .pr-tabs .nav-link.active { color: var(--brand); border-bottom: 3px solid var(--brand); background: none; }
-
-    /* ── Weekly cards ────────────────────────────────────────────────────── */
-    .payroll-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
-    .payroll-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,0.08) !important; border-color: var(--border-md); }
-
     /* ── Dark mode ───────────────────────────────────────────────────────── */
     [data-bs-theme="dark"] .pr-header h1  { color: var(--text-primary); }
     [data-bs-theme="dark"] .filter-bar    { background: var(--surface); border-color: var(--border); }
     [data-bs-theme="dark"] .mode-btn      { background: var(--bg-subtle); border-color: var(--border); color: var(--text-secondary); }
     [data-bs-theme="dark"] .mode-btn:hover  { background: var(--bg-subtle); }
     [data-bs-theme="dark"] .mode-btn.active { background: var(--brand); border-color: var(--brand); color: #fff; }
-    [data-bs-theme="dark"] .pr-tabs       { border-bottom-color: var(--border); }
-    [data-bs-theme="dark"] .pr-tabs .nav-link        { color: var(--text-secondary); }
-    [data-bs-theme="dark"] .pr-tabs .nav-link.active { color: var(--brand); border-bottom-color: var(--brand); }
     [data-bs-theme="dark"] .pr-summary-bar { background: var(--surface); border-color: var(--border); }
     [data-bs-theme="dark"] .pr-stat        { border-right-color: var(--border); border-bottom-color: var(--border); }
-    [data-bs-theme="dark"] .payroll-card   { background: var(--surface); border-color: var(--border); }
-    [data-bs-theme="dark"] .payroll-card:hover { border-color: var(--brand); }
 
-    /* ── By Employee: payslip-style cards ────────────────────────────────── */
+    /* ── The receipt: a payslip laid out inside the modal ─────────────────── */
     .emp-slip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; height: 100%; }
     .emp-slip-head { display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid var(--brand); padding-bottom: 8px; margin-bottom: 10px; }
     .emp-slip-logo { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
@@ -133,16 +118,11 @@
 @section('content')
 <div class="pr-page">
 
-    {{-- ── Page header ───────────────────────────────────────────────────────
-         Reports is its own destination in the sidebar now, so the page says
-         which one you are on rather than naming all three. --}}
-    @php $onReports = request('tab') === 'reports'; @endphp
+    {{-- ── Page header ─────────────────────────────────────────────────────── --}}
     <div class="pr-header d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h1>{{ $onReports ? 'Reports' : 'Payroll Records' }}</h1>
-            <p>{{ $onReports
-                ? 'Daily breakdown of pay, for the period below'
-                : 'Employee payroll and pay periods — all in one place' }}</p>
+            <h1>Reports</h1>
+            <p>Daily breakdown of pay, for the period below</p>
         </div>
         <button type="button" class="btn btn-success fw-600"
                 data-bs-toggle="modal" data-bs-target="#exportPreviewModal">
@@ -153,12 +133,11 @@
     {{-- ── Filter bar ──────────────────────────────────────────────────────── --}}
     <div class="filter-bar mb-3">
         <form method="GET" action="{{ route('payroll-records') }}" id="prFilter">
-            {{-- Applying a filter must not drop you back onto the other page. --}}
-            @if($onReports)<input type="hidden" name="tab" value="reports">@endif
-            {{-- Reports takes a week or a single day, not a loose range: the
-                 daily breakdown is the days inside a pay period. The controller
-                 already falls a reports URL asking for custom back to the week,
-                 so the mode here is only ever one the form offers. --}}
+            {{-- A week or a single day, not a loose range: the daily breakdown is
+                 the days inside a pay period, and a range that is not one breaks
+                 down into days nobody is paid on. The controller falls a URL
+                 asking for custom back to the week, so the mode here is only
+                 ever one the form offers. --}}
             <input type="hidden" name="mode" id="mode" value="{{ $period['mode'] }}">
 
             <div class="report-modes mb-3">
@@ -168,11 +147,6 @@
                 <button type="button" class="mode-btn {{ $period['mode'] === 'daily' ? 'active' : '' }}" data-mode="daily">
                     <i class="fas fa-calendar-day me-1"></i> Daily
                 </button>
-                @unless($onReports)
-                <button type="button" class="mode-btn {{ $period['mode'] === 'custom' ? 'active' : '' }}" data-mode="custom">
-                    <i class="fas fa-calendar-alt me-1"></i> Custom Range
-                </button>
-                @endunless
             </div>
 
             <div class="row g-3 align-items-end">
@@ -184,16 +158,6 @@
                     <label class="form-label small fw-bold text-muted mb-1">Date</label>
                     <input type="date" name="date" value="{{ $period['date'] }}" class="form-control" style="border-color: var(--border);">
                 </div>
-                @unless($onReports)
-                <div class="col-auto mode-field" data-for="custom">
-                    <label class="form-label small fw-bold text-muted mb-1">From</label>
-                    <input type="date" name="from" value="{{ $period['custom_from'] }}" class="form-control" style="border-color: var(--border);">
-                </div>
-                <div class="col-auto mode-field" data-for="custom">
-                    <label class="form-label small fw-bold text-muted mb-1">To</label>
-                    <input type="date" name="to" value="{{ $period['custom_to'] }}" class="form-control" style="border-color: var(--border);">
-                </div>
-                @endunless
                 <div class="col-md-3">
                     <label class="form-label small fw-bold text-muted mb-1">Employee (name or ID)</label>
                     <input type="text" name="employee" value="{{ $search }}" placeholder="All employees"
@@ -261,381 +225,171 @@
         </div>
     </div>
 
-    {{-- ── Tabs ─────────────────────────────────────────────────────────────
-         Reports moved to the sidebar, so it is a destination now rather than a
-         tab: on ?tab=reports the strip has nothing to offer and comes off, and
-         the page is the daily breakdown under the same filters. --}}
-    @unless($onReports)
-    <ul class="nav nav-tabs pr-tabs" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-employees" type="button">
-                <i class="fas fa-users me-1"></i> By Employee
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-periods" type="button">
-                <i class="fas fa-calendar-week me-1"></i> Pay Periods
-            </button>
-        </li>
-    </ul>
-    @endunless
-
-    <div class="tab-content">
-
-        {{-- ===== REPORTS: daily breakdown table ============================= --}}
-        <div class="tab-pane fade @if($onReports) show active @endif" id="tab-reports" role="tabpanel">
-            <div class="card table-card">
-                <div class="table-card-header">
-                    <h6><i class="fas fa-calendar-day"></i> Daily Breakdown</h6>
-                </div>
-                <div class="table-responsive">
-                    <table class="table align-middle table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th class="ps-4">Date</th>
-                                <th>Employee</th>
-                                <th class="text-end">Hours</th>
-                                <th class="text-end">Daily Rate</th>
-                                <th class="text-end">Rest Day Pay</th>
-                                <th class="text-end">Bonus</th>
-                                <th class="text-end">Gross</th>
-                                <th class="text-end">Deductions</th>
-                                <th class="text-end pe-4">Net</th>
+    {{-- ── Daily breakdown ─────────────────────────────────────────────────
+         The whole page. By Employee and Pay Periods were removed with the
+         Payroll Records destination they belonged to. --}}
+        <div class="card table-card">
+            <div class="table-card-header">
+                <h6><i class="fas fa-calendar-day"></i> Daily Breakdown</h6>
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Date</th>
+                            <th>Employee</th>
+                            <th class="text-end">Hours</th>
+                            <th class="text-end">Daily Rate</th>
+                            <th class="text-end">Rest Day Pay</th>
+                            <th class="text-end">Bonus</th>
+                            <th class="text-end">Gross</th>
+                            <th class="text-end">Deductions</th>
+                            <th class="text-end pe-4">Net</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($days as $day)
+                            @foreach($day['details'] as $d)
+                            {{-- The whole computation for the row is already
+                                 here, so the receipt is built from it rather
+                                 than fetched again. --}}
+                            <tr class="pr-row"
+                                data-slip="{{ json_encode($d) }}"
+                                data-date="{{ \Carbon\Carbon::parse($day['date'])->format('l, F j, Y') }}">
+                                <td class="ps-4 text-muted">{{ \Carbon\Carbon::parse($day['date'])->format('m/d/Y (D)') }}</td>
+                                <td class="fw-semibold">{{ $d['name'] }}</td>
+                                <td class="text-end">{{ $d['hours'] }}</td>
+                                <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
+                                <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
+                                <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['bonus'], 2) }}</td>
+                                <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['gross'], 2) }}</td>
+                                <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($d['totalDeductions'], 2) }}</td>
+                                <td class="text-end pe-4 fw-semibold" style="color:var(--brand);">&#8369;{{ number_format($d['net'], 2) }}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($days as $day)
-                                @foreach($day['details'] as $d)
-                                {{-- The whole computation for the row is already
-                                     here, so the receipt is built from it rather
-                                     than fetched again. --}}
-                                <tr class="pr-row"
-                                    data-slip="{{ json_encode($d) }}"
-                                    data-date="{{ \Carbon\Carbon::parse($day['date'])->format('l, F j, Y') }}">
-                                    <td class="ps-4 text-muted">{{ \Carbon\Carbon::parse($day['date'])->format('m/d/Y (D)') }}</td>
-                                    <td class="fw-semibold">{{ $d['name'] }}</td>
-                                    <td class="text-end">{{ $d['hours'] }}</td>
-                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
-                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
-                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['bonus'], 2) }}</td>
-                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['gross'], 2) }}</td>
-                                    <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($d['totalDeductions'], 2) }}</td>
-                                    <td class="text-end pe-4 fw-semibold" style="color:var(--brand);">&#8369;{{ number_format($d['net'], 2) }}</td>
-                                </tr>
-                                @endforeach
-                            @empty
-                            <tr>
-                                <td colspan="9" class="text-center py-5 text-muted">No records for this period.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                            @endforeach
+                        @empty
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted">No records for this period.</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
+        </div>
 
-            {{-- ── Payslip receipt ──────────────────────────────────────────
-                 One shell, filled from whichever employee was clicked. A modal
-                 each would be a few hundred on a busy week, all for the one
-                 that gets opened. --}}
-            <div class="modal fade" id="dayReceipt" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-                    <div class="modal-content" style="background:var(--surface);border:1px solid var(--border);">
-                        <div class="modal-body p-3 p-md-4">
-                            <div class="emp-slip" style="border:none;padding:0;">
-                                <div class="emp-slip-head">
-                                    <img class="emp-slip-logo" src="{{ asset('images/JeyancoLogo.png') }}" alt="">
-                                    <div class="emp-slip-co">
-                                        <div class="co">JEYANCO CONSTRUCTION</div>
-                                        <div class="sub">Payroll Dept. &middot; Panganiban, PH</div>
-                                    </div>
-                                    <div class="emp-slip-doc">
-                                        <div class="lbl">PAYSLIP</div>
-                                        <div class="per">{{ $period['label'] }}</div>
-                                    </div>
+        {{-- ── Payslip receipt ──────────────────────────────────────────
+             One shell, filled from whichever employee was clicked. A modal
+             each would be a few hundred on a busy week, all for the one
+             that gets opened. --}}
+        <div class="modal fade" id="dayReceipt" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                <div class="modal-content" style="background:var(--surface);border:1px solid var(--border);">
+                    <div class="modal-body p-3 p-md-4">
+                        <div class="emp-slip" style="border:none;padding:0;">
+                            <div class="emp-slip-head">
+                                <img class="emp-slip-logo" src="{{ asset('images/JeyancoLogo.png') }}" alt="">
+                                <div class="emp-slip-co">
+                                    <div class="co">JEYANCO CONSTRUCTION</div>
+                                    <div class="sub">Payroll Dept. &middot; Panganiban, PH</div>
                                 </div>
-
-                                <div class="emp-slip-emp">
-                                    <span class="who" id="rcName">&mdash;</span>
-                                    <span class="meta" id="rcMeta">&mdash;</span>
+                                <div class="emp-slip-doc">
+                                    <div class="lbl">PAYSLIP</div>
+                                    <div class="per">{{ $period['label'] }}</div>
                                 </div>
+                            </div>
 
-                                {{-- What the hours were paid at. Without it the
-                                     earnings column is a list of figures with
-                                     nothing to check them against. --}}
-                                <div class="rc-basis" id="rcBasis">&mdash;</div>
+                            <div class="emp-slip-emp">
+                                <span class="who" id="rcName">&mdash;</span>
+                                <span class="meta" id="rcMeta">&mdash;</span>
+                            </div>
 
-                                <div class="emp-slip-cols">
-                                    <div>
-                                        <h6>Earnings</h6>
-                                        <div class="ln"><span class="k" id="rcBasicK">Regular pay</span><span class="v" id="rcBasic">&mdash;</span></div>
-                                        <div class="ln"><span class="k" id="rcOtK">Overtime</span><span class="v" id="rcOt">&mdash;</span></div>
-                                        <div class="ln"><span class="k" id="rcNightK">Night differential</span><span class="v" id="rcNight">&mdash;</span></div>
-                                        <div class="ln"><span class="k" id="rcHolidayK">Holiday pay</span><span class="v" id="rcHoliday">&mdash;</span></div>
-                                        <div class="ln"><span class="k" id="rcRestK">Rest day pay</span><span class="v" id="rcRest">&mdash;</span></div>
-                                        <div class="ln sum"><span class="k">Gross pay</span><span class="v" id="rcGross">&mdash;</span></div>
-                                    </div>
-                                    <div>
-                                        <h6>Deductions</h6>
-                                        <div class="ln"><span class="k" id="rcSssK">SSS</span><span class="v" id="rcSss">&mdash;</span></div>
-                                        <div class="ln"><span class="k" id="rcPhilK">PhilHealth</span><span class="v" id="rcPhil">&mdash;</span></div>
-                                        <div class="ln"><span class="k" id="rcPagK">Pag-IBIG</span><span class="v" id="rcPag">&mdash;</span></div>
-                                        <div class="ln"><span class="k" id="rcTaxK">Withholding tax</span><span class="v" id="rcTax">&mdash;</span></div>
-                                        <div class="ln"><span class="k">Vale / cash advance</span><span class="v" id="rcVale">&mdash;</span></div>
-                                        <div class="ln"><span class="k">Other adjustments</span><span class="v" id="rcOther">&mdash;</span></div>
-                                        <div class="ln sum"><span class="k">Total deductions</span><span class="v" id="rcDed" style="color:var(--danger);">&mdash;</span></div>
-                                    </div>
+                            {{-- What the hours were paid at. Without it the
+                                 earnings column is a list of figures with
+                                 nothing to check them against. --}}
+                            <div class="rc-basis" id="rcBasis">&mdash;</div>
+
+                            <div class="emp-slip-cols">
+                                <div>
+                                    <h6>Earnings</h6>
+                                    <div class="ln"><span class="k" id="rcBasicK">Regular pay</span><span class="v" id="rcBasic">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcOtK">Overtime</span><span class="v" id="rcOt">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcNightK">Night differential</span><span class="v" id="rcNight">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcHolidayK">Holiday pay</span><span class="v" id="rcHoliday">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcRestK">Rest day pay</span><span class="v" id="rcRest">&mdash;</span></div>
+                                    <div class="ln sum"><span class="k">Gross pay</span><span class="v" id="rcGross">&mdash;</span></div>
                                 </div>
-
-                                {{-- The bonus is added to net, not to gross, so
-                                     putting it in the earnings column would make
-                                     the Gross line stop adding up. It belongs in
-                                     the arithmetic that reaches net. --}}
-                                <div class="rc-math">
-                                    <span>Gross</span><b id="rcMGross">&mdash;</b>
-                                    <span>&minus; Deductions</span><b id="rcMDed">&mdash;</b>
-                                    <span>+ Bonus</span><b id="rcMBonus">&mdash;</b>
+                                <div>
+                                    <h6>Deductions</h6>
+                                    <div class="ln"><span class="k" id="rcSssK">SSS</span><span class="v" id="rcSss">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcPhilK">PhilHealth</span><span class="v" id="rcPhil">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcPagK">Pag-IBIG</span><span class="v" id="rcPag">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcTaxK">Withholding tax</span><span class="v" id="rcTax">&mdash;</span></div>
+                                    <div class="ln"><span class="k">Vale / cash advance</span><span class="v" id="rcVale">&mdash;</span></div>
+                                    <div class="ln"><span class="k">Other adjustments</span><span class="v" id="rcOther">&mdash;</span></div>
+                                    <div class="ln sum"><span class="k">Total deductions</span><span class="v" id="rcDed" style="color:var(--danger);">&mdash;</span></div>
                                 </div>
+                            </div>
 
-                                <div class="emp-slip-net">
-                                    <span class="k">NET PAY &middot; {{ $period['label'] }}</span>
-                                    <span class="v" id="rcNet">&mdash;</span>
+                            {{-- The bonus is added to net, not to gross, so
+                                 putting it in the earnings column would make
+                                 the Gross line stop adding up. It belongs in
+                                 the arithmetic that reaches net. --}}
+                            <div class="rc-math">
+                                <span>Gross</span><b id="rcMGross">&mdash;</b>
+                                <span>&minus; Deductions</span><b id="rcMDed">&mdash;</b>
+                                <span>+ Bonus</span><b id="rcMBonus">&mdash;</b>
+                            </div>
+
+                            <div class="emp-slip-net">
+                                <span class="k">NET PAY &middot; {{ $period['label'] }}</span>
+                                <span class="v" id="rcNet">&mdash;</span>
+                            </div>
+
+                            {{-- The settings the period was computed at. The
+                                 figures above are only checkable against the
+                                 numbers that produced them. --}}
+                            <div class="rc-rates">
+                                <div class="rc-rates-head">
+                                    Rates applied
+                                    @if($rates['uses_defaults'])<span class="rc-badge">statutory defaults</span>@endif
                                 </div>
-
-                                {{-- The settings the period was computed at. The
-                                     figures above are only checkable against the
-                                     numbers that produced them. --}}
-                                <div class="rc-rates">
-                                    <div class="rc-rates-head">
-                                        Rates applied
-                                        @if($rates['uses_defaults'])<span class="rc-badge">statutory defaults</span>@endif
-                                    </div>
-                                    <div class="rc-rates-grid">
-                                        <span>Overtime</span><b>&times;{{ number_format($rates['ot_multiplier'], 2) }}</b>
-                                        <span>Night differential</span><b>&times;{{ number_format($rates['night_diff_multiplier'], 2) }}</b>
-                                        <span>Rest day</span><b>&times;{{ number_format($rates['rest_day_multiplier'], 2) }}</b>
-                                        <span>Regular holiday</span><b>&times;{{ number_format($rates['regular_holiday_multiplier'], 2) }}</b>
-                                        <span>SSS</span><b>{{ number_format($rates['sss_rate'], 2) }}%</b>
-                                        <span>PhilHealth</span><b>{{ number_format($rates['philhealth_rate'], 2) }}%</b>
-                                        <span>Pag-IBIG</span><b>{{ number_format($rates['pagibig_rate'], 2) }}%</b>
-                                        <span>Withholding tax</span><b>{{ $rates['withholding_tax'] ? 'BIR table' : 'off' }}</b>
-                                        <span>Bonus</span><b>&#8369;{{ number_format($rates['bonus'], 2) }}/period</b>
-                                        <span>Wage floor</span><b>{{ $rates['daily_rate'] ? '&#8369;' . number_format($rates['daily_rate'], 2) : 'none set' }}</b>
-                                    </div>
+                                <div class="rc-rates-grid">
+                                    <span>Overtime</span><b>&times;{{ number_format($rates['ot_multiplier'], 2) }}</b>
+                                    <span>Night differential</span><b>&times;{{ number_format($rates['night_diff_multiplier'], 2) }}</b>
+                                    <span>Rest day</span><b>&times;{{ number_format($rates['rest_day_multiplier'], 2) }}</b>
+                                    <span>Regular holiday</span><b>&times;{{ number_format($rates['regular_holiday_multiplier'], 2) }}</b>
+                                    <span>SSS</span><b>{{ number_format($rates['sss_rate'], 2) }}%</b>
+                                    <span>PhilHealth</span><b>{{ number_format($rates['philhealth_rate'], 2) }}%</b>
+                                    <span>Pag-IBIG</span><b>{{ number_format($rates['pagibig_rate'], 2) }}%</b>
+                                    <span>Withholding tax</span><b>{{ $rates['withholding_tax'] ? 'BIR table' : 'off' }}</b>
+                                    <span>Bonus</span><b>&#8369;{{ number_format($rates['bonus'], 2) }}/period</b>
+                                    <span>Wage floor</span><b>{{ $rates['daily_rate'] ? '&#8369;' . number_format($rates['daily_rate'], 2) : 'none set' }}</b>
                                 </div>
+                            </div>
 
-                                <p class="rc-note">
-                                    Night differential is 10:00 PM &ndash; 6:00 AM. Contributions are the employee share
-                                    on gross; the withholding tax is the BIR daily table on what is left after them.
-                                    Vale and adjustments are entered per attendance record, not here.
-                                </p>
+                            <p class="rc-note">
+                                Night differential is 10:00 PM &ndash; 6:00 AM. Contributions are the employee share
+                                on gross; the withholding tax is the BIR daily table on what is left after them.
+                                Vale and adjustments are entered per attendance record, not here.
+                            </p>
 
-                                <div class="d-flex gap-2 mt-3">
-                                    <button type="button" class="btn btn-sm fw-600"
-                                            data-bs-dismiss="modal"
-                                            style="background:var(--bg-subtle);color:var(--text-secondary);border:1px solid var(--border);">
-                                        Close
-                                    </button>
-                                    <a href="#" target="_blank" rel="noopener" id="rcPrint"
-                                       class="btn btn-sm fw-600 flex-grow-1"
-                                       style="background:var(--brand);color:#fff;border:none;">
-                                        <i class="fas fa-print me-1"></i> Print / Save as PDF
-                                    </a>
-                                </div>
+                            <div class="d-flex gap-2 mt-3">
+                                <button type="button" class="btn btn-sm fw-600"
+                                        data-bs-dismiss="modal"
+                                        style="background:var(--bg-subtle);color:var(--text-secondary);border:1px solid var(--border);">
+                                    Close
+                                </button>
+                                <a href="#" target="_blank" rel="noopener" id="rcPrint"
+                                   class="btn btn-sm fw-600 flex-grow-1"
+                                   style="background:var(--brand);color:#fff;border:none;">
+                                    <i class="fas fa-print me-1"></i> Print / Save as PDF
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        {{-- ===== BY EMPLOYEE ============================================== --}}
-        <div class="tab-pane fade @unless($onReports) show active @endunless" id="tab-employees" role="tabpanel">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                <h6 class="mb-0"><i class="fas fa-users me-1"></i> By Employee
-                    <span class="text-muted small fw-normal">&middot; <span id="empSlipCount">{{ count($employees) }}</span> employee(s)</span>
-                </h6>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <div class="position-relative">
-                        <i class="fas fa-search position-absolute" style="left:11px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:12px;pointer-events:none;"></i>
-                        <input type="text" id="empSlipSearch" class="form-control form-control-sm"
-                               placeholder="Search employee…" autocomplete="off"
-                               style="width:220px;padding-left:30px;border-color:var(--border);">
-                    </div>
-                    @if(count($employees))
-                    <a href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to']]) }}"
-                       target="_blank" rel="noopener" class="btn btn-sm fw-600"
-                       style="background:var(--brand-subtle);color:var(--brand);border:1px solid var(--border);white-space:nowrap;"
-                       title="Print all payslips for this period on A4 (cut-out slips)">
-                        <i class="fas fa-print me-1"></i> Print A4 Payslips
-                    </a>
-                    @endif
-                </div>
-            </div>
-            <div id="empSlipEmpty" class="text-center py-4 text-muted" style="display:none;">Walang employee na tumugma sa hinahanap.</div>
-
-            <div class="row g-3">
-                @forelse($employees as $emp)
-                @php
-                    $t = $emp['totals'];
-                    $sss = $phil = $pag = $tax = $vale = $other = 0;
-                    foreach ($emp['periods'] as $pp) {
-                        $sss  += $pp['sssDeduction'];   $phil  += $pp['philhealthDeduction'];
-                        $pag  += $pp['pagibigDeduction']; $tax += $pp['withholdingTax'];
-                        $vale += $pp['vale']; $other += $pp['manualDeductions'];
-                    }
-                    $regular = round($t['gross'] - $t['overtime'] - $t['holidayPay'] - ($t['restDayPay'] ?? 0), 2);
-                @endphp
-                <div class="col-xl-6 col-12 emp-slip-col" data-emp-name="{{ strtolower($emp['name']) }}">
-                    <div class="emp-slip">
-                        <div class="emp-slip-head">
-                            <img class="emp-slip-logo" src="{{ asset('images/JeyancoLogo.png') }}" alt="">
-                            <div class="emp-slip-co">
-                                <div class="co">JEYANCO CONSTRUCTION</div>
-                                <div class="sub">Payroll Dept. &middot; Panganiban, PH</div>
-                            </div>
-                            <div class="emp-slip-doc">
-                                <div class="lbl">PAYSLIP</div>
-                                <div class="per">{{ $period['label'] }}</div>
-                            </div>
-                        </div>
-
-                        <div class="emp-slip-emp">
-                            <span class="who">{{ $emp['name'] }}</span>
-                            <span class="meta">#{{ str_pad($emp['employee_id'], 4, '0', STR_PAD_LEFT) }}
-                                @if(!empty($emp['position'])) &middot; {{ $emp['position'] }} @endif
-                                &middot; {{ $t['workdays'] }}d / {{ number_format($t['hours'], 1) }}h</span>
-                        </div>
-
-                        <div class="emp-slip-cols">
-                            <div>
-                                <h6>Earnings</h6>
-                                <div class="ln"><span class="k">Regular</span><span class="v">&#8369;{{ number_format($regular, 2) }}</span></div>
-                                <div class="ln"><span class="k">Overtime</span><span class="v">&#8369;{{ number_format($t['overtime'], 2) }}</span></div>
-                                <div class="ln"><span class="k">Holiday</span><span class="v">&#8369;{{ number_format($t['holidayPay'], 2) }}</span></div>
-                                <div class="ln"><span class="k">Rest Day</span><span class="v">&#8369;{{ number_format($t['restDayPay'] ?? 0, 2) }}</span></div>
-                                <div class="ln"><span class="k">Bonus</span><span class="v">&#8369;{{ number_format($t['bonus'], 2) }}</span></div>
-                                <div class="ln sum"><span class="k">Gross</span><span class="v">&#8369;{{ number_format($t['gross'], 2) }}</span></div>
-                            </div>
-                            <div>
-                                <h6>Deductions</h6>
-                                <div class="ln"><span class="k">SSS</span><span class="v">&#8369;{{ number_format($sss, 2) }}</span></div>
-                                <div class="ln"><span class="k">PhilHealth</span><span class="v">&#8369;{{ number_format($phil, 2) }}</span></div>
-                                <div class="ln"><span class="k">PAG-IBIG</span><span class="v">&#8369;{{ number_format($pag, 2) }}</span></div>
-                                <div class="ln"><span class="k">Withholding Tax</span><span class="v">&#8369;{{ number_format($tax, 2) }}</span></div>
-                                <div class="ln"><span class="k">Vale/Utang</span><span class="v">&#8369;{{ number_format($vale, 2) }}</span></div>
-                                <div class="ln"><span class="k">Other</span><span class="v">&#8369;{{ number_format($other, 2) }}</span></div>
-                                <div class="ln sum"><span class="k">Total</span><span class="v">&#8369;{{ number_format($t['totalDeductions'], 2) }}</span></div>
-                            </div>
-                        </div>
-
-                        <div class="emp-slip-net">
-                            <span class="k">NET PAY</span>
-                            <span class="v">&#8369;{{ number_format($t['net'], 2) }}</span>
-                        </div>
-
-                        <div class="d-flex gap-2 mt-3">
-                            <a href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to'], 'employee' => $emp['employee_id']]) }}"
-                               target="_blank" rel="noopener"
-                               class="btn btn-sm fw-600 flex-grow-1"
-                               style="background:var(--brand);color:#fff;border:none;">
-                                <i class="fas fa-print me-1"></i> Print Slip
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                @empty
-                <div class="col-12 text-center py-5 text-muted">No payroll data for this period.</div>
-                @endforelse
-            </div>
-        </div>
-
-        {{-- ===== PAY PERIODS: weekly cards ================================= --}}
-        <div class="tab-pane fade" id="tab-periods" role="tabpanel">
-            <div class="row g-3">
-                @forelse($weeks as $i => $week)
-                @php
-                    // week_range is "m/d/Y - m/d/Y" — derive ISO dates for the batch print link.
-                    [$wStart, $wEnd] = array_pad(array_map('trim', explode(' - ', $week['week_range'])), 2, null);
-                    try { $wFrom = \Carbon\Carbon::createFromFormat('m/d/Y', $wStart)->toDateString(); } catch (\Throwable $e) { $wFrom = $period['from']; }
-                    try { $wTo   = \Carbon\Carbon::createFromFormat('m/d/Y', $wEnd)->toDateString();   } catch (\Throwable $e) { $wTo   = $period['to']; }
-                @endphp
-                <div class="col-xl-4 col-lg-6">
-                    <div class="payroll-card p-4 shadow-sm"
-                         data-bs-toggle="modal" data-bs-target="#weeklyModal{{ $i }}">
-                        <div class="mb-2" style="color:var(--brand);font-weight:700;">
-                            <i class="fas fa-calendar-week me-2"></i>{{ $week['week_range'] }}
-                        </div>
-                        <div class="text-muted small fw-600">Weekly Payroll</div>
-                        <div style="font-size:1.8rem;font-weight:900;color:var(--brand);">
-                            &#8369;{{ number_format($week['total_payroll'], 2) }}
-                        </div>
-                        <div class="mt-2 d-flex gap-3 small text-muted">
-                            <span><i class="fas fa-users me-1" style="color:var(--brand);"></i>{{ $week['employee_count'] }}</span>
-                            <span><i class="fas fa-calendar-check me-1" style="color:var(--text-secondary);"></i>{{ $week['working_days'] }} day(s)</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal fade" id="weeklyModal{{ $i }}" tabindex="-1">
-                    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                        <div class="modal-content border-0">
-                            <div class="modal-header"
-                                 style="background:var(--brand);color:#fff;border:none;">
-                                <h6 class="modal-title fw-bold">
-                                    <i class="fas fa-calendar-week me-2"></i>{{ $week['week_range'] }}
-                                </h6>
-                                <div class="d-flex align-items-center gap-2">
-                                    <a href="{{ route('payslip.batch', ['from' => $wFrom, 'to' => $wTo]) }}"
-                                       target="_blank" rel="noopener"
-                                       class="btn btn-sm fw-600"
-                                       style="background:#fff;color:var(--brand);border:none;white-space:nowrap;"
-                                       title="Print all payslips for this period on A4 (cut-out slips)">
-                                        <i class="fas fa-print me-1"></i> Print A4 Payslips
-                                    </a>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                </div>
-                            </div>
-                            <div class="modal-body p-3">
-                                <table class="table align-middle table-hover">
-                                    <thead>
-                                        <tr class="text-muted small">
-                                            <th>Employee</th>
-                                            <th class="text-end">Gross</th>
-                                            <th class="text-end">Deductions</th>
-                                            <th class="text-end">Net</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($week['details'] as $detail)
-                                        <tr class="fw-semibold">
-                                            <td>{{ $detail['name'] }}</td>
-                                            <td class="text-end" style="color:var(--text-secondary);">&#8369;{{ number_format($detail['gross'], 2) }}</td>
-                                            <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($detail['totalDeductions'], 2) }}</td>
-                                            <td class="text-end" style="color:var(--brand);">&#8369;{{ number_format($detail['net'], 2) }}</td>
-                                            <td class="text-end">
-                                                <a href="{{ route('payslip.batch', ['from' => $wFrom, 'to' => $wTo, 'employee' => $detail['employee_id']]) }}"
-                                                   target="_blank" rel="noopener"
-                                                   class="btn btn-sm rounded-pill px-3"
-                                                   style="background:var(--brand-subtle);color:var(--brand);border:1px solid var(--border);font-weight:600;">
-                                                    <i class="fas fa-print me-1"></i>Print Slip
-                                                </a>
-                                            </td>
-                                        </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                @empty
-                <div class="col-12 text-center py-5 text-muted">No weekly records for this period.</div>
-                @endforelse
-            </div>
-        </div>
-
-    </div>{{-- /tab-content --}}
 
     {{-- ── Export preview + download (Excel / CSV) ─────────────────────────── --}}
     <div class="modal fade" id="exportPreviewModal" tabindex="-1" aria-hidden="true">
@@ -871,26 +625,5 @@ flatpickr('input[name="from"], input[name="to"], input[name="date"]', {
     altFormat  : 'm-d-Y',   // MM-DD-YYYY
     allowInput : true,
 });
-
-// By Employee — filter payslip cards by name
-(function () {
-    var input = document.getElementById('empSlipSearch');
-    if (!input) return;
-    var cards   = Array.prototype.slice.call(document.querySelectorAll('#tab-employees .emp-slip-col'));
-    var countEl = document.getElementById('empSlipCount');
-    var emptyEl = document.getElementById('empSlipEmpty');
-
-    input.addEventListener('input', function () {
-        var q = this.value.trim().toLowerCase();
-        var shown = 0;
-        cards.forEach(function (c) {
-            var match = !q || (c.dataset.empName || '').indexOf(q) !== -1;
-            c.style.display = match ? '' : 'none';
-            if (match) shown++;
-        });
-        if (countEl) countEl.textContent = shown;
-        if (emptyEl) emptyEl.style.display = (cards.length && shown === 0) ? 'block' : 'none';
-    });
-})();
 </script>
 @endpush

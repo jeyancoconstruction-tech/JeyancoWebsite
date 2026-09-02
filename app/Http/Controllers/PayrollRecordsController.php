@@ -22,11 +22,10 @@ class PayrollRecordsController extends Controller
         $period = $this->resolvePeriod($request);
 
         $data      = $payroll->computeForRange($period['from'], $period['to']);
-        $weeks     = $data['weeks'];
         $days      = $data['days'];
         $employees = $data['employees'];
 
-        // Optional employee filter (name or DB id #) — narrows every tab.
+        // Optional employee filter (name or DB id #).
         $search = trim((string) $request->input('employee', ''));
         $selectedEmployee = null;
 
@@ -43,15 +42,6 @@ class PayrollRecordsController extends Controller
             }
             unset($day);
             $days = array_values(array_filter($days, fn ($day) => count($day['details']) > 0));
-
-            foreach ($weeks as &$w) {
-                $w['details']        = array_values(array_filter($w['details'], fn ($d) => in_array($d['employee_id'], $ids)));
-                $w['employee_count'] = count($w['details']);
-                $w['total_payroll']  = round(array_sum(array_column($w['details'], 'net')), 2);
-            }
-            unset($w);
-            $weeks = array_values(array_filter($weeks, fn ($w) => count($w['details']) > 0));
-
             $selectedEmployee = $employees[0] ?? null;
         }
 
@@ -86,7 +76,7 @@ class PayrollRecordsController extends Controller
             }
         }
 
-        return view('payroll-records', compact('period', 'weeks', 'days', 'employees', 'summary', 'search', 'selectedEmployee', 'rates'));
+        return view('payroll-records', compact('period', 'days', 'employees', 'summary', 'search', 'selectedEmployee', 'rates'));
     }
 
     /**
@@ -144,11 +134,10 @@ class PayrollRecordsController extends Controller
         $mode  = $request->input('mode', 'weekly');
         $today = Carbon::now();
 
-        // Reports takes a week or a single day. A loose range is not a pay
-        // period, so a daily breakdown of one breaks down into days nobody is
-        // paid on — the form does not offer it there, and a URL that asks for
-        // it anyway falls back to the week rather than computing it.
-        if ($mode === 'custom' && $request->input('tab') === 'reports') {
+        // A week or a single day. A loose range is not a pay period, so a daily
+        // breakdown of one breaks down into days nobody is paid on. The form
+        // does not offer it; a URL that asks for it anyway falls back.
+        if ($mode === 'custom') {
             $mode = 'weekly';
         }
 
@@ -156,17 +145,6 @@ class PayrollRecordsController extends Controller
             $date  = $request->filled('date') && strtotime($request->date) ? Carbon::parse($request->date) : $today->copy();
             $from  = $to = $date->toDateString();
             $label = $date->format('l, m/d/Y');
-        } elseif ($mode === 'custom') {
-            $from = $request->filled('from') && strtotime($request->from)
-                ? Carbon::parse($request->from)->toDateString()
-                : $today->copy()->startOfMonth()->toDateString();
-            $to = $request->filled('to') && strtotime($request->to)
-                ? Carbon::parse($request->to)->toDateString()
-                : $today->toDateString();
-            if ($from > $to) {
-                [$from, $to] = [$to, $from];
-            }
-            $label = Carbon::parse($from)->format('m/d/Y') . ' – ' . Carbon::parse($to)->format('m/d/Y');
         } else {
             $mode = 'weekly';
             $week = (string) $request->input('week', '');
@@ -188,8 +166,6 @@ class PayrollRecordsController extends Controller
             'label'       => $label,
             'week'        => $request->input('week', $today->format('o-\WW')),
             'date'        => $request->input('date', $today->toDateString()),
-            'custom_from' => $request->input('from', $today->copy()->startOfMonth()->toDateString()),
-            'custom_to'   => $request->input('to', $today->toDateString()),
         ];
     }
 
