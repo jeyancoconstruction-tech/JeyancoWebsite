@@ -8,6 +8,7 @@ use App\Models\LaborType;
 use App\Models\Holiday;
 use App\Models\Employee;
 use App\Models\Attendance;
+use App\Models\PayrollRate;
 use App\Notifications\SettingsChanged;
 use App\Notifications\EmployeeAlert;
 use App\Notifications\HolidayReminder;
@@ -20,6 +21,12 @@ class SettingsController extends Controller
     {
         $settings = Setting::first();
         $laborTypes = LaborType::all();
+
+        // Rate history, newest effectivity first: the card shows the set in
+        // force and what came before it, because "which numbers paid this
+        // period" is the question an audit actually asks.
+        $payrollRates = PayrollRate::newestFirst()->get();
+        $currentRate  = PayrollRate::current();
 
         // Holiday calendar: official PH holidays for the selected year merged
         // with manual entries (auto-recognised, admin-overridable).
@@ -59,19 +66,68 @@ class SettingsController extends Controller
         }
 
         return view('settings.index', compact(
-            'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap'
+            'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap',
+            'payrollRates', 'currentRate'
         ));
+    }
+
+    /**
+     * Record a new set of payroll numbers — premiums, wage floor and
+     * employee-share contributions — effective from a date.
+     *
+     * Deliberately an INSERT. These lived on the single settings row, so
+     * raising one rewrote history: reopening last month's payroll recomputed it
+     * at today's numbers and disagreed with the payslips already issued. A wage
+     * order or an SSS circular takes effect on a date and does not reach
+     * backwards, and payroll has to be able to say the same, so every change
+     * adds a row and the old one keeps answering for the days it covered.
+     */
+    public function storePayrollRate(Request $request)
+    {
+        $data = $request->validate([
+            'effective_from'        => 'required|date',
+            'ot_multiplier'         => 'required|numeric|min:1|max:10',
+            'night_diff_multiplier' => 'required|numeric|min:1|max:10',
+            'rest_day_multiplier'   => 'required|numeric|min:1|max:10',
+            // The wage order's floor. Optional: an office that has not been
+            // given one leaves it empty rather than inventing a number, and
+            // payroll then pays each labour type its own rate.
+            'daily_rate'            => 'nullable|numeric|min:0|max:100000',
+            'sss_rate'              => 'required|numeric|min:0|max:100',
+            'philhealth_rate'       => 'required|numeric|min:0|max:100',
+            'pagibig_rate'          => 'required|numeric|min:0|max:100',
+        ], [
+            'ot_multiplier.min'         => 'A multiplier below 1.00 would pay less than the plain rate.',
+            'night_diff_multiplier.min' => 'A multiplier below 1.00 would pay less than the plain rate.',
+            'rest_day_multiplier.min'   => 'A multiplier below 1.00 would pay less than the plain rate.',
+            'sss_rate.max'              => 'A contribution rate is a percentage of gross pay.',
+            'philhealth_rate.max'       => 'A contribution rate is a percentage of gross pay.',
+            'pagibig_rate.max'          => 'A contribution rate is a percentage of gross pay.',
+        ]);
+
+        // The regular-holiday multiplier is not on the form. 200% is the figure
+        // the Labor Code states outright, so the row takes the column default
+        // rather than the office being offered a setting to get wrong.
+        $data['created_by'] = auth()->user()->name ?? auth()->user()->username ?? 'admin';
+
+        PayrollRate::create($data);
+
+        SettingsChanged::fireOnce(auth()->user(), 'rates_updated',
+            'Payroll Settings Updated',
+            'New payroll rates take effect ' . Carbon::parse($data['effective_from'])->format('M d, Y') . '.'
+        );
+
+        return redirect()->route('settings.index')
+            ->with('success', 'Saved, effective ' . Carbon::parse($data['effective_from'])->format('M d, Y') . '. Earlier payroll is unchanged.');
     }
 
     public function update(Request $request)
     {
+        // Contributions used to be saved here. They are dated now and live on
+        // the payroll rate row, so this form is down to the two settings that
+        // are not a rate: the period bonus and the rest-day rule.
         $request->validate([
-            'ot_multiplier'         => 'nullable|numeric|min:0|max:10',
-            'ot_premium_multiplier' => 'nullable|numeric|min:0|max:10',
-            'bonus'         => 'nullable|numeric|min:0',
-            'sss'           => 'nullable|numeric|min:0',
-            'philhealth'    => 'nullable|numeric|min:0',
-            'pagibig'       => 'nullable|numeric|min:0',
+            'bonus' => 'nullable|numeric|min:0',
         ]);
 
         // Capture the previous Sunday rest-day state BEFORE saving so we can
@@ -95,19 +151,14 @@ class SettingsController extends Controller
         Setting::updateOrCreate(
             ['id' => 1],
             [
-                'ot_multiplier'           => $request->ot_multiplier ?? 1.25,
-                'ot_premium_multiplier'   => $request->ot_premium_multiplier ?? 1.30,
-                'bonus'                   => $request->bonus         ?? 0,
+                'bonus'                   => $request->bonus ?? 0,
                 'sunday_rest_day_enabled' => $newRestEnabled,
-                'sss'                     => $request->sss           ?? 0,
-                'philhealth'              => $request->philhealth    ?? 0,
-                'pagibig'                 => $request->pagibig       ?? 0,
             ]
         );
 
         SettingsChanged::fireOnce(auth()->user(), 'rates_updated',
             'Payroll Rates Updated',
-            'Global payroll settings (OT multiplier, SSS, PhilHealth, Pag-IBIG) have been changed.'
+            'The bonus and rest-day settings have been changed.'
         );
 
         return redirect()->route('settings.index')->with('success', 'Settings updated!');

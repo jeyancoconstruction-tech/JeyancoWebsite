@@ -58,10 +58,11 @@ class AnalyticsController extends Controller
         $lastMonNet = round(collect($lmData['employees'])->sum(fn ($e) => $e['totals']['net']), 2);
         $netChange  = $lastMonNet > 0 ? round((($monthlyNet - $lastMonNet) / $lastMonNet) * 100, 1) : null;
 
-        // ── Deduction breakdown (SSS, PhilHealth, Pag-IBIG, Vale, Other) ────
+        // ── Deduction breakdown (SSS, PhilHealth, Pag-IBIG, Tax, Vale, Other) ─
         $sssTot    = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('sssDeduction')), 2);
         $philTot   = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('philhealthDeduction')), 2);
         $pagibigTot = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('pagibigDeduction')), 2);
+        $taxTot    = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('withholdingTax')), 2);
         $valeTot   = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('vale')), 2);
         $otherTot  = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('manualDeductions')), 2);
 
@@ -126,7 +127,7 @@ class AnalyticsController extends Controller
             'monthlyNet', 'monthlyGross', 'monthlyOTPay', 'monthlyHoliday',
             'overtimeHours', 'attendanceRate',
             'netChange', 'lastMonNet',
-            'sssTot', 'philTot', 'pagibigTot', 'valeTot', 'otherTot',
+            'sssTot', 'philTot', 'pagibigTot', 'taxTot', 'valeTot', 'otherTot',
             'trendLabels', 'trendData',
             'weekLabels', 'weekGross', 'weekNet',
             'laborDist', 'siteDist',

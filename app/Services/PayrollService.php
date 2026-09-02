@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Setting;
 use App\Models\Holiday;
+use App\Models\PayrollRate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -26,21 +27,73 @@ class PayrollService
         $settings = Setting::first();
 
         return [
-            'sss'            => $settings->sss ?? 0,
-            'philhealth'     => $settings->philhealth ?? 0,
-            'pagibig'        => $settings->pagibig ?? 0,
-            'otMultiplier'   => $settings?->ot_multiplier ?? 1.25,
-            // Overtime carries two premiums under the Labor Code: +25% on an
-            // ordinary day, +30% of that day's rate on a rest day, special day
-            // or holiday. Both are in Settings; the defaults are the statutory
-            // minimums, and a company policy or CBA may only go above them.
-            'otPremium'      => $settings?->ot_premium_multiplier ?? 1.30,
+            // Multipliers, the wage floor and the contribution rates are all
+            // dated. A change adds a row rather than editing one, so a period
+            // reopened next year still computes at the numbers that applied
+            // then. Loaded once as a timeline and resolved per attendance date
+            // — a query per record would be thousands.
+            'rateTimeline'   => PayrollRate::timeline(),
             'bonus'          => $settings?->bonus ?? 0,
             'sundayRestDay'  => $settings?->sunday_rest_day_enabled ?? true,
             // Day-type multipliers are fixed by PH labor law, not configurable.
             // See doleFactors() for the whole table.
             'holidayTypeMap' => Holiday::typeMap(),   // 'Y-m-d' => 'regular'|'special'|'custom'
         ];
+    }
+
+    /**
+     * The multipliers in force on a date — the newest set that had already
+     * taken effect. Falls back to the statutory minimums when a date predates
+     * every rate set, which only happens if the opening row is deleted.
+     *
+     * @return array<string, float>
+     */
+    private function ratesOn(string $date, array $cfg): array
+    {
+        // The timeline is newest first, so the first match is the answer.
+        foreach ($cfg['rateTimeline'] ?? [] as $entry) {
+            if ($entry['from'] <= $date) {
+                return $entry['rates'];
+            }
+        }
+
+        return PayrollRate::fallbackRates();
+    }
+
+    /**
+     * Hours worked between 10 PM and 6 AM, which carry the night differential.
+     *
+     * Measured against the shift as a duration from time-in rather than against
+     * the stored time-out: attendance keeps times without dates, so a shift
+     * crossing midnight has a time-out that reads as earlier the same day. The
+     * hours total is already derived that way, and a night figure that
+     * disagreed with it would be worse than a rough one.
+     *
+     * @return array{0: float, 1: float}  [night hours in the first 8, night hours in overtime]
+     */
+    private function nightHours(Carbon $start, float $hours): array
+    {
+        $night = function (float $fromHour, float $toHour) use ($start): float {
+            if ($toHour <= $fromHour) return 0.0;
+
+            $minutes = 0;
+            $cursor  = $start->copy()->addMinutes((int) round($fromHour * 60));
+            $end     = $start->copy()->addMinutes((int) round($toHour * 60));
+
+            // Minute by minute is slow; walk it in whole minutes only across the
+            // segment, which is at most a day's worth.
+            while ($cursor < $end) {
+                $h = (int) $cursor->format('G');
+                if ($h >= 22 || $h < 6) $minutes++;
+                $cursor->addMinute();
+            }
+
+            return $minutes / 60;
+        };
+
+        $regularSpan = min(8.0, $hours);
+
+        return [$night(0, $regularSpan), $night($regularSpan, $hours)];
     }
 
     /**
@@ -56,32 +109,80 @@ class PayrollService
      *   Regular holiday on a rest day       260%        338%
      *
      * The overtime column is not a separate table: it is the day's own factor
-     * times the overtime premium — 1.25 on an ordinary day, 1.30 on any premium
-     * day. That distinction is what this method exists for. Payroll used to
-     * apply 1.25 to every overtime hour and then multiply the whole day by the
+     * times the overtime premium — the OT multiplier on an ordinary day, the
+     * rest-day multiplier on any premium day, because the law's "+30% for
+     * overtime on a premium day" is the same 30% the rest day itself carries.
+     * That distinction is what this method exists for. Payroll used to apply
+     * 1.25 to every overtime hour and then multiply the whole day by the
      * holiday factor, which paid 250% for overtime on a regular holiday and
      * 162.5% on a rest day, both short of the law.
      *
      * A "custom" holiday is treated as a regular holiday, matching how the rest
-     * of the app reads that flag.
+     * of the app reads that flag. A special day falling on a rest day is 150% —
+     * a figure the law states outright rather than one derived from the others,
+     * so it is the one constant here.
      *
+     * @param  array<string, float>  $rates  as resolved for this day
      * @return array{0: float, 1: float}  [regular-hour factor, overtime factor]
      */
-    private function doleFactors(?string $holidayType, bool $isRestDay, array $cfg): array
+    private function doleFactors(?string $holidayType, bool $isRestDay, array $rates): array
     {
+        $rest    = $rates['rest_day_multiplier'];
+        $holiday = $rates['regular_holiday_multiplier'];
+
         $regular = match (true) {
             $holidayType === 'special' && $isRestDay => 1.50,
-            $holidayType === 'special'               => 1.30,
-            $holidayType !== null && $isRestDay      => 2.60,  // regular / custom holiday on a rest day
-            $holidayType !== null                    => 2.00,
-            $isRestDay                               => 1.30,
+            $holidayType === 'special'               => $rest,
+            $holidayType !== null && $isRestDay      => $holiday * $rest,  // regular / custom holiday on a rest day
+            $holidayType !== null                    => $holiday,
+            $isRestDay                               => $rest,
             default                                  => 1.00,
         };
 
         $premiumDay = $holidayType !== null || $isRestDay;
-        $overtime   = $regular * ($premiumDay ? $cfg['otPremium'] : $cfg['otMultiplier']);
+        $overtime   = $regular * ($premiumDay ? $rest : $rates['ot_multiplier']);
 
         return [$regular, $overtime];
+    }
+
+    /**
+     * The BIR graduated withholding table, daily column (RR 11-2018, the rates
+     * in force from 2023 onward).
+     *
+     * Each row is [floor, fixed tax at that floor, rate on the excess]. Nothing
+     * here is configurable, which is the point: the table is the law, not an
+     * office preference, and an admin who could edit it could quietly withhold
+     * the wrong amount from everyone.
+     *
+     * The daily column is the one that applies because attendance is recorded
+     * and paid by the day here. A worker whose day lands under ₱685 has no tax
+     * withheld, which is most of a construction payroll.
+     */
+    private const WITHHOLDING_DAILY = [
+        [21_918.0, 6_033.10, 0.35],
+        [ 5_479.0, 1_102.60, 0.30],
+        [ 2_192.0,   280.85, 0.25],
+        [ 1_096.0,    61.65, 0.20],
+        [   685.0,     0.00, 0.15],
+    ];
+
+    /**
+     * Withholding tax on one day's taxable compensation — gross less the
+     * mandatory contributions, which the table is defined net of.
+     */
+    private function withholdingTaxOn(float $taxable): float
+    {
+        if ($taxable <= 0) {
+            return 0.0;
+        }
+
+        foreach (self::WITHHOLDING_DAILY as [$floor, $fixed, $rate]) {
+            if ($taxable > $floor) {
+                return round($fixed + (($taxable - $floor) * $rate), 2);
+            }
+        }
+
+        return 0.0;
     }
 
     /**
@@ -127,9 +228,18 @@ class PayrollService
             try {
                 $timeIn  = is_string($rec->time_in) ? Carbon::parse($rec->time_in) : $rec->time_in;
                 $timeOut = is_string($rec->time_out) ? Carbon::parse($rec->time_out) : $rec->time_out;
-                // abs() — Carbon 3's diffInMinutes is signed; without it the value
-                // is negative (time-in is earlier) and collapses to 0 hours.
-                $hours   = abs($timeIn->diffInMinutes($timeOut)) / 60;
+
+                // Attendance stores clock times without a date, so a shift that
+                // runs past midnight comes back with a time-out that reads as
+                // EARLIER the same day. This used to be abs()'d, which turned
+                // 10 PM–6 AM into sixteen hours instead of eight and paid eight
+                // hours of overtime that were never worked. Rolling the end
+                // forward a day is what the times actually mean.
+                if ($timeOut <= $timeIn) {
+                    $timeOut = $timeOut->copy()->addDay();
+                }
+
+                $hours = $timeIn->diffInMinutes($timeOut) / 60;
             } catch (\Exception $e) {
                 Log::warning("Payroll: Failed to parse time for attendance {$rec->id}", [
                     'time_in'  => $rec->time_in,
@@ -146,14 +256,36 @@ class PayrollService
         $regular_hours = min(8, $hours);
         $ot_hours      = max(0, $hours - 8);
 
+        // The multipliers in force on the day being computed, not today's.
+        $dateStr = Carbon::parse($rec->date)->toDateString();
+        $rates   = $this->ratesOn($dateStr, $cfg);
+
+        [$nightRegularHours, $nightOtHours] = ($hours > 0 && $rec->time_in)
+            ? $this->nightHours(Carbon::parse($rec->time_in), $hours)
+            : [0.0, 0.0];
+        $night_hours = round($nightRegularHours + $nightOtHours, 2);
+
         // Hourly rate comes from the CONFIGURED labor-type daily rate (÷ 8),
         // which is the source of truth. We fall back to the stored
         // rate_per_hour only for employees without a labor type. This keeps
         // gross aligned with the rate configured in Settings even if an
         // employee's cached rate_per_hour has drifted.
-        $dailyRate = $employee->laborType?->daily_rate;
-        $rate      = $dailyRate !== null ? ($dailyRate / 8) : (float) ($employee->rate_per_hour ?? 0);
-        $ot_rate   = $rate * $cfg['otMultiplier'];
+        $configured = $employee->laborType?->daily_rate;
+        $dailyRate  = $configured !== null
+            ? (float) $configured
+            : ((float) ($employee->rate_per_hour ?? 0)) * 8;
+
+        // The wage order's daily floor for that day, if one is on file. A
+        // labour type still carrying last year's rate is paid at the floor
+        // rather than below it. The floor is dated like everything else, so
+        // raising it never reaches back into a period already paid.
+        $wageFloor = $rates['daily_rate'] ?? null;
+        if ($wageFloor !== null && $wageFloor > $dailyRate) {
+            $dailyRate = (float) $wageFloor;
+        }
+
+        $rate    = $dailyRate / 8;
+        $ot_rate = $rate * $rates['ot_multiplier'];
 
         // Contractual workers are settled against their contract, not through
         // this payroll. Their hours are still measured and reported — the
@@ -176,7 +308,6 @@ class PayrollService
         // above this is premium, and is reported separately on the payslip.
         $dayEarnings = $basicPay + $otPay;
 
-        $dateStr     = Carbon::parse($rec->date)->toDateString();
         $holidayType = $cfg['holidayTypeMap'][$dateStr] ?? null;
         $isHoliday   = $holidayType !== null;
 
@@ -187,7 +318,7 @@ class PayrollService
         $applyRest   = $rec->rest_day_applied !== null ? (bool) $rec->rest_day_applied : $cfg['sundayRestDay'];
         $isRestDay   = $isSunday && $applyRest;
 
-        [$hMultiplier, $otFactor] = $this->doleFactors($holidayType, $isRestDay, $cfg);
+        [$hMultiplier, $otFactor] = $this->doleFactors($holidayType, $isRestDay, $rates);
 
         // The law states one combined figure for a day that is both — a regular
         // holiday on a rest day pays 260%, not 200% plus 30% — so the premium is
@@ -201,15 +332,31 @@ class PayrollService
         $holidayPay = $isHoliday ? $premium : 0.0;
         $restDayPay = (! $isHoliday && $isRestDay) ? $premium : 0.0;
 
-        $gross       = $dayEarnings + $holidayPay + $restDayPay;
+        // Night differential: 10% on top of whatever each night hour already
+        // earns, so an overtime hour at 1 AM on a holiday is uplifted from its
+        // own rate rather than from the plain one. It stacks with everything
+        // above rather than replacing any of it.
+        $nightDiffPay = $onContract ? 0.0 : (
+            ($nightRegularHours * $rate * $hMultiplier) + ($nightOtHours * $rate * $otFactor)
+        ) * ($rates['night_diff_multiplier'] - 1);
+
+        $gross       = $dayEarnings + $holidayPay + $restDayPay + $nightDiffPay;
 
         // Statutory deductions are computed on GROSS pay (not the daily rate),
         // and do not apply to contract work. Vale and manual deductions still
         // do — those are advances and adjustments, not statutory contributions.
-        $sssDeduction        = $onContract ? 0.0 : ($gross * $cfg['sss']) / 100;
-        $philhealthDeduction = $onContract ? 0.0 : ($gross * $cfg['philhealth']) / 100;
-        $pagibigDeduction    = $onContract ? 0.0 : ($gross * $cfg['pagibig']) / 100;
-        $autoDeductions      = $sssDeduction + $philhealthDeduction + $pagibigDeduction;
+        $sssDeduction        = $onContract ? 0.0 : ($gross * $rates['sss_rate']) / 100;
+        $philhealthDeduction = $onContract ? 0.0 : ($gross * $rates['philhealth_rate']) / 100;
+        $pagibigDeduction    = $onContract ? 0.0 : ($gross * $rates['pagibig_rate']) / 100;
+        $contributions       = $sssDeduction + $philhealthDeduction + $pagibigDeduction;
+
+        // Withholding tax is not a rate anyone sets: it is the BIR graduated
+        // table, applied to what is left after the mandatory contributions —
+        // which is the base the table is written against. Attendance here is
+        // daily, so the daily column is the one that applies.
+        $withholdingTax = $onContract ? 0.0 : $this->withholdingTaxOn($gross - $contributions);
+
+        $autoDeductions = $contributions + $withholdingTax;
 
         // An excluded worker earns nothing here, so deducting an advance from
         // it would report a negative net for someone this payroll does not pay.
@@ -221,10 +368,11 @@ class PayrollService
         $net             = $gross - $totalDeductions;
 
         return compact(
-            'hours', 'regular_hours', 'ot_hours', 'rate', 'ot_rate', 'basicPay', 'otPay',
+            'hours', 'regular_hours', 'ot_hours', 'night_hours', 'rate', 'ot_rate', 'basicPay', 'otPay',
             'dayEarnings', 'isHoliday', 'holidayType', 'hMultiplier', 'holidayPay', 'isSunday', 'restDayPay',
+            'nightDiffPay', 'rates',
             'gross', 'dailyRate',
-            'sssDeduction', 'philhealthDeduction', 'pagibigDeduction', 'autoDeductions',
+            'sssDeduction', 'philhealthDeduction', 'pagibigDeduction', 'withholdingTax', 'autoDeductions',
             'vale', 'manualDeductions', 'totalDeductions', 'net'
         );
     }
@@ -253,8 +401,8 @@ class PayrollService
             $empWeekRecords = null;
             foreach ($employeeGroups as $empId => $empWeekRecords) {
                 $employee = null;
-                $sumHours = $sumGross = $sumOvertime = $sumHoliday = $sumRestDay = 0;
-                $sumSss = $sumPhil = $sumPagibig = $sumAuto = 0;
+                $sumHours = $sumGross = $sumOvertime = $sumHoliday = $sumRestDay = $sumNightDiff = 0;
+                $sumSss = $sumPhil = $sumPagibig = $sumTax = $sumAuto = 0;
                 $sumVale = $sumManual = $sumNet = 0;
                 $empDates = [];
 
@@ -271,9 +419,11 @@ class PayrollService
                     $sumOvertime += $r['otPay'];
                     $sumHoliday  += $r['holidayPay'];
                     $sumRestDay  += $r['restDayPay'];
+                    $sumNightDiff += $r['nightDiffPay'];
                     $sumSss      += $r['sssDeduction'];
                     $sumPhil     += $r['philhealthDeduction'];
                     $sumPagibig  += $r['pagibigDeduction'];
+                    $sumTax      += $r['withholdingTax'];
                     $sumAuto     += $r['autoDeductions'];
                     $sumVale     += $r['vale'];
                     $sumManual   += $r['manualDeductions'];
@@ -297,10 +447,12 @@ class PayrollService
                         'overtime'            => round($sumOvertime, 2),
                         'holidayPay'          => round($sumHoliday, 2),
                         'restDayPay'          => round($sumRestDay, 2),
+                        'nightDiffPay'        => round($sumNightDiff, 2),
                         'bonus'               => round($empBonus, 2),
                         'sssDeduction'        => round($sumSss, 2),
                         'philhealthDeduction' => round($sumPhil, 2),
                         'pagibigDeduction'    => round($sumPagibig, 2),
+                        'withholdingTax'      => round($sumTax, 2),
                         'autoDeductions'      => round($sumAuto, 2),
                         'vale'                => round($sumVale, 2),
                         'manualDeductions'    => round($sumManual, 2),
@@ -354,6 +506,7 @@ class PayrollService
                     'otPay'               => round($r['otPay'], 2),
                     'holidayPay'          => round($r['holidayPay'], 2),
                     'restDayPay'          => round($r['restDayPay'], 2),
+                    'nightDiffPay'        => round($r['nightDiffPay'], 2),
                     'bonus'               => round($cfg['bonus'], 2),
                     'is_holiday'          => $r['isHoliday'],
                     'holiday_type'        => $r['holidayType'],
@@ -361,6 +514,7 @@ class PayrollService
                     'sssDeduction'        => round($r['sssDeduction'], 2),
                     'philhealthDeduction' => round($r['philhealthDeduction'], 2),
                     'pagibigDeduction'    => round($r['pagibigDeduction'], 2),
+                    'withholdingTax'      => round($r['withholdingTax'], 2),
                     'autoDeductions'      => round($r['autoDeductions'], 2),
                     'vale'                => round($r['vale'], 2),
                     'manualDeductions'    => round($r['manualDeductions'], 2),
@@ -407,6 +561,7 @@ class PayrollService
                             'overtime'        => 0,
                             'holidayPay'      => 0,
                             'restDayPay'      => 0,
+                            'nightDiffPay'    => 0,
                             'bonus'           => 0,
                             'totalDeductions' => 0,
                             'net'             => 0,
@@ -424,6 +579,7 @@ class PayrollService
                 $employees[$id]['totals']['overtime']        += $d['overtime'];
                 $employees[$id]['totals']['holidayPay']      += $d['holidayPay'];
                 $employees[$id]['totals']['restDayPay']      += $d['restDayPay'];
+                $employees[$id]['totals']['nightDiffPay']    += $d['nightDiffPay'];
                 $employees[$id]['totals']['bonus']           += $d['bonus'];
                 $employees[$id]['totals']['totalDeductions'] += $d['totalDeductions'];
                 $employees[$id]['totals']['net']             += $d['net'];

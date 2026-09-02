@@ -4,6 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * The one settings row.
+ *
+ * Only `bonus` and `sunday_rest_day_enabled` are still written here. The daily
+ * rate, the premiums and the contribution rates moved to PayrollRate, where a
+ * change is dated and cannot rewrite a period already paid. Their columns are
+ * left in place because the opening rate row was seeded from them.
+ */
 class Setting extends Model
 {
     protected $fillable = [

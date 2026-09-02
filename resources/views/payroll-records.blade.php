@@ -288,10 +288,11 @@
                 @forelse($employees as $emp)
                 @php
                     $t = $emp['totals'];
-                    $sss = $phil = $pag = $vale = $other = 0;
+                    $sss = $phil = $pag = $tax = $vale = $other = 0;
                     foreach ($emp['periods'] as $pp) {
                         $sss  += $pp['sssDeduction'];   $phil  += $pp['philhealthDeduction'];
-                        $pag  += $pp['pagibigDeduction']; $vale += $pp['vale']; $other += $pp['manualDeductions'];
+                        $pag  += $pp['pagibigDeduction']; $tax += $pp['withholdingTax'];
+                        $vale += $pp['vale']; $other += $pp['manualDeductions'];
                     }
                     $regular = round($t['gross'] - $t['overtime'] - $t['holidayPay'] - ($t['restDayPay'] ?? 0), 2);
                 @endphp
@@ -331,6 +332,7 @@
                                 <div class="ln"><span class="k">SSS</span><span class="v">&#8369;{{ number_format($sss, 2) }}</span></div>
                                 <div class="ln"><span class="k">PhilHealth</span><span class="v">&#8369;{{ number_format($phil, 2) }}</span></div>
                                 <div class="ln"><span class="k">PAG-IBIG</span><span class="v">&#8369;{{ number_format($pag, 2) }}</span></div>
+                                <div class="ln"><span class="k">Withholding Tax</span><span class="v">&#8369;{{ number_format($tax, 2) }}</span></div>
                                 <div class="ln"><span class="k">Vale/Utang</span><span class="v">&#8369;{{ number_format($vale, 2) }}</span></div>
                                 <div class="ln"><span class="k">Other</span><span class="v">&#8369;{{ number_format($other, 2) }}</span></div>
                                 <div class="ln sum"><span class="k">Total</span><span class="v">&#8369;{{ number_format($t['totalDeductions'], 2) }}</span></div>

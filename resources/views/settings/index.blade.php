@@ -54,90 +54,245 @@
     <div class="tab-content settings-content">
         <!-- PAYROLL SETTINGS TAB -->
         <div class="tab-pane fade show active" id="payroll" role="tabpanel">
+
+            {{-- ══ Payroll settings ════════════════════════════════════════════
+                 Its own form, outside the settings one below: saving here does
+                 not edit a row, it adds one. The wage, the premiums and the
+                 contribution rates used to sit on the single settings record,
+                 so raising one rewrote history — reopening last month's payroll
+                 recomputed it at today's numbers and disagreed with payslips
+                 already handed out. A wage order or an SSS circular takes
+                 effect on a date and does not reach backwards. --}}
+            @php
+                $rate = $currentRate;
+                $rval = fn (string $f, $default) => old($f, $rate->{$f} ?? $default);
+
+                $premiums = [
+                    ['ot_multiplier',         'Overtime',   1.25],
+                    ['night_diff_multiplier', 'Night diff', 1.10],
+                    ['rest_day_multiplier',   'Rest day',   1.30],
+                ];
+
+                // The captions are the statutory basis each rate comes from, so
+                // whoever types a number can see what it is meant to be.
+                $contributions = [
+                    ['sss_rate',        'SSS',        '5% of MSC bracket · ceiling ₱35,000',    5.00],
+                    ['philhealth_rate', 'PhilHealth', '2.5% of basic · floor ₱10k · cap ₱100k', 2.50],
+                    ['pagibig_rate',    'Pag-IBIG',   '2% · cap ₱10,000 MFS (max ₱200)',        2.00],
+                ];
+            @endphp
+            <form method="POST" action="{{ route('payroll-rates.store') }}">
+                @csrf
+                <div class="ps-card pr-card mb-4">
+                    <div class="pr-head">
+                        <div class="pr-head-left">
+                            <i class="fas fa-gear"></i>
+                            <div>
+                                <h6>Payroll settings</h6>
+                                <p>Wage, premiums, and deductions</p>
+                            </div>
+                        </div>
+                        <span class="pr-admin"><i class="fas fa-lock"></i> Admin</span>
+                    </div>
+
+                    <div class="ps-card-body">
+
+                        {{-- Premiums --}}
+                        <section class="pr-block">
+                            <div class="pr-block-head">
+                                <i class="fas fa-clock"></i>
+                                <span>Premium multipliers</span>
+                                <small>National · Labor Code</small>
+                            </div>
+                            <div class="pr-grid">
+                                @foreach($premiums as [$field, $label, $default])
+                                    <div class="pr-field">
+                                        <label class="pr-field-label" for="{{ $field }}">{{ $label }} &times;</label>
+                                        <input type="number" step="0.01" min="1" max="10"
+                                               id="{{ $field }}" name="{{ $field }}"
+                                               class="form-control ps-input pr-num @error($field) is-invalid @enderror"
+                                               value="{{ $rval($field, $default) }}" required>
+                                        @error($field)<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    </div>
+                                @endforeach
+                            </div>
+                            <p class="pr-block-hint">Night differential: 10:00 PM – 6:00 AM. A regular holiday is fixed at 200% by the Labor Code and is not set here.</p>
+                        </section>
+
+                        {{-- Daily wage --}}
+                        <section class="pr-block">
+                            <div class="pr-block-head">
+                                <i class="fas fa-money-bill-wave"></i>
+                                <span>Daily wage</span>
+                                <small>Effectivity-dated</small>
+                            </div>
+                            <div class="pr-grid pr-grid-2">
+                                <div class="pr-field">
+                                    <label class="pr-field-label" for="daily_rate">Daily rate ₱</label>
+                                    <input type="number" step="0.01" min="0"
+                                           id="daily_rate" name="daily_rate" placeholder="none set"
+                                           class="form-control ps-input @error('daily_rate') is-invalid @enderror"
+                                           value="{{ old('daily_rate', $rate->daily_rate ?? null) }}">
+                                    @error('daily_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="pr-field">
+                                    <label class="pr-field-label" for="effective_from">Effective from</label>
+                                    <input type="date" id="effective_from" name="effective_from"
+                                           class="form-control ps-input @error('effective_from') is-invalid @enderror"
+                                           value="{{ old('effective_from', now()->toDateString()) }}" required>
+                                    @error('effective_from')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <p class="pr-block-hint">DOLE minimum wage floor. A labour type paying less than this is lifted to it; leave it empty and each labour type keeps its own rate. The date applies to everything on this card.</p>
+                        </section>
+
+                        {{-- Deductions --}}
+                        <section class="pr-block">
+                            <div class="pr-block-head">
+                                <i class="fas fa-building-columns"></i>
+                                <span>Deductions (employee share)</span>
+                                <small>Percent of gross</small>
+                            </div>
+
+                            @foreach($contributions as [$field, $label, $caption, $default])
+                                <div class="pr-ded-row">
+                                    <div class="pr-ded-name">
+                                        <span>{{ $label }}</span>
+                                        <small>{{ $caption }}</small>
+                                    </div>
+                                    <div class="pr-ded-input">
+                                        <input type="number" step="0.01" min="0" max="100"
+                                               id="{{ $field }}" name="{{ $field }}"
+                                               class="form-control ps-input pr-num-sm @error($field) is-invalid @enderror"
+                                               value="{{ $rval($field, $default) }}" required>
+                                        <span class="pr-ded-unit">%</span>
+                                    </div>
+                                    @error($field)<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                            @endforeach
+
+                            <div class="pr-ded-row">
+                                <div class="pr-ded-name">
+                                    <span>Withholding tax</span>
+                                    <small>BIR graduated table, daily column</small>
+                                </div>
+                                <div class="pr-ded-input"><span class="pr-auto">auto</span></div>
+                            </div>
+                        </section>
+
+                        {{-- What the numbers above add up to, in the order payroll applies them --}}
+                        <section class="pr-block">
+                            <div class="pr-block-head">
+                                <i class="fas fa-code-branch"></i>
+                                <span>Net pay computation flow</span>
+                            </div>
+                            <div class="pr-flow">
+                                <span class="pr-chip">Attendance hours</span>
+                                <i class="fas fa-arrow-right"></i>
+                                <span class="pr-chip">× daily wage + premiums</span>
+                                <i class="fas fa-arrow-right"></i>
+                                <span class="pr-chip pr-chip-gross">Gross pay</span>
+                            </div>
+                            <div class="pr-flow-less">
+                                <i class="fas fa-arrow-turn-down"></i>
+                                <span>less deductions</span>
+                            </div>
+                            <div class="pr-flow">
+                                <span class="pr-chip pr-chip-ded">− SSS</span>
+                                <span class="pr-chip pr-chip-ded">− PhilHealth</span>
+                                <span class="pr-chip pr-chip-ded">− Pag-IBIG</span>
+                                <span class="pr-chip pr-chip-ded">− Withholding tax</span>
+                                <i class="fas fa-arrow-right"></i>
+                                <span class="pr-chip pr-chip-net">Net pay</span>
+                            </div>
+                            <p class="pr-block-hint">
+                                <i class="fas fa-circle-info"></i>
+                                Only the employee share is deducted — this is what appears on the payslip. Vale and manual adjustments are entered per record, not here.
+                            </p>
+                        </section>
+
+                        <div class="pr-note">
+                            <i class="fas fa-calendar-check"></i>
+                            <span>All rates are effectivity-dated. When a new SSS circular or wage order takes
+                                  effect, a new row is added — never overwriting the old. This keeps historical
+                                  payroll recomputations accurate.</span>
+                        </div>
+
+                        {{-- The history is the point of dating a rate: without it,
+                             nothing on screen shows that the old numbers are still
+                             answering for the days they covered. --}}
+                        @if($payrollRates->count() > 1)
+                        <div class="pr-history">
+                            <p class="pr-history-title">Rate history</p>
+                            <div class="table-responsive">
+                                <table class="ps-dole-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Effective from</th>
+                                            <th class="text-end">Daily</th>
+                                            <th class="text-end">OT</th><th class="text-end">Night</th>
+                                            <th class="text-end">Rest day</th>
+                                            <th class="text-end">SSS</th><th class="text-end">PH</th>
+                                            <th class="text-end">Pag-IBIG</th>
+                                            <th>Set by</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach($payrollRates as $i => $r)
+                                        <tr class="{{ $i === 0 ? 'pr-history-current' : '' }}">
+                                            <td>
+                                                {{ $r->effective_from->format('M d, Y') }}
+                                                @if($i === 0)<span class="pr-in-force">in force</span>@endif
+                                            </td>
+                                            <td class="text-end">{{ $r->daily_rate ? '₱' . number_format($r->daily_rate, 2) : '—' }}</td>
+                                            <td class="text-end">{{ number_format($r->ot_multiplier, 2) }}</td>
+                                            <td class="text-end">{{ number_format($r->night_diff_multiplier, 2) }}</td>
+                                            <td class="text-end">{{ number_format($r->rest_day_multiplier, 2) }}</td>
+                                            <td class="text-end">{{ number_format($r->sss_rate, 2) }}%</td>
+                                            <td class="text-end">{{ number_format($r->philhealth_rate, 2) }}%</td>
+                                            <td class="text-end">{{ number_format($r->pagibig_rate, 2) }}%</td>
+                                            <td>{{ $r->created_by ?: '—' }}</td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        @endif
+
+                        <div class="pr-foot">
+                            <span class="pr-updated">
+                                <i class="fas fa-clock-rotate-left"></i>
+                                @if($rate)
+                                    Last updated {{ $rate->updated_at?->format('Y-m-d') }} by {{ $rate->created_by ?: 'admin' }}
+                                @else
+                                    No rate recorded yet
+                                @endif
+                            </span>
+                            <a href="{{ route('settings.index') }}" class="pr-cancel">Cancel</a>
+                            <button type="submit" class="ps-save-btn">
+                                <i class="fas fa-floppy-disk"></i> Save changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
             <form method="POST" action="{{ route('settings.update') }}" class="settings-form">
                 @csrf
                 @method('PUT')
 
-                {{-- Pay Config + Government Contributions --}}
+                {{-- Bonus + rest day. The contributions moved to the dated rate card above. --}}
                 <div class="row g-4 mb-4">
-                    <div class="col-lg-6">
+                    <div class="col-12">
                         <div class="ps-card h-100" id="ot_rate_section">
                             <div class="ps-card-header">
                                 <i class="fas fa-sliders-h"></i>
                                 <div>
-                                    <h6>Pay Rate Configuration</h6>
-                                    <p>Applied across all payroll calculations.</p>
+                                    <h6>Bonus & Rest Day</h6>
+                                    <p>Rates, the wage floor and the contributions all live in the dated card above.</p>
                                 </div>
                             </div>
                             <div class="ps-card-body">
-                                <div class="mb-4">
-                                    <label class="ps-label" for="ot_multiplier">Overtime Multiplier</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.01" min="0" max="10"
-                                               class="form-control ps-input @error('ot_multiplier') is-invalid @enderror"
-                                               id="ot_multiplier" name="ot_multiplier"
-                                               value="{{ $settings->ot_multiplier ?? 1.25 }}">
-                                        <span class="input-group-text ps-ig-text">×</span>
-                                    </div>
-                                    @error('ot_multiplier')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    <small class="text-muted d-block mt-1">Overtime on an <strong>ordinary working day</strong>. DOLE minimum is 1.25 (+25%).</small>
-                                </div>
-                                {{-- Overtime carries a different premium on a premium day: +30% of
-                                     that day's rate, not +25%. Payroll used one figure for both,
-                                     which paid 250% for overtime on a regular holiday where the
-                                     law calls for 260%. --}}
-                                <div class="mb-4">
-                                    <label class="ps-label" for="ot_premium_multiplier">Overtime Multiplier — Premium Days</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.01" min="0" max="10"
-                                               class="form-control ps-input @error('ot_premium_multiplier') is-invalid @enderror"
-                                               id="ot_premium_multiplier" name="ot_premium_multiplier"
-                                               value="{{ $settings->ot_premium_multiplier ?? 1.30 }}">
-                                        <span class="input-group-text ps-ig-text">×</span>
-                                    </div>
-                                    @error('ot_premium_multiplier')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    <small class="text-muted d-block mt-1">Overtime on a <strong>rest day, special day or holiday</strong> — applied to that day's rate, not the ordinary one. DOLE minimum is 1.30 (+30%).</small>
-                                </div>
-
-                                {{-- What the two multipliers above actually pay, per day type.
-                                     Computed from the saved values rather than written out, so
-                                     the table can never claim a rate payroll does not use. --}}
-                                @php
-                                    $otOrdinary = (float) ($settings->ot_multiplier ?? 1.25);
-                                    $otPremium  = (float) ($settings->ot_premium_multiplier ?? 1.30);
-                                    $dayTypes = [
-                                        ['Ordinary day',                    1.00, false],
-                                        ['Rest day / special non-working',  1.30, true],
-                                        ['Special day on a rest day',       1.50, true],
-                                        ['Regular holiday',                 2.00, true],
-                                        ['Regular holiday on a rest day',   2.60, true],
-                                    ];
-                                @endphp
-                                <div class="mb-4">
-                                    <label class="ps-label">Resulting Rates</label>
-                                    <div class="table-responsive">
-                                        <table class="ps-dole-table">
-                                            <thead>
-                                                <tr><th>Day type</th><th class="text-end">First 8 hrs</th><th class="text-end">Overtime</th></tr>
-                                            </thead>
-                                            <tbody>
-                                            @foreach($dayTypes as [$label, $factor, $isPremium])
-                                                <tr>
-                                                    <td>{{ $label }}</td>
-                                                    <td class="text-end">{{ number_format($factor * 100, 0) }}%</td>
-                                                    <td class="text-end">{{ number_format($factor * ($isPremium ? $otPremium : $otOrdinary) * 100, 0) }}%</td>
-                                                </tr>
-                                            @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <small class="text-muted d-block mt-2">
-                                        Percentages of the worker's ordinary hourly rate. The day-type
-                                        rates are fixed by the Labor Code and are not editable here;
-                                        only the two overtime multipliers above are, and raising them
-                                        pays above the statutory minimum.
-                                    </small>
-                                </div>
                                 <div class="mb-4">
                                     <label class="ps-label" for="bonus">Bonus (per period)</label>
                                     <div class="input-group">
@@ -172,49 +327,6 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-6">
-                        <div class="ps-card h-100" id="sss_section">
-                            <div class="ps-card-header">
-                                <i class="fas fa-percent"></i>
-                                <div>
-                                    <h6>Government Contributions</h6>
-                                    <p>Deducted from gross pay per employee. Enter 0 to skip.</p>
-                                </div>
-                            </div>
-                            <div class="ps-card-body">
-                                <div class="mb-3">
-                                    <label class="ps-label" for="sss">SSS</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.01"
-                                               class="form-control ps-input @error('sss') is-invalid @enderror"
-                                               id="sss" name="sss" value="{{ $settings->sss ?? 0 }}">
-                                        <span class="input-group-text ps-ig-text">%</span>
-                                    </div>
-                                    @error('sss')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="mb-3" id="philhealth_section">
-                                    <label class="ps-label" for="philhealth">PhilHealth</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.01"
-                                               class="form-control ps-input @error('philhealth') is-invalid @enderror"
-                                               id="philhealth" name="philhealth" value="{{ $settings->philhealth ?? 0 }}">
-                                        <span class="input-group-text ps-ig-text">%</span>
-                                    </div>
-                                    @error('philhealth')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="mb-0" id="pagibig_section">
-                                    <label class="ps-label" for="pagibig">PAG-IBIG</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.01"
-                                               class="form-control ps-input @error('pagibig') is-invalid @enderror"
-                                               id="pagibig" name="pagibig" value="{{ $settings->pagibig ?? 0 }}">
-                                        <span class="input-group-text ps-ig-text">%</span>
-                                    </div>
-                                    @error('pagibig')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <button type="submit" class="btn ps-save-btn">
@@ -1436,6 +1548,113 @@
 .ps-input { border-color:#e2e8f0 !important; }
 .ps-input:focus { border-color:#6366f1 !important; box-shadow:0 0 0 3px rgba(99,102,241,.1) !important; }
 .ps-ig-text { background:#f8fafc !important; border-color:#e2e8f0 !important; font-weight:600; color:#374151; }
+
+/* ── Payroll rate card ──────────────────────────────────────────────────
+   Tokens throughout, not the hardcoded greys the rest of this sheet still
+   uses, so it reads in both themes without a second block of overrides. */
+.pr-head {
+    display:flex; align-items:flex-start; justify-content:space-between; gap:14px;
+    padding:18px 20px; border-bottom:1px solid var(--border,#e3e6e9);
+}
+.pr-head-left { display:flex; align-items:flex-start; gap:12px; min-width:0; }
+.pr-head-left > i { font-size:1.05rem; color:var(--text-secondary,#66707c); margin-top:2px; }
+.pr-head h6 { margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary,#1b2430); }
+.pr-head p  { margin:2px 0 0; font-size:.8rem; color:var(--text-secondary,#66707c); }
+.pr-admin {
+    flex:none; display:inline-flex; align-items:center; gap:6px;
+    font-size:.75rem; font-weight:600; padding:5px 11px;
+    border-radius:999px; background:var(--brand-subtle,#edf3f9);
+    color:var(--brand,#1e5c9b); border:1px solid var(--border,#e3e6e9);
+}
+
+/* One block per subject: the premiums, the wage, the deductions, and the flow
+   the three of them feed. */
+.pr-block {
+    border:1px solid var(--border); border-radius:var(--radius-sm);
+    background:var(--bg-subtle); padding:14px 16px; margin-bottom:14px;
+}
+.pr-block-head { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.pr-block-head > i { color:var(--brand); font-size:.95rem; }
+.pr-block-head > span { font-weight:600; font-size:.92rem; color:var(--text-primary); }
+.pr-block-head > small {
+    margin-left:auto; font-size:.72rem; color:var(--text-muted); white-space:nowrap;
+}
+.pr-block-hint { margin:10px 0 0; font-size:.75rem; line-height:1.6; color:var(--text-muted); }
+.pr-block-hint i { margin-right:4px; }
+
+.pr-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.pr-grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media (max-width:700px){ .pr-grid, .pr-grid-2 { grid-template-columns:1fr; } }
+
+.pr-field-label { display:block; margin-bottom:4px; font-size:.78rem; color:var(--text-secondary); }
+/* The number is the point of the field, so it gets the weight. */
+.pr-num { text-align:center; font-weight:600; font-variant-numeric:tabular-nums; }
+
+/* A deduction is a name, what it is a percentage of, and the percentage. */
+.pr-ded-row {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:9px 0; border-bottom:1px solid var(--border);
+}
+.pr-ded-row:last-child { border-bottom:0; padding-bottom:0; }
+.pr-ded-name span { font-size:.85rem; font-weight:600; color:var(--text-primary); }
+.pr-ded-name small { display:block; margin-top:1px; font-size:.72rem; color:var(--text-muted); }
+.pr-ded-input { display:flex; align-items:center; gap:6px; flex:none; }
+.pr-num-sm { width:76px; text-align:center; font-variant-numeric:tabular-nums; }
+.pr-ded-unit { font-size:.75rem; color:var(--text-muted); }
+.pr-auto { font-size:.78rem; font-style:italic; color:var(--text-secondary); }
+
+.pr-flow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.pr-flow > i { color:var(--text-muted); font-size:.72rem; }
+.pr-flow-less {
+    display:flex; align-items:center; gap:8px; margin:8px 0 8px 4px;
+    font-size:.72rem; color:var(--text-muted);
+}
+.pr-chip {
+    font-size:.76rem; padding:5px 10px; border-radius:var(--radius-sm);
+    background:var(--brand-subtle); color:var(--brand); border:1px solid var(--border);
+}
+/* Green for what is earned, red for what is taken off, brand for the answer —
+   stated as rgba of the light hue so both themes read the same intent. */
+.pr-chip-gross { background:rgba(47,125,79,.12); color:var(--success); border-color:rgba(47,125,79,.35); }
+.pr-chip-ded   { background:rgba(179,64,58,.10); color:var(--danger);  border-color:rgba(179,64,58,.30); }
+.pr-chip-net   { background:var(--brand); color:#fff; border-color:var(--brand); font-weight:600; }
+
+/* Amber, not red: nothing is wrong, but the consequence is worth reading. */
+.pr-note {
+    display:flex; gap:10px; align-items:flex-start; margin-top:18px;
+    padding:12px 14px; border-radius:var(--radius-sm,6px);
+    background:rgba(166,106,30,.10); border:1px solid rgba(166,106,30,.35);
+    color:var(--warning,#a66a1e); font-size:.82rem; line-height:1.55;
+}
+.pr-note i { margin-top:2px; flex:none; }
+
+.pr-history { margin-top:20px; }
+.pr-history-title {
+    margin:0 0 8px; font-size:.75rem; font-weight:700; letter-spacing:.5px;
+    text-transform:uppercase; color:var(--text-secondary,#66707c);
+}
+.pr-history-current td { font-weight:600; }
+.pr-in-force {
+    margin-left:7px; font-size:.65rem; font-weight:700; letter-spacing:.4px;
+    text-transform:uppercase; padding:1px 7px; border-radius:999px;
+    background:var(--brand-subtle,#edf3f9); color:var(--brand,#1e5c9b);
+}
+
+.pr-foot {
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    margin-top:22px; padding-top:16px; border-top:1px solid var(--border,#e3e6e9);
+}
+.pr-updated {
+    margin-right:auto; display:inline-flex; align-items:center; gap:7px;
+    font-size:.78rem; color:var(--text-muted,#8a929b);
+}
+.pr-cancel {
+    padding:9px 20px; border-radius:var(--radius-sm,6px);
+    border:1px solid var(--border,#e3e6e9); background:transparent;
+    color:var(--text-primary,#1b2430); font-size:.86rem; font-weight:600;
+    text-decoration:none; transition:background .15s;
+}
+.pr-cancel:hover { background:var(--bg-subtle,#f1f3f5); color:var(--text-primary,#1b2430); }
 
 /* Statutory rate reference. Tokens, not the hardcoded greys the rest of this
    sheet still uses, so it reads in both themes without a second rule. */

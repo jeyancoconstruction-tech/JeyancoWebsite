@@ -132,6 +132,7 @@
                             <div class="ln"><span class="k">SSS</span><span class="v">&#8369;{{ number_format($s['ded']['sss'], 2) }}</span></div>
                             <div class="ln"><span class="k">PhilHealth</span><span class="v">&#8369;{{ number_format($s['ded']['philhealth'], 2) }}</span></div>
                             <div class="ln"><span class="k">PAG-IBIG</span><span class="v">&#8369;{{ number_format($s['ded']['pagibig'], 2) }}</span></div>
+                            <div class="ln"><span class="k">Withholding Tax</span><span class="v">&#8369;{{ number_format($s['ded']['tax'], 2) }}</span></div>
                             <div class="ln"><span class="k">Vale/Utang</span><span class="v">&#8369;{{ number_format($s['ded']['vale'], 2) }}</span></div>
                             <div class="ln"><span class="k">Other</span><span class="v">&#8369;{{ number_format($s['ded']['other'], 2) }}</span></div>
                             <div class="ln sum"><span class="k">Total</span><span class="v">&#8369;{{ number_format($s['totalDeductions'], 2) }}</span></div>

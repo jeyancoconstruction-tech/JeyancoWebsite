@@ -171,7 +171,7 @@
                     <p class="an-card-sub">Monthly statutory & voluntary</p>
                 </div>
             </div>
-            @php $totalDeductions = $sssTot + $philTot + $pagibigTot + $valeTot + $otherTot; @endphp
+            @php $totalDeductions = $sssTot + $philTot + $pagibigTot + $taxTot + $valeTot + $otherTot; @endphp
             @if($totalDeductions == 0)
             <div class="an-empty">No deductions recorded this month</div>
             @else
@@ -183,6 +183,7 @@
                     <div class="an-dl-row"><span class="an-dl-dot" style="background:#3b82f6;"></span><span class="an-dl-label">SSS</span><span class="an-dl-val">₱{{ number_format($sssTot, 0) }}</span></div>
                     <div class="an-dl-row"><span class="an-dl-dot" style="background:#10b981;"></span><span class="an-dl-label">PhilHealth</span><span class="an-dl-val">₱{{ number_format($philTot, 0) }}</span></div>
                     <div class="an-dl-row"><span class="an-dl-dot" style="background:#14b8a6;"></span><span class="an-dl-label">Pag-IBIG</span><span class="an-dl-val">₱{{ number_format($pagibigTot, 0) }}</span></div>
+                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#a855f7;"></span><span class="an-dl-label">Withholding Tax</span><span class="an-dl-val">₱{{ number_format($taxTot, 0) }}</span></div>
                     <div class="an-dl-row"><span class="an-dl-dot" style="background:#ef4444;"></span><span class="an-dl-label">Vale</span><span class="an-dl-val">₱{{ number_format($valeTot, 0) }}</span></div>
                     @if($otherTot > 0)
                     <div class="an-dl-row"><span class="an-dl-dot" style="background:#64748b;"></span><span class="an-dl-label">Other</span><span class="an-dl-val">₱{{ number_format($otherTot, 0) }}</span></div>
@@ -670,12 +671,12 @@
     }
 
     // ── 5. Deduction Breakdown Doughnut ────────────────────────────────────
-    const dedLabels = ['SSS', 'PhilHealth', 'Pag-IBIG', 'Vale', 'Other'];
+    const dedLabels = ['SSS', 'PhilHealth', 'Pag-IBIG', 'Withholding Tax', 'Vale', 'Other'];
     const dedData   = [
         {{ $sssTot }}, {{ $philTot }}, {{ $pagibigTot }},
-        {{ $valeTot }}, {{ $otherTot }}
+        {{ $taxTot }}, {{ $valeTot }}, {{ $otherTot }}
     ].map((v, i) => v);
-    const dedColors = ['#3b82f6', '#10b981', '#14b8a6', '#ef4444', '#64748b'];
+    const dedColors = ['#3b82f6', '#10b981', '#14b8a6', '#a855f7', '#ef4444', '#64748b'];
 
     if (document.getElementById('deductionChart')) {
         const filteredLabels = [];

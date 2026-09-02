@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\LaborType;
+use App\Models\PayrollRate;
 use App\Services\PayrollService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -42,20 +43,19 @@ class PayrollDoleRatesTest extends TestCase
     {
         return array_merge([
             'sss' => 0, 'philhealth' => 0, 'pagibig' => 0,
-            'otMultiplier'   => 1.25,
-            'otPremium'      => 1.30,
+            'rateTimeline'   => [['from' => '2000-01-01', 'rates' => PayrollRate::fallbackRates()]],
             'bonus'          => 0,
             'sundayRestDay'  => true,
             'holidayTypeMap' => [],
         ], $overrides);
     }
 
-    private function factors(?string $holidayType, bool $isRestDay, array $cfg = null): array
+    private function factors(?string $holidayType, bool $isRestDay, array $rates = null): array
     {
         $m = new ReflectionMethod(PayrollService::class, 'doleFactors');
         $m->setAccessible(true);
 
-        return $m->invoke(app(PayrollService::class), $holidayType, $isRestDay, $cfg ?? $this->cfg());
+        return $m->invoke(app(PayrollService::class), $holidayType, $isRestDay, $rates ?? PayrollRate::DEFAULTS);
     }
 
     /**
@@ -103,13 +103,18 @@ class PayrollDoleRatesTest extends TestCase
         $this->assertSame(2.60, round($this->factors('regular', true)[0], 4));
     }
 
-    /** Both premiums come from Settings, and a company may pay above the law. */
-    public function test_the_multipliers_come_from_settings(): void
+    /** The factors follow the rate set, and a company may pay above the law. */
+    public function test_the_multipliers_come_from_the_rate_set(): void
     {
-        $generous = $this->cfg(['otMultiplier' => 1.50, 'otPremium' => 2.00]);
+        $generous = [
+            'ot_multiplier'              => 1.50,
+            'night_diff_multiplier'      => 1.10,
+            'rest_day_multiplier'        => 2.00,
+            'regular_holiday_multiplier' => 2.00,
+        ];
 
-        $this->assertSame(1.50, round($this->factors(null, false, $generous)[1], 4));
-        $this->assertSame(4.00, round($this->factors('regular', false, $generous)[1], 4), '2.00 x 2.00');
+        $this->assertSame(1.50, round($this->factors(null, false, $generous)[1], 4), 'ordinary-day OT');
+        $this->assertSame(4.00, round($this->factors('regular', false, $generous)[1], 4), 'holiday 2.00 x premium-day 2.00');
     }
 
     // ── End to end: the factors reaching actual pesos ────────────────────────

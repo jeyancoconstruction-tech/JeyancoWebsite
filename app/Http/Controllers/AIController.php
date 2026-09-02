@@ -446,12 +446,18 @@ class AIController extends Controller
 
         if ($needsSettings) {
             $s = DB::table('settings')->first();
-            if (!$s) {
+
+            // Rates are dated now, so the answer is the set in force today
+            // rather than whatever the settings row still remembers.
+            $rate = \App\Models\PayrollRate::current();
+
+            if (! $s && ! $rate) {
                 return "No settings configured yet. Open Settings → Payroll Settings to set them up.";
             }
-            $sss  = number_format($s->sss ?? 0, 2);
-            $phil = number_format($s->philhealth ?? 0, 2);
-            $pag  = number_format($s->pagibig ?? 0, 2);
+
+            $sss  = number_format($rate->sss_rate ?? 0, 2);
+            $phil = number_format($rate->philhealth_rate ?? 0, 2);
+            $pag  = number_format($rate->pagibig_rate ?? 0, 2);
 
             $general = $any('all', 'deduction', 'system settings', 'settings') && ! $any('only', 'just');
 
@@ -460,24 +466,34 @@ class AIController extends Controller
             if (! $general && $any('pagibig')) return "PAG-IBIG contribution rate: {$pag}%";
 
             if ($any('deduction', 'all rates') && ! $any('system settings', 'payroll settings')) {
-                return "DEDUCTION RATES\n━━━━━━━━━━━━━━━\nSSS:        {$sss}%\nPhilHealth: {$phil}%\nPAG-IBIG:   {$pag}%";
+                return "DEDUCTION RATES\n━━━━━━━━━━━━━━━\nSSS:        {$sss}%\nPhilHealth: {$phil}%\nPAG-IBIG:   {$pag}%\n"
+                     . "Withholding tax: BIR graduated table, applied automatically";
             }
 
-            $daily   = number_format($s->daily_rate ?? 0, 2);
-            $ot      = number_format($s->ot_multiplier ?? 1.25, 2);
-            $holiday = number_format($s->holiday_multiplier ?? 2, 2);
+            $daily   = ($rate?->daily_rate ?? null) !== null
+                ? '₱' . number_format($rate->daily_rate, 2)
+                : 'none set (each labour type keeps its own)';
+            $ot      = number_format($rate->ot_multiplier ?? 1.25, 2);
+            $night   = number_format($rate->night_diff_multiplier ?? 1.10, 2);
+            $restM   = number_format($rate->rest_day_multiplier ?? 1.30, 2);
+            $holiday = number_format($rate->regular_holiday_multiplier ?? 2, 2);
+            $since   = $rate?->effective_from?->format('M d, Y') ?? '—';
             $bonus   = number_format($s->bonus ?? 0, 2);
             $rest    = (isset($s->sunday_rest_day_enabled) && $s->sunday_rest_day_enabled) ? 'On (Sunday)' : 'Off';
 
             return "SYSTEM SETTINGS\n━━━━━━━━━━━━━━━\n"
-                . "Daily rate:         ₱{$daily}\n"
+                . "In force since:     {$since}\n"
+                . "Daily wage floor:   {$daily}\n"
                 . "OT multiplier:      {$ot}×\n"
+                . "Night differential: {$night}×\n"
+                . "Rest day:           {$restM}×\n"
                 . "Holiday multiplier: {$holiday}×\n"
                 . "Bonus / period:     ₱{$bonus}\n"
                 . "Sunday rest day:    {$rest}\n"
                 . "SSS:                {$sss}%\n"
                 . "PhilHealth:         {$phil}%\n"
-                . "PAG-IBIG:           {$pag}%";
+                . "PAG-IBIG:           {$pag}%\n"
+                . "Withholding tax:    BIR graduated table (automatic)";
         }
 
         // ===== HOLIDAYS =====

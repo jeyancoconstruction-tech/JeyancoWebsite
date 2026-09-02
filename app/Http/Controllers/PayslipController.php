@@ -45,6 +45,7 @@ class PayslipController extends Controller
             fputcsv($out, ['SSS', $p['ded']['sss']]);
             fputcsv($out, ['PhilHealth', $p['ded']['philhealth']]);
             fputcsv($out, ['PAG-IBIG', $p['ded']['pagibig']]);
+            fputcsv($out, ['Withholding Tax', $p['ded']['tax']]);
             fputcsv($out, ['Vale / Utang', $p['ded']['vale']]);
             fputcsv($out, ['Other', $p['ded']['other']]);
             fputcsv($out, ['Total Deductions', $p['totalDeductions']]);
@@ -78,11 +79,12 @@ class PayslipController extends Controller
         $slips = collect($employees)->map(function (array $e): array {
             $t = $e['totals'];
 
-            $ded = ['sss' => 0, 'philhealth' => 0, 'pagibig' => 0, 'vale' => 0, 'other' => 0];
+            $ded = ['sss' => 0, 'philhealth' => 0, 'pagibig' => 0, 'tax' => 0, 'vale' => 0, 'other' => 0];
             foreach ($e['periods'] as $p) {
                 $ded['sss']        += $p['sssDeduction'];
                 $ded['philhealth'] += $p['philhealthDeduction'];
                 $ded['pagibig']    += $p['pagibigDeduction'];
+                $ded['tax']        += $p['withholdingTax'];
                 $ded['vale']       += $p['vale'];
                 $ded['other']      += $p['manualDeductions'];
             }
@@ -148,7 +150,7 @@ class PayslipController extends Controller
         $employees = $payroll->computeForRange($from, $to)['employees'];
         $data = collect($employees)->firstWhere('employee_id', $emp->id);
 
-        $ded = ['sss' => 0, 'philhealth' => 0, 'pagibig' => 0, 'vale' => 0, 'other' => 0];
+        $ded = ['sss' => 0, 'philhealth' => 0, 'pagibig' => 0, 'tax' => 0, 'vale' => 0, 'other' => 0];
         $totals = [
             'workdays' => 0, 'hours' => 0, 'gross' => 0, 'overtime' => 0,
             'holidayPay' => 0, 'restDayPay' => 0, 'bonus' => 0, 'totalDeductions' => 0, 'net' => 0,
@@ -163,6 +165,7 @@ class PayslipController extends Controller
                 $ded['sss']        += $p['sssDeduction'];
                 $ded['philhealth'] += $p['philhealthDeduction'];
                 $ded['pagibig']    += $p['pagibigDeduction'];
+                $ded['tax']        += $p['withholdingTax'];
                 $ded['vale']       += $p['vale'];
                 $ded['other']      += $p['manualDeductions'];
             }

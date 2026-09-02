@@ -187,6 +187,7 @@ class KioskAiController extends Controller
                 'sss'        => $num('sssDeduction'),
                 'philhealth' => $num('philhealthDeduction'),
                 'pagibig'    => $num('pagibigDeduction'),
+                'tax'        => $num('withholdingTax'),
                 'vale'       => $num('vale'),
                 'manual'     => $num('manualDeductions'),
             ],

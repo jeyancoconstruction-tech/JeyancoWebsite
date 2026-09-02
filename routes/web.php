@@ -150,6 +150,7 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     // --- SETTINGS MODULE ---
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings/update', [SettingsController::class, 'update'])->name('settings.update');
+    Route::post('/settings/payroll-rates', [SettingsController::class, 'storePayrollRate'])->name('payroll-rates.store');
     
     // Labor Types
     Route::post('/labor-types/store', [SettingsController::class, 'storeLaborType'])->name('labor-types.store');
