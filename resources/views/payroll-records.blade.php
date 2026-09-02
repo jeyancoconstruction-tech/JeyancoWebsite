@@ -103,6 +103,29 @@
         background: var(--bg-subtle); border: 1px solid var(--border);
         font-size: 11.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums;
     }
+    .rc-math {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px;
+        margin-top: 12px; padding: 9px 12px; border-radius: 6px;
+        background: var(--bg-subtle); border: 1px solid var(--border);
+        font-size: 11.5px; font-variant-numeric: tabular-nums;
+    }
+    .rc-math span { color: var(--text-secondary); display: block; }
+    .rc-math b    { color: var(--text-primary); font-weight: 700; }
+    .rc-rates { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .rc-rates-head {
+        font-size: 9.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+        color: var(--text-secondary); margin-bottom: 7px;
+    }
+    .rc-badge {
+        margin-left: 6px; padding: 1px 7px; border-radius: 999px; letter-spacing: .3px;
+        background: rgba(22,163,74,.12); color: var(--success);
+    }
+    .rc-rates-grid {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr) auto); gap: 4px 10px;
+        font-size: 11px; font-variant-numeric: tabular-nums;
+    }
+    .rc-rates-grid span { color: var(--text-muted); }
+    .rc-rates-grid b    { color: var(--text-secondary); font-weight: 700; text-align: right; }
     .rc-note { margin: 10px 0 0; font-size: 11px; line-height: 1.6; color: var(--text-muted); }
 </style>
 @endpush
@@ -310,12 +333,12 @@
                 </div>
             </div>
 
-            {{-- ── Day receipt ──────────────────────────────────────────────
-                 One shell, filled from the clicked row. A modal per row would
-                 be a few hundred of them on a busy week, all for the one that
-                 gets opened. --}}
+            {{-- ── Payslip receipt ──────────────────────────────────────────
+                 One shell, filled from whichever employee was clicked. A modal
+                 each would be a few hundred on a busy week, all for the one
+                 that gets opened. --}}
             <div class="modal fade" id="dayReceipt" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                     <div class="modal-content" style="background:var(--surface);border:1px solid var(--border);">
                         <div class="modal-body p-3 p-md-4">
                             <div class="emp-slip" style="border:none;padding:0;">
@@ -326,57 +349,88 @@
                                         <div class="sub">Payroll Dept. &middot; Panganiban, PH</div>
                                     </div>
                                     <div class="emp-slip-doc">
-                                        <div class="lbl">DAY RECEIPT</div>
-                                        <div class="per" id="rcDate">—</div>
+                                        <div class="lbl">PAYSLIP</div>
+                                        <div class="per">{{ $period['label'] }}</div>
                                     </div>
                                 </div>
 
                                 <div class="emp-slip-emp">
-                                    <span class="who" id="rcName">—</span>
-                                    <span class="meta" id="rcMeta">—</span>
+                                    <span class="who" id="rcName">&mdash;</span>
+                                    <span class="meta" id="rcMeta">&mdash;</span>
                                 </div>
 
-                                {{-- What the hours were paid at, before anything is
-                                     added to them. Without it the earnings column is
-                                     a list of figures with nothing to check them
-                                     against. --}}
-                                <div class="rc-basis" id="rcBasis">—</div>
+                                {{-- What the hours were paid at. Without it the
+                                     earnings column is a list of figures with
+                                     nothing to check them against. --}}
+                                <div class="rc-basis" id="rcBasis">&mdash;</div>
 
                                 <div class="emp-slip-cols">
                                     <div>
                                         <h6>Earnings</h6>
-                                        <div class="ln"><span class="k">Basic pay</span><span class="v" id="rcBasic">—</span></div>
-                                        <div class="ln"><span class="k" id="rcOtK">Overtime</span><span class="v" id="rcOt">—</span></div>
-                                        <div class="ln"><span class="k">Night differential</span><span class="v" id="rcNight">—</span></div>
-                                        <div class="ln"><span class="k" id="rcHolidayK">Holiday pay</span><span class="v" id="rcHoliday">—</span></div>
-                                        <div class="ln"><span class="k">Rest day pay</span><span class="v" id="rcRest">—</span></div>
-                                        <div class="ln"><span class="k">Bonus (period)</span><span class="v" id="rcBonus">—</span></div>
-                                        <div class="ln sum"><span class="k">Gross</span><span class="v" id="rcGross">—</span></div>
+                                        <div class="ln"><span class="k" id="rcBasicK">Regular pay</span><span class="v" id="rcBasic">&mdash;</span></div>
+                                        <div class="ln"><span class="k" id="rcOtK">Overtime</span><span class="v" id="rcOt">&mdash;</span></div>
+                                        <div class="ln"><span class="k" id="rcNightK">Night differential</span><span class="v" id="rcNight">&mdash;</span></div>
+                                        <div class="ln"><span class="k" id="rcHolidayK">Holiday pay</span><span class="v" id="rcHoliday">&mdash;</span></div>
+                                        <div class="ln"><span class="k" id="rcRestK">Rest day pay</span><span class="v" id="rcRest">&mdash;</span></div>
+                                        <div class="ln sum"><span class="k">Gross pay</span><span class="v" id="rcGross">&mdash;</span></div>
                                     </div>
                                     <div>
                                         <h6>Deductions</h6>
-                                        <div class="ln"><span class="k">SSS</span><span class="v" id="rcSss">—</span></div>
-                                        <div class="ln"><span class="k">PhilHealth</span><span class="v" id="rcPhil">—</span></div>
-                                        <div class="ln"><span class="k">Pag-IBIG</span><span class="v" id="rcPag">—</span></div>
-                                        <div class="ln"><span class="k">Withholding tax</span><span class="v" id="rcTax">—</span></div>
-                                        <div class="ln"><span class="k">Vale / Utang</span><span class="v" id="rcVale">—</span></div>
-                                        <div class="ln"><span class="k">Other adjustments</span><span class="v" id="rcOther">—</span></div>
-                                        <div class="ln sum"><span class="k">Total</span><span class="v" id="rcDed">—</span></div>
+                                        <div class="ln"><span class="k" id="rcSssK">SSS</span><span class="v" id="rcSss">&mdash;</span></div>
+                                        <div class="ln"><span class="k" id="rcPhilK">PhilHealth</span><span class="v" id="rcPhil">&mdash;</span></div>
+                                        <div class="ln"><span class="k" id="rcPagK">Pag-IBIG</span><span class="v" id="rcPag">&mdash;</span></div>
+                                        <div class="ln"><span class="k" id="rcTaxK">Withholding tax</span><span class="v" id="rcTax">&mdash;</span></div>
+                                        <div class="ln"><span class="k">Vale / cash advance</span><span class="v" id="rcVale">&mdash;</span></div>
+                                        <div class="ln"><span class="k">Other adjustments</span><span class="v" id="rcOther">&mdash;</span></div>
+                                        <div class="ln sum"><span class="k">Total deductions</span><span class="v" id="rcDed" style="color:var(--danger);">&mdash;</span></div>
                                     </div>
                                 </div>
 
+                                {{-- The bonus is added to net, not to gross, so
+                                     putting it in the earnings column would make
+                                     the Gross line stop adding up. It belongs in
+                                     the arithmetic that reaches net. --}}
+                                <div class="rc-math">
+                                    <span>Gross</span><b id="rcMGross">&mdash;</b>
+                                    <span>&minus; Deductions</span><b id="rcMDed">&mdash;</b>
+                                    <span>+ Bonus</span><b id="rcMBonus">&mdash;</b>
+                                </div>
+
                                 <div class="emp-slip-net">
-                                    <span class="k">NET PAY</span>
-                                    <span class="v" id="rcNet">—</span>
+                                    <span class="k">NET PAY &middot; {{ $period['label'] }}</span>
+                                    <span class="v" id="rcNet">&mdash;</span>
+                                </div>
+
+                                {{-- The settings the period was computed at. The
+                                     figures above are only checkable against the
+                                     numbers that produced them. --}}
+                                <div class="rc-rates">
+                                    <div class="rc-rates-head">
+                                        Rates applied
+                                        @if($rates['uses_defaults'])<span class="rc-badge">statutory defaults</span>@endif
+                                    </div>
+                                    <div class="rc-rates-grid">
+                                        <span>Overtime</span><b>&times;{{ number_format($rates['ot_multiplier'], 2) }}</b>
+                                        <span>Night differential</span><b>&times;{{ number_format($rates['night_diff_multiplier'], 2) }}</b>
+                                        <span>Rest day</span><b>&times;{{ number_format($rates['rest_day_multiplier'], 2) }}</b>
+                                        <span>Regular holiday</span><b>&times;{{ number_format($rates['regular_holiday_multiplier'], 2) }}</b>
+                                        <span>SSS</span><b>{{ number_format($rates['sss_rate'], 2) }}%</b>
+                                        <span>PhilHealth</span><b>{{ number_format($rates['philhealth_rate'], 2) }}%</b>
+                                        <span>Pag-IBIG</span><b>{{ number_format($rates['pagibig_rate'], 2) }}%</b>
+                                        <span>Withholding tax</span><b>{{ $rates['withholding_tax'] ? 'BIR table' : 'off' }}</b>
+                                        <span>Bonus</span><b>&#8369;{{ number_format($rates['bonus'], 2) }}/period</b>
+                                        <span>Wage floor</span><b>{{ $rates['daily_rate'] ? '&#8369;' . number_format($rates['daily_rate'], 2) : 'none set' }}</b>
+                                    </div>
                                 </div>
 
                                 <p class="rc-note">
-                                    Gross less the employee share of the contributions and the withholding tax,
-                                    then less any vale and adjustments entered on the record.
+                                    Night differential is 10:00 PM &ndash; 6:00 AM. Contributions are the employee share
+                                    on gross; the withholding tax is the BIR daily table on what is left after them.
+                                    Vale and adjustments are entered per attendance record, not here.
                                 </p>
 
                                 <div class="d-flex gap-2 mt-3">
-                                    <button type="button" class="btn btn-sm fw-600 flex-grow-1"
+                                    <button type="button" class="btn btn-sm fw-600"
                                             data-bs-dismiss="modal"
                                             style="background:var(--bg-subtle);color:var(--text-secondary);border:1px solid var(--border);">
                                         Close
@@ -384,7 +438,7 @@
                                     <a href="#" target="_blank" rel="noopener" id="rcPrint"
                                        class="btn btn-sm fw-600 flex-grow-1"
                                        style="background:var(--brand);color:#fff;border:none;">
-                                        <i class="fas fa-print me-1"></i> Print the week's slip
+                                        <i class="fas fa-print me-1"></i> Print / Save as PDF
                                     </a>
                                 </div>
                             </div>
@@ -661,63 +715,120 @@
 @endsection
 
 @push('scripts')
+@php
+    // One slip per employee for the period on screen, built from the same
+    // totals the By Employee cards use. The deductions are summed from the
+    // weekly rows because only those carry them itemised.
+    $slipMap = [];
+    foreach ($employees as $emp) {
+        $t = $emp['totals'];
+        $sss = $phil = $pag = $tax = $vale = $other = 0;
+        foreach ($emp['periods'] as $pp) {
+            $sss   += $pp['sssDeduction'];
+            $phil  += $pp['philhealthDeduction'];
+            $pag   += $pp['pagibigDeduction'];
+            $tax   += $pp['withholdingTax'];
+            $vale  += $pp['vale'];
+            $other += $pp['manualDeductions'];
+        }
+
+        // Gross is basic + overtime + holiday + rest day + night differential.
+        // The bonus is added to net, not to gross, so it is not subtracted here.
+        $regular = round($t['gross'] - $t['overtime'] - $t['holidayPay']
+                       - ($t['restDayPay'] ?? 0) - ($t['nightDiffPay'] ?? 0), 2);
+
+        $slipMap[(string) $emp['employee_id']] = [
+            'name'      => $emp['name'],
+            'position'  => $emp['position'] ?? '',
+            'workdays'  => $t['workdays'],
+            'hours'     => $t['hours'],
+            'regular'   => $regular,
+            'overtime'  => $t['overtime'],
+            'night'     => $t['nightDiffPay'] ?? 0,
+            'holiday'   => $t['holidayPay'],
+            'rest'      => $t['restDayPay'] ?? 0,
+            'bonus'     => $t['bonus'],
+            'gross'     => $t['gross'],
+            'sss'       => round($sss, 2),
+            'phil'      => round($phil, 2),
+            'pag'       => round($pag, 2),
+            'tax'       => round($tax, 2),
+            'vale'      => round($vale, 2),
+            'other'     => round($other, 2),
+            'ded'       => $t['totalDeductions'],
+            'net'       => $t['net'],
+        ];
+    }
+@endphp
 <script>
-// ── Day receipt ─────────────────────────────────────────────────────────────
-// The breakdown row already carries the whole computation, so clicking it only
-// has to lay the figures out — nothing is fetched.
+// ── Payslip receipt ─────────────────────────────────────────────────────────
+// The page already holds every figure for the period, so clicking a breakdown
+// row only has to lay them out. Nothing is fetched.
 (function () {
     const modalEl = document.getElementById('dayReceipt');
     if (!modalEl) return;
 
-    const peso = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const money = n => '\u20B1' + peso.format(Number(n) || 0);
-    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
-
-    // The period's print route, with the employee swapped in.
+    const SLIPS = @json($slipMap);
+    const RATES = @json($rates);
     const printBase = @json(route('payslip.batch', ['from' => $period['from'], 'to' => $period['to']]));
+
+    const peso  = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const money = n => '₱' + peso.format(Number(n) || 0);
+    const set   = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
 
     function open(row) {
         let d;
         try { d = JSON.parse(row.dataset.slip); } catch { return; }
 
-        set('rcDate', row.dataset.date || '');
-        set('rcName', d.name || '');
-        set('rcMeta', '#' + String(d.employee_id ?? '').padStart(4, '0')
-                    + ' \u00B7 ' + (Number(d.hours) || 0) + 'h worked');
+        const id = String(d.employee_id ?? '');
+        const s  = SLIPS[id];
+        if (!s) return;
 
-        // How the hours were priced, and the day type if it changed the price.
-        const hourly = money(d.rate) + '/hr';
-        const day    = money(d.dailyRate) + '/day';
-        let basis = day + ' \u00F7 8 = ' + hourly + ' \u00B7 ' + (Number(d.hours) || 0) + 'h';
-        if (d.is_holiday)   basis += ' \u00B7 ' + (d.holiday_type || 'holiday') + ' rate';
-        if (Number(d.restDayPay) > 0) basis += ' \u00B7 rest day';
-        set('rcBasis', basis);
+        set('rcName', s.name || '');
+        set('rcMeta', '#' + id.padStart(4, '0')
+                    + (s.position ? ' · ' + s.position : '')
+                    + ' · ' + s.workdays + 'd / ' + peso.format(s.hours) + 'h');
 
-        // Overtime and holiday name what they were paid at, because "why is this
-        // 250 and not 200" is the question the row cannot answer.
-        const otHours = Number(d.ot_hours) || 0;
-        set('rcOtK', otHours > 0 ? 'Overtime (' + otHours + 'h @ ' + money(d.ot_rate) + '/hr)' : 'Overtime');
-        set('rcHolidayK', d.is_holiday && d.holiday_type ? 'Holiday pay (' + d.holiday_type + ')' : 'Holiday pay');
+        // The rate the days were priced at, taken from the row that was clicked
+        // — a labour type's rate is per worker, not per period.
+        const daily = Number(d.dailyRate) || 0;
+        set('rcBasis', money(daily) + '/day · ' + money(daily / 8) + '/hr · '
+                     + s.workdays + ' day' + (s.workdays === 1 ? '' : 's') + ' pasok');
 
-        set('rcBasic',   money(d.basicPay));
-        set('rcOt',      money(d.otPay));
-        set('rcNight',   money(d.nightDiffPay));
-        set('rcHoliday', money(d.holidayPay));
-        set('rcRest',    money(d.restDayPay));
-        set('rcBonus',   money(d.bonus));
-        set('rcGross',   money(d.gross));
+        // Each line names what produced it, because "why is this 250" is the
+        // question a column of totals cannot answer.
+        set('rcBasicK',   'Regular pay (' + s.workdays + 'd)');
+        set('rcOtK',      'Overtime (×' + Number(RATES.ot_multiplier).toFixed(2) + ')');
+        set('rcNightK',   'Night differential (×' + Number(RATES.night_diff_multiplier).toFixed(2) + ')');
+        set('rcHolidayK', 'Holiday pay (×' + Number(RATES.regular_holiday_multiplier).toFixed(2) + ')');
+        set('rcRestK',    'Rest day pay (×' + Number(RATES.rest_day_multiplier).toFixed(2) + ')');
+        set('rcSssK',     'SSS (' + Number(RATES.sss_rate).toFixed(2) + '%)');
+        set('rcPhilK',    'PhilHealth (' + Number(RATES.philhealth_rate).toFixed(2) + '%)');
+        set('rcPagK',     'Pag-IBIG (' + Number(RATES.pagibig_rate).toFixed(2) + '%)');
+        set('rcTaxK',     RATES.withholding_tax ? 'Withholding tax (BIR)' : 'Withholding tax (off)');
 
-        set('rcSss',   money(d.sssDeduction));
-        set('rcPhil',  money(d.philhealthDeduction));
-        set('rcPag',   money(d.pagibigDeduction));
-        set('rcTax',   money(d.withholdingTax));
-        set('rcVale',  money(d.vale));
-        set('rcOther', money(d.manualDeductions));
-        set('rcDed',   money(d.totalDeductions));
-        set('rcNet',   money(d.net));
+        set('rcBasic',   money(s.regular));
+        set('rcOt',      money(s.overtime));
+        set('rcNight',   money(s.night));
+        set('rcHoliday', money(s.holiday));
+        set('rcRest',    money(s.rest));
+        set('rcGross',   money(s.gross));
+
+        set('rcSss',   money(s.sss));
+        set('rcPhil',  money(s.phil));
+        set('rcPag',   money(s.pag));
+        set('rcTax',   money(s.tax));
+        set('rcVale',  money(s.vale));
+        set('rcOther', money(s.other));
+        set('rcDed',   money(s.ded));
+
+        set('rcMGross', money(s.gross));
+        set('rcMDed',   money(s.ded));
+        set('rcMBonus', money(s.bonus));
+        set('rcNet',    money(s.net));
 
         const print = document.getElementById('rcPrint');
-        if (print) print.href = printBase + '&employee=' + encodeURIComponent(d.employee_id ?? '');
+        if (print) print.href = printBase + '&employee=' + encodeURIComponent(id);
 
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PayrollRate;
 use App\Services\PayrollService;
 use App\Notifications\PayrollNotification;
 use Illuminate\Http\Request;
@@ -54,6 +55,13 @@ class PayrollRecordsController extends Controller
             $selectedEmployee = $employees[0] ?? null;
         }
 
+        // The numbers the period was computed at, for the receipt to show its
+        // own workings. Resolved at the period's end, the same day the bonus
+        // resolves on, so the two agree.
+        $rateSet = PayrollRate::effectiveOn($period['to']);
+        $rates   = $rateSet ? $rateSet->toRates() : PayrollRate::fallbackRates();
+        $rates['uses_defaults'] = (bool) ($rateSet?->uses_defaults);
+
         $summary = $this->summarize($employees);
 
         // ── Notifications ──────────────────────────────────────────────────
@@ -78,7 +86,7 @@ class PayrollRecordsController extends Controller
             }
         }
 
-        return view('payroll-records', compact('period', 'weeks', 'days', 'employees', 'summary', 'search', 'selectedEmployee'));
+        return view('payroll-records', compact('period', 'weeks', 'days', 'employees', 'summary', 'search', 'selectedEmployee', 'rates'));
     }
 
     /**
