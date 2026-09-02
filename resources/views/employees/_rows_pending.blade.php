@@ -36,13 +36,13 @@
         <td>
             @include('employees._person', ['e' => $e, 'displayName' => $named ? $e->name : 'New worker — needs details'])
             @if($awaitingFingerprint)
-                <span class="rm-awaiting-fp" title="Registered on the web. Enrol their finger on the kiosk to activate them.">
-                    <i class="fas fa-fingerprint"></i> awaiting fingerprint
+                <span class="rm-awaiting-fp" title="{{ __('Registered on the web. Enrol their finger on the kiosk to activate them.') }}">
+                    <i class="fas fa-fingerprint"></i> {{ __('awaiting fingerprint') }}
                 </span>
             @endif
             @if($missingRate)
                 <span class="rm-needs-rate" title="Ang position na '{{ $e->position }}' ay walang katugmang labor type, kaya walang rate. Itakda ito sa Complete.">
-                    <i class="fas fa-triangle-exclamation"></i> walang rate
+                    <i class="fas fa-triangle-exclamation"></i> {{ __('walang rate') }}
                 </span>
             @endif
         </td>
@@ -65,7 +65,7 @@
                 {{-- Nothing for the admin to confirm — the kiosk holds the next
                      step. Edit stays available for fixing details meanwhile. --}}
                 <a href="{{ route('employees.edit', $e->id) }}" class="rm-btn-ghost">
-                    <i class="fas fa-pen"></i> Edit
+                    <i class="fas fa-pen"></i> {{ __('Edit') }}
                 </a>
             @elseif($hasDetails)
                 <button class="rm-btn-accept js-emp-edit"
@@ -77,7 +77,7 @@
                         data-site="{{ $e->site_id }}"
                         data-fp="{{ $e->fingerprint_id }}"
                         data-photo="{{ $photoUrl }}">
-                    <i class="fas fa-check"></i> Confirm
+                    <i class="fas fa-check"></i> {{ __('Confirm') }}
                 </button>
             @else
                 <button class="rm-btn-complete js-emp-edit"
@@ -89,13 +89,13 @@
                         data-site="{{ $e->site_id }}"
                         data-fp="{{ $e->fingerprint_id }}"
                         data-photo="{{ $photoUrl }}">
-                    <i class="fas fa-user-pen"></i> Complete
+                    <i class="fas fa-user-pen"></i> {{ __('Complete') }}
                 </button>
             @endif
             <form action="{{ route('employees.destroy', $e->id) }}" method="POST" style="display:inline;"
                   onsubmit="return confirm('Cancel and remove {{ addslashes($e->name) }}? It can still be restored from the Removed tab.')">
                 @csrf @method('DELETE')
-                <button type="submit" class="rm-btn-reject"><i class="fas fa-xmark"></i> Cancel</button>
+                <button type="submit" class="rm-btn-reject"><i class="fas fa-xmark"></i> {{ __('Cancel') }}</button>
             </form>
         </td>
     </tr>

@@ -155,18 +155,18 @@
     <div class="topbar d-flex justify-content-between align-items-center px-4">
 
         <div class="d-flex align-items-center gap-3">
-            <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+            <button class="sidebar-toggle" id="sidebar-toggle" aria-label="{{ __('Toggle sidebar') }}">
                 <i data-lucide="menu"></i>
             </button>
             <div class="status-pill d-none d-lg-flex">
                 <div class="dot pulse"></div>
-                <span>SYSTEM LIVE</span>
+                <span>{{ __('SYSTEM LIVE') }}</span>
             </div>
             <div class="v-divider"></div>
             <div>
                 <h4 class="page-main-title">@yield('page_title', 'Dashboard')</h4>
                 <div class="topbar-breadcrumb">
-                    <span>Jeyanco</span> <i data-lucide="chevron-right"></i> <span class="active">Control Panel</span>
+                    <span>{{ __('Jeyanco') }}</span> <i data-lucide="chevron-right"></i> <span class="active">{{ __('Control Panel') }}</span>
                 </div>
             </div>
         </div>
@@ -174,12 +174,12 @@
         <div class="d-flex align-items-center gap-4">
             <div class="search-container d-none d-md-flex" style="position: relative;">
                 <i data-lucide="search"></i>
-                <input type="text" id="global-search-input" placeholder="Search data..." autocomplete="off">
+                <input type="text" id="global-search-input" placeholder="{{ __('Search data...') }}" autocomplete="off">
                 <div id="search-suggestions" class="search-suggestions-dropdown"></div>
                 <kbd>/</kbd>
             </div>
 
-            <button class="theme-switch" id="themeToggle" type="button" role="switch" aria-label="Toggle dark mode" title="Toggle dark / light mode">
+            <button class="theme-switch" id="themeToggle" type="button" role="switch" aria-label="{{ __('Toggle dark mode') }}" title="{{ __('Toggle dark / light mode') }}">
                 <span class="ts-knob">
                     <i data-lucide="sun" class="ts-sun"></i>
                     <i data-lucide="moon" class="ts-moon"></i>
@@ -194,14 +194,14 @@
                 {{-- Dropdown panel --}}
                 <div class="notif-dropdown" id="notifDropdown">
                     <div class="notif-dd-header">
-                        <span class="notif-dd-title">Notifications</span>
+                        <span class="notif-dd-title">{{ __('Notifications') }}</span>
                         <div class="notif-dd-actions">
-                            <button class="notif-dd-mark-all" id="notifMarkAll" type="button">Mark all read</button>
-                            <button class="notif-dd-delete-all" id="notifDeleteAll" type="button">Delete all</button>
+                            <button class="notif-dd-mark-all" id="notifMarkAll" type="button">{{ __('Mark all read') }}</button>
+                            <button class="notif-dd-delete-all" id="notifDeleteAll" type="button">{{ __('Delete all') }}</button>
                         </div>
                     </div>
                     <div class="notif-dd-list" id="notifList">
-                        <div class="notif-dd-empty">Loading…</div>
+                        <div class="notif-dd-empty">{{ __('Loading…') }}</div>
                     </div>
                 </div>
             </div>
@@ -221,7 +221,7 @@
                     @if(auth()->user()?->isAdmin())
                         <li>
                             <a class="dropdown-item" href="{{ route('accounts.index') }}">
-                                <i data-lucide="user-cog"></i> Manage Accounts
+                                <i data-lucide="user-cog"></i> {{ __('Manage Accounts') }}
                             </a>
                         </li>
                     @endif
@@ -229,7 +229,7 @@
                     <li>
                         <form action="{{ route('logout') }}" method="POST">
                             @csrf
-                            <button class="dropdown-item text-danger" type="submit"><i data-lucide="power"></i> Logout</button>
+                            <button class="dropdown-item text-danger" type="submit"><i data-lucide="power"></i> {{ __('Logout') }}</button>
                         </form>
                     </li>
                 </ul>
@@ -245,7 +245,7 @@
 </div>
 
 <!-- FLOATING CHATBOT -->
-<button id="chatbot-fab" class="chatbot-fab" title="Chat with Jeyanco AI">
+<button id="chatbot-fab" class="chatbot-fab" title="{{ __('Chat with Jeyanco AI') }}">
     <i class="fas fa-robot"></i>
     <span class="fab-pulse-ring"></span>
 </button>
@@ -258,13 +258,13 @@
                 <span class="cb-status-dot"></span>
             </div>
             <div>
-                <span class="chatbot-name">Jeyanco AI</span>
-                <span class="chatbot-status-text">Online &bull; Ready to help</span>
+                <span class="chatbot-name">{{ __('Jeyanco AI') }}</span>
+                <span class="chatbot-status-text">{{ __('Online &bull; Ready to help') }}</span>
             </div>
         </div>
         <div class="chatbot-header-btns">
-            <button id="chatbot-new-btn" class="cb-icon-btn" title="New Chat"><i class="fas fa-plus"></i></button>
-            <button id="chatbot-minimize-btn" class="cb-icon-btn" title="Close"><i class="fas fa-times"></i></button>
+            <button id="chatbot-new-btn" class="cb-icon-btn" title="{{ __('New Chat') }}"><i class="fas fa-plus"></i></button>
+            <button id="chatbot-minimize-btn" class="cb-icon-btn" title="{{ __('Close') }}"><i class="fas fa-times"></i></button>
         </div>
     </div>
 
@@ -272,24 +272,24 @@
         <div class="cb-welcome">
             <div class="cb-welcome-icon"><i class="fas fa-robot"></i></div>
             <div class="cb-welcome-text">
-                <p><strong>Mabuhay!</strong> I'm Jeyanco AI</p>
-                <p>Ask me about payroll, attendance, employees, and workforce data.</p>
+                <p><strong>{{ __('Mabuhay!') }}</strong> {{ __('I\'m Jeyanco AI') }}</p>
+                <p>{{ __('Ask me about payroll, attendance, employees, and workforce data.') }}</p>
             </div>
         </div>
         <div class="cb-quick-chips" id="cb-quick-chips">
-            <button class="cb-chip" data-msg="Total employees">&#128101; Employees</button>
-            <button class="cb-chip" data-msg="Dashboard overview">&#128202; Overview</button>
-            <button class="cb-chip" data-msg="Attendance today">&#9989; Attendance</button>
-            <button class="cb-chip" data-msg="help">&#10067; Help</button>
+            <button class="cb-chip" data-msg="Total employees">{{ __('&#128101; Employees') }}</button>
+            <button class="cb-chip" data-msg="Dashboard overview">{{ __('&#128202; Overview') }}</button>
+            <button class="cb-chip" data-msg="Attendance today">{{ __('&#9989; Attendance') }}</button>
+            <button class="cb-chip" data-msg="help">{{ __('&#10067; Help') }}</button>
         </div>
     </div>
 
     <div class="chatbot-footer">
         <div class="cb-input-row">
-            <input type="text" id="chatbot-input" class="cb-input" placeholder="Ask something..." autocomplete="off">
+            <input type="text" id="chatbot-input" class="cb-input" placeholder="{{ __('Ask something...') }}" autocomplete="off">
             <button id="chatbot-send" class="cb-send-btn"><i class="fas fa-paper-plane"></i></button>
         </div>
-        <p class="cb-hint">Press Enter to send &nbsp;&middot;&nbsp; Powered by Jeyanco Intelligence</p>
+        <p class="cb-hint">{{ __('Press Enter to send &nbsp;&middot;&nbsp; Powered by Jeyanco Intelligence') }}</p>
     </div>
 </div>
 

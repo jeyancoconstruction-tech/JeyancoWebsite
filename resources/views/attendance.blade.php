@@ -56,26 +56,26 @@
 <div class="attendance-container p-4">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="attendance-title mb-0">Attendance Monitoring</h3>
+        <h3 class="attendance-title mb-0">{{ __('Attendance Monitoring') }}</h3>
         <span class="text-muted small"><i class="fas fa-calendar-day me-1"></i>{{ now()->format('l, m/d/Y') }}</span>
     </div>
 
     <!-- STAT CARDS -->
     <div class="analytics-row">
         <div class="analytics-card">
-            <h5>Present Today</h5>
+            <h5>{{ __('Present Today') }}</h5>
             <div class="value">{{ $presentToday }}</div>
-            <small class="text-muted">Employees clocked in today</small>
+            <small class="text-muted">{{ __('Employees clocked in today') }}</small>
         </div>
         <div class="analytics-card">
-            <h5>Currently Clocked In</h5>
+            <h5>{{ __('Currently Clocked In') }}</h5>
             <div class="value">{{ $clockedIn }}</div>
-            <small class="text-muted">Still on-site (no time-out yet)</small>
+            <small class="text-muted">{{ __('Still on-site (no time-out yet)') }}</small>
         </div>
         <div class="analytics-card flagged">
-            <h5>Invalid Attendance</h5>
+            <h5>{{ __('Invalid Attendance') }}</h5>
             <div class="value">{{ $invalidCount }}</div>
-            <small class="text-muted">Missed sign-out on previous days</small>
+            <small class="text-muted">{{ __('Missed sign-out on previous days') }}</small>
         </div>
     </div>
 
@@ -83,12 +83,12 @@
     <ul class="nav nav-tabs att-tabs" role="tablist">
         <li class="nav-item">
             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#att-today" type="button">
-                <i class="fas fa-calendar-day me-1"></i> Today's Attendance
+                <i class="fas fa-calendar-day me-1"></i> {{ __('Today\'s Attendance') }}
             </button>
         </li>
         <li class="nav-item">
             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#att-history" type="button">
-                <i class="fas fa-clock-rotate-left me-1"></i> History
+                <i class="fas fa-clock-rotate-left me-1"></i> {{ __('History') }}
             </button>
         </li>
     </ul>
@@ -101,11 +101,11 @@
                 <table class="attendance-table w-100">
                     <thead>
                         <tr>
-                            <th class="p-2 text-start">Employee</th>
-                            <th class="p-2 text-start">Site</th>
-                            <th class="p-2 text-start">Session</th>
-                            <th class="p-2 text-start">Time In / Out</th>
-                            <th class="p-2 text-center">Status</th>
+                            <th class="p-2 text-start">{{ __('Employee') }}</th>
+                            <th class="p-2 text-start">{{ __('Site') }}</th>
+                            <th class="p-2 text-start">{{ __('Session') }}</th>
+                            <th class="p-2 text-start">{{ __('Time In / Out') }}</th>
+                            <th class="p-2 text-center">{{ __('Status') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -134,7 +134,7 @@
                             <td class="text-center p-2">
                                 <span class="badge-attendance {{ $cls }}">{{ $label }}</span>
                                 @if($isHoliday)
-                                    <span class="badge-attendance badge-holiday ms-1" title="Holiday (Settings)"><i class="fas fa-star me-1"></i>Holiday</span>
+                                    <span class="badge-attendance badge-holiday ms-1" title="{{ __('Holiday (Settings)') }}"><i class="fas fa-star me-1"></i>{{ __('Holiday') }}</span>
                                 @endif
                             </td>
                         </tr>
@@ -158,17 +158,17 @@
             <div class="att-hist-toolbar">
                 <div class="d-flex gap-2 align-items-center flex-wrap">
                     <button id="markModeBtn" type="button" class="att-mark-btn">
-                        <i class="fas fa-check-square me-1"></i>Mark for Deletion
+                        <i class="fas fa-check-square me-1"></i>{{ __('Mark for Deletion') }}
                     </button>
                     <button id="deleteSelectedBtn" type="button" class="att-del-sel-btn" style="display:none;" disabled>
-                        <i class="fas fa-trash me-1"></i>Delete Selected (<span id="selCount">0</span>)
+                        <i class="fas fa-trash me-1"></i>{{ __('Delete Selected (') }}<span id="selCount">0</span>)
                     </button>
                     <button id="cancelMarkBtn" type="button" class="att-cancel-btn" style="display:none;">
                         Cancel
                     </button>
                 </div>
                 <button id="deleteAllBtn" type="button" class="att-del-all-btn">
-                    <i class="fas fa-trash-alt me-1"></i>Delete All
+                    <i class="fas fa-trash-alt me-1"></i>{{ __('Delete All') }}
                 </button>
             </div>
 
@@ -177,14 +177,14 @@
                     <thead>
                         <tr>
                             <th class="att-check-col p-2">
-                                <input type="checkbox" id="selectAllChk" title="Select all on this page">
+                                <input type="checkbox" id="selectAllChk" title="{{ __('Select all on this page') }}">
                             </th>
-                            <th class="p-2 text-start">Employee</th>
-                            <th class="p-2 text-start">Site</th>
-                            <th class="p-2 text-start">Date</th>
-                            <th class="p-2 text-start">Session</th>
-                            <th class="p-2 text-start">Time In / Out</th>
-                            <th class="p-2 text-center">Status</th>
+                            <th class="p-2 text-start">{{ __('Employee') }}</th>
+                            <th class="p-2 text-start">{{ __('Site') }}</th>
+                            <th class="p-2 text-start">{{ __('Date') }}</th>
+                            <th class="p-2 text-start">{{ __('Session') }}</th>
+                            <th class="p-2 text-start">{{ __('Time In / Out') }}</th>
+                            <th class="p-2 text-center">{{ __('Status') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -215,19 +215,19 @@
                                     &ndash;
                                     {{ $record->time_out ? date('h:i A', strtotime($record->time_out)) : '--' }}
                                 @else
-                                    <span class="text-muted fst-italic">No time-in</span>
+                                    <span class="text-muted fst-italic">{{ __('No time-in') }}</span>
                                 @endif
                             </td>
                             <td class="text-center p-2">
                                 <span class="badge-attendance {{ $cls }}">{{ $label }}</span>
                                 @if($isHoliday)
-                                    <span class="badge-attendance badge-holiday ms-1" title="Holiday (Settings)"><i class="fas fa-star me-1"></i>Holiday</span>
+                                    <span class="badge-attendance badge-holiday ms-1" title="{{ __('Holiday (Settings)') }}"><i class="fas fa-star me-1"></i>{{ __('Holiday') }}</span>
                                 @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">No previous attendance records.</td>
+                            <td colspan="7" class="text-center py-5 text-muted">{{ __('No previous attendance records.') }}</td>
                         </tr>
                         @endforelse
                     </tbody>

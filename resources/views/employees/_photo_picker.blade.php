@@ -20,10 +20,10 @@
 
     <div class="ep-photo-actions">
         <button type="button" id="openCameraBtn" class="btn btn-sm btn-primary">
-            <i class="fas fa-camera me-1"></i>Camera
+            <i class="fas fa-camera me-1"></i>{{ __('Camera') }}
         </button>
         <button type="button" id="openGalleryBtn" class="btn btn-sm btn-outline-secondary">
-            <i class="fas fa-images me-1"></i>Gallery
+            <i class="fas fa-images me-1"></i>{{ __('Gallery') }}
         </button>
         <button type="button" id="photoRemoveBtn" class="btn btn-sm btn-outline-danger"
                 style="{{ $currentPhoto ? '' : 'display:none;' }}">
@@ -37,7 +37,7 @@
        class="@error('photo') is-invalid @enderror"
        style="display:none;">
 @error('photo')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-<span class="ep-hint">JPG or PNG, max 2 MB.</span>
+<span class="ep-hint">{{ __('JPG or PNG, max 2 MB.') }}</span>
 
 {{-- Camera modal --}}
 <div class="modal fade" id="cameraModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
@@ -45,7 +45,7 @@
         <div class="modal-content ep-cam">
             <div class="modal-header ep-cam-head">
                 <h6 class="modal-title mb-0 fw-bold" id="cameraModalLabel">
-                    <i class="fas fa-camera me-2"></i>Take Photo
+                    <i class="fas fa-camera me-2"></i>{{ __('Take Photo') }}
                 </h6>
                 <button type="button" class="btn-close btn-close-white" id="cameraCloseBtn" data-bs-dismiss="modal"></button>
             </div>
@@ -54,15 +54,15 @@
                 <canvas id="cameraCanvas" style="display:none;"></canvas>
                 <div id="cameraError" class="ep-cam-error" style="display:none;">
                     <i class="fas fa-video-slash"></i>
-                    <span id="cameraErrorMsg">Camera not available.</span>
-                    <small>Use the Gallery option instead.</small>
+                    <span id="cameraErrorMsg">{{ __('Camera not available.') }}</span>
+                    <small>{{ __('Use the Gallery option instead.') }}</small>
                 </div>
             </div>
             <div class="modal-footer ep-cam-foot">
                 <button type="button" id="captureBtn" class="btn btn-primary fw-bold px-4">
-                    <i class="fas fa-circle me-2" style="font-size:9px;"></i>Capture
+                    <i class="fas fa-circle me-2" style="font-size:9px;"></i>{{ __('Capture') }}
                 </button>
-                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
             </div>
         </div>
     </div>

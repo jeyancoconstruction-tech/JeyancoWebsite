@@ -10,40 +10,40 @@
         <input type="hidden" name="token" value="{{ $token }}">
 
         <div class="form-group {{ $errors->has('email') ? 'has-error' : '' }}">
-            <label for="email">Email</label>
+            <label for="email">{{ __('Email') }}</label>
             <div class="input-wrap">
                 <i class="fas fa-envelope lead"></i>
                 {{-- Carried from the emailed link. Kept editable rather than hidden so a
                      mistyped or truncated link can still be corrected here. --}}
                 <input type="email" id="email" name="email" value="{{ old('email', $email) }}"
                        required autocomplete="email" spellcheck="false"
-                       autocapitalize="none" placeholder="The email on your account">
+                       autocapitalize="none" placeholder="{{ __('The email on your account') }}">
             </div>
         </div>
 
         <div class="form-group {{ $errors->has('password') ? 'has-error' : '' }}">
-            <label for="password">New password</label>
+            <label for="password">{{ __('New password') }}</label>
             <div class="input-wrap">
                 <i class="fas fa-lock lead"></i>
                 <input type="password" id="password" name="password" required autofocus
-                       autocomplete="new-password" placeholder="At least 8 characters">
-                <button type="button" class="toggle-pass" data-toggle="password" aria-label="Show password" title="Show / hide password">
+                       autocomplete="new-password" placeholder="{{ __('At least 8 characters') }}">
+                <button type="button" class="toggle-pass" data-toggle="password" aria-label="{{ __('Show password') }}" title="{{ __('Show / hide password') }}">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
-            <p class="field-hint">Must be at least 8 characters and include both letters and numbers.</p>
+            <p class="field-hint">{{ __('Must be at least 8 characters and include both letters and numbers.') }}</p>
             <div class="caps-hint" id="capsHint" role="status">
-                <i class="fas fa-triangle-exclamation"></i> Caps Lock is on
+                <i class="fas fa-triangle-exclamation"></i> {{ __('Caps Lock is on') }}
             </div>
         </div>
 
         <div class="form-group {{ $errors->has('password_confirmation') ? 'has-error' : '' }}">
-            <label for="password_confirmation">Confirm new password</label>
+            <label for="password_confirmation">{{ __('Confirm new password') }}</label>
             <div class="input-wrap">
                 <i class="fas fa-lock lead"></i>
                 <input type="password" id="password_confirmation" name="password_confirmation"
-                       required autocomplete="new-password" placeholder="Type it again">
-                <button type="button" class="toggle-pass" data-toggle="password_confirmation" aria-label="Show password" title="Show / hide password">
+                       required autocomplete="new-password" placeholder="{{ __('Type it again') }}">
+                <button type="button" class="toggle-pass" data-toggle="password_confirmation" aria-label="{{ __('Show password') }}" title="{{ __('Show / hide password') }}">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
@@ -52,11 +52,11 @@
 
         <button type="submit" class="btn-login" id="resetBtn">
             <i class="fas fa-key"></i>
-            <span class="btn-label">Reset password</span>
+            <span class="btn-label">{{ __('Reset password') }}</span>
         </button>
 
         <div class="login-footer">
-            <p><a href="{{ route('login') }}"><i class="fas fa-arrow-left"></i> Back to sign in</a></p>
+            <p><a href="{{ route('login') }}"><i class="fas fa-arrow-left"></i> {{ __('Back to sign in') }}</a></p>
         </div>
     </form>
 @endsection

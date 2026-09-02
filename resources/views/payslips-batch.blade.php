@@ -88,11 +88,11 @@
             <div class="t-sub">{{ count($slips) }} employee(s) &middot; A4 &middot; gupitin sa may putol-putol na linya (&#9986;)</div>
         </div>
         <div style="display:flex;gap:8px;">
-            <a href="javascript:history.back()" class="btn btn-back">&larr; Back</a>
-            <button class="btn btn-print" onclick="window.print()">&#128424; Print A4</button>
+            <a href="javascript:history.back()" class="btn btn-back">{{ __('&larr; Back') }}</a>
+            <button class="btn btn-print" onclick="window.print()">{{ __('&#128424; Print A4') }}</button>
         </div>
     </div>
-    <div class="hint">Tip: sa print dialog piliin ang <b>A4</b> at i-off ang "Headers and footers" para malinis ang gupit.</div>
+    <div class="hint">{{ __('Tip: sa print dialog piliin ang') }} <b>A4</b> {{ __('at i-off ang "Headers and footers" para malinis ang gupit.') }}</div>
 
     <div class="sheet">
         <div class="slips">
@@ -106,7 +106,7 @@
                             @if($company?->company_address)<div class="sub">{{ $company->company_address }}</div>@endif
                         </div>
                         <div class="slip-doc">
-                            <div class="lbl">PAYSLIP</div>
+                            <div class="lbl">{{ __('PAYSLIP') }}</div>
                             <div class="per">{{ $periodLabel }}</div>
                         </div>
                     </div>
@@ -120,38 +120,38 @@
 
                     <div class="cols">
                         <div>
-                            <h6>Earnings</h6>
-                            <div class="ln"><span class="k">Regular</span><span class="v">&#8369;{{ number_format($s['regular'], 2) }}</span></div>
-                            <div class="ln"><span class="k">Overtime</span><span class="v">&#8369;{{ number_format($s['overtime'], 2) }}</span></div>
-                            <div class="ln"><span class="k">Holiday</span><span class="v">&#8369;{{ number_format($s['holidayPay'], 2) }}</span></div>
-                            <div class="ln"><span class="k">Rest Day</span><span class="v">&#8369;{{ number_format($s['restDayPay'], 2) }}</span></div>
-                            <div class="ln"><span class="k">Bonus</span><span class="v">&#8369;{{ number_format($s['bonus'], 2) }}</span></div>
-                            <div class="ln sum"><span class="k">Gross</span><span class="v">&#8369;{{ number_format($s['gross'], 2) }}</span></div>
+                            <h6>{{ __('Earnings') }}</h6>
+                            <div class="ln"><span class="k">{{ __('Regular') }}</span><span class="v">&#8369;{{ number_format($s['regular'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('Overtime') }}</span><span class="v">&#8369;{{ number_format($s['overtime'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('Holiday') }}</span><span class="v">&#8369;{{ number_format($s['holidayPay'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('Rest Day') }}</span><span class="v">&#8369;{{ number_format($s['restDayPay'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('Bonus') }}</span><span class="v">&#8369;{{ number_format($s['bonus'], 2) }}</span></div>
+                            <div class="ln sum"><span class="k">{{ __('Gross') }}</span><span class="v">&#8369;{{ number_format($s['gross'], 2) }}</span></div>
                         </div>
                         <div>
-                            <h6>Deductions</h6>
-                            <div class="ln"><span class="k">SSS</span><span class="v">&#8369;{{ number_format($s['ded']['sss'], 2) }}</span></div>
-                            <div class="ln"><span class="k">PhilHealth</span><span class="v">&#8369;{{ number_format($s['ded']['philhealth'], 2) }}</span></div>
-                            <div class="ln"><span class="k">PAG-IBIG</span><span class="v">&#8369;{{ number_format($s['ded']['pagibig'], 2) }}</span></div>
-                            <div class="ln"><span class="k">Withholding Tax</span><span class="v">&#8369;{{ number_format($s['ded']['tax'], 2) }}</span></div>
-                            <div class="ln"><span class="k">Vale/Utang</span><span class="v">&#8369;{{ number_format($s['ded']['vale'], 2) }}</span></div>
-                            <div class="ln"><span class="k">Other</span><span class="v">&#8369;{{ number_format($s['ded']['other'], 2) }}</span></div>
-                            <div class="ln sum"><span class="k">Total</span><span class="v">&#8369;{{ number_format($s['totalDeductions'], 2) }}</span></div>
+                            <h6>{{ __('Deductions') }}</h6>
+                            <div class="ln"><span class="k">{{ __('SSS') }}</span><span class="v">&#8369;{{ number_format($s['ded']['sss'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('PhilHealth') }}</span><span class="v">&#8369;{{ number_format($s['ded']['philhealth'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('PAG-IBIG') }}</span><span class="v">&#8369;{{ number_format($s['ded']['pagibig'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('Withholding Tax') }}</span><span class="v">&#8369;{{ number_format($s['ded']['tax'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('Vale/Utang') }}</span><span class="v">&#8369;{{ number_format($s['ded']['vale'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('Other') }}</span><span class="v">&#8369;{{ number_format($s['ded']['other'], 2) }}</span></div>
+                            <div class="ln sum"><span class="k">{{ __('Total') }}</span><span class="v">&#8369;{{ number_format($s['totalDeductions'], 2) }}</span></div>
                         </div>
                     </div>
 
                     <div class="net">
-                        <span class="k">NET PAY</span>
+                        <span class="k">{{ __('NET PAY') }}</span>
                         <span class="v">&#8369;{{ number_format($s['net'], 2) }}</span>
                     </div>
 
                     <div class="sign">
-                        <div class="box"><div class="line">Received by (Employee)</div></div>
-                        <div class="box"><div class="line">Approved by (Admin)</div></div>
+                        <div class="box"><div class="line">{{ __('Received by (Employee)') }}</div></div>
+                        <div class="box"><div class="line">{{ __('Approved by (Admin)') }}</div></div>
                     </div>
                 </div>
             @empty
-                <div class="empty">Walang employee record para sa period na ito.</div>
+                <div class="empty">{{ __('Walang employee record para sa period na ito.') }}</div>
             @endforelse
         </div>
     </div>

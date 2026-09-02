@@ -392,7 +392,8 @@ class SystemSettingsTest extends TestCase
              ->get(route('system-settings.appearance'))
              ->assertOk()
              ->assertSee('Talaan ng Sahod')
-             ->assertSee('Seguridad');
+             ->assertSee('Seguridad')
+             ->assertSee('Hitsura');
     }
 
     public function test_an_unknown_locale_is_refused(): void
@@ -400,5 +401,29 @@ class SystemSettingsTest extends TestCase
         $this->actingAs($this->admin())
              ->put(route('system-settings.appearance.update'), ['default_theme' => 'dark', 'locale' => 'fr'])
              ->assertSessionHasErrors('locale');
+    }
+
+    /**
+     * Not just the nav. The pages themselves have to change, or the switch is
+     * a label on a menu with English underneath it.
+     */
+    public function test_the_locale_reaches_the_pages_themselves(): void
+    {
+        SystemSetting::create(SystemSetting::DEFAULTS)->update(['locale' => 'tl']);
+        SystemSetting::forget();
+
+        $this->actingAs($this->admin())
+             ->get(route('accounts.index'))
+             ->assertOk()
+             ->assertSee('Pamamahala ng Account')
+             ->assertSee('Tungkulin')
+             ->assertDontSee('Account Management');
+
+        $this->actingAs($this->admin())
+             ->get(route('settings.index'))
+             ->assertOk()
+             ->assertSee('Mga Multiplier at Kaltas')
+             ->assertSee('Uri ng Trabaho')
+             ->assertSee('Mga Piyesta Opisyal');
     }
 }

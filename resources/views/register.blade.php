@@ -15,7 +15,7 @@
     @if($errors->any())
     <div class="rm-alert rm-alert-err">
         <i class="fas fa-exclamation-circle"></i>
-        <div><strong>Please fix the following:</strong>
+        <div><strong>{{ __('Please fix the following:') }}</strong>
             <ul class="mb-0 mt-1">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
         </div>
     </div>
@@ -24,10 +24,10 @@
     {{-- ── Header ──────────────────────────────────────────────────────────── --}}
     <div class="rm-header">
         <div>
-            <h1 class="rm-title">Register &amp; Manage Employees</h1>
+            <h1 class="rm-title">{{ __('Register &amp; Manage Employees') }}</h1>
             <p class="rm-sub">
                 Newly registered workers and workers detected by the fingerprint kiosk both wait under
-                <strong>Pending</strong>. A worker becomes active — and appears across Attendance, Payroll
+                <strong>{{ __('Pending') }}</strong>. A worker becomes active — and appears across Attendance, Payroll
                 and the Dashboard — once their fingerprint is enrolled at the kiosk.
             </p>
         </div>
@@ -42,7 +42,7 @@
                  The modal stays for completing kiosk detections and quick
                  edits, where only pay details change. --}}
             <a href="{{ route('employees.create') }}" class="rm-btn-primary" id="rmAddBtn">
-                <i class="fas fa-user-plus"></i> Register Employee
+                <i class="fas fa-user-plus"></i> {{ __('Register Employee') }}
             </a>
         </div>
     </div>
@@ -51,23 +51,23 @@
     <div class="rm-stats">
         <button class="rm-stat rm-stat-active active" data-tab="active">
             <span class="rm-stat-num">{{ $active->count() }}</span>
-            <span class="rm-stat-lbl"><i class="fas fa-user-check"></i> Active</span>
+            <span class="rm-stat-lbl"><i class="fas fa-user-check"></i> {{ __('Active') }}</span>
         </button>
         <button class="rm-stat rm-stat-pending" data-tab="pending">
             <span class="rm-stat-num">{{ $pending->count() }}</span>
-            <span class="rm-stat-lbl"><i class="fas fa-fingerprint"></i> Pending from kiosk</span>
+            <span class="rm-stat-lbl"><i class="fas fa-fingerprint"></i> {{ __('Pending from kiosk') }}</span>
         </button>
         <button class="rm-stat rm-stat-removed" data-tab="removed">
             <span class="rm-stat-num">{{ $removed->count() }}</span>
-            <span class="rm-stat-lbl"><i class="fas fa-trash-can-arrow-up"></i> Removed</span>
+            <span class="rm-stat-lbl"><i class="fas fa-trash-can-arrow-up"></i> {{ __('Removed') }}</span>
         </button>
     </div>
 
     {{-- ── Tabs ────────────────────────────────────────────────────────────── --}}
     <div class="rm-tabs">
-        <button class="rm-tab active" data-tab="active">Active <span class="rm-tab-count">{{ $active->count() }}</span></button>
-        <button class="rm-tab" data-tab="pending">Pending <span class="rm-tab-count">{{ $pending->count() }}</span></button>
-        <button class="rm-tab" data-tab="removed">Removed <span class="rm-tab-count">{{ $removed->count() }}</span></button>
+        <button class="rm-tab active" data-tab="active">{{ __('Active') }} <span class="rm-tab-count">{{ $active->count() }}</span></button>
+        <button class="rm-tab" data-tab="pending">{{ __('Pending') }} <span class="rm-tab-count">{{ $pending->count() }}</span></button>
+        <button class="rm-tab" data-tab="removed">{{ __('Removed') }} <span class="rm-tab-count">{{ $removed->count() }}</span></button>
     </div>
 
     {{-- ═══ ACTIVE ═════════════════════════════════════════════════════════ --}}
@@ -84,23 +84,23 @@
             <div class="rm-tools">
                 <span class="rm-tools-spacer"></span>
                 <button type="button" class="rm-btn-ghost js-select-toggle">
-                    <i class="fas fa-list-check"></i> <span class="js-select-label">Select</span>
+                    <i class="fas fa-list-check"></i> <span class="js-select-label">{{ __('Select') }}</span>
                 </button>
             </div>
             <div class="rm-bulk" data-bulk="active" hidden>
-                <span class="rm-bulk-count"><strong>0</strong> selected</span>
-                <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
+                <span class="rm-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
+                <button type="button" class="rm-bulk-plain js-bulk-clear">{{ __('Clear selection') }}</button>
                 <span class="rm-bulk-spacer"></span>
-                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-trash"></i> Remove selected</button>
+                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-trash"></i> {{ __('Remove selected') }}</button>
             </div>
             <div class="table-responsive">
                 <table class="rm-table">
                     <thead>
                         <tr>
-                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="Select all"></th>
-                            <th>Employee</th><th>Site</th><th>Labor Type</th>
-                            <th class="text-center">Rate / hr</th><th>Fingerprint</th>
-                            <th class="text-center">Logs</th><th></th>
+                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="{{ __('Select all') }}"></th>
+                            <th>{{ __('Employee') }}</th><th>{{ __('Site') }}</th><th>{{ __('Labor Type') }}</th>
+                            <th class="text-center">{{ __('Rate / hr') }}</th><th>{{ __('Fingerprint') }}</th>
+                            <th class="text-center">{{ __('Logs') }}</th><th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -122,7 +122,7 @@
                                         data-rate="{{ $e->rate_per_hour }}"
                                         data-site="{{ $e->site_id }}"
                                         data-fp="{{ $e->fingerprint_id }}">
-                                    <i class="fas fa-pen"></i> Edit
+                                    <i class="fas fa-pen"></i> {{ __('Edit') }}
                                 </button>
                                 @include('employees._menu', ['e' => $e, 'context' => 'active'])
                             </td>
@@ -144,27 +144,27 @@
                  sentence breaks into columns. --}}
             <div class="rm-card-note">
                 <i class="fas fa-circle-info"></i>
-                <span>Please scan your fingerprint on the kiosk.</span>
+                <span>{{ __('Please scan your fingerprint on the kiosk.') }}</span>
             </div>
             <div class="rm-tools">
                 <span class="rm-tools-spacer"></span>
                 <button type="button" class="rm-btn-ghost js-select-toggle">
-                    <i class="fas fa-list-check"></i> <span class="js-select-label">Select</span>
+                    <i class="fas fa-list-check"></i> <span class="js-select-label">{{ __('Select') }}</span>
                 </button>
             </div>
             <div class="rm-bulk" data-bulk="pending" hidden>
-                <span class="rm-bulk-count"><strong>0</strong> selected</span>
-                <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
+                <span class="rm-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
+                <button type="button" class="rm-bulk-plain js-bulk-clear">{{ __('Clear selection') }}</button>
                 <span class="rm-bulk-spacer"></span>
-                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-xmark"></i> Cancel selected</button>
+                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-xmark"></i> {{ __('Cancel selected') }}</button>
             </div>
             <div class="table-responsive">
                 <table class="rm-table">
                     <thead>
                         <tr>
-                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="Select all"></th>
-                            <th>Worker</th><th>Fingerprint</th><th>Site</th>
-                            <th>First seen</th><th class="text-center">Logs</th><th></th>
+                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="{{ __('Select all') }}"></th>
+                            <th>{{ __('Worker') }}</th><th>{{ __('Fingerprint') }}</th><th>{{ __('Site') }}</th>
+                            <th>{{ __('First seen') }}</th><th class="text-center">{{ __('Logs') }}</th><th></th>
                         </tr>
                     </thead>
                     <tbody id="rmPendingBody">
@@ -180,25 +180,25 @@
         <div class="rm-card">
             <div class="rm-card-note">
                 <i class="fas fa-circle-info"></i>
-                <span>Removed records are hidden everywhere but never lost. Restore them, or permanently delete as a last resort.</span>
+                <span>{{ __('Removed records are hidden everywhere but never lost. Restore them, or permanently delete as a last resort.') }}</span>
             </div>
             <div class="rm-tools">
                 <span class="rm-tools-spacer"></span>
                 <button type="button" class="rm-btn-ghost js-select-toggle">
-                    <i class="fas fa-list-check"></i> <span class="js-select-label">Select</span>
+                    <i class="fas fa-list-check"></i> <span class="js-select-label">{{ __('Select') }}</span>
                 </button>
             </div>
             <div class="rm-bulk" data-bulk="removed" hidden>
-                <span class="rm-bulk-count"><strong>0</strong> selected</span>
-                <button type="button" class="rm-bulk-plain js-bulk-clear">Clear selection</button>
+                <span class="rm-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
+                <button type="button" class="rm-bulk-plain js-bulk-clear">{{ __('Clear selection') }}</button>
                 <span class="rm-bulk-spacer"></span>
-                <button type="button" class="rm-bulk-plain js-bulk-restore"><i class="fas fa-rotate-left"></i> Restore selected</button>
-                <button type="button" class="rm-bulk-danger js-bulk-purge"><i class="fas fa-trash"></i> Delete permanently</button>
+                <button type="button" class="rm-bulk-plain js-bulk-restore"><i class="fas fa-rotate-left"></i> {{ __('Restore selected') }}</button>
+                <button type="button" class="rm-bulk-danger js-bulk-purge"><i class="fas fa-trash"></i> {{ __('Delete permanently') }}</button>
             </div>
             <div class="table-responsive">
                 <table class="rm-table">
                     <thead>
-                        <tr><th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="Select all"></th><th>Employee</th><th>Site</th><th>Labor Type</th><th>Removed</th><th class="text-center">Logs</th><th></th></tr>
+                        <tr><th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="{{ __('Select all') }}"></th><th>{{ __('Employee') }}</th><th>{{ __('Site') }}</th><th>{{ __('Labor Type') }}</th><th>{{ __('Removed') }}</th><th class="text-center">{{ __('Logs') }}</th><th></th></tr>
                     </thead>
                     <tbody>
                     @forelse($removed as $e)
@@ -233,24 +233,24 @@
 
         <div class="rm-modal-head">
             <div>
-                <h6 class="rm-modal-title" id="empFormTitle">Complete Registration</h6>
-                <p class="rm-modal-sub" id="empFormSub">Set this worker's details to activate them.</p>
+                <h6 class="rm-modal-title" id="empFormTitle">{{ __('Complete Registration') }}</h6>
+                <p class="rm-modal-sub" id="empFormSub">{{ __('Set this worker\'s details to activate them.') }}</p>
             </div>
-            <button type="button" class="rm-modal-x" data-bs-dismiss="modal" aria-label="Close"><i class="fas fa-times"></i></button>
+            <button type="button" class="rm-modal-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
         </div>
 
         <div class="rm-modal-body">
             <div class="rm-field">
-                <label class="rm-label">Full Name <span class="req">*</span></label>
-                <input type="text" name="name" id="empName" class="rm-input" placeholder="Enter full name" autocomplete="off" required>
+                <label class="rm-label">{{ __('Full Name') }} <span class="req">*</span></label>
+                <input type="text" name="name" id="empName" class="rm-input" placeholder="{{ __('Enter full name') }}" autocomplete="off" required>
             </div>
 
             <div class="rm-grid2">
                 <div class="rm-field">
-                    <label class="rm-label">Labor Type <span class="req">*</span></label>
+                    <label class="rm-label">{{ __('Labor Type') }} <span class="req">*</span></label>
                     <div class="rm-select-wrap">
                         <select name="labor_type_id" id="empLabor" class="rm-input" required>
-                            <option value="">— Select —</option>
+                            <option value="">{{ __('— Select —') }}</option>
                             @foreach($laborTypes as $lt)
                                 <option value="{{ $lt->id }}" data-daily="{{ $lt->daily_rate }}">{{ $lt->name }}</option>
                             @endforeach
@@ -259,22 +259,22 @@
                     </div>
                 </div>
                 <div class="rm-field">
-                    <label class="rm-label">Rate / hour</label>
+                    <label class="rm-label">{{ __('Rate / hour') }}</label>
                     <div class="rm-rate-box">
                         <span class="rm-rate-cur">₱</span>
                         <span id="empRateView" class="rm-rate-val">—</span>
                         <input type="hidden" name="rate_per_hour" id="empRate">
                     </div>
-                    <p class="rm-hint" id="empRateHint">Auto from labor type</p>
+                    <p class="rm-hint" id="empRateHint">{{ __('Auto from labor type') }}</p>
                 </div>
             </div>
 
             <div class="rm-grid2">
                 <div class="rm-field">
-                    <label class="rm-label">Site</label>
+                    <label class="rm-label">{{ __('Site') }}</label>
                     <div class="rm-select-wrap">
                         <select name="site_id" id="empSite" class="rm-input">
-                            <option value="">— Unassigned —</option>
+                            <option value="">{{ __('— Unassigned —') }}</option>
                             @foreach($sites as $s)
                                 <option value="{{ $s->id }}">{{ $s->name }}</option>
                             @endforeach
@@ -283,22 +283,22 @@
                     </div>
                 </div>
                 <div class="rm-field">
-                    <label class="rm-label">Fingerprint ID</label>
+                    <label class="rm-label">{{ __('Fingerprint ID') }}</label>
                     <input type="text" name="fingerprint_id" id="empFp" class="rm-input rm-mono" placeholder="—" autocomplete="off">
-                    <p class="rm-hint">Captured from the kiosk scan.</p>
+                    <p class="rm-hint">{{ __('Captured from the kiosk scan.') }}</p>
                 </div>
             </div>
 
             <div class="rm-field">
-                <label class="rm-label">Photo <span class="rm-optional">(optional)</span></label>
+                <label class="rm-label">{{ __('Photo') }} <span class="rm-optional">{{ __('(optional)') }}</span></label>
                 <div class="rm-photo-row">
                     <div class="rm-photo-box" id="empPhotoBox">
                         <i class="fas fa-user" id="empPhotoIcon"></i>
                         <img id="empPhotoPreview" src="" alt="" style="display:none;">
                     </div>
                     <div>
-                        <button type="button" class="rm-btn-ghost" id="empPhotoPick"><i class="fas fa-images"></i> Choose</button>
-                        <button type="button" class="rm-btn-ghost rm-btn-danger-ghost" id="empPhotoClear" style="display:none;"><i class="fas fa-times"></i> Remove</button>
+                        <button type="button" class="rm-btn-ghost" id="empPhotoPick"><i class="fas fa-images"></i> {{ __('Choose') }}</button>
+                        <button type="button" class="rm-btn-ghost rm-btn-danger-ghost" id="empPhotoClear" style="display:none;"><i class="fas fa-times"></i> {{ __('Remove') }}</button>
                         <input type="file" name="photo" id="empPhoto" accept="image/jpg,image/jpeg,image/png" hidden>
                     </div>
                 </div>
@@ -306,8 +306,8 @@
         </div>
 
         <div class="rm-modal-foot">
-            <button type="button" class="rm-btn-cancel" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="rm-btn-primary" id="empFormSubmit"><i class="fas fa-check"></i> <span>Save &amp; Activate</span></button>
+            <button type="button" class="rm-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+            <button type="submit" class="rm-btn-primary" id="empFormSubmit"><i class="fas fa-check"></i> <span>{{ __('Save &amp; Activate') }}</span></button>
         </div>
       </form>
     </div>

@@ -216,7 +216,7 @@
             <div class="login-header">
                 <div class="logo-container">
                     <div class="logo-icon"><img src="{{ asset('images/JeyancoLogo.png') }}" alt="Jeyanco Logo"></div>
-                    <div class="logo-text">JEYANCO<small>Construction</small></div>
+                    <div class="logo-text">{{ __('JEYANCO') }}<small>{{ __('Construction') }}</small></div>
                 </div>
                 <h1>@yield('heading')</h1>
                 <p>@yield('subheading')</p>

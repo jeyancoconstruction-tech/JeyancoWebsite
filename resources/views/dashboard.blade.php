@@ -153,7 +153,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
             <h1 class="greeting-title">{{ $greet }}, {{ auth()->user()->name ?? 'Admin' }} !</h1>
-            <p class="greeting-sub">Here's what's happening at Jeyanco Construction today.</p>
+            <p class="greeting-sub">{{ __('Here\'s what\'s happening at Jeyanco Construction today.') }}</p>
         </div>
         <div class="clock-widget d-none d-sm-flex">
             <div class="clock-ic"><i class="fas fa-clock"></i></div>
@@ -182,18 +182,18 @@
             <div class="card analytics-card variant-blue p-4 h-100">
                 <div class="stat-card-inner">
                     <div>
-                        <div class="stat-label">Total Workforce</div>
+                        <div class="stat-label">{{ __('Total Workforce') }}</div>
                         <div class="stat-value">{{ $totalEmployees ?? 0 }}</div>
-                        <p class="stat-sub">Active employees</p>
+                        <p class="stat-sub">{{ __('Active employees') }}</p>
                     </div>
                     <div class="icon-box bg-primary bg-opacity-10">
                         <i class="fas fa-helmet-safety text-primary fa-lg"></i>
                     </div>
                 </div>
                 @if(($newThisWeek ?? 0) > 0)
-                    <span class="stat-delta up"><i class="fas fa-arrow-up"></i> +{{ $newThisWeek }} <span class="sd-note">this week</span></span>
+                    <span class="stat-delta up"><i class="fas fa-arrow-up"></i> +{{ $newThisWeek }} <span class="sd-note">{{ __('this week') }}</span></span>
                 @else
-                    <span class="stat-delta flat"><i class="fas fa-minus"></i> 0 <span class="sd-note">new this week</span></span>
+                    <span class="stat-delta flat"><i class="fas fa-minus"></i> 0 <span class="sd-note">{{ __('new this week') }}</span></span>
                 @endif
             </div>
         </div>
@@ -202,15 +202,15 @@
             <div class="card analytics-card variant-green p-4 h-100">
                 <div class="stat-card-inner">
                     <div>
-                        <div class="stat-label">Present Today</div>
+                        <div class="stat-label">{{ __('Present Today') }}</div>
                         <div class="stat-value text-success">{{ $presentToday ?? 0 }}</div>
-                        <p class="stat-sub">On-site attendance</p>
+                        <p class="stat-sub">{{ __('On-site attendance') }}</p>
                     </div>
                     <div class="icon-box bg-success bg-opacity-10">
                         <i class="fas fa-user-check text-success fa-lg"></i>
                     </div>
                 </div>
-                <span class="stat-delta {{ $presentClass }}"><i class="fas {{ $presentIcon }}"></i> {{ $presentDelta > 0 ? '+' : '' }}{{ $presentDelta }} <span class="sd-note">vs yesterday</span></span>
+                <span class="stat-delta {{ $presentClass }}"><i class="fas {{ $presentIcon }}"></i> {{ $presentDelta > 0 ? '+' : '' }}{{ $presentDelta }} <span class="sd-note">{{ __('vs yesterday') }}</span></span>
             </div>
         </div>
 
@@ -218,15 +218,15 @@
             <div class="card analytics-card variant-amber p-4 h-100">
                 <div class="stat-card-inner">
                     <div>
-                        <div class="stat-label">Weekly Payout</div>
+                        <div class="stat-label">{{ __('Weekly Payout') }}</div>
                         <div class="stat-value">₱{{ number_format($weeklyPayroll ?? 0, 2) }}</div>
-                        <p class="stat-sub">Scheduled payment</p>
+                        <p class="stat-sub">{{ __('Scheduled payment') }}</p>
                     </div>
                     <div class="icon-box bg-warning bg-opacity-10">
                         <i class="fas fa-coins text-warning fa-lg"></i>
                     </div>
                 </div>
-                <span class="stat-delta {{ $payoutClass }}"><i class="fas {{ $payoutIcon }}"></i> {{ $payoutPct > 0 ? '+' : '' }}{{ $payoutPct }}% <span class="sd-note">vs last week</span></span>
+                <span class="stat-delta {{ $payoutClass }}"><i class="fas {{ $payoutIcon }}"></i> {{ $payoutPct > 0 ? '+' : '' }}{{ $payoutPct }}% <span class="sd-note">{{ __('vs last week') }}</span></span>
             </div>
         </div>
 
@@ -234,18 +234,18 @@
             <div class="card analytics-card variant-red p-4 h-100">
                 <div class="stat-card-inner">
                     <div>
-                        <div class="stat-label">Pending Vale</div>
+                        <div class="stat-label">{{ __('Pending Vale') }}</div>
                         <div class="stat-value text-danger">₱{{ number_format($pendingVale ?? 0, 2) }}</div>
-                        <p class="stat-sub">Outstanding balance</p>
+                        <p class="stat-sub">{{ __('Outstanding balance') }}</p>
                     </div>
                     <div class="icon-box bg-danger bg-opacity-10">
                         <i class="fas fa-file-invoice-dollar text-danger fa-lg"></i>
                     </div>
                 </div>
                 @if(($pendingVale ?? 0) > 0)
-                    <span class="stat-delta down"><i class="fas fa-circle-exclamation"></i> Outstanding <span class="sd-note">balance</span></span>
+                    <span class="stat-delta down"><i class="fas fa-circle-exclamation"></i> {{ __('Outstanding') }} <span class="sd-note">{{ __('balance') }}</span></span>
                 @else
-                    <span class="stat-delta flat"><i class="fas fa-check"></i> All settled</span>
+                    <span class="stat-delta flat"><i class="fas fa-check"></i> {{ __('All settled') }}</span>
                 @endif
             </div>
         </div>
@@ -258,7 +258,7 @@
         <div class="col-lg-7">
             <div class="table-card h-100 d-flex flex-column">
                 <div class="table-card-header">
-                    <h6><i class="fas fa-user-tie"></i> Recent Personnel</h6>
+                    <h6><i class="fas fa-user-tie"></i> {{ __('Recent Personnel') }}</h6>
                     <button class="btn-view-all" data-bs-toggle="modal" data-bs-target="#employeeModal">
                         View All
                     </button>
@@ -267,9 +267,9 @@
                     <table class="table align-middle table-hover mb-0">
                         <thead>
                             <tr>
-                                <th class="ps-4">Worker Name</th>
-                                <th class="text-center">Position</th>
-                                <th class="text-end pe-4">Vale Balance</th>
+                                <th class="ps-4">{{ __('Worker Name') }}</th>
+                                <th class="text-center">{{ __('Position') }}</th>
+                                <th class="text-end pe-4">{{ __('Vale Balance') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -300,7 +300,7 @@
         <div class="col-lg-5">
             <div class="table-card h-100 d-flex flex-column">
                 <div class="table-card-header">
-                    <h6><i class="fas fa-chart-line"></i> Labor Hours Trend</h6>
+                    <h6><i class="fas fa-chart-line"></i> {{ __('Labor Hours Trend') }}</h6>
                 </div>
                 <div class="p-4 flex-grow-1 d-flex align-items-center" style="min-height:260px;">
                     <canvas id="attendanceChart" style="width:100%;"></canvas>
@@ -317,11 +317,11 @@
         <div class="col-lg-4">
             <div class="table-card h-100 d-flex flex-column">
                 <div class="table-card-header">
-                    <h6><i class="fas fa-user-clock"></i> Live Attendance
-                        <span style="font-weight:500;color:var(--text-secondary);font-size:12px;">(Today)</span>
+                    <h6><i class="fas fa-user-clock"></i> {{ __('Live Attendance') }}
+                        <span style="font-weight:500;color:var(--text-secondary);font-size:12px;">{{ __('(Today)') }}</span>
                     </h6>
                     <span class="badge" style="background:rgba(34,197,94,0.15);color:var(--success);font-weight:700;font-size:10.5px;letter-spacing:0.5px;">
-                        <i class="fas fa-circle" style="font-size:6px;vertical-align:middle;"></i> LIVE
+                        <i class="fas fa-circle" style="font-size:6px;vertical-align:middle;"></i> {{ __('LIVE') }}
                     </span>
                 </div>
                 <div class="flex-grow-1">
@@ -338,8 +338,8 @@
                         <div class="dash-empty">
                             <i class="fas fa-user-clock"></i>
                             No attendance records for today.<br>
-                            <span style="font-size:12px;">Attendance will appear here in real-time.</span>
-                            <div class="mt-3"><a href="{{ url('/attendance') }}" class="btn btn-sm btn-primary">View Attendance</a></div>
+                            <span style="font-size:12px;">{{ __('Attendance will appear here in real-time.') }}</span>
+                            <div class="mt-3"><a href="{{ url('/attendance') }}" class="btn btn-sm btn-primary">{{ __('View Attendance') }}</a></div>
                         </div>
                     @endforelse
                 </div>
@@ -350,21 +350,21 @@
         <div class="col-lg-4">
             <div class="table-card h-100 d-flex flex-column">
                 <div class="table-card-header">
-                    <h6><i class="fas fa-map-location-dot"></i> Project Sites</h6>
+                    <h6><i class="fas fa-map-location-dot"></i> {{ __('Project Sites') }}</h6>
                     <span id="kiosk-status" style="font-size:11.5px;color:var(--text-secondary);font-weight:500;">
-                        <i class="fas fa-circle-notch fa-spin"></i> Locating…
+                        <i class="fas fa-circle-notch fa-spin"></i> {{ __('Locating…') }}
                     </span>
                 </div>
                 <div class="p-3 flex-grow-1 d-flex flex-column">
                     <div class="map-ctl">
-                        <input id="siteSearch" class="map-input" type="text" placeholder="Search a place…">
-                        <button id="siteSearchBtn" class="map-btn secondary" type="button" title="Search"><i class="fas fa-search"></i></button>
+                        <input id="siteSearch" class="map-input" type="text" placeholder="{{ __('Search a place…') }}">
+                        <button id="siteSearchBtn" class="map-btn secondary" type="button" title="{{ __('Search') }}"><i class="fas fa-search"></i></button>
                     </div>
                     <div class="map-ctl">
-                        <select id="siteSelect" class="map-select" title="Piliin ang site na itatakda"></select>
-                        <button id="siteSaveBtn" class="map-btn primary" type="button" title="Save location"><i class="fas fa-map-pin"></i> Save</button>
+                        <select id="siteSelect" class="map-select" title="{{ __('Piliin ang site na itatakda') }}"></select>
+                        <button id="siteSaveBtn" class="map-btn primary" type="button" title="{{ __('Save location') }}"><i class="fas fa-map-pin"></i> {{ __('Save') }}</button>
                     </div>
-                    <div id="siteMapHint" class="map-hint">Pumili ng site, mag-search o mag-click sa map, tapos Save.</div>
+                    <div id="siteMapHint" class="map-hint">{{ __('Pumili ng site, mag-search o mag-click sa map, tapos Save.') }}</div>
                     <div id="kioskMap" class="rounded-3 overflow-hidden flex-grow-1"></div>
                 </div>
             </div>
@@ -374,7 +374,7 @@
         <div class="col-lg-4">
             <div class="table-card h-100 d-flex flex-column">
                 <div class="table-card-header">
-                    <h6><i class="fas fa-wave-square"></i> Recent Activities</h6>
+                    <h6><i class="fas fa-wave-square"></i> {{ __('Recent Activities') }}</h6>
                 </div>
                 <div class="flex-grow-1">
                     @forelse($recentActivities as $act)
@@ -404,18 +404,18 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h6 class="modal-title text-white fw-bold">
-                        <i class="fas fa-users me-2"></i>Workforce Registry
+                        <i class="fas fa-users me-2"></i>{{ __('Workforce Registry') }}
                     </h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
                 </div>
                 <div class="modal-body p-0">
                     <table class="table table-hover align-middle mb-0">
                         <thead>
                             <tr>
-                                <th class="ps-4">Name</th>
-                                <th>Position</th>
-                                <th>Rate / Hr</th>
-                                <th class="pe-4 text-end">Vale</th>
+                                <th class="ps-4">{{ __('Name') }}</th>
+                                <th>{{ __('Position') }}</th>
+                                <th>{{ __('Rate / Hr') }}</th>
+                                <th class="pe-4 text-end">{{ __('Vale') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -435,7 +435,7 @@
                     </table>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">{{ __('Close') }}</button>
                 </div>
             </div>
         </div>

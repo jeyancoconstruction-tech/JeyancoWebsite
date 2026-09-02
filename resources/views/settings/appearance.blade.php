@@ -26,7 +26,7 @@
 
     @if($errors->any())
         <div class="alert alert-danger" role="alert">
-            <strong>Nothing was saved.</strong>
+            <strong>{{ __('Nothing was saved.') }}</strong>
             <ul class="mb-0 mt-1">
                 @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
             </ul>
@@ -42,7 +42,7 @@
                 <i class="fas fa-palette"></i>
                 <div>
                     <h6>{{ __('Display') }}</h6>
-                    <p>The theme a screen opens on the first time it is used</p>
+                    <p>{{ __('The theme a screen opens on the first time it is used') }}</p>
                 </div>
             </div>
             <div class="sy-card-body">
@@ -75,8 +75,8 @@
             <div class="sy-card-head">
                 <i class="fas fa-language"></i>
                 <div>
-                    <h6>Language and currency</h6>
-                    <p>Not settings yet</p>
+                    <h6>{{ __('Language and currency') }}</h6>
+                    <p>{{ __('Not settings yet') }}</p>
                 </div>
             </div>
             <div class="sy-card-body">

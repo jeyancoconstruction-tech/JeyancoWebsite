@@ -15,18 +15,18 @@
 </head>
 <body>
     <table>
-        <tr><td class="title" colspan="12">Jeyanco Construction — Payroll Records</td></tr>
+        <tr><td class="title" colspan="12">{{ __('Jeyanco Construction — Payroll Records') }}</td></tr>
         <tr>
             <td class="meta" colspan="3">Period ({{ ucfirst($period['mode']) }})</td>
             <td colspan="7">{{ $period['label'] }}</td>
-            <td class="meta" colspan="1">Generated</td>
+            <td class="meta" colspan="1">{{ __('Generated') }}</td>
             <td colspan="1">{{ now()->format('M d, Y') }}</td>
         </tr>
         <tr><td colspan="12"></td></tr>
         <tr class="head">
-            <td>Employee ID</td><td>Name</td><td>Position</td>
-            <td>Workdays</td><td>Hours</td><td>Gross Pay</td><td>Overtime</td>
-            <td>Holiday Pay</td><td>Rest Day Pay</td><td>Bonus</td><td>Deductions</td><td>Net Pay</td>
+            <td>{{ __('Employee ID') }}</td><td>{{ __('Name') }}</td><td>{{ __('Position') }}</td>
+            <td>{{ __('Workdays') }}</td><td>{{ __('Hours') }}</td><td>{{ __('Gross Pay') }}</td><td>{{ __('Overtime') }}</td>
+            <td>{{ __('Holiday Pay') }}</td><td>{{ __('Rest Day Pay') }}</td><td>{{ __('Bonus') }}</td><td>{{ __('Deductions') }}</td><td>{{ __('Net Pay') }}</td>
         </tr>
         @foreach($employees as $e)
             @php $t = $e['totals']; @endphp

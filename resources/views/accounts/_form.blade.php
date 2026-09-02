@@ -24,7 +24,7 @@
             </p>
         </div>
         <a href="{{ route('accounts.index') }}" class="acctf-back">
-            <i class="fas fa-arrow-left"></i> Back to Accounts
+            <i class="fas fa-arrow-left"></i> {{ __('Back to Accounts') }}
         </a>
     </div>
 
@@ -45,31 +45,31 @@
 
         {{-- ── Identity ────────────────────────────────────────────────────── --}}
         <div class="acctf-section">
-            <div class="acctf-section-label"><i class="fas fa-id-card"></i> Account Details</div>
+            <div class="acctf-section-label"><i class="fas fa-id-card"></i> {{ __('Account Details') }}</div>
 
             <div class="acctf-grid">
                 <div class="acctf-field">
-                    <label for="name">Full Name <span class="req">*</span></label>
+                    <label for="name">{{ __('Full Name') }} <span class="req">*</span></label>
                     <input type="text" id="name" name="name" value="{{ old('name', $account->name ?? '') }}"
                            class="acctf-input @error('name') bad @enderror"
-                           placeholder="e.g., Maria Santos" required maxlength="255">
+                           placeholder="{{ __('e.g., Maria Santos') }}" required maxlength="255">
                     @error('name')<span class="acctf-err">{{ $message }}</span>@enderror
                 </div>
 
                 <div class="acctf-field">
-                    <label for="username">Username <span class="req">*</span></label>
+                    <label for="username">{{ __('Username') }} <span class="req">*</span></label>
                     <input type="text" id="username" name="username" value="{{ old('username', $account->username ?? '') }}"
                            class="acctf-input @error('username') bad @enderror"
-                           placeholder="e.g., maria.santos" required minlength="3" maxlength="50">
+                           placeholder="{{ __('e.g., maria.santos') }}" required minlength="3" maxlength="50">
                     @error('username')
                         <span class="acctf-err">{{ $message }}</span>
                     @else
-                        <span class="acctf-hint">This is what they type to sign in. Letters, numbers, dots, dashes and underscores.</span>
+                        <span class="acctf-hint">{{ __('This is what they type to sign in. Letters, numbers, dots, dashes and underscores.') }}</span>
                     @enderror
                 </div>
 
                 <div class="acctf-field acctf-span-2">
-                    <label for="email">Email <span class="opt">optional</span></label>
+                    <label for="email">{{ __('Email') }} <span class="opt">{{ __('optional') }}</span></label>
                     <input type="email" id="email" name="email" value="{{ old('email', $account->email ?? '') }}"
                            class="acctf-input @error('email') bad @enderror"
                            placeholder="e.g., maria@jeyanco.com" maxlength="255">
@@ -80,7 +80,7 @@
 
         {{-- ── Access ──────────────────────────────────────────────────────── --}}
         <div class="acctf-section">
-            <div class="acctf-section-label"><i class="fas fa-lock"></i> Access Level</div>
+            <div class="acctf-section-label"><i class="fas fa-lock"></i> {{ __('Access Level') }}</div>
 
             @if($isSelf)
                 <div class="acctf-note">
@@ -96,7 +96,7 @@
                            {{ $roleOld === \App\Models\User::ROLE_STAFF ? 'checked' : '' }}
                            {{ $isSelf ? 'disabled' : '' }}>
                     <span class="acctf-role-body">
-                        <span class="acctf-role-name"><i class="fas fa-user"></i> Staff</span>
+                        <span class="acctf-role-name"><i class="fas fa-user"></i> {{ __('Staff') }}</span>
                         <span class="acctf-role-desc">
                             Dashboard, Attendance, Employees, Sites, Payroll Records, Analytics and
                             Jeyanco AI. No access to Settings or Account Management.
@@ -109,7 +109,7 @@
                            {{ $roleOld === \App\Models\User::ROLE_ADMIN ? 'checked' : '' }}
                            {{ $isSelf ? 'disabled' : '' }}>
                     <span class="acctf-role-body">
-                        <span class="acctf-role-name"><i class="fas fa-user-shield"></i> Administrator</span>
+                        <span class="acctf-role-name"><i class="fas fa-user-shield"></i> {{ __('Administrator') }}</span>
                         <span class="acctf-role-desc">
                             Full access, including Settings, payroll configuration and the ability to
                             create and manage accounts.
@@ -127,8 +127,8 @@
                 <input type="checkbox" name="is_active" value="1"
                        {{ $active ? 'checked' : '' }} {{ $isSelf ? 'disabled' : '' }}>
                 <span>
-                    <strong>Account is active</strong>
-                    <small>Turn this off to block sign-in without deleting the account or its history.</small>
+                    <strong>{{ __('Account is active') }}</strong>
+                    <small>{{ __('Turn this off to block sign-in without deleting the account or its history.') }}</small>
                 </span>
             </label>
         </div>
@@ -144,31 +144,31 @@
                 <div class="acctf-field">
                     <label for="password">
                         {{ $account ? 'New Password' : 'Password' }}
-                        @if($account)<span class="opt">leave blank to keep current</span>@else<span class="req">*</span>@endif
+                        @if($account)<span class="opt">{{ __('leave blank to keep current') }}</span>@else<span class="req">*</span>@endif
                     </label>
                     <div class="acctf-pw">
                         <input type="password" id="password" name="password"
                                class="acctf-input @error('password') bad @enderror"
-                               placeholder="At least 8 characters" {{ $account ? '' : 'required' }}
+                               placeholder="{{ __('At least 8 characters') }}" {{ $account ? '' : 'required' }}
                                autocomplete="new-password">
-                        <button type="button" class="acctf-pw-eye" data-target="password" title="Show / hide">
+                        <button type="button" class="acctf-pw-eye" data-target="password" title="{{ __('Show / hide') }}">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
                     @error('password')
                         <span class="acctf-err">{{ $message }}</span>
                     @else
-                        <span class="acctf-hint">Minimum 8 characters, with at least one letter and one number.</span>
+                        <span class="acctf-hint">{{ __('Minimum 8 characters, with at least one letter and one number.') }}</span>
                     @enderror
                 </div>
 
                 <div class="acctf-field">
-                    <label for="password_confirmation">Confirm Password</label>
+                    <label for="password_confirmation">{{ __('Confirm Password') }}</label>
                     <div class="acctf-pw">
                         <input type="password" id="password_confirmation" name="password_confirmation"
-                               class="acctf-input" placeholder="Re-type the password"
+                               class="acctf-input" placeholder="{{ __('Re-type the password') }}"
                                {{ $account ? '' : 'required' }} autocomplete="new-password">
-                        <button type="button" class="acctf-pw-eye" data-target="password_confirmation" title="Show / hide">
+                        <button type="button" class="acctf-pw-eye" data-target="password_confirmation" title="{{ __('Show / hide') }}">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
@@ -177,7 +177,7 @@
 
             @unless($account)
                 <button type="button" id="acctfGenerate" class="acctf-gen">
-                    <i class="fas fa-wand-magic-sparkles"></i> Suggest a strong password
+                    <i class="fas fa-wand-magic-sparkles"></i> {{ __('Suggest a strong password') }}
                 </button>
                 <span class="acctf-gen-out" id="acctfGenOut"></span>
             @endunless
@@ -185,7 +185,7 @@
 
         {{-- ── Actions ─────────────────────────────────────────────────────── --}}
         <div class="acctf-actions">
-            <a href="{{ route('accounts.index') }}" class="acctf-btn ghost">Cancel</a>
+            <a href="{{ route('accounts.index') }}" class="acctf-btn ghost">{{ __('Cancel') }}</a>
             <button type="submit" class="acctf-btn primary">
                 <i class="fas fa-{{ $account ? 'save' : 'user-plus' }}"></i>
                 {{ $account ? 'Save Changes' : 'Create Account' }}

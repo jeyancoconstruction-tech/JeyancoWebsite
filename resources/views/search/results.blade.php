@@ -6,10 +6,10 @@
 <div class="container-fluid px-4 py-4">
 
     <div class="search-header" style="background: linear-gradient(135deg, #1e3a8a, #1e40af); padding: 26px 24px; border-radius: 12px; color: #fff; margin-bottom: 24px;">
-        <h2 class="mb-1" style="font-weight: 800;">Search Results</h2>
+        <h2 class="mb-1" style="font-weight: 800;">{{ __('Search Results') }}</h2>
         <p class="mb-0" style="color: rgba(255,255,255,0.85);">
             Query: <strong style="color:#fff;">"{{ $query }}"</strong> &middot;
-            <strong style="color:#fff;">{{ $results['total'] }}</strong> result(s)
+            <strong style="color:#fff;">{{ $results['total'] }}</strong> {{ __('result(s)') }}
         </p>
     </div>
 
@@ -17,8 +17,8 @@
         <div class="alert d-flex align-items-center" style="background: #dbeafe; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 10px;">
             <i data-lucide="search" class="me-3" style="width: 22px; height: 22px;"></i>
             <div>
-                No results found for "<strong>{{ $query }}</strong>". Try a name, Employee ID (e.g. <code>12</code>),
-                a date, or a module (e.g. <code>payroll</code>, <code>attendance</code>, <code>settings</code>).
+                No results found for "<strong>{{ $query }}</strong>{{ __('". Try a name, Employee ID (e.g.') }} <code>12</code>),
+                a date, or a module (e.g. <code>{{ __('payroll') }}</code>, <code>{{ __('attendance') }}</code>, <code>{{ __('settings') }}</code>).
             </div>
         </div>
     @else
@@ -51,7 +51,7 @@
 
     <div class="mt-4">
         <a href="{{ url()->previous() }}" class="btn btn-light border fw-600">
-            <i data-lucide="arrow-left" class="me-1" style="width: 16px; height: 16px;"></i> Back
+            <i data-lucide="arrow-left" class="me-1" style="width: 16px; height: 16px;"></i> {{ __('Back') }}
         </a>
     </div>
 </div>

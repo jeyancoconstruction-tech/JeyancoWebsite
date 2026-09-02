@@ -15,15 +15,15 @@
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
     <div class="dir-header">
         <div class="dir-header-text">
-            <h1 class="dir-title"><i class="fas fa-users dir-title-icon"></i> Employee Directory</h1>
-            <p class="dir-sub">Manage and view all employees in the company.</p>
+            <h1 class="dir-title"><i class="fas fa-users dir-title-icon"></i> {{ __('Employee Directory') }}</h1>
+            <p class="dir-sub">{{ __('Manage and view all employees in the company.') }}</p>
         </div>
         <div class="dir-header-actions">
             <a href="{{ route('employees.export') }}" class="dir-btn-ghost">
-                <i class="fas fa-download"></i> Export
+                <i class="fas fa-download"></i> {{ __('Export') }}
             </a>
             <a href="{{ route('employees.create') }}" class="dir-btn-primary">
-                <i class="fas fa-plus"></i> Add Employee
+                <i class="fas fa-plus"></i> {{ __('Add Employee') }}
             </a>
         </div>
     </div>
@@ -35,10 +35,10 @@
         <div class="dir-stat">
             <span class="dir-stat-icon blue"><i class="fas fa-users"></i></span>
             <div class="dir-stat-body">
-                <span class="dir-stat-label">Total Employees</span>
+                <span class="dir-stat-label">{{ __('Total Employees') }}</span>
                 <span class="dir-stat-value">{{ $stats['total'] }}</span>
             </div>
-            <span class="dir-stat-foot">Active workforce</span>
+            <span class="dir-stat-foot">{{ __('Active workforce') }}</span>
         </div>
     </div>
 
@@ -52,11 +52,11 @@
                     All Employees <span class="dir-tab-count" id="countAll">{{ $stats['total'] }}</span>
                 </button>
                 <button type="button" class="dir-tab" data-scope="regular"
-                        title="Oras-oras ang bayad at kasama sa payroll">
+                        title="{{ __('Oras-oras ang bayad at kasama sa payroll') }}">
                     Regular <span class="dir-tab-count">{{ $stats['regular'] }}</span>
                 </button>
                 <button type="button" class="dir-tab" data-scope="contractual"
-                        title="Bayad ayon sa kontrata — attendance lang ang sinusubaybayan, hindi kasama sa payroll">
+                        title="{{ __('Bayad ayon sa kontrata — attendance lang ang sinusubaybayan, hindi kasama sa payroll') }}">
                     Contractual <span class="dir-tab-count">{{ $stats['contractual'] }}</span>
                 </button>
             </div>
@@ -64,12 +64,12 @@
             <div class="dir-toolbar-right">
                 <div class="emp-search-wrap">
                     <i class="fas fa-search emp-search-icon"></i>
-                    <input type="text" id="empSearch" class="emp-search" placeholder="Search by name, position…">
+                    <input type="text" id="empSearch" class="emp-search" placeholder="{{ __('Search by name, position…') }}">
                 </div>
 
                 <div class="emp-select-wrap">
                     <select id="siteFilter" class="emp-select">
-                        <option value="">All Sites</option>
+                        <option value="">{{ __('All Sites') }}</option>
                         @foreach($sites as $site)
                             <option value="{{ $site->id }}">{{ $site->name }}</option>
                         @endforeach
@@ -81,13 +81,13 @@
                      pinagmumulan ng dalawang anyo — CSS lang ang nagbabago —
                      kaya hindi sila puwedeng magkaiba ng laman, at patuloy na
                      gumagana ang search, salain at checkbox sa dalawa. --}}
-                <div class="dir-viewswitch" role="group" aria-label="Ayos ng listahan">
+                <div class="dir-viewswitch" role="group" aria-label="{{ __('Ayos ng listahan') }}">
                     <button type="button" class="dir-view-opt active" data-view="table"
-                            title="Talahanayan" aria-pressed="true">
+                            title="{{ __('Talahanayan') }}" aria-pressed="true">
                         <i class="fas fa-list"></i>
                     </button>
                     <button type="button" class="dir-view-opt" data-view="grid"
-                            title="Grid" aria-pressed="false">
+                            title="{{ __('Grid') }}" aria-pressed="false">
                         <i class="fas fa-th-large"></i>
                     </button>
                 </div>
@@ -99,14 +99,14 @@
             <table class="emp-table" id="empTable">
                 <thead>
                     <tr>
-                        <th>Employee</th>
-                        <th>Site</th>
-                        <th>Labor Type</th>
+                        <th>{{ __('Employee') }}</th>
+                        <th>{{ __('Site') }}</th>
+                        <th>{{ __('Labor Type') }}</th>
                         {{-- "Rate" lang, hindi "Rate / hr": may kada-oras (regular) at
                              may kabuuan ng kontrata (contractual) sa hanay na ito. --}}
-                        <th class="text-center">Rate</th>
-                        <th class="text-center">Vale Balance</th>
-                        <th>Fingerprint</th>
+                        <th class="text-center">{{ __('Rate') }}</th>
+                        <th class="text-center">{{ __('Vale Balance') }}</th>
+                        <th>{{ __('Fingerprint') }}</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -136,7 +136,7 @@
                                         {{-- Nakikita agad kung sino ang wala sa payroll kahit
                                              nasa "All Employees" tab ka. --}}
                                         @if($emp->isContractual())
-                                            <span class="emp-type-badge">Contractual</span>
+                                            <span class="emp-type-badge">{{ __('Contractual') }}</span>
                                         @endif
                                     </span>
                                 </div>
@@ -176,7 +176,7 @@
                                      rate_per_hour ay ₱0.00 ang lalabas at mukhang walang
                                      bayad ang tao, gayong bayad siya sa labas ng payroll. --}}
                                 <span class="emp-rate-contract">₱{{ number_format($emp->contract_rate ?? 0, 2) }}</span>
-                                <span class="emp-rate-note">contract</span>
+                                <span class="emp-rate-note">{{ __('contract') }}</span>
                             @else
                                 ₱{{ number_format($emp->rate_per_hour, 2) }}
                             @endif
@@ -196,7 +196,7 @@
                                     {{ $emp->fingerprint_id }}
                                 </span>
                             @else
-                                <span class="emp-dash">Not set</span>
+                                <span class="emp-dash">{{ __('Not set') }}</span>
                             @endif
                         </td>
 
@@ -210,7 +210,7 @@
                                 View Details
                             </a>
                             <div class="emp-more-wrap">
-                                <button type="button" class="emp-more-btn" aria-label="More options">
+                                <button type="button" class="emp-more-btn" aria-label="{{ __('More options') }}">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
                                 {{-- Walang Edit dito. Ang pagbabago ng rekord ay
@@ -222,12 +222,12 @@
                                             data-id="{{ $emp->id }}"
                                             data-name="{{ $emp->name }}"
                                             data-vale="{{ $emp->vale ?? 0 }}">
-                                        <i class="fas fa-coins"></i> Set Vale
+                                        <i class="fas fa-coins"></i> {{ __('Set Vale') }}
                                     </button>
                                     <button type="button" class="emp-more-item emp-more-delete js-emp-delete"
                                             data-id="{{ $emp->id }}"
                                             data-name="{{ $emp->name }}">
-                                        <i class="fas fa-trash"></i> Delete
+                                        <i class="fas fa-trash"></i> {{ __('Delete') }}
                                     </button>
                                 </div>
                             </div>
@@ -238,8 +238,8 @@
                         <td colspan="7">
                             <div class="emp-empty">
                                 <div class="emp-empty-icon"><i class="fas fa-users"></i></div>
-                                <p class="emp-empty-title">No employees yet</p>
-                                <p class="emp-empty-sub">Register employees from the kiosk to get started.</p>
+                                <p class="emp-empty-title">{{ __('No employees yet') }}</p>
+                                <p class="emp-empty-sub">{{ __('Register employees from the kiosk to get started.') }}</p>
                             </div>
                         </td>
                     </tr>
@@ -253,15 +253,15 @@
         <div class="dir-foot">
             <span class="dir-foot-text">
                 Showing <strong id="dirShown">{{ $stats['total'] }}</strong>
-                of <strong>{{ $stats['total'] }}</strong> employees
+                of <strong>{{ $stats['total'] }}</strong> {{ __('employees') }}
             </span>
         </div>
 
         {{-- Filter / search empty state --}}
         <div id="noMatch" class="emp-empty" style="display:none;padding:48px 0;">
             <div class="emp-empty-icon"><i class="fas fa-filter"></i></div>
-            <p class="emp-empty-title">No results</p>
-            <p class="emp-empty-sub">Try a different name or site filter.</p>
+            <p class="emp-empty-title">{{ __('No results') }}</p>
+            <p class="emp-empty-sub">{{ __('Try a different name or site filter.') }}</p>
         </div>
     </div>
 </div>
@@ -274,22 +274,22 @@
         <div class="modal-content emp-modal-content">
             <div class="emp-modal-header">
                 <div>
-                    <h3 class="emp-modal-title">Remove employee</h3>
+                    <h3 class="emp-modal-title">{{ __('Remove employee') }}</h3>
                     <p class="emp-modal-sub" id="deleteModalName">—</p>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
             </div>
             <div class="modal-body p-3">
                 <p class="emp-modal-sub" style="color:var(--text-muted);">
-                    Mapupunta siya sa <strong>Removed</strong> sa Register &amp; Manage at
+                    Mapupunta siya sa <strong>{{ __('Removed') }}</strong> sa Register &amp; Manage at
                     maibabalik mula roon. Mananatili ang attendance at payroll niya.
                 </p>
                 <form id="empDeleteForm" method="POST" class="d-flex justify-content-end gap-2 mt-3">
                     @csrf
                     @method('DELETE')
-                    <button type="button" class="emp-btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="emp-btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                     <button type="submit" class="emp-bulk-delete">
-                        <i class="fas fa-trash"></i> Remove
+                        <i class="fas fa-trash"></i> {{ __('Remove') }}
                     </button>
                 </form>
             </div>
@@ -303,18 +303,18 @@
         <div class="modal-content emp-modal-content">
             <div class="emp-modal-header">
                 <div>
-                    <h3 class="emp-modal-title">Set Vale Balance</h3>
+                    <h3 class="emp-modal-title">{{ __('Set Vale Balance') }}</h3>
                     <p class="emp-modal-sub" id="valeModalName">—</p>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
             </div>
             <div class="modal-body p-3">
-                <label class="emp-site-add-label" for="valeInput"><i class="fas fa-coins"></i> Vale amount (₱)</label>
+                <label class="emp-site-add-label" for="valeInput"><i class="fas fa-coins"></i> {{ __('Vale amount (₱)') }}</label>
                 <input type="number" step="0.01" min="0" id="valeInput" class="emp-modal-input" style="width:100%;" placeholder="0.00">
-                <p class="emp-modal-sub mt-2" style="color:var(--text-muted);">Manual running balance per employee. Payroll deductions are still entered per period on the Payroll page.</p>
+                <p class="emp-modal-sub mt-2" style="color:var(--text-muted);">{{ __('Manual running balance per employee. Payroll deductions are still entered per period on the Payroll page.') }}</p>
                 <div class="d-flex justify-content-end gap-2 mt-3">
-                    <button type="button" class="emp-btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="emp-site-add-btn" id="valeSaveBtn">Save</button>
+                    <button type="button" class="emp-btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="button" class="emp-site-add-btn" id="valeSaveBtn">{{ __('Save') }}</button>
                 </div>
             </div>
         </div>

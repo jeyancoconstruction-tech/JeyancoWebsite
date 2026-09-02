@@ -126,12 +126,12 @@
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
     <div class="pr-header d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h1>Payroll Records</h1>
+            <h1>{{ __('Payroll Records') }}</h1>
             <p>{{ $isDaily ? 'Daily' : 'Weekly' }} breakdown of pay, for the period below</p>
         </div>
         <button type="button" class="btn btn-success fw-600"
                 data-bs-toggle="modal" data-bs-target="#exportPreviewModal">
-            <i class="fas fa-file-excel me-1"></i> Preview &amp; Download
+            <i class="fas fa-file-excel me-1"></i> {{ __('Preview &amp; Download') }}
         </button>
     </div>
 
@@ -147,30 +147,30 @@
 
             <div class="report-modes mb-3">
                 <button type="button" class="mode-btn {{ $period['mode'] === 'weekly' ? 'active' : '' }}" data-mode="weekly">
-                    <i class="fas fa-calendar-week me-1"></i> Weekly (Mon–Sun)
+                    <i class="fas fa-calendar-week me-1"></i> {{ __('Weekly (Mon–Sun)') }}
                 </button>
                 <button type="button" class="mode-btn {{ $period['mode'] === 'daily' ? 'active' : '' }}" data-mode="daily">
-                    <i class="fas fa-calendar-day me-1"></i> Daily
+                    <i class="fas fa-calendar-day me-1"></i> {{ __('Daily') }}
                 </button>
             </div>
 
             <div class="row g-3 align-items-end">
                 <div class="col-auto mode-field" data-for="weekly">
-                    <label class="form-label small fw-bold text-muted mb-1">Week</label>
+                    <label class="form-label small fw-bold text-muted mb-1">{{ __('Week') }}</label>
                     <input type="week" name="week" value="{{ $period['week'] }}" class="form-control" style="border-color: var(--border);">
                 </div>
                 <div class="col-auto mode-field" data-for="daily">
-                    <label class="form-label small fw-bold text-muted mb-1">Date</label>
+                    <label class="form-label small fw-bold text-muted mb-1">{{ __('Date') }}</label>
                     <input type="date" name="date" value="{{ $period['date'] }}" class="form-control" style="border-color: var(--border);">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small fw-bold text-muted mb-1">Employee (name or ID)</label>
-                    <input type="text" name="employee" value="{{ $search }}" placeholder="All employees"
+                    <label class="form-label small fw-bold text-muted mb-1">{{ __('Employee (name or ID)') }}</label>
+                    <input type="text" name="employee" value="{{ $search }}" placeholder="{{ __('All employees') }}"
                            autocomplete="off" class="form-control" style="border-color: var(--border);">
                 </div>
                 <div class="col-auto">
                     <button type="submit" class="btn btn-primary fw-600">
-                        <i class="fas fa-magnifying-glass me-1"></i> Apply
+                        <i class="fas fa-magnifying-glass me-1"></i> {{ __('Apply') }}
                     </button>
                 </div>
             </div>
@@ -191,39 +191,39 @@
     {{-- ── Summary bar (all key figures in one row) ────────────────────────── --}}
     <div class="pr-summary-bar mb-4">
         <div class="pr-stat">
-            <div class="k">Net Payroll</div>
+            <div class="k">{{ __('Net Payroll') }}</div>
             <div class="v" style="color:var(--brand);">&#8369;{{ number_format($summary['net'], 2) }}</div>
         </div>
         <div class="pr-stat">
-            <div class="k">Gross Pay</div>
+            <div class="k">{{ __('Gross Pay') }}</div>
             <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['gross'], 2) }}</div>
         </div>
         <div class="pr-stat">
-            <div class="k">Deductions</div>
+            <div class="k">{{ __('Deductions') }}</div>
             <div class="v" style="color:var(--danger);">&#8369;{{ number_format($summary['totalDeductions'], 2) }}</div>
         </div>
         <div class="pr-stat">
-            <div class="k">Overtime</div>
+            <div class="k">{{ __('Overtime') }}</div>
             <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['overtime'], 2) }}</div>
         </div>
         <div class="pr-stat">
-            <div class="k">Holiday Pay</div>
+            <div class="k">{{ __('Holiday Pay') }}</div>
             <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['holidayPay'], 2) }}</div>
         </div>
         <div class="pr-stat">
-            <div class="k">Rest Day Pay</div>
+            <div class="k">{{ __('Rest Day Pay') }}</div>
             <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['restDayPay'] ?? 0, 2) }}</div>
         </div>
         <div class="pr-stat">
-            <div class="k">Bonus</div>
+            <div class="k">{{ __('Bonus') }}</div>
             <div class="v" style="color:var(--text-primary);">&#8369;{{ number_format($summary['bonus'], 2) }}</div>
         </div>
         <div class="pr-stat">
-            <div class="k">Employees</div>
+            <div class="k">{{ __('Employees') }}</div>
             <div class="v" style="color:var(--text-primary);">{{ $summary['employee_count'] }}</div>
         </div>
         <div class="pr-stat">
-            <div class="k">Hours / Days</div>
+            <div class="k">{{ __('Hours / Days') }}</div>
             <div class="v" style="color:var(--text-secondary);">
                 {{ $summary['hours'] }}<span style="font-size:0.8rem;opacity:.75;">h / {{ $summary['workdays'] }}d</span>
             </div>
@@ -246,14 +246,14 @@
                     <thead>
                         <tr>
                             <th class="ps-4">{{ $isDaily ? 'Date' : 'Week' }}</th>
-                            <th>Employee</th>
-                            <th class="text-end">Hours</th>
-                            <th class="text-end">Daily Rate</th>
-                            <th class="text-end">Rest Day Pay</th>
-                            <th class="text-end">Bonus</th>
-                            <th class="text-end">Gross</th>
-                            <th class="text-end">Deductions</th>
-                            <th class="text-end pe-4">Net</th>
+                            <th>{{ __('Employee') }}</th>
+                            <th class="text-end">{{ __('Hours') }}</th>
+                            <th class="text-end">{{ __('Daily Rate') }}</th>
+                            <th class="text-end">{{ __('Rest Day Pay') }}</th>
+                            <th class="text-end">{{ __('Bonus') }}</th>
+                            <th class="text-end">{{ __('Gross') }}</th>
+                            <th class="text-end">{{ __('Deductions') }}</th>
+                            <th class="text-end pe-4">{{ __('Net') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -279,7 +279,7 @@
                                 @endforeach
                             @empty
                             <tr>
-                                <td colspan="9" class="text-center py-5 text-muted">No records for this period.</td>
+                                <td colspan="9" class="text-center py-5 text-muted">{{ __('No records for this period.') }}</td>
                             </tr>
                             @endforelse
                         @else
@@ -318,7 +318,7 @@
                                 </tr>
                             @empty
                             <tr>
-                                <td colspan="9" class="text-center py-5 text-muted">No records for this period.</td>
+                                <td colspan="9" class="text-center py-5 text-muted">{{ __('No records for this period.') }}</td>
                             </tr>
                             @endforelse
                         @endif
@@ -343,7 +343,7 @@
                                     <div class="sub">{{ $company?->company_tagline ?? 'Payroll Dept. · Panganiban, PH' }}</div>
                                 </div>
                                 <div class="emp-slip-doc">
-                                    <div class="lbl">PAYSLIP</div>
+                                    <div class="lbl">{{ __('PAYSLIP') }}</div>
                                     <div class="per">{{ $period['label'] }}</div>
                                 </div>
                             </div>
@@ -360,23 +360,23 @@
 
                             <div class="emp-slip-cols">
                                 <div>
-                                    <h6>Earnings</h6>
-                                    <div class="ln"><span class="k" id="rcBasicK">Regular pay</span><span class="v" id="rcBasic">&mdash;</span></div>
-                                    <div class="ln"><span class="k" id="rcOtK">Overtime</span><span class="v" id="rcOt">&mdash;</span></div>
-                                    <div class="ln"><span class="k" id="rcNightK">Night differential</span><span class="v" id="rcNight">&mdash;</span></div>
-                                    <div class="ln"><span class="k" id="rcHolidayK">Holiday pay</span><span class="v" id="rcHoliday">&mdash;</span></div>
-                                    <div class="ln"><span class="k" id="rcRestK">Rest day pay</span><span class="v" id="rcRest">&mdash;</span></div>
-                                    <div class="ln sum"><span class="k">Gross pay</span><span class="v" id="rcGross">&mdash;</span></div>
+                                    <h6>{{ __('Earnings') }}</h6>
+                                    <div class="ln"><span class="k" id="rcBasicK">{{ __('Regular pay') }}</span><span class="v" id="rcBasic">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcOtK">{{ __('Overtime') }}</span><span class="v" id="rcOt">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcNightK">{{ __('Night differential') }}</span><span class="v" id="rcNight">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcHolidayK">{{ __('Holiday pay') }}</span><span class="v" id="rcHoliday">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcRestK">{{ __('Rest day pay') }}</span><span class="v" id="rcRest">&mdash;</span></div>
+                                    <div class="ln sum"><span class="k">{{ __('Gross pay') }}</span><span class="v" id="rcGross">&mdash;</span></div>
                                 </div>
                                 <div>
-                                    <h6>Deductions</h6>
-                                    <div class="ln"><span class="k" id="rcSssK">SSS</span><span class="v" id="rcSss">&mdash;</span></div>
-                                    <div class="ln"><span class="k" id="rcPhilK">PhilHealth</span><span class="v" id="rcPhil">&mdash;</span></div>
-                                    <div class="ln"><span class="k" id="rcPagK">Pag-IBIG</span><span class="v" id="rcPag">&mdash;</span></div>
-                                    <div class="ln"><span class="k" id="rcTaxK">Withholding tax</span><span class="v" id="rcTax">&mdash;</span></div>
-                                    <div class="ln"><span class="k">Vale / cash advance</span><span class="v" id="rcVale">&mdash;</span></div>
-                                    <div class="ln"><span class="k">Other adjustments</span><span class="v" id="rcOther">&mdash;</span></div>
-                                    <div class="ln sum"><span class="k">Total deductions</span><span class="v" id="rcDed" style="color:var(--danger);">&mdash;</span></div>
+                                    <h6>{{ __('Deductions') }}</h6>
+                                    <div class="ln"><span class="k" id="rcSssK">{{ __('SSS') }}</span><span class="v" id="rcSss">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcPhilK">{{ __('PhilHealth') }}</span><span class="v" id="rcPhil">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcPagK">{{ __('Pag-IBIG') }}</span><span class="v" id="rcPag">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcTaxK">{{ __('Withholding tax') }}</span><span class="v" id="rcTax">&mdash;</span></div>
+                                    <div class="ln"><span class="k">{{ __('Vale / cash advance') }}</span><span class="v" id="rcVale">&mdash;</span></div>
+                                    <div class="ln"><span class="k">{{ __('Other adjustments') }}</span><span class="v" id="rcOther">&mdash;</span></div>
+                                    <div class="ln sum"><span class="k">{{ __('Total deductions') }}</span><span class="v" id="rcDed" style="color:var(--danger);">&mdash;</span></div>
                                 </div>
                             </div>
 
@@ -385,9 +385,9 @@
                                  the Gross line stop adding up. It belongs in
                                  the arithmetic that reaches net. --}}
                             <div class="rc-math">
-                                <span>Gross</span><b id="rcMGross">&mdash;</b>
-                                <span>&minus; Deductions</span><b id="rcMDed">&mdash;</b>
-                                <span>+ Bonus</span><b id="rcMBonus">&mdash;</b>
+                                <span>{{ __('Gross') }}</span><b id="rcMGross">&mdash;</b>
+                                <span>{{ __('&minus; Deductions') }}</span><b id="rcMDed">&mdash;</b>
+                                <span>{{ __('+ Bonus') }}</span><b id="rcMBonus">&mdash;</b>
                             </div>
 
                             <div class="emp-slip-net">
@@ -401,19 +401,19 @@
                             <div class="rc-rates">
                                 <div class="rc-rates-head">
                                     Rates applied
-                                    @if($rates['uses_defaults'])<span class="rc-badge">statutory defaults</span>@endif
+                                    @if($rates['uses_defaults'])<span class="rc-badge">{{ __('statutory defaults') }}</span>@endif
                                 </div>
                                 <div class="rc-rates-grid">
-                                    <span>Overtime</span><b>&times;{{ number_format($rates['ot_multiplier'], 2) }}</b>
-                                    <span>Night differential</span><b>&times;{{ number_format($rates['night_diff_multiplier'], 2) }}</b>
-                                    <span>Rest day</span><b>&times;{{ number_format($rates['rest_day_multiplier'], 2) }}</b>
-                                    <span>Regular holiday</span><b>&times;{{ number_format($rates['regular_holiday_multiplier'], 2) }}</b>
-                                    <span>SSS</span><b>{{ number_format($rates['sss_rate'], 2) }}%</b>
-                                    <span>PhilHealth</span><b>{{ number_format($rates['philhealth_rate'], 2) }}%</b>
-                                    <span>Pag-IBIG</span><b>{{ number_format($rates['pagibig_rate'], 2) }}%</b>
-                                    <span>Withholding tax</span><b>{{ $rates['withholding_tax'] ? 'BIR table' : 'off' }}</b>
-                                    <span>Bonus</span><b>&#8369;{{ number_format($rates['bonus'], 2) }}/period</b>
-                                    <span>Wage floor</span><b>{{ $rates['daily_rate'] ? '&#8369;' . number_format($rates['daily_rate'], 2) : 'none set' }}</b>
+                                    <span>{{ __('Overtime') }}</span><b>&times;{{ number_format($rates['ot_multiplier'], 2) }}</b>
+                                    <span>{{ __('Night differential') }}</span><b>&times;{{ number_format($rates['night_diff_multiplier'], 2) }}</b>
+                                    <span>{{ __('Rest day') }}</span><b>&times;{{ number_format($rates['rest_day_multiplier'], 2) }}</b>
+                                    <span>{{ __('Regular holiday') }}</span><b>&times;{{ number_format($rates['regular_holiday_multiplier'], 2) }}</b>
+                                    <span>{{ __('SSS') }}</span><b>{{ number_format($rates['sss_rate'], 2) }}%</b>
+                                    <span>{{ __('PhilHealth') }}</span><b>{{ number_format($rates['philhealth_rate'], 2) }}%</b>
+                                    <span>{{ __('Pag-IBIG') }}</span><b>{{ number_format($rates['pagibig_rate'], 2) }}%</b>
+                                    <span>{{ __('Withholding tax') }}</span><b>{{ $rates['withholding_tax'] ? 'BIR table' : 'off' }}</b>
+                                    <span>{{ __('Bonus') }}</span><b>&#8369;{{ number_format($rates['bonus'], 2) }}/period</b>
+                                    <span>{{ __('Wage floor') }}</span><b>{{ $rates['daily_rate'] ? '&#8369;' . number_format($rates['daily_rate'], 2) : 'none set' }}</b>
                                 </div>
                             </div>
 
@@ -432,7 +432,7 @@
                                 <a href="#" target="_blank" rel="noopener" id="rcPrint"
                                    class="btn btn-sm fw-600 flex-grow-1"
                                    style="background:var(--brand);color:#fff;border:none;">
-                                    <i class="fas fa-print me-1"></i> Print / Save as PDF
+                                    <i class="fas fa-print me-1"></i> {{ __('Print / Save as PDF') }}
                                 </a>
                             </div>
                         </div>
@@ -447,22 +447,22 @@
             <div class="modal-content border-0">
                 <div class="modal-header text-white" style="background:var(--brand);">
                     <div>
-                        <h6 class="modal-title fw-bold mb-0"><i class="fas fa-file-excel me-2"></i>Payroll Export Preview</h6>
+                        <h6 class="modal-title fw-bold mb-0"><i class="fas fa-file-excel me-2"></i>{{ __('Payroll Export Preview') }}</h6>
                         <small style="opacity:.85;">{{ ucfirst($period['mode']) }} &middot; {{ $period['label'] }} &middot; {{ count($employees) }} employee{{ count($employees) === 1 ? '' : 's' }}</small>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
                 </div>
                 <div class="modal-body p-0">
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0" style="font-size:12.5px;white-space:nowrap;">
                             <thead style="position:sticky;top:0;z-index:2;background:var(--border);">
                                 <tr>
-                                    <th class="ps-3">ID</th><th>Name</th><th>Position</th>
-                                    <th class="text-end">Workdays</th><th class="text-end">Hours</th>
-                                    <th class="text-end">Gross</th><th class="text-end">Overtime</th>
-                                    <th class="text-end">Holiday</th><th class="text-end">Rest Day</th>
-                                    <th class="text-end">Bonus</th><th class="text-end">Deductions</th>
-                                    <th class="text-end pe-3">Net Pay</th>
+                                    <th class="ps-3">{{ __('ID') }}</th><th>{{ __('Name') }}</th><th>{{ __('Position') }}</th>
+                                    <th class="text-end">{{ __('Workdays') }}</th><th class="text-end">{{ __('Hours') }}</th>
+                                    <th class="text-end">{{ __('Gross') }}</th><th class="text-end">{{ __('Overtime') }}</th>
+                                    <th class="text-end">{{ __('Holiday') }}</th><th class="text-end">{{ __('Rest Day') }}</th>
+                                    <th class="text-end">{{ __('Bonus') }}</th><th class="text-end">{{ __('Deductions') }}</th>
+                                    <th class="text-end pe-3">{{ __('Net Pay') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -483,13 +483,13 @@
                                         <td class="text-end pe-3 fw-bold">₱{{ number_format($t['net'], 2) }}</td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="12" class="text-center py-4 text-muted">No payroll data for this period.</td></tr>
+                                    <tr><td colspan="12" class="text-center py-4 text-muted">{{ __('No payroll data for this period.') }}</td></tr>
                                 @endforelse
                             </tbody>
                             @if(count($employees))
                                 <tfoot style="position:sticky;bottom:0;background:var(--border);font-weight:700;">
                                     <tr>
-                                        <td class="ps-3" colspan="3">TOTAL</td>
+                                        <td class="ps-3" colspan="3">{{ __('TOTAL') }}</td>
                                         <td class="text-end">{{ $summary['workdays'] }}</td>
                                         <td class="text-end">{{ number_format($summary['hours'], 2) }}</td>
                                         <td class="text-end">₱{{ number_format($summary['gross'], 2) }}</td>
@@ -506,9 +506,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <span class="me-auto text-muted" style="font-size:12px;">This is exactly what the Excel file will contain.</span>
+                    <span class="me-auto text-muted" style="font-size:12px;">{{ __('This is exactly what the Excel file will contain.') }}</span>
                     <a href="{{ route('payroll-records.export.excel', request()->query()) }}" class="btn btn-success fw-600">
-                        <i class="fas fa-file-excel me-1"></i> Download Excel
+                        <i class="fas fa-file-excel me-1"></i> {{ __('Download Excel') }}
                     </a>
                 </div>
             </div>

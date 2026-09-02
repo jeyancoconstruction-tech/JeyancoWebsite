@@ -8,15 +8,15 @@
     <div class="settings-header mb-4">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1>Settings</h1>
-                <p>Payroll, company, accounts and system configuration</p>
+                <h1>{{ __('Settings') }}</h1>
+                <p>{{ __('Payroll, company, accounts and system configuration') }}</p>
             </div>
         </div>
     </div>
 
     @if ($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong><i class="fas fa-exclamation-circle me-2"></i>Error!</strong> Please fix the errors below.
+            <strong><i class="fas fa-exclamation-circle me-2"></i>{{ __('Error!') }}</strong> {{ __('Please fix the errors below.') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             <ul class="mb-0 mt-2">
                 @foreach ($errors->all() as $error)
@@ -28,7 +28,7 @@
 
     @if (session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong><i class="fas fa-check-circle me-2"></i>Success!</strong> {{ session('success') }}
+            <strong><i class="fas fa-check-circle me-2"></i>{{ __('Success!') }}</strong> {{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
@@ -40,22 +40,22 @@
     <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'payroll' ? 'active' : '' }}" id="payroll-tab" data-bs-toggle="tab" data-bs-target="#payroll" type="button" role="tab">
-                <i data-lucide="wallet" class="me-2"></i>Multipliers and Deductions
+                <i data-lucide="wallet" class="me-2"></i>{{ __('Multipliers and Deductions') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'attendance' ? 'active' : '' }}" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
-                <i data-lucide="clock" class="me-2"></i>Attendance
+                <i data-lucide="clock" class="me-2"></i>{{ __('Attendance') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'labor' ? 'active' : '' }}" id="labor-tab" data-bs-toggle="tab" data-bs-target="#labor" type="button" role="tab">
-                <i data-lucide="briefcase" class="me-2"></i>Labor Types
+                <i data-lucide="briefcase" class="me-2"></i>{{ __('Labor Types') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'holiday' ? 'active' : '' }}" id="holiday-tab" data-bs-toggle="tab" data-bs-target="#holiday" type="button" role="tab">
-                <i data-lucide="calendar" class="me-2"></i>Holidays
+                <i data-lucide="calendar" class="me-2"></i>{{ __('Holidays') }}
             </button>
         </li>
     </ul>
@@ -97,26 +97,26 @@
                         <div class="pr-head-left">
                             <i class="fas fa-gear"></i>
                             <div>
-                                <h6>Multipliers and Deductions</h6>
+                                <h6>{{ __('Multipliers and Deductions') }}</h6>
                                 {{-- The name now says what is in the card, so the
                                      line under it carries the fact the name cannot:
                                      these are dated, and saving adds a row. --}}
-                                <p>Effectivity-dated &middot; a change adds a row, it never edits one</p>
+                                <p>{{ __('Effectivity-dated &middot; a change adds a row, it never edits one') }}</p>
                             </div>
                         </div>
                         <div class="pr-head-right">
                             {{-- On defaults the row stops naming numbers and reads
                                  the statutory ones at compute time, so a circular
                                  that moves reaches it without anyone retyping. --}}
-                            <label class="pr-defaults" title="Follow the statutory premiums and contribution rates automatically — the fields below are locked while this is on">
+                            <label class="pr-defaults" title="{{ __('Follow the statutory premiums and contribution rates automatically — the fields below are locked while this is on') }}">
                                 <span class="ps-toggle-switch">
                                     <input type="checkbox" name="uses_defaults" value="1" id="uses_defaults"
                                            {{ old('uses_defaults', $rate?->uses_defaults ?? false) ? 'checked' : '' }}>
                                     <span class="ps-toggle-slider"></span>
                                 </span>
-                                <span class="pr-defaults-text">Statutory defaults</span>
+                                <span class="pr-defaults-text">{{ __('Statutory defaults') }}</span>
                             </label>
-                            <span class="pr-admin"><i class="fas fa-lock"></i> Admin</span>
+                            <span class="pr-admin"><i class="fas fa-lock"></i> {{ __('Admin') }}</span>
                         </div>
                     </div>
 
@@ -126,9 +126,9 @@
                         <section class="pr-block pr-block-statutory">
                             <div class="pr-block-head">
                                 <i class="fas fa-clock"></i>
-                                <span>Premium multipliers</span>
-                                <small>National · Labor Code</small>
-                                <span class="pr-block-lock"><i class="fas fa-lock"></i> Statutory</span>
+                                <span>{{ __('Premium multipliers') }}</span>
+                                <small>{{ __('National · Labor Code') }}</small>
+                                <span class="pr-block-lock"><i class="fas fa-lock"></i> {{ __('Statutory') }}</span>
                             </div>
                             <div class="pr-grid">
                                 @foreach($premiums as [$field, $label, $default])
@@ -142,16 +142,16 @@
                                     </div>
                                 @endforeach
                             </div>
-                            <p class="pr-block-hint">Night differential: 10:00 PM – 6:00 AM. A regular holiday is fixed at 200% by the Labor Code and is not set here.</p>
+                            <p class="pr-block-hint">{{ __('Night differential: 10:00 PM – 6:00 AM. A regular holiday is fixed at 200% by the Labor Code and is not set here.') }}</p>
                         </section>
 
                         {{-- Deductions --}}
                         <section class="pr-block pr-block-statutory">
                             <div class="pr-block-head">
                                 <i class="fas fa-building-columns"></i>
-                                <span>Deductions (employee share)</span>
-                                <small>Percent of gross</small>
-                                <span class="pr-block-lock"><i class="fas fa-lock"></i> Statutory</span>
+                                <span>{{ __('Deductions (employee share)') }}</span>
+                                <small>{{ __('Percent of gross') }}</small>
+                                <span class="pr-block-lock"><i class="fas fa-lock"></i> {{ __('Statutory') }}</span>
                             </div>
 
                             @foreach($contributions as [$field, $label, $caption, $default])
@@ -178,8 +178,8 @@
                                  switch is locked with the rest of the block. --}}
                             <div class="pr-ded-row">
                                 <div class="pr-ded-name">
-                                    <span>Withholding tax</span>
-                                    <small>BIR graduated table, daily column</small>
+                                    <span>{{ __('Withholding tax') }}</span>
+                                    <small>{{ __('BIR graduated table, daily column') }}</small>
                                 </div>
                                 <div class="pr-ded-input">
                                     <label class="pr-tax-toggle">
@@ -198,45 +198,45 @@
                         <section class="pr-block">
                             <div class="pr-block-head">
                                 <i class="fas fa-calendar-day"></i>
-                                <span>Effectivity</span>
-                                <small>Applies to this card</small>
+                                <span>{{ __('Effectivity') }}</span>
+                                <small>{{ __('Applies to this card') }}</small>
                             </div>
                             <div class="pr-grid pr-grid-2">
                                 <div class="pr-field">
-                                    <label class="pr-field-label" for="effective_from">Effective from</label>
+                                    <label class="pr-field-label" for="effective_from">{{ __('Effective from') }}</label>
                                     <input type="date" id="effective_from" name="effective_from"
                                            class="form-control ps-input @error('effective_from') is-invalid @enderror"
                                            value="{{ old('effective_from', now()->toDateString()) }}" required>
                                     @error('effective_from')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                             </div>
-                            <p class="pr-block-hint">The date applies to the premiums and the deductions above.</p>
+                            <p class="pr-block-hint">{{ __('The date applies to the premiums and the deductions above.') }}</p>
                         </section>
 
                         {{-- What the numbers above add up to, in the order payroll applies them --}}
                         <section class="pr-block">
                             <div class="pr-block-head">
                                 <i class="fas fa-code-branch"></i>
-                                <span>Net pay computation flow</span>
+                                <span>{{ __('Net pay computation flow') }}</span>
                             </div>
                             <div class="pr-flow">
-                                <span class="pr-chip">Attendance hours</span>
+                                <span class="pr-chip">{{ __('Attendance hours') }}</span>
                                 <i class="fas fa-arrow-right"></i>
-                                <span class="pr-chip">× daily wage + premiums</span>
+                                <span class="pr-chip">{{ __('× daily wage + premiums') }}</span>
                                 <i class="fas fa-arrow-right"></i>
-                                <span class="pr-chip pr-chip-gross">Gross pay</span>
+                                <span class="pr-chip pr-chip-gross">{{ __('Gross pay') }}</span>
                             </div>
                             <div class="pr-flow-less">
                                 <i class="fas fa-arrow-turn-down"></i>
-                                <span>less deductions</span>
+                                <span>{{ __('less deductions') }}</span>
                             </div>
                             <div class="pr-flow">
-                                <span class="pr-chip pr-chip-ded">− SSS</span>
-                                <span class="pr-chip pr-chip-ded">− PhilHealth</span>
-                                <span class="pr-chip pr-chip-ded">− Pag-IBIG</span>
-                                <span class="pr-chip pr-chip-ded">− Withholding tax</span>
+                                <span class="pr-chip pr-chip-ded">{{ __('− SSS') }}</span>
+                                <span class="pr-chip pr-chip-ded">{{ __('− PhilHealth') }}</span>
+                                <span class="pr-chip pr-chip-ded">{{ __('− Pag-IBIG') }}</span>
+                                <span class="pr-chip pr-chip-ded">{{ __('− Withholding tax') }}</span>
                                 <i class="fas fa-arrow-right"></i>
-                                <span class="pr-chip pr-chip-net">Net pay</span>
+                                <span class="pr-chip pr-chip-net">{{ __('Net pay') }}</span>
                             </div>
                             <p class="pr-block-hint">
                                 <i class="fas fa-circle-info"></i>
@@ -266,14 +266,14 @@
                                 <table class="ps-dole-table">
                                     <thead>
                                         <tr>
-                                            <th>Effective from</th>
-                                            <th class="text-end">Bonus</th>
-                                            <th class="text-end">OT</th><th class="text-end">Night</th>
-                                            <th class="text-end">Rest day</th>
-                                            <th class="text-end">SSS</th><th class="text-end">PH</th>
-                                            <th class="text-end">Pag-IBIG</th>
-                                            <th class="text-end">Tax</th>
-                                            <th>Set by</th>
+                                            <th>{{ __('Effective from') }}</th>
+                                            <th class="text-end">{{ __('Bonus') }}</th>
+                                            <th class="text-end">{{ __('OT') }}</th><th class="text-end">{{ __('Night') }}</th>
+                                            <th class="text-end">{{ __('Rest day') }}</th>
+                                            <th class="text-end">{{ __('SSS') }}</th><th class="text-end">{{ __('PH') }}</th>
+                                            <th class="text-end">{{ __('Pag-IBIG') }}</th>
+                                            <th class="text-end">{{ __('Tax') }}</th>
+                                            <th>{{ __('Set by') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -286,8 +286,8 @@
                                         <tr class="{{ $i === 0 ? 'pr-history-current' : '' }}">
                                             <td>
                                                 {{ $r->effective_from->format('M d, Y') }}
-                                                @if($i === 0)<span class="pr-in-force">in force</span>@endif
-                                                @if($r->uses_defaults)<span class="pr-on-defaults">defaults</span>@endif
+                                                @if($i === 0)<span class="pr-in-force">{{ __('in force') }}</span>@endif
+                                                @if($r->uses_defaults)<span class="pr-on-defaults">{{ __('defaults') }}</span>@endif
                                             </td>
                                             <td class="text-end">{{ $rr['bonus'] ? '₱' . number_format($rr['bonus'], 2) : '—' }}</td>
                                             <td class="text-end">{{ number_format($rr['ot_multiplier'], 2) }}</td>
@@ -315,9 +315,9 @@
                                     No rate recorded yet
                                 @endif
                             </span>
-                            <a href="{{ route('settings.index') }}" class="pr-cancel">Cancel</a>
+                            <a href="{{ route('settings.index') }}" class="pr-cancel">{{ __('Cancel') }}</a>
                             <button type="submit" class="ps-save-btn">
-                                <i class="fas fa-floppy-disk"></i> Save changes
+                                <i class="fas fa-floppy-disk"></i> {{ __('Save changes') }}
                             </button>
                         </div>
                     </div>
@@ -335,21 +335,21 @@
                     <div class="ps-card-header">
                         <i class="fas fa-clock"></i>
                         <div>
-                            <h6>Work schedule</h6>
-                            <p>When a shift is meant to start, and what a day's rate buys</p>
+                            <h6>{{ __('Work schedule') }}</h6>
+                            <p>{{ __('When a shift is meant to start, and what a day\'s rate buys') }}</p>
                         </div>
                     </div>
                     <div class="ps-card-body">
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="ps-label" for="expected_time_in">Expected time-in</label>
+                                <label class="ps-label" for="expected_time_in">{{ __('Expected time-in') }}</label>
                                 <input type="time" class="form-control ps-input @error('expected_time_in') is-invalid @enderror"
                                        id="expected_time_in" name="expected_time_in"
                                        value="{{ old('expected_time_in', substr($system->expected_time_in, 0, 5)) }}" required>
                                 @error('expected_time_in')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-4">
-                                <label class="ps-label" for="grace_period_minutes">Grace period (minutes)</label>
+                                <label class="ps-label" for="grace_period_minutes">{{ __('Grace period (minutes)') }}</label>
                                 <input type="number" min="0" max="120"
                                        class="form-control ps-input @error('grace_period_minutes') is-invalid @enderror"
                                        id="grace_period_minutes" name="grace_period_minutes"
@@ -357,7 +357,7 @@
                                 @error('grace_period_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-4">
-                                <label class="ps-label" for="standard_hours_per_day">Standard hours / day</label>
+                                <label class="ps-label" for="standard_hours_per_day">{{ __('Standard hours / day') }}</label>
                                 <input type="number" step="0.25" min="1" max="24"
                                        class="form-control ps-input @error('standard_hours_per_day') is-invalid @enderror"
                                        id="standard_hours_per_day" name="standard_hours_per_day"
@@ -367,7 +367,7 @@
                         </div>
                         <small class="text-muted d-block mt-3">
                             The standard hours divide a labour type's daily rate into an hourly one, and mark where
-                            overtime begins. Lateness is <strong>reported, not deducted</strong> — a worker is already
+                            overtime begins. Lateness is <strong>{{ __('reported, not deducted') }}</strong> — a worker is already
                             paid only for the hours they worked, and docking on top would cut the same wage twice.
                         </small>
                     </div>
@@ -377,21 +377,21 @@
                     <div class="ps-card-header">
                         <i class="fas fa-calendar-week"></i>
                         <div>
-                            <h6>Payroll cutoff</h6>
-                            <p>Which days a pay period covers</p>
+                            <h6>{{ __('Payroll cutoff') }}</h6>
+                            <p>{{ __('Which days a pay period covers') }}</p>
                         </div>
                     </div>
                     <div class="ps-card-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="ps-label" for="payroll_cycle">Cycle</label>
+                                <label class="ps-label" for="payroll_cycle">{{ __('Cycle') }}</label>
                                 <select class="form-control ps-input" id="payroll_cycle" name="payroll_cycle" required>
-                                    <option value="weekly" @selected(old('payroll_cycle', $system->payroll_cycle) === 'weekly')>Weekly</option>
-                                    <option value="daily"  @selected(old('payroll_cycle', $system->payroll_cycle) === 'daily')>Daily</option>
+                                    <option value="weekly" @selected(old('payroll_cycle', $system->payroll_cycle) === 'weekly')>{{ __('Weekly') }}</option>
+                                    <option value="daily"  @selected(old('payroll_cycle', $system->payroll_cycle) === 'daily')>{{ __('Daily') }}</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="ps-label" for="week_starts_on">Week starts</label>
+                                <label class="ps-label" for="week_starts_on">{{ __('Week starts') }}</label>
                                 <select class="form-control ps-input" id="week_starts_on" name="week_starts_on" required>
                                     @foreach([1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday',
                                               5 => 'Friday', 6 => 'Saturday', 0 => 'Sunday'] as $n => $label)
@@ -402,7 +402,7 @@
                         </div>
 
                         <div class="mt-3">
-                            <label class="ps-label">Auto-count OT beyond standard</label>
+                            <label class="ps-label">{{ __('Auto-count OT beyond standard') }}</label>
                             <div class="ps-toggle-row">
                                 <label class="ps-toggle-switch">
                                     <input type="checkbox" name="auto_count_overtime" value="1" id="auto_count_overtime"
@@ -425,7 +425,7 @@
                 </div>
 
                 <button type="submit" class="btn ps-save-btn">
-                    <i class="fas fa-save me-2"></i>Save Attendance Settings
+                    <i class="fas fa-save me-2"></i>{{ __('Save Attendance Settings') }}
                 </button>
             </form>
         </div>
@@ -441,22 +441,22 @@
                         <div class="ps-card-header">
                             <i class="fas fa-plus-circle"></i>
                             <div>
-                                <h6>Add Labor Type</h6>
-                                <p>Hourly and OT rates are derived from the daily rate automatically.</p>
+                                <h6>{{ __('Add Labor Type') }}</h6>
+                                <p>{{ __('Hourly and OT rates are derived from the daily rate automatically.') }}</p>
                             </div>
                         </div>
                         <div class="ps-card-body">
                             <form method="POST" action="{{ route('labor-types.store') }}">
                                 @csrf
                                 <div class="mb-3">
-                                    <label class="ps-label">Name</label>
+                                    <label class="ps-label">{{ __('Name') }}</label>
                                     <input type="text" class="form-control ps-input @error('name') is-invalid @enderror"
-                                           name="name" placeholder="e.g., Engineer, Technician"
+                                           name="name" placeholder="{{ __('e.g., Engineer, Technician') }}"
                                            value="{{ old('name') }}" required>
                                     @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="mb-4">
-                                    <label class="ps-label">Daily Rate (₱)</label>
+                                    <label class="ps-label">{{ __('Daily Rate (₱)') }}</label>
                                     <div class="input-group">
                                         <span class="input-group-text ps-ig-text">₱</span>
                                         <input type="number" step="0.01"
@@ -465,7 +465,7 @@
                                     </div>
                                 </div>
                                 <button type="submit" class="btn ps-add-btn w-100">
-                                    <i class="fas fa-plus me-2"></i>Add Labor Type
+                                    <i class="fas fa-plus me-2"></i>{{ __('Add Labor Type') }}
                                 </button>
                             </form>
                         </div>
@@ -478,8 +478,8 @@
                         <div class="ps-card-header">
                             <i class="fas fa-list-ul"></i>
                             <div>
-                                <h6>Labor Types</h6>
-                                <p>Hourly = Daily ÷ 8 &nbsp;·&nbsp; OT uses the multiplier from Payroll Settings.</p>
+                                <h6>{{ __('Labor Types') }}</h6>
+                                <p>{{ __('Hourly = Daily ÷ 8 &nbsp;·&nbsp; OT uses the multiplier from Payroll Settings.') }}</p>
                             </div>
                         </div>
                         <div class="ps-card-body p-0" id="lt-list-container">
@@ -488,9 +488,9 @@
                                 <div class="lt-info">
                                     <span class="lt-name">{{ $type->name }}</span>
                                     <div class="lt-rates">
-                                        <span class="lt-rate-pill">Daily&nbsp;<strong>{{ $type->getFormattedDailyRate() }}</strong></span>
-                                        <span class="lt-rate-pill">Hourly&nbsp;<strong>{{ $type->getFormattedHourlyRate() }}</strong></span>
-                                        <span class="lt-rate-pill">OT&nbsp;<strong>{{ $type->getFormattedOTRate() }}</strong></span>
+                                        <span class="lt-rate-pill">{{ __('Daily&nbsp;') }}<strong>{{ $type->getFormattedDailyRate() }}</strong></span>
+                                        <span class="lt-rate-pill">{{ __('Hourly&nbsp;') }}<strong>{{ $type->getFormattedHourlyRate() }}</strong></span>
+                                        <span class="lt-rate-pill">{{ __('OT&nbsp;') }}<strong>{{ $type->getFormattedOTRate() }}</strong></span>
                                     </div>
                                 </div>
                                 <div class="lt-actions">
@@ -501,7 +501,7 @@
                                             <li>
                                                 <button class="dropdown-item" type="button"
                                                         data-bs-toggle="modal" data-bs-target="#editModal{{ $type->id }}">
-                                                    <i class="fas fa-edit me-2"></i>Edit
+                                                    <i class="fas fa-edit me-2"></i>{{ __('Edit') }}
                                                 </button>
                                             </li>
                                             <li><hr class="dropdown-divider"></li>
@@ -511,7 +511,7 @@
                                                     @method('DELETE')
                                                     <button type="submit" class="dropdown-item text-danger"
                                                             onclick="return confirm('Delete this labor type? Employees using it will be affected.')">
-                                                        <i class="fas fa-trash me-2"></i>Delete
+                                                        <i class="fas fa-trash me-2"></i>{{ __('Delete') }}
                                                     </button>
                                                 </form>
                                             </li>
@@ -525,7 +525,7 @@
                                 <div class="modal-dialog">
                                     <div class="modal-content border-0" style="border-radius:12px; box-shadow:0 20px 40px rgba(0,0,0,.1);">
                                         <div class="modal-header" style="background:linear-gradient(135deg,#1e3a8a,#1e40af); color:#fff; border:none; border-radius:12px 12px 0 0;">
-                                            <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>Edit Labor Type</h5>
+                                            <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>{{ __('Edit Labor Type') }}</h5>
                                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                         </div>
                                         <form method="POST" action="{{ route('labor-types.update', $type->id) }}">
@@ -533,23 +533,23 @@
                                             @method('PUT')
                                             <div class="modal-body p-4">
                                                 <div class="mb-3">
-                                                    <label class="ps-label">Name</label>
+                                                    <label class="ps-label">{{ __('Name') }}</label>
                                                     <input type="text" class="form-control ps-input" name="name"
                                                            value="{{ $type->name }}" required>
                                                 </div>
                                                 <div class="mb-1">
-                                                    <label class="ps-label">Daily Rate (₱)</label>
+                                                    <label class="ps-label">{{ __('Daily Rate (₱)') }}</label>
                                                     <div class="input-group">
                                                         <span class="input-group-text ps-ig-text">₱</span>
                                                         <input type="number" step="0.01" class="form-control ps-input"
                                                                name="daily_rate" value="{{ $type->daily_rate }}" required>
                                                     </div>
-                                                    <small class="text-muted d-block mt-1">Hourly and OT rates update automatically.</small>
+                                                    <small class="text-muted d-block mt-1">{{ __('Hourly and OT rates update automatically.') }}</small>
                                                 </div>
                                             </div>
                                             <div class="modal-footer border-top p-3" style="background:#f8fafc; border-radius:0 0 12px 12px;">
-                                                <button type="button" class="btn btn-light fw-600" data-bs-dismiss="modal">Cancel</button>
-                                                <button type="submit" class="btn ps-save-btn" style="padding:8px 20px;">Update</button>
+                                                <button type="button" class="btn btn-light fw-600" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                                                <button type="submit" class="btn ps-save-btn" style="padding:8px 20px;">{{ __('Update') }}</button>
                                             </div>
                                         </form>
                                     </div>
@@ -559,7 +559,7 @@
                             @empty
                             <div class="lt-empty">
                                 <i class="fas fa-inbox"></i>
-                                <p>No labor types yet. Add your first one using the form on the left.</p>
+                                <p>{{ __('No labor types yet. Add your first one using the form on the left.') }}</p>
                             </div>
                             @endforelse
                         </div>
@@ -575,7 +575,7 @@
             {{-- Info banner --}}
             <div class="hc-info-banner mb-4">
                 <i class="fas fa-magic" style="margin-top:1px;flex-shrink:0;"></i>
-                <span>Official Philippine holidays are loaded automatically. Click a holiday to toggle it on/off; click any blank date to add a custom holiday. Use <strong>Enable All / Disable All</strong> for bulk year-wide changes.</span>
+                <span>{{ __('Official Philippine holidays are loaded automatically. Click a holiday to toggle it on/off; click any blank date to add a custom holiday. Use') }} <strong>{{ __('Enable All / Disable All') }}</strong> {{ __('for bulk year-wide changes.') }}</span>
             </div>
 
             {{-- Calendar card --}}
@@ -583,30 +583,30 @@
 
                 {{-- Nav bar: arrows + month heading + quick jump --}}
                 <div class="hc-nav-bar">
-                    <button id="hcal-prev" class="hc-arrow-btn" aria-label="Previous month">
+                    <button id="hcal-prev" class="hc-arrow-btn" aria-label="{{ __('Previous month') }}">
                         <i class="fas fa-chevron-left"></i>
                     </button>
 
                     <div class="hc-center-block">
-                        <h2 class="hc-month-heading" id="hc-month-heading">Loading…</h2>
+                        <h2 class="hc-month-heading" id="hc-month-heading">{{ __('Loading…') }}</h2>
                         <div class="hc-quick-nav">
-                            <select id="hc-month-sel" class="hc-sel" aria-label="Jump to month">
-                                <option value="0">January</option><option value="1">February</option>
-                                <option value="2">March</option><option value="3">April</option>
-                                <option value="4">May</option><option value="5">June</option>
-                                <option value="6">July</option><option value="7">August</option>
-                                <option value="8">September</option><option value="9">October</option>
-                                <option value="10">November</option><option value="11">December</option>
+                            <select id="hc-month-sel" class="hc-sel" aria-label="{{ __('Jump to month') }}">
+                                <option value="0">{{ __('January') }}</option><option value="1">{{ __('February') }}</option>
+                                <option value="2">{{ __('March') }}</option><option value="3">{{ __('April') }}</option>
+                                <option value="4">{{ __('May') }}</option><option value="5">{{ __('June') }}</option>
+                                <option value="6">{{ __('July') }}</option><option value="7">{{ __('August') }}</option>
+                                <option value="8">{{ __('September') }}</option><option value="9">{{ __('October') }}</option>
+                                <option value="10">{{ __('November') }}</option><option value="11">{{ __('December') }}</option>
                             </select>
                             <div class="hc-yr-ctrl">
-                                <button id="hc-yr-dec" class="hc-yr-btn" aria-label="Previous year">−</button>
+                                <button id="hc-yr-dec" class="hc-yr-btn" aria-label="{{ __('Previous year') }}">−</button>
                                 <span id="hc-yr-val">{{ $holidayYear }}</span>
-                                <button id="hc-yr-inc" class="hc-yr-btn" aria-label="Next year">+</button>
+                                <button id="hc-yr-inc" class="hc-yr-btn" aria-label="{{ __('Next year') }}">+</button>
                             </div>
                         </div>
                     </div>
 
-                    <button id="hcal-next" class="hc-arrow-btn" aria-label="Next month">
+                    <button id="hcal-next" class="hc-arrow-btn" aria-label="{{ __('Next month') }}">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
@@ -625,21 +625,21 @@
                     </div>
                     <div class="hc-btn-group">
                         <button id="hcal-enable-all" class="hc-pill hc-pill-green">
-                            <i class="fas fa-check-double"></i> Enable All
+                            <i class="fas fa-check-double"></i> {{ __('Enable All') }}
                         </button>
                         <button id="hcal-disable-all" class="hc-pill hc-pill-red">
-                            <i class="fas fa-ban"></i> Disable All
+                            <i class="fas fa-ban"></i> {{ __('Disable All') }}
                         </button>
                         <button class="hc-pill hc-pill-indigo" data-bs-toggle="modal" data-bs-target="#addHolidayModal">
-                            <i class="fas fa-plus"></i> Add Custom
+                            <i class="fas fa-plus"></i> {{ __('Add Custom') }}
                         </button>
                     </div>
                 </div>
 
                 {{-- Day-of-week header --}}
                 <div class="hc-dow">
-                    <span>Sun</span><span>Mon</span><span>Tue</span>
-                    <span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    <span>{{ __('Sun') }}</span><span>{{ __('Mon') }}</span><span>{{ __('Tue') }}</span>
+                    <span>{{ __('Wed') }}</span><span>{{ __('Thu') }}</span><span>{{ __('Fri') }}</span><span>{{ __('Sat') }}</span>
                 </div>
 
                 {{-- Sliding calendar viewport --}}
@@ -651,7 +651,7 @@
                 <div id="hc-list-panel" class="hc-list-panel" style="display:none;">
                     <div class="hc-list-header">
                         <span id="hc-list-title" class="hc-list-title"></span>
-                        <button id="hc-list-close" class="hc-list-close" aria-label="Close">✕</button>
+                        <button id="hc-list-close" class="hc-list-close" aria-label="{{ __('Close') }}">✕</button>
                     </div>
                     <div id="hc-list-body"></div>
                 </div>
@@ -660,15 +660,15 @@
             {{-- Legend + pay rates --}}
             <div class="hc-footer-row mb-4">
                 <div class="hc-legend">
-                    <span class="hc-leg-item hc-leg-regular"><span class="hc-leg-dot"></span>Regular Holiday</span>
-                    <span class="hc-leg-item hc-leg-special"><span class="hc-leg-dot"></span>Special (Non-Working)</span>
-                    <span class="hc-leg-item hc-leg-custom"><span class="hc-leg-dot"></span>Custom Holiday</span>
-                    <span class="hc-leg-item hc-leg-off"><i class="fas fa-ban" style="font-size:9px;margin-right:4px;"></i>Disabled</span>
+                    <span class="hc-leg-item hc-leg-regular"><span class="hc-leg-dot"></span>{{ __('Regular Holiday') }}</span>
+                    <span class="hc-leg-item hc-leg-special"><span class="hc-leg-dot"></span>{{ __('Special (Non-Working)') }}</span>
+                    <span class="hc-leg-item hc-leg-custom"><span class="hc-leg-dot"></span>{{ __('Custom Holiday') }}</span>
+                    <span class="hc-leg-item hc-leg-off"><i class="fas fa-ban" style="font-size:9px;margin-right:4px;"></i>{{ __('Disabled') }}</span>
                 </div>
                 <div class="hc-rates">
-                    <span class="hc-rate hc-rate-regular">Regular — <strong>200%</strong></span>
-                    <span class="hc-rate hc-rate-special">Special — <strong>130%</strong></span>
-                    <span class="hc-rate hc-rate-custom">Custom — <strong>200%</strong></span>
+                    <span class="hc-rate hc-rate-regular">{{ __('Regular —') }} <strong>200%</strong></span>
+                    <span class="hc-rate hc-rate-special">{{ __('Special —') }} <strong>130%</strong></span>
+                    <span class="hc-rate hc-rate-custom">{{ __('Custom —') }} <strong>200%</strong></span>
                 </div>
             </div>
 
@@ -678,24 +678,24 @@
                     <div class="modal-content border-0" style="border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.14);">
                         <div class="modal-header border-0" style="background:linear-gradient(135deg,#1e3a8a,#1e40af);color:white;border-radius:14px 14px 0 0;padding:20px 24px;">
                             <h5 class="modal-title fw-bold mb-0" id="addHolidayModalLabel">
-                                <i class="fas fa-plus-circle me-2"></i>Add Custom Holiday
+                                <i class="fas fa-plus-circle me-2"></i>{{ __('Add Custom Holiday') }}
                             </h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
                         </div>
                         <form method="POST" action="{{ route('holidays.store') }}">
                             @csrf
                             <div class="modal-body p-4">
                                 <div class="mb-3">
-                                    <label class="form-label fw-600">Date <span style="color:#dc2626;">*</span></label>
+                                    <label class="form-label fw-600">{{ __('Date') }} <span style="color:#dc2626;">*</span></label>
                                     <input type="date" id="hmod-date" name="date"
                                            class="form-control @error('date') is-invalid @enderror"
                                            value="{{ old('date') }}" required>
                                     @error('date')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label fw-600">Label <span class="text-muted fw-400">(optional)</span></label>
+                                    <label class="form-label fw-600">{{ __('Label') }} <span class="text-muted fw-400">{{ __('(optional)') }}</span></label>
                                     <input type="text" id="hmod-title" name="title" class="form-control"
-                                           placeholder="e.g., Company Foundation Day"
+                                           placeholder="{{ __('e.g., Company Foundation Day') }}"
                                            value="{{ old('title') }}">
                                 </div>
                                 <div id="hmod-recognized" class="mt-2" style="display:none;">
@@ -706,13 +706,13 @@
                                 </div>
                                 <div class="mt-3 p-3" style="background:#dbeafe;border-radius:8px;font-size:13px;color:#1e40af;">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    Applies the <strong>Holiday Pay Multiplier</strong> to all employees for that day. Attendance logs are not modified.
+                                    Applies the <strong>{{ __('Holiday Pay Multiplier') }}</strong> {{ __('to all employees for that day. Attendance logs are not modified.') }}
                                 </div>
                             </div>
                             <div class="modal-footer border-0 p-3" style="background:#f8fafc;border-radius:0 0 14px 14px;">
-                                <button type="button" class="btn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:8px;" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:8px;" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                                 <button type="submit" class="btn fw-600" style="background:#16a34a;color:white;border:none;padding:8px 22px;border-radius:8px;">
-                                    <i class="fas fa-plus me-1"></i>Add Holiday
+                                    <i class="fas fa-plus me-1"></i>{{ __('Add Holiday') }}
                                 </button>
                             </div>
                         </form>
@@ -734,10 +734,10 @@
                 <div style="display:flex;flex-direction:column;gap:7px;">
                     <button id="hcal-ctx-toggle" class="hc-ctx-btn"></button>
                     <button id="hcal-ctx-edit"   class="hc-ctx-btn" style="background:#f59e0b;">
-                        <i class="fas fa-edit me-1"></i>Edit Label
+                        <i class="fas fa-edit me-1"></i>{{ __('Edit Label') }}
                     </button>
                     <button id="hcal-ctx-del"    class="hc-ctx-btn" style="background:#dc2626;">
-                        <i class="fas fa-trash me-1"></i>Remove Holiday
+                        <i class="fas fa-trash me-1"></i>{{ __('Remove Holiday') }}
                     </button>
                 </div>
             </div>
@@ -747,24 +747,24 @@
                 <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
                     <div class="modal-content border-0" style="border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.14);">
                         <div class="modal-header border-0" style="background:linear-gradient(135deg,#1e3a8a,#1e40af);color:white;border-radius:14px 14px 0 0;padding:18px 22px;">
-                            <h5 class="modal-title fw-bold mb-0"><i class="fas fa-edit me-2"></i>Edit Custom Holiday</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <h5 class="modal-title fw-bold mb-0"><i class="fas fa-edit me-2"></i>{{ __('Edit Custom Holiday') }}</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
                         </div>
                         <div class="modal-body p-4">
                             <input type="hidden" id="hmod-eid">
                             <div class="mb-3">
-                                <label class="form-label fw-600 small text-muted text-uppercase" style="letter-spacing:.5px;">Date</label>
+                                <label class="form-label fw-600 small text-muted text-uppercase" style="letter-spacing:.5px;">{{ __('Date') }}</label>
                                 <div id="hmod-edate" class="fw-700" style="color:#1e3a8a;font-size:1rem;"></div>
                             </div>
                             <div class="mb-0">
-                                <label class="form-label fw-600">Holiday Label <span style="color:#dc2626;">*</span></label>
-                                <input type="text" id="hmod-etitle" class="form-control" placeholder="e.g., Company Anniversary" maxlength="100">
+                                <label class="form-label fw-600">{{ __('Holiday Label') }} <span style="color:#dc2626;">*</span></label>
+                                <input type="text" id="hmod-etitle" class="form-control" placeholder="{{ __('e.g., Company Anniversary') }}" maxlength="100">
                             </div>
                         </div>
                         <div class="modal-footer border-0 px-4 pb-4 pt-0">
-                            <button type="button" class="btn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:8px;" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:8px;" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                             <button type="button" id="hmod-esave" class="btn fw-600" style="background:#1e3a8a;color:#fff;border:none;padding:8px 22px;border-radius:8px;">
-                                <i class="fas fa-save me-1"></i>Save Changes
+                                <i class="fas fa-save me-1"></i>{{ __('Save Changes') }}
                             </button>
                         </div>
                     </div>

@@ -42,25 +42,25 @@
                 <i class="fas fa-building"></i>
                 <div>
                     <h6>{{ __('Company identity') }}</h6>
-                    <p>What the payslips, the receipt and the exports say the company is</p>
+                    <p>{{ __('What the payslips, the receipt and the exports say the company is') }}</p>
                 </div>
             </div>
             <div class="sy-card-body">
                 <div class="sy-grid">
                     <div class="sy-field">
-                        <label for="company_name">Company name</label>
+                        <label for="company_name">{{ __('Company name') }}</label>
                         <input type="text" class="sy-input" id="company_name" name="company_name"
                                value="{{ old('company_name', $system->company_name) }}" required>
                     </div>
                     <div class="sy-field">
-                        <label for="company_tagline">Line under the name</label>
+                        <label for="company_tagline">{{ __('Line under the name') }}</label>
                         <input type="text" class="sy-input" id="company_tagline" name="company_tagline"
                                value="{{ old('company_tagline', $system->company_tagline) }}" required>
                     </div>
                     <div class="sy-field" style="grid-column: 1 / -1;">
-                        <label for="company_address">Address <span class="text-muted">(optional)</span></label>
+                        <label for="company_address">{{ __('Address') }} <span class="text-muted">{{ __('(optional)') }}</span></label>
                         <input type="text" class="sy-input" id="company_address" name="company_address"
-                               placeholder="Not printed unless set"
+                               placeholder="{{ __('Not printed unless set') }}"
                                value="{{ old('company_address', $system->company_address) }}">
                     </div>
                 </div>
@@ -68,7 +68,7 @@
                 <div class="sy-logo-row mt-3">
                     <img class="sy-logo-preview" src="{{ $system->logoUrl() }}" alt="Current logo">
                     <div class="sy-field flex-grow-1" style="min-width:220px;">
-                        <label for="logo">Logo</label>
+                        <label for="logo">{{ __('Logo') }}</label>
                         <input type="file" class="sy-input" id="logo" name="logo" accept="image/*">
                     </div>
                 </div>

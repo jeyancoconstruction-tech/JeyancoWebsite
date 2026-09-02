@@ -8,13 +8,13 @@
 <div class="employee-container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="page-title mb-1">Register Employee</h2>
+            <h2 class="page-title mb-1">{{ __('Register Employee') }}</h2>
             <p class="text-muted mb-0" style="font-size:.875rem;">
                 Every field marked * is required. Only the photo and the Government ID numbers may be left blank.
             </p>
         </div>
         <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
-            <i class="fas fa-arrow-left me-2"></i>Back to Register &amp; Manage
+            <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Register &amp; Manage') }}
         </a>
     </div>
 
@@ -36,8 +36,8 @@
                     <div class="ep-section-head">
                         <span class="ep-section-icon"><i class="fas fa-helmet-safety"></i></span>
                         <div>
-                            <h3 class="ep-section-title">Employment &amp; Pay</h3>
-                            <p class="ep-section-sub">What the worker is paid and where they are assigned. Required to activate them.</p>
+                            <h3 class="ep-section-title">{{ __('Employment &amp; Pay') }}</h3>
+                            <p class="ep-section-sub">{{ __('What the worker is paid and where they are assigned. Required to activate them.') }}</p>
                         </div>
                     </div>
 
@@ -45,30 +45,30 @@
                         {{-- Name, in parts. `name` itself is composed from these
                              on save — it stays what the rest of the app reads. --}}
                         <div class="col-md-4 col-lg-3">
-                            <label class="ep-label" for="first_name">First Name <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="first_name">{{ __('First Name') }} <span class="ep-req">*</span></label>
                             <input type="text" id="first_name" name="first_name" value="{{ old('first_name') }}"
                                    class="form-control @error('first_name') is-invalid @enderror"
-                                   placeholder="Juan" required>
+                                   placeholder="{{ __('Juan') }}" required>
                             @error('first_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4 col-lg-2">
-                            <label class="ep-label" for="middle_name">Middle Name <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="middle_name">{{ __('Middle Name') }} <span class="ep-req">*</span></label>
                             <input type="text" id="middle_name" name="middle_name" required value="{{ old('middle_name') }}"
                                    class="form-control @error('middle_name') is-invalid @enderror"
-                                   placeholder="Santos">
+                                   placeholder="{{ __('Santos') }}">
                             @error('middle_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4 col-lg-3">
-                            <label class="ep-label" for="last_name">Last Name <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="last_name">{{ __('Last Name') }} <span class="ep-req">*</span></label>
                             <input type="text" id="last_name" name="last_name" value="{{ old('last_name') }}"
                                    class="form-control @error('last_name') is-invalid @enderror"
-                                   placeholder="Dela Cruz" required>
+                                   placeholder="{{ __('Dela Cruz') }}" required>
                             @error('last_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
                         {{-- Employee type drives the three fields below it. --}}
                         <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="employment_type">Employee Type <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="employment_type">{{ __('Employee Type') }} <span class="ep-req">*</span></label>
                             <select name="employment_type" id="employment_type" required
                                     class="form-select @error('employment_type') is-invalid @enderror">
                                 @foreach(\App\Models\Employee::EMPLOYMENT_TYPES as $val => $label)
@@ -88,10 +88,10 @@
                              it on save either way. Asking for a job title first
                              invited a second, different answer to the same question. --}}
                         <div class="col-md-6 col-lg-4 js-regular-only">
-                            <label class="ep-label" for="labor_type_selector">Labor Type <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="labor_type_selector">{{ __('Labor Type') }} <span class="ep-req">*</span></label>
                             <select name="labor_type_id" id="labor_type_selector"
                                     class="form-select @error('labor_type_id') is-invalid @enderror">
-                                <option value="">— Select Labor Type —</option>
+                                <option value="">{{ __('— Select Labor Type —') }}</option>
                                 @foreach($laborTypes as $type)
                                     <option value="{{ $type->id }}"
                                             data-name="{{ $type->name }}"
@@ -103,33 +103,33 @@
                                 @endforeach
                             </select>
                             @error('labor_type_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <span class="ep-hint">Choose a Labor Type to automatically fill the Position.</span>
+                            <span class="ep-hint">{{ __('Choose a Labor Type to automatically fill the Position.') }}</span>
                         </div>
 
                         <div class="col-md-6 col-lg-2 js-regular-only">
-                            <label class="ep-label" for="rate_per_hour">Rate Per Hour <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="rate_per_hour">{{ __('Rate Per Hour') }} <span class="ep-req">*</span></label>
                             <input type="number" step="0.01" id="rate_per_hour" name="rate_per_hour"
                                    value="{{ old('rate_per_hour') }}"
                                    class="form-control @error('rate_per_hour') is-invalid @enderror"
                                    placeholder="0.00">
                             @error('rate_per_hour')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <span class="ep-hint">Auto-filled from the labor type.</span>
+                            <span class="ep-hint">{{ __('Auto-filled from the labor type.') }}</span>
                         </div>
 
                         {{-- Filled from the labor type and locked for a regular
                              worker, typed by hand for a contractual one, who has no
                              labor type to take it from. The toggle owns that switch. --}}
                         <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="job_title">Position / Job Title <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="job_title">{{ __('Position / Job Title') }} <span class="ep-req">*</span></label>
                             <input type="text" id="job_title" name="job_title" required value="{{ old('job_title') }}"
                                    class="form-control @error('job_title') is-invalid @enderror"
-                                   placeholder="e.g. Mason">
+                                   placeholder="{{ __('e.g. Mason') }}">
                             @error('job_title')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             <span class="ep-hint js-position-hint"></span>
                         </div>
 
                         <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="date_hired">Date Hired <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="date_hired">{{ __('Date Hired') }} <span class="ep-req">*</span></label>
                             <input type="date" id="date_hired" name="date_hired" required value="{{ old('date_hired') }}"
                                    class="form-control @error('date_hired') is-invalid @enderror">
                             @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -137,17 +137,17 @@
 
                         {{-- ── Contractual only ── --}}
                         <div class="col-md-6 col-lg-3 js-contract-only" hidden>
-                            <label class="ep-label" for="contract_rate">Contract Amount <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="contract_rate">{{ __('Contract Amount') }} <span class="ep-req">*</span></label>
                             <input type="number" step="0.01" min="0" name="contract_rate" id="contract_rate"
                                    class="form-control @error('contract_rate') is-invalid @enderror"
                                    value="{{ old('contract_rate') }}"
                                    placeholder="300000.00">
                             @error('contract_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <span class="ep-hint">Total for the whole project.</span>
+                            <span class="ep-hint">{{ __('Total for the whole project.') }}</span>
                         </div>
 
                         <div class="col-md-6 col-lg-3 js-contract-only" hidden>
-                            <label class="ep-label" for="end_of_contract">End of Contract <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="end_of_contract">{{ __('End of Contract') }} <span class="ep-req">*</span></label>
                             <input type="date" id="end_of_contract" name="end_of_contract"
                                    value="{{ old('end_of_contract') }}"
                                    class="form-control @error('end_of_contract') is-invalid @enderror">
@@ -164,12 +164,12 @@
 
                         {{-- Site Assignment --}}
                         <div class="col-md-6 col-lg-6">
-                            <label class="ep-label" for="site_select">Site Assignment <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="site_select">{{ __('Site Assignment') }} <span class="ep-req">*</span></label>
                             <div class="d-flex gap-2 align-items-start flex-wrap">
                                 <select name="site_id" id="site_select" required
                                         class="form-select @error('site_id') is-invalid @enderror"
                                         style="flex:1;min-width:160px;">
-                                    <option value="">— Select a site —</option>
+                                    <option value="">{{ __('— Select a site —') }}</option>
                                     @foreach($sites as $site)
                                         <option value="{{ $site->id }}" {{ old('site_id') == $site->id ? 'selected' : '' }}>
                                             {{ $site->name }}
@@ -177,22 +177,22 @@
                                     @endforeach
                                 </select>
                                 <button type="button" id="newSiteBtn" class="btn btn-primary">
-                                    <i class="fas fa-plus me-1"></i>New Site
+                                    <i class="fas fa-plus me-1"></i>{{ __('New Site') }}
                                 </button>
                             </div>
                             @error('site_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 
                             {{-- Inline new-site panel (Project Name + Google Maps location) --}}
                             <div id="newSitePanel" style="display:none;background:var(--bg-subtle,#f8fafc);border:1px solid var(--border,#e2e8f0);" class="mt-2 p-3 rounded-2">
-                                <label class="form-label fw-semibold mb-1" style="font-size:13px;">Project Name</label>
+                                <label class="form-label fw-semibold mb-1" style="font-size:13px;">{{ __('Project Name') }}</label>
                                 <input type="text" id="newSiteName" class="form-control form-control-sm mb-3"
-                                       placeholder="e.g., Tower 2 — Riverside" maxlength="100">
+                                       placeholder="{{ __('e.g., Tower 2 — Riverside') }}" maxlength="100">
 
                                 <label class="form-label fw-semibold mb-1" style="font-size:13px;">
-                                    <i class="fas fa-map-marker-alt me-1" style="color:#16a34a;"></i>Location
+                                    <i class="fas fa-map-marker-alt me-1" style="color:#16a34a;"></i>{{ __('Location') }}
                                 </label>
                                 <input type="text" id="newSiteLocationSearch" class="form-control form-control-sm mb-2"
-                                       placeholder="Search an address, or drop a pin on the map" autocomplete="off">
+                                       placeholder="{{ __('Search an address, or drop a pin on the map') }}" autocomplete="off">
                                 <div id="newSiteMap" class="rounded-2 mb-2" style="height:220px;width:100%;background:var(--bg-body,#e5e7eb);"></div>
                                 <input type="hidden" id="newSiteLocation">
                                 <input type="hidden" id="newSiteLat">
@@ -202,7 +202,7 @@
                                     <button type="button" id="saveSiteBtn"
                                             class="btn btn-sm fw-semibold"
                                             style="background:#16a34a;color:#fff;border:none;padding:6px 14px;border-radius:6px;white-space:nowrap;">
-                                        <i class="fas fa-save me-1"></i>Save Site
+                                        <i class="fas fa-save me-1"></i>{{ __('Save Site') }}
                                     </button>
                                     <button type="button" id="cancelSiteBtn"
                                             class="btn btn-sm"
@@ -216,7 +216,7 @@
 
                         {{-- Photo — camera or gallery, see _photo_picker --}}
                         <div class="col-md-6 col-lg-3">
-                            <label class="ep-label">Profile Photo <span class="ep-optional">(optional)</span></label>
+                            <label class="ep-label">{{ __('Profile Photo') }} <span class="ep-optional">{{ __('(optional)') }}</span></label>
                             @include('employees._photo_picker')
                         </div>
 
@@ -226,7 +226,7 @@
                         <div class="col-12">
                             <p class="ep-note">
                                 <i class="fas fa-fingerprint"></i>
-                                This worker is saved as <strong>Pending</strong>. Enrol their fingerprint at the
+                                This worker is saved as <strong>{{ __('Pending') }}</strong>. Enrol their fingerprint at the
                                 kiosk to activate them — they appear on the kiosk's list of workers needing a
                                 finger, and become active across Attendance, Payroll and the Dashboard the
                                 moment it is scanned.
@@ -238,10 +238,10 @@
                 @include('employees._profile_fields')
 
                 <div class="ep-actions">
-                    <p class="ep-actions-note">Every field marked <span class="ep-req">*</span> is required. Only the photo and the Government ID numbers may be left blank.</p>
-                    <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">Cancel</a>
+                    <p class="ep-actions-note">{{ __('Every field marked') }} <span class="ep-req">*</span> {{ __('is required. Only the photo and the Government ID numbers may be left blank.') }}</p>
+                    <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">{{ __('Cancel') }}</a>
                     <button type="submit" class="btn btn-primary fw-bold px-4">
-                        <i class="fas fa-user-plus me-2"></i>Register Employee
+                        <i class="fas fa-user-plus me-2"></i>{{ __('Register Employee') }}
                     </button>
                 </div>
             </form>

@@ -1,21 +1,21 @@
 <div class="rm-menu-wrap">
-    <button type="button" class="rm-menu-btn" aria-label="More actions"><i class="fas fa-ellipsis-v"></i></button>
+    <button type="button" class="rm-menu-btn" aria-label="{{ __('More actions') }}"><i class="fas fa-ellipsis-v"></i></button>
     <div class="rm-menu">
         @if($context === 'removed')
             <form action="{{ route('employees.restore', $e->id) }}" method="POST">
                 @csrf @method('PATCH')
-                <button type="submit" class="rm-menu-item ok"><i class="fas fa-trash-can-arrow-up"></i> Restore</button>
+                <button type="submit" class="rm-menu-item ok"><i class="fas fa-trash-can-arrow-up"></i> {{ __('Restore') }}</button>
             </form>
             <form action="{{ route('employees.force-delete', $e->id) }}" method="POST"
                   onsubmit="return confirm('Permanently delete {{ addslashes($e->name) }} and ALL their attendance? This cannot be undone.')">
                 @csrf @method('DELETE')
-                <button type="submit" class="rm-menu-item danger"><i class="fas fa-trash"></i> Delete permanently</button>
+                <button type="submit" class="rm-menu-item danger"><i class="fas fa-trash"></i> {{ __('Delete permanently') }}</button>
             </form>
         @else
             <form action="{{ route('employees.destroy', $e->id) }}" method="POST"
                   onsubmit="return confirm('Remove {{ addslashes($e->name) }}? Their records are preserved and can be restored.')">
                 @csrf @method('DELETE')
-                <button type="submit" class="rm-menu-item danger"><i class="fas fa-user-minus"></i> Remove</button>
+                <button type="submit" class="rm-menu-item danger"><i class="fas fa-user-minus"></i> {{ __('Remove') }}</button>
             </form>
         @endif
     </div>

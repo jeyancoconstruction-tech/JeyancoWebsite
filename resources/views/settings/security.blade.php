@@ -42,28 +42,28 @@
                 <i class="fas fa-lock"></i>
                 <div>
                     <h6>{{ __('Account & security') }}</h6>
-                    <p>Applied to every login and to the next password set or reset</p>
+                    <p>{{ __('Applied to every login and to the next password set or reset') }}</p>
                 </div>
             </div>
             <div class="sy-card-body">
                 <div class="sy-grid">
                     <div class="sy-field">
-                        <label for="session_timeout_minutes">Session timeout (minutes)</label>
+                        <label for="session_timeout_minutes">{{ __('Session timeout (minutes)') }}</label>
                         <input type="number" class="sy-input" id="session_timeout_minutes" name="session_timeout_minutes"
                                min="5" max="1440" value="{{ old('session_timeout_minutes', $system->session_timeout_minutes) }}" required>
                     </div>
                     <div class="sy-field">
-                        <label for="password_min_length">Minimum password length</label>
+                        <label for="password_min_length">{{ __('Minimum password length') }}</label>
                         <input type="number" class="sy-input" id="password_min_length" name="password_min_length"
                                min="8" max="64" value="{{ old('password_min_length', $system->password_min_length) }}" required>
                     </div>
                     <div class="sy-field">
-                        <label for="max_login_attempts">Failed logins before lockout</label>
+                        <label for="max_login_attempts">{{ __('Failed logins before lockout') }}</label>
                         <input type="number" class="sy-input" id="max_login_attempts" name="max_login_attempts"
                                min="3" max="20" value="{{ old('max_login_attempts', $system->max_login_attempts) }}" required>
                     </div>
                     <div class="sy-field">
-                        <label for="lockout_seconds">Lockout length (seconds)</label>
+                        <label for="lockout_seconds">{{ __('Lockout length (seconds)') }}</label>
                         <input type="number" class="sy-input" id="lockout_seconds" name="lockout_seconds"
                                min="30" max="3600" value="{{ old('lockout_seconds', $system->lockout_seconds) }}" required>
                     </div>

@@ -7,10 +7,10 @@
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
     <div class="site-header">
         <div class="site-header-left">
-            <h1 class="site-title">Site Management</h1>
+            <h1 class="site-title">{{ __('Site Management') }}</h1>
             <span class="site-count-chip" id="siteCountChip">—</span>
         </div>
-        <p class="site-header-sub">Create, rename, or remove sites. Employees are reassigned automatically when a site is removed.</p>
+        <p class="site-header-sub">{{ __('Create, rename, or remove sites. Employees are reassigned automatically when a site is removed.') }}</p>
     </div>
 
     <div class="site-layout">
@@ -19,25 +19,25 @@
         <div class="site-add-col">
             <div class="site-card">
                 <div class="site-card-label">
-                    <i class="fas fa-plus-circle"></i> Add New Site
+                    <i class="fas fa-plus-circle"></i> {{ __('Add New Site') }}
                 </div>
 
-                <label class="site-field-label">Project Name</label>
+                <label class="site-field-label">{{ __('Project Name') }}</label>
                 <input type="text" id="newSiteInput" class="site-input"
-                       placeholder="e.g., Tower 2 — Riverside" maxlength="100">
+                       placeholder="{{ __('e.g., Tower 2 — Riverside') }}" maxlength="100">
 
                 <label class="site-field-label mt-3">
-                    <i class="fas fa-map-marker-alt me-1" style="color:#16a34a;"></i>Location
+                    <i class="fas fa-map-marker-alt me-1" style="color:#16a34a;"></i>{{ __('Location') }}
                 </label>
                 <input type="text" id="newSiteLocationSearch" class="site-input"
-                       placeholder="Search location, or drop a pin on the map" autocomplete="off">
+                       placeholder="{{ __('Search location, or drop a pin on the map') }}" autocomplete="off">
                 <div id="newSiteMap" class="site-map"></div>
                 <input type="hidden" id="newSiteLocation">
                 <input type="hidden" id="newSiteLat">
                 <input type="hidden" id="newSiteLng">
 
                 <button type="button" id="addSiteBtn" class="site-add-btn">
-                    <i class="fas fa-plus me-1"></i> Add Site
+                    <i class="fas fa-plus me-1"></i> {{ __('Add Site') }}
                 </button>
                 <div id="addSiteError" class="site-err" style="display:none;"></div>
             </div>
@@ -47,7 +47,7 @@
         <div class="site-list-col">
             <div class="site-card">
                 <div class="site-card-label">
-                    <i class="fas fa-layer-group"></i> All Sites
+                    <i class="fas fa-layer-group"></i> {{ __('All Sites') }}
                 </div>
                 <div id="sitesList">
                     <div class="site-loading" id="sitesLoading">

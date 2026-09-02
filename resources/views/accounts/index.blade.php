@@ -7,10 +7,10 @@
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
     <div class="acct-header">
         <div class="acct-header-left">
-            <h1 class="acct-title">Account Management</h1>
+            <h1 class="acct-title">{{ __('Account Management') }}</h1>
             <span class="acct-count-chip">{{ $stats['total'] }} account{{ $stats['total'] !== 1 ? 's' : '' }}</span>
         </div>
-        <p class="acct-header-sub">Create logins for your staff, change their details, and control who can sign in.</p>
+        <p class="acct-header-sub">{{ __('Create logins for your staff, change their details, and control who can sign in.') }}</p>
     </div>
 
     <div class="hub">
@@ -28,15 +28,15 @@
     {{-- ── Stat strip ──────────────────────────────────────────────────────── --}}
     <div class="acct-stats">
         <div class="acct-stat">
-            <span class="acct-stat-label">Administrators</span>
+            <span class="acct-stat-label">{{ __('Administrators') }}</span>
             <span class="acct-stat-value">{{ $stats['admins'] }}</span>
         </div>
         <div class="acct-stat">
-            <span class="acct-stat-label">Staff</span>
+            <span class="acct-stat-label">{{ __('Staff') }}</span>
             <span class="acct-stat-value">{{ $stats['staff'] }}</span>
         </div>
         <div class="acct-stat">
-            <span class="acct-stat-label">Deactivated</span>
+            <span class="acct-stat-label">{{ __('Deactivated') }}</span>
             <span class="acct-stat-value {{ $stats['inactive'] > 0 ? 'muted' : '' }}">{{ $stats['inactive'] }}</span>
         </div>
     </div>
@@ -46,27 +46,27 @@
         <form method="GET" action="{{ route('accounts.index') }}" class="acct-filters">
             <div class="acct-search">
                 <i class="fas fa-search"></i>
-                <input type="text" name="q" value="{{ $search }}" placeholder="Search name, username or email…">
+                <input type="text" name="q" value="{{ $search }}" placeholder="{{ __('Search name, username or email…') }}">
             </div>
             <select name="role" class="acct-select" onchange="this.form.submit()">
-                <option value="">All roles</option>
+                <option value="">{{ __('All roles') }}</option>
                 @foreach(\App\Models\User::ROLES as $value => $label)
                     <option value="{{ $value }}" {{ $role === $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
             <select name="status" class="acct-select" onchange="this.form.submit()">
-                <option value="">All statuses</option>
-                <option value="active"   {{ $status === 'active'   ? 'selected' : '' }}>Active</option>
-                <option value="inactive" {{ $status === 'inactive' ? 'selected' : '' }}>Deactivated</option>
+                <option value="">{{ __('All statuses') }}</option>
+                <option value="active"   {{ $status === 'active'   ? 'selected' : '' }}>{{ __('Active') }}</option>
+                <option value="inactive" {{ $status === 'inactive' ? 'selected' : '' }}>{{ __('Deactivated') }}</option>
             </select>
-            <button type="submit" class="acct-btn ghost">Apply</button>
+            <button type="submit" class="acct-btn ghost">{{ __('Apply') }}</button>
             @if($search !== '' || $role || $status)
-                <a href="{{ route('accounts.index') }}" class="acct-btn ghost">Clear</a>
+                <a href="{{ route('accounts.index') }}" class="acct-btn ghost">{{ __('Clear') }}</a>
             @endif
         </form>
 
         <a href="{{ route('accounts.create') }}" class="acct-btn primary">
-            <i class="fas fa-user-plus"></i> Create Account
+            <i class="fas fa-user-plus"></i> {{ __('Create Account') }}
         </a>
     </div>
 
@@ -76,13 +76,13 @@
             <table class="acct-table">
                 <thead>
                     <tr>
-                        <th>Account</th>
-                        <th>Username</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Last sign-in</th>
-                        <th>Added by</th>
-                        <th class="ta-right">Actions</th>
+                        <th>{{ __('Account') }}</th>
+                        <th>{{ __('Username') }}</th>
+                        <th>{{ __('Role') }}</th>
+                        <th>{{ __('Status') }}</th>
+                        <th>{{ __('Last sign-in') }}</th>
+                        <th>{{ __('Added by') }}</th>
+                        <th class="ta-right">{{ __('Actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -97,7 +97,7 @@
                                     <span class="acct-name">
                                         {{ $account->name }}
                                         @if($account->id === auth()->id())
-                                            <span class="acct-you">You</span>
+                                            <span class="acct-you">{{ __('You') }}</span>
                                         @endif
                                     </span>
                                     <span class="acct-email">{{ $account->email ?: '—' }}</span>
@@ -119,7 +119,7 @@
                         <td class="acct-dim">{{ $account->creator?->name ?? '—' }}</td>
                         <td class="ta-right">
                             <div class="acct-actions">
-                                <a href="{{ route('accounts.edit', $account) }}" class="acct-icon-btn edit" title="Edit account">
+                                <a href="{{ route('accounts.edit', $account) }}" class="acct-icon-btn edit" title="{{ __('Edit account') }}">
                                     <i class="fas fa-pen"></i>
                                 </a>
 
@@ -136,7 +136,7 @@
                                     <form method="POST" action="{{ route('accounts.destroy', $account) }}" class="d-inline"
                                           onsubmit="return confirm('Delete {{ addslashes($account->name) }}\'s account? This cannot be undone.');">
                                         @csrf @method('DELETE')
-                                        <button type="submit" class="acct-icon-btn del" title="Delete account">
+                                        <button type="submit" class="acct-icon-btn del" title="{{ __('Delete account') }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </form>

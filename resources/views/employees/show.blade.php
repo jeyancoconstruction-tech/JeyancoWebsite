@@ -9,7 +9,7 @@
          .dir-btn-primary sa index.blade.php, na nasa loob ng <style> nito at
          hindi naman umaabot dito. --}}
     <a href="{{ route('employees.index') }}" class="prof-back">
-        <i class="fas fa-arrow-left"></i> Employee Directory
+        <i class="fas fa-arrow-left"></i> {{ __('Employee Directory') }}
     </a>
 
     <div class="prof-head">
@@ -27,14 +27,14 @@
                 </span>
                 @unless($employee->fingerprint_id)
                     <span class="prof-tag is-warn">
-                        <i class="fas fa-hourglass-half"></i> Walang daliri
+                        <i class="fas fa-hourglass-half"></i> {{ __('Walang daliri') }}
                     </span>
                 @endunless
             </div>
         </div>
 
         <a href="{{ route('employees.edit', $employee->id) }}" class="prof-edit">
-            <i class="fas fa-pen"></i> Edit
+            <i class="fas fa-pen"></i> {{ __('Edit') }}
         </a>
     </div>
 
@@ -59,17 +59,17 @@
 
             <dl class="prof-facts">
                 <div class="prof-fact">
-                    <dt>Site</dt>
+                    <dt>{{ __('Site') }}</dt>
                     <dd>
                         @if($employee->site)
                             <span class="prof-tag"><i class="fas fa-map-marker-alt"></i> {{ $employee->site->name }}</span>
                         @else
-                            <span class="prof-dash">Hindi pa naka-assign</span>
+                            <span class="prof-dash">{{ __('Hindi pa naka-assign') }}</span>
                         @endif
                     </dd>
                 </div>
                 <div class="prof-fact">
-                    <dt>Labor type</dt>
+                    <dt>{{ __('Labor type') }}</dt>
                     <dd>
                         @if($employee->laborType)
                             <span class="prof-tag"><i class="fas fa-briefcase"></i> {{ $employee->laborType->name }}</span>
@@ -81,35 +81,35 @@
                 {{-- Nasa header na ang Employment; hindi na inuulit dito. --}}
                 @if($employee->isContractual())
                 <div class="prof-fact">
-                    <dt>Contract amount</dt>
+                    <dt>{{ __('Contract amount') }}</dt>
                     {{-- Kabuuan para sa buong proyekto, hindi kada araw — iyon
                          ang hinihingi ng form ("Total for the whole project").
                          Ang dating "kada araw" dito ay nagsasabi ng ibang halaga
                          nang tahimik. --}}
                     <dd class="prof-money">
                         ₱{{ number_format($employee->contract_rate ?? 0, 2) }}
-                        <small>buong proyekto</small>
+                        <small>{{ __('buong proyekto') }}</small>
                     </dd>
                 </div>
                 @else
                 <div class="prof-fact">
-                    <dt>Rate / hour</dt>
+                    <dt>{{ __('Rate / hour') }}</dt>
                     <dd class="prof-money">₱{{ number_format($employee->rate_per_hour, 2) }}</dd>
                 </div>
                 @endif
                 <div class="prof-fact">
-                    <dt>Vale balance</dt>
+                    <dt>{{ __('Vale balance') }}</dt>
                     <dd class="prof-money {{ ($employee->vale ?? 0) > 0 ? 'warn' : '' }}">
                         ₱{{ number_format($employee->vale ?? 0, 2) }}
                     </dd>
                 </div>
                 <div class="prof-fact">
-                    <dt>Fingerprint</dt>
+                    <dt>{{ __('Fingerprint') }}</dt>
                     <dd>
                         @if($employee->fingerprint_id)
                             <span class="prof-tag mono"><i class="fas fa-fingerprint"></i> Enrolled #{{ $employee->fingerprint_id }}</span>
                         @else
-                            <span class="prof-tag is-warn"><i class="fas fa-hourglass-half"></i> Wala pang daliri</span>
+                            <span class="prof-tag is-warn"><i class="fas fa-hourglass-half"></i> {{ __('Wala pang daliri') }}</span>
                         @endif
                     </dd>
                 </div>
@@ -135,7 +135,7 @@
         @endphp
 
         <div class="prof-card">
-            <div class="prof-card-head"><span>Personal na impormasyon</span></div>
+            <div class="prof-card-head"><span>{{ __('Personal na impormasyon') }}</span></div>
 
             @if(count($personal))
                 <dl class="prof-facts">
@@ -148,7 +148,7 @@
                 </dl>
             @else
                 <p class="prof-none">
-                    Wala pang naitatalang personal na detalye. Idadagdag ito sa <strong>Edit</strong>.
+                    Wala pang naitatalang personal na detalye. Idadagdag ito sa <strong>{{ __('Edit') }}</strong>.
                 </p>
             @endif
         </div>
@@ -160,7 +160,7 @@
 
             <div class="prof-card">
                 <div class="prof-card-head">
-                    <span>Payroll ngayong cutoff</span>
+                    <span>{{ __('Payroll ngayong cutoff') }}</span>
                     <span class="prof-period">{{ $period }}</span>
                 </div>
 
@@ -170,42 +170,42 @@
 
                 <div class="prof-pay">
                     <div class="prof-pay-cell">
-                        <span class="prof-pay-k">Araw na pumasok</span>
+                        <span class="prof-pay-k">{{ __('Araw na pumasok') }}</span>
                         <span class="prof-pay-v">{{ (int) ($totals['workdays'] ?? 0) }}</span>
                     </div>
                     <div class="prof-pay-cell">
-                        <span class="prof-pay-k">Oras</span>
+                        <span class="prof-pay-k">{{ __('Oras') }}</span>
                         <span class="prof-pay-v">{{ number_format($num('hours'), 2) }}</span>
                     </div>
                     <div class="prof-pay-cell">
-                        <span class="prof-pay-k">Overtime</span>
+                        <span class="prof-pay-k">{{ __('Overtime') }}</span>
                         <span class="prof-pay-v {{ $num('overtime') > 0 ? 'ot' : '' }}">₱{{ number_format($num('overtime'), 2) }}</span>
                     </div>
                     <div class="prof-pay-cell">
-                        <span class="prof-pay-k">Gross</span>
+                        <span class="prof-pay-k">{{ __('Gross') }}</span>
                         <span class="prof-pay-v">₱{{ number_format($num('gross'), 2) }}</span>
                     </div>
                     <div class="prof-pay-cell">
-                        <span class="prof-pay-k">Deductions</span>
+                        <span class="prof-pay-k">{{ __('Deductions') }}</span>
                         <span class="prof-pay-v {{ $num('totalDeductions') > 0 ? 'minus' : '' }}">₱{{ number_format($num('totalDeductions'), 2) }}</span>
                     </div>
                     <div class="prof-pay-cell net">
-                        <span class="prof-pay-k">Net</span>
+                        <span class="prof-pay-k">{{ __('Net') }}</span>
                         <span class="prof-pay-v">₱{{ number_format($num('net'), 2) }}</span>
                     </div>
                 </div>
             </div>
 
             <div class="prof-card">
-                <div class="prof-card-head"><span>Huling mga pasok</span></div>
+                <div class="prof-card-head"><span>{{ __('Huling mga pasok') }}</span></div>
 
                 @if($attendance->isEmpty())
-                    <p class="prof-none">Wala pang naitalang attendance.</p>
+                    <p class="prof-none">{{ __('Wala pang naitalang attendance.') }}</p>
                 @else
                 <div class="table-responsive">
                     <table class="prof-table">
                         <thead>
-                            <tr><th>Petsa</th><th>Session</th><th>Time in</th><th>Time out</th></tr>
+                            <tr><th>{{ __('Petsa') }}</th><th>{{ __('Session') }}</th><th>{{ __('Time in') }}</th><th>{{ __('Time out') }}</th></tr>
                         </thead>
                         <tbody>
                         @foreach($attendance as $a)
@@ -217,7 +217,7 @@
                                     @if($a->time_out)
                                         {{ \Carbon\Carbon::parse($a->time_out)->format('g:i A') }}
                                     @else
-                                        <span class="prof-tag is-live">Nasa loob pa</span>
+                                        <span class="prof-tag is-live">{{ __('Nasa loob pa') }}</span>
                                     @endif
                                 </td>
                             </tr>

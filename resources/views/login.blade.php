@@ -9,48 +9,48 @@
         @csrf
 
         <div class="form-group {{ $errors->has('username') ? 'has-error' : '' }}">
-            <label for="username">Username / Email</label>
+            <label for="username">{{ __('Username / Email') }}</label>
             <div class="input-wrap">
                 <i class="fas fa-user lead"></i>
                 {{-- type="text", not "email": this box takes either form, and
                      type="email" would make the browser reject a plain username. --}}
                 <input type="text" id="username" name="username" value="{{ old('username') }}"
                        required autofocus autocomplete="username" spellcheck="false"
-                       autocapitalize="none" placeholder="Enter your username or email">
+                       autocapitalize="none" placeholder="{{ __('Enter your username or email') }}">
             </div>
-            <p class="field-hint">Sign in with either your username or the email on your account.</p>
+            <p class="field-hint">{{ __('Sign in with either your username or the email on your account.') }}</p>
         </div>
 
         <div class="form-group {{ $errors->has('password') ? 'has-error' : '' }}">
-            <label for="password">Password</label>
+            <label for="password">{{ __('Password') }}</label>
             <div class="input-wrap">
                 <i class="fas fa-lock lead"></i>
                 <input type="password" id="password" name="password"
-                       required autocomplete="current-password" placeholder="Enter your password">
-                <button type="button" class="toggle-pass" id="togglePass" aria-label="Show password" title="Show / hide password">
+                       required autocomplete="current-password" placeholder="{{ __('Enter your password') }}">
+                <button type="button" class="toggle-pass" id="togglePass" aria-label="{{ __('Show password') }}" title="{{ __('Show / hide password') }}">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
             <div class="caps-hint" id="capsHint" role="status">
-                <i class="fas fa-triangle-exclamation"></i> Caps Lock is on
+                <i class="fas fa-triangle-exclamation"></i> {{ __('Caps Lock is on') }}
             </div>
         </div>
 
         <div class="form-options">
             <div class="remember-me">
                 <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}>
-                <label for="remember">Remember me</label>
+                <label for="remember">{{ __('Remember me') }}</label>
             </div>
-            <a class="forgot-link" href="{{ route('password.request') }}">Forgot password?</a>
+            <a class="forgot-link" href="{{ route('password.request') }}">{{ __('Forgot password?') }}</a>
         </div>
 
         <button type="submit" class="btn-login" id="loginBtn">
             <i class="fas fa-right-to-bracket"></i>
-            <span class="btn-label">Sign In</span>
+            <span class="btn-label">{{ __('Sign In') }}</span>
         </button>
 
         <div class="secure-note">
-            <i class="fas fa-lock"></i> Secured administrator access &middot; authorized personnel only
+            <i class="fas fa-lock"></i> {{ __('Secured administrator access &middot; authorized personnel only') }}
         </div>
     </form>
 @endsection

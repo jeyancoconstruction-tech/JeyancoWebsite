@@ -9,12 +9,12 @@
         @csrf
 
         <div class="form-group {{ $errors->has('login') ? 'has-error' : '' }}">
-            <label for="login">Username / Email</label>
+            <label for="login">{{ __('Username / Email') }}</label>
             <div class="input-wrap">
                 <i class="fas fa-user lead"></i>
                 <input type="text" id="login" name="login" value="{{ old('login') }}"
                        required autofocus autocomplete="username" spellcheck="false"
-                       autocapitalize="none" placeholder="Enter your username or email">
+                       autocapitalize="none" placeholder="{{ __('Enter your username or email') }}">
             </div>
             <p class="field-hint">
                 The link goes to the email on your account. If your account has no email on file,
@@ -24,11 +24,11 @@
 
         <button type="submit" class="btn-login" id="forgotBtn">
             <i class="fas fa-paper-plane"></i>
-            <span class="btn-label">Send reset link</span>
+            <span class="btn-label">{{ __('Send reset link') }}</span>
         </button>
 
         <div class="login-footer">
-            <p><a href="{{ route('login') }}"><i class="fas fa-arrow-left"></i> Back to sign in</a></p>
+            <p><a href="{{ route('login') }}"><i class="fas fa-arrow-left"></i> {{ __('Back to sign in') }}</a></p>
         </div>
     </form>
 @endsection

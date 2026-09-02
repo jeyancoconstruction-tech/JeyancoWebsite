@@ -7,8 +7,8 @@
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
     <div class="an-header">
         <div>
-            <h1 class="an-title">Analytics & Insights</h1>
-            <p class="an-sub">Performance overview for <strong>{{ $monthLabel }}</strong></p>
+            <h1 class="an-title">{{ __('Analytics & Insights') }}</h1>
+            <p class="an-sub">{{ __('Performance overview for') }} <strong>{{ $monthLabel }}</strong></p>
         </div>
         <span class="an-period-chip">
             <i class="fas fa-calendar-alt"></i> {{ $monthLabel }}
@@ -23,7 +23,7 @@
                 <i class="fas fa-users"></i>
             </div>
             <div class="an-kpi-body">
-                <p class="an-kpi-label">Total Employees</p>
+                <p class="an-kpi-label">{{ __('Total Employees') }}</p>
                 <p class="an-kpi-value">{{ $totalEmployees }}</p>
                 <p class="an-kpi-sub">{{ $activeSites }} active site{{ $activeSites !== 1 ? 's' : '' }}</p>
             </div>
@@ -34,7 +34,7 @@
                 <i class="fas fa-user-check"></i>
             </div>
             <div class="an-kpi-body">
-                <p class="an-kpi-label">Present Today</p>
+                <p class="an-kpi-label">{{ __('Present Today') }}</p>
                 <p class="an-kpi-value">{{ $presentToday }}</p>
                 <p class="an-kpi-sub">
                     @php $absentToday = max(0, $totalEmployees - $presentToday); @endphp
@@ -48,7 +48,7 @@
                 <i class="fas fa-money-bill-wave"></i>
             </div>
             <div class="an-kpi-body">
-                <p class="an-kpi-label">Net Payroll (Month)</p>
+                <p class="an-kpi-label">{{ __('Net Payroll (Month)') }}</p>
                 <p class="an-kpi-value">₱{{ number_format($monthlyNet, 0) }}</p>
                 @if($netChange !== null)
                 <p class="an-kpi-sub {{ $netChange >= 0 ? 'an-up' : 'an-down' }}">
@@ -56,7 +56,7 @@
                     {{ abs($netChange) }}% vs last month
                 </p>
                 @else
-                <p class="an-kpi-sub">No prior month data</p>
+                <p class="an-kpi-sub">{{ __('No prior month data') }}</p>
                 @endif
             </div>
         </div>
@@ -66,9 +66,9 @@
                 <i class="fas fa-calendar-check"></i>
             </div>
             <div class="an-kpi-body">
-                <p class="an-kpi-label">Attendance Rate</p>
+                <p class="an-kpi-label">{{ __('Attendance Rate') }}</p>
                 <p class="an-kpi-value">{{ $attendanceRate }}%</p>
-                <p class="an-kpi-sub">This month</p>
+                <p class="an-kpi-sub">{{ __('This month') }}</p>
             </div>
             <div class="an-kpi-ring" style="--pct:{{ $attendanceRate }};--clr:#ca8a04;">
                 <svg viewBox="0 0 36 36"><circle class="an-ring-bg" cx="18" cy="18" r="15.9"/><circle class="an-ring-fg" cx="18" cy="18" r="15.9" style="stroke:var(--clr);stroke-dasharray:{{ $attendanceRate }} {{ 100 - $attendanceRate }};"/></svg>
@@ -80,7 +80,7 @@
                 <i class="fas fa-business-time"></i>
             </div>
             <div class="an-kpi-body">
-                <p class="an-kpi-label">Overtime Hours</p>
+                <p class="an-kpi-label">{{ __('Overtime Hours') }}</p>
                 <p class="an-kpi-value">{{ number_format($overtimeHours, 1) }}<span class="an-kpi-unit">h</span></p>
                 <p class="an-kpi-sub">₱{{ number_format($monthlyOTPay, 0) }} OT pay</p>
             </div>
@@ -91,7 +91,7 @@
                 <i class="fas fa-chart-pie"></i>
             </div>
             <div class="an-kpi-body">
-                <p class="an-kpi-label">Gross Payroll</p>
+                <p class="an-kpi-label">{{ __('Gross Payroll') }}</p>
                 <p class="an-kpi-value">₱{{ number_format($monthlyGross, 0) }}</p>
                 <p class="an-kpi-sub">₱{{ number_format($monthlyHoliday, 0) }} holiday pay</p>
             </div>
@@ -103,10 +103,10 @@
     <div class="an-card an-card-full">
         <div class="an-card-head">
             <div>
-                <p class="an-card-title">Attendance Trend</p>
-                <p class="an-card-sub">Daily employee presence over the last 30 days</p>
+                <p class="an-card-title">{{ __('Attendance Trend') }}</p>
+                <p class="an-card-sub">{{ __('Daily employee presence over the last 30 days') }}</p>
             </div>
-            <span class="an-badge-blue">30-day view</span>
+            <span class="an-badge-blue">{{ __('30-day view') }}</span>
         </div>
         <div class="an-chart-wrap" style="height:220px;">
             <canvas id="attendanceTrendChart"></canvas>
@@ -118,10 +118,10 @@
         <div class="an-card">
             <div class="an-card-head">
                 <div>
-                    <p class="an-card-title">Weekly Payroll</p>
-                    <p class="an-card-sub">Gross vs Net — last 4 weeks</p>
+                    <p class="an-card-title">{{ __('Weekly Payroll') }}</p>
+                    <p class="an-card-sub">{{ __('Gross vs Net — last 4 weeks') }}</p>
                 </div>
-                <span class="an-badge-green">₱ Pesos</span>
+                <span class="an-badge-green">{{ __('₱ Pesos') }}</span>
             </div>
             <div class="an-chart-wrap" style="height:240px;">
                 <canvas id="weeklyPayrollChart"></canvas>
@@ -131,12 +131,12 @@
         <div class="an-card">
             <div class="an-card-head">
                 <div>
-                    <p class="an-card-title">Labor Type Distribution</p>
-                    <p class="an-card-sub">Employees by position</p>
+                    <p class="an-card-title">{{ __('Labor Type Distribution') }}</p>
+                    <p class="an-card-sub">{{ __('Employees by position') }}</p>
                 </div>
             </div>
             @if($laborDist->isEmpty())
-            <div class="an-empty">No employee data</div>
+            <div class="an-empty">{{ __('No employee data') }}</div>
             @else
             <div class="an-chart-wrap" style="height:240px;">
                 <canvas id="laborTypeChart"></canvas>
@@ -150,13 +150,13 @@
         <div class="an-card">
             <div class="an-card-head">
                 <div>
-                    <p class="an-card-title">Top Overtime Earners</p>
-                    <p class="an-card-sub">Overtime pay (₱) this month</p>
+                    <p class="an-card-title">{{ __('Top Overtime Earners') }}</p>
+                    <p class="an-card-sub">{{ __('Overtime pay (₱) this month') }}</p>
                 </div>
-                <span class="an-badge-purple">Top 5</span>
+                <span class="an-badge-purple">{{ __('Top 5') }}</span>
             </div>
             @if($topOT->isEmpty() || $topOT->every(fn($e) => $e['ot'] == 0))
-            <div class="an-empty">No overtime recorded this month</div>
+            <div class="an-empty">{{ __('No overtime recorded this month') }}</div>
             @else
             <div class="an-chart-wrap" style="height:240px;">
                 <canvas id="overtimeChart"></canvas>
@@ -167,26 +167,26 @@
         <div class="an-card">
             <div class="an-card-head">
                 <div>
-                    <p class="an-card-title">Deduction Breakdown</p>
-                    <p class="an-card-sub">Monthly statutory & voluntary</p>
+                    <p class="an-card-title">{{ __('Deduction Breakdown') }}</p>
+                    <p class="an-card-sub">{{ __('Monthly statutory & voluntary') }}</p>
                 </div>
             </div>
             @php $totalDeductions = $sssTot + $philTot + $pagibigTot + $taxTot + $valeTot + $otherTot; @endphp
             @if($totalDeductions == 0)
-            <div class="an-empty">No deductions recorded this month</div>
+            <div class="an-empty">{{ __('No deductions recorded this month') }}</div>
             @else
             <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
                 <div class="an-chart-wrap" style="height:200px;flex:1;min-width:120px;">
                     <canvas id="deductionChart"></canvas>
                 </div>
                 <div class="an-deduction-legend">
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#3b82f6;"></span><span class="an-dl-label">SSS</span><span class="an-dl-val">₱{{ number_format($sssTot, 0) }}</span></div>
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#10b981;"></span><span class="an-dl-label">PhilHealth</span><span class="an-dl-val">₱{{ number_format($philTot, 0) }}</span></div>
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#14b8a6;"></span><span class="an-dl-label">Pag-IBIG</span><span class="an-dl-val">₱{{ number_format($pagibigTot, 0) }}</span></div>
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#a855f7;"></span><span class="an-dl-label">Withholding Tax</span><span class="an-dl-val">₱{{ number_format($taxTot, 0) }}</span></div>
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#ef4444;"></span><span class="an-dl-label">Vale</span><span class="an-dl-val">₱{{ number_format($valeTot, 0) }}</span></div>
+                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#3b82f6;"></span><span class="an-dl-label">{{ __('SSS') }}</span><span class="an-dl-val">₱{{ number_format($sssTot, 0) }}</span></div>
+                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#10b981;"></span><span class="an-dl-label">{{ __('PhilHealth') }}</span><span class="an-dl-val">₱{{ number_format($philTot, 0) }}</span></div>
+                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#14b8a6;"></span><span class="an-dl-label">{{ __('Pag-IBIG') }}</span><span class="an-dl-val">₱{{ number_format($pagibigTot, 0) }}</span></div>
+                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#a855f7;"></span><span class="an-dl-label">{{ __('Withholding Tax') }}</span><span class="an-dl-val">₱{{ number_format($taxTot, 0) }}</span></div>
+                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#ef4444;"></span><span class="an-dl-label">{{ __('Vale') }}</span><span class="an-dl-val">₱{{ number_format($valeTot, 0) }}</span></div>
                     @if($otherTot > 0)
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#64748b;"></span><span class="an-dl-label">Other</span><span class="an-dl-val">₱{{ number_format($otherTot, 0) }}</span></div>
+                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#64748b;"></span><span class="an-dl-label">{{ __('Other') }}</span><span class="an-dl-val">₱{{ number_format($otherTot, 0) }}</span></div>
                     @endif
                     <div class="an-dl-total">Total: ₱{{ number_format($totalDeductions, 0) }}</div>
                 </div>
@@ -200,8 +200,8 @@
     <div class="an-card an-card-full">
         <div class="an-card-head">
             <div>
-                <p class="an-card-title">Workforce by Site</p>
-                <p class="an-card-sub">Employee headcount per work site</p>
+                <p class="an-card-title">{{ __('Workforce by Site') }}</p>
+                <p class="an-card-sub">{{ __('Employee headcount per work site') }}</p>
             </div>
         </div>
         <div class="an-site-bars">
@@ -225,7 +225,7 @@
         <div class="an-card-head">
             <div>
                 <p class="an-card-title">Employee Performance — {{ $monthLabel }}</p>
-                <p class="an-card-sub">Individual payroll summary sorted by net pay</p>
+                <p class="an-card-sub">{{ __('Individual payroll summary sorted by net pay') }}</p>
             </div>
             <span class="an-badge-blue">{{ $empTable->count() }} employees</span>
         </div>
@@ -233,14 +233,14 @@
             <table class="an-table">
                 <thead>
                     <tr>
-                        <th>Employee</th>
-                        <th class="text-center">Workdays</th>
-                        <th class="text-center">Hours</th>
-                        <th class="text-end">Gross</th>
-                        <th class="text-end">OT Pay</th>
-                        <th class="text-end">Holiday</th>
-                        <th class="text-end">Deductions</th>
-                        <th class="text-end">Net Pay</th>
+                        <th>{{ __('Employee') }}</th>
+                        <th class="text-center">{{ __('Workdays') }}</th>
+                        <th class="text-center">{{ __('Hours') }}</th>
+                        <th class="text-end">{{ __('Gross') }}</th>
+                        <th class="text-end">{{ __('OT Pay') }}</th>
+                        <th class="text-end">{{ __('Holiday') }}</th>
+                        <th class="text-end">{{ __('Deductions') }}</th>
+                        <th class="text-end">{{ __('Net Pay') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -281,7 +281,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="an-tfoot">
-                        <td><strong>TOTAL</strong></td>
+                        <td><strong>{{ __('TOTAL') }}</strong></td>
                         <td class="text-center">{{ $empTable->sum(fn($e) => $e['totals']['workdays']) }}</td>
                         <td class="text-center">{{ number_format($empTable->sum(fn($e) => $e['totals']['hours']), 1) }}h</td>
                         <td class="text-end">₱{{ number_format($monthlyGross, 2) }}</td>
