@@ -124,13 +124,22 @@ class SettingsController extends Controller
             ->with('success', 'Saved, effective ' . Carbon::parse($data['effective_from'])->format('M d, Y') . '. Earlier payroll is unchanged.');
     }
 
+    /**
+     * The Sunday rest-day rule.
+     *
+     * Nothing posts here at the moment — the whole card came off the settings
+     * page, so the stored value is simply what payroll keeps reading. It is
+     * left standing because the rule itself did not go away, and because the
+     * history-freezing below is the part that is easy to get wrong: putting the
+     * toggle back should not mean writing it again.
+     */
     public function update(Request $request)
     {
-        // Everything that was a number moved off this form. The premiums and
-        // the contributions are dated and live on the payroll rate row; the
-        // daily wage belongs to the labour type, which carries its own; and the
-        // period bonus, though still computed and still on the payslip, is no
-        // longer set anywhere. What is left is the one rule that is not a rate.
+        // Everything that was a number had already moved off this form. The
+        // premiums and the contributions are dated and live on the payroll rate
+        // row; the daily wage belongs to the labour type, which carries its
+        // own; and the period bonus, though still computed and still on the
+        // payslip, is no longer set anywhere.
 
         // Capture the previous Sunday rest-day state BEFORE saving so we can
         // detect a toggle and freeze history accordingly.

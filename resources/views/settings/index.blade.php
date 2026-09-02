@@ -269,53 +269,6 @@
                     </div>
                 </div>
             </form>
-            <form method="POST" action="{{ route('settings.update') }}" class="settings-form">
-                @csrf
-                @method('PUT')
-
-                {{-- Rest day. Nothing else is set here any more: the premiums
-                     and the contributions are on the dated card above, and the
-                     daily wage belongs to the labour type, which carries its
-                     own rate. --}}
-                <div class="row g-4 mb-4">
-                    <div class="col-12">
-                        <div class="ps-card h-100" id="ot_rate_section">
-                            <div class="ps-card-header">
-                                <i class="fas fa-sliders-h"></i>
-                                <div>
-                                    <h6>Rest Day</h6>
-                                    <p>The premiums and the contributions live in the dated card above; each labour type carries its own daily wage.</p>
-                                </div>
-                            </div>
-                            <div class="ps-card-body">
-                                <div class="mb-0">
-                                    <label class="ps-label">Sunday Rest Day Pay</label>
-                                    <div class="ps-toggle-row">
-                                        <label class="ps-toggle-switch">
-                                            <input type="checkbox" name="sunday_rest_day_enabled" value="1"
-                                                   id="sunday_rest_day_enabled"
-                                                   {{ ($settings->sunday_rest_day_enabled ?? true) ? 'checked' : '' }}>
-                                            <span class="ps-toggle-slider"></span>
-                                        </label>
-                                        <div class="ps-toggle-label">
-                                            <span class="ps-toggle-status" id="restDayStatus">
-                                                {{ ($settings->sunday_rest_day_enabled ?? true) ? 'Enabled' : 'Disabled' }}
-                                            </span>
-                                            — Apply <strong>130% rest day rate</strong> to all Sundays
-                                        </div>
-                                    </div>
-                                    <small class="text-muted d-block mt-2">Sunday is the designated rest day. When enabled, employees earn an extra 30% on top of their regular day rate for any Sunday work.</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <button type="submit" class="btn ps-save-btn">
-                    <i class="fas fa-save me-2"></i>Save Settings
-                </button>
-            </form>
         </div>
 
         <!-- LABOR TYPES TAB -->
@@ -1902,18 +1855,6 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.disabled = false;
             submitBtn.innerHTML = origHtml;
         }
-    });
-})();
-</script>
-
-<script>
-(function () {
-    const chk    = document.getElementById('sunday_rest_day_enabled');
-    const status = document.getElementById('restDayStatus');
-    if (!chk || !status) return;
-    chk.addEventListener('change', function () {
-        status.textContent = this.checked ? 'Enabled' : 'Disabled';
-        status.style.color = this.checked ? '#16a34a' : '#94a3b8';
     });
 })();
 </script>
