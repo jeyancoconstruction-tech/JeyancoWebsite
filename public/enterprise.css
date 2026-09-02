@@ -272,6 +272,16 @@ html[data-bs-theme="dark"] .rm-tab-count { background: rgba(255,255,255,0.06); c
 html[data-bs-theme="dark"] .rm-tab.active .rm-tab-count { background: var(--primary-soft); color: #93c5fd; }
 
 /* ─── 7 · TABLES · sticky headers + airy rows ──────────────────────────── */
+
+/* Bootstrap paints a row hover with an inset box-shadow, not a background, so
+   the `background` override further down never reaches it — the row washed out
+   to near-white in dark mode and took its own text with it. These are the two
+   variables it actually reads, and they resolve per theme on their own. */
+.table, .rm-table {
+    --bs-table-hover-bg: var(--brand-subtle);
+    --bs-table-hover-color: var(--text-primary);
+}
+
 html[data-bs-theme="dark"] .rm-table,
 html[data-bs-theme="dark"] .table { color: var(--text-secondary); border-color: var(--border); }
 html[data-bs-theme="dark"] .rm-table thead th,

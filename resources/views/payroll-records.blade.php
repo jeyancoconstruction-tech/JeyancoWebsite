@@ -68,17 +68,6 @@
     html[data-bs-theme="dark"]  .table-card .table thead th,
     html[data-bs-theme="light"] .table-card .table thead th { color: var(--text-secondary) !important; }
 
-    /* Bootstrap paints a row hover with an inset box-shadow, not a background,
-       so the background override in enterprise.css never reaches it — the row
-       washed out to near-white and took the text with it. These are the two
-       variables it actually reads. */
-    /* Page-scoped, so it reaches the payslip and export tables in the modals
-       too — they hover the same way and washed out the same way. */
-    .table {
-        --bs-table-hover-bg: var(--brand-subtle);
-        --bs-table-hover-color: var(--text-primary);
-    }
-
     /* ── Day receipt ─────────────────────────────────────────────────────────
        A breakdown row is nine figures wide and stops short of saying how they
        were arrived at. Clicking one opens the rest of the arithmetic. */
