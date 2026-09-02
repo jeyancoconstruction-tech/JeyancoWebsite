@@ -114,10 +114,6 @@ class SettingsController extends Controller
             'effective_from'  => 'required|date',
             'uses_defaults'   => 'nullable|boolean',
             'withholding_tax' => 'nullable|boolean',
-
-            // Neither is statutory, so both stay open while defaults is on.
-            'bonus'                => 'nullable|numeric|min:0|max:1000000',
-            'vale_ceiling_percent' => 'required|integer|min:0|max:100',
         ];
 
         if (! $onDefaults) {
@@ -164,10 +160,13 @@ class SettingsController extends Controller
         // still being held to.
         $prior = PayrollRate::effectiveOn($data['effective_from']);
 
-        // An empty bonus box is zero, not null — the column is what payroll adds.
-        $data['bonus']      = $data['bonus'] ?? 0;
-        $data['daily_rate'] = $prior?->daily_rate;
-        $data['created_by'] = auth()->user()->name ?? auth()->user()->username ?? 'admin';
+        // The bonus and the vale ceiling are on their own tab now, so carry the
+        // ones in force forward: raising a premium must not silently stop a
+        // bonus people are owed or lift a ceiling protecting their take-home.
+        $data['bonus']                = $prior?->bonus ?? 0;
+        $data['vale_ceiling_percent'] = $prior?->vale_ceiling_percent ?? 100;
+        $data['daily_rate']           = $prior?->daily_rate;
+        $data['created_by']           = auth()->user()->name ?? auth()->user()->username ?? 'admin';
 
         PayrollRate::create($data);
 
@@ -570,5 +569,58 @@ class SettingsController extends Controller
         // Back to the tab it was saved from, or the save reads as lost.
         return redirect()->route('settings.index', ['tab' => 'attendance'])
             ->with('success', 'Attendance settings updated!');
+    }
+
+    /**
+     * The bonus and the vale ceiling.
+     *
+     * Their own tab, so their own action. Neither is statutory — nobody is
+     * obliged to pay a bonus or to lend against wages — but both change pay, so
+     * they are dated like everything else: a change adds a row effective today
+     * and carries the premiums and the contributions in force onto it, leaving
+     * every earlier row and the payroll it answered for alone.
+     */
+    public function updateBonus(Request $request)
+    {
+        $data = $request->validate([
+            'bonus'                => 'nullable|numeric|min:0|max:1000000',
+            'vale_ceiling_percent' => 'required|integer|min:0|max:100',
+        ], [
+            'vale_ceiling_percent.max' => 'A ceiling over 100% is not a ceiling.',
+        ]);
+
+        $current = PayrollRate::current();
+
+        // An empty bonus box is zero, not null — the column is what payroll adds.
+        $bonus   = (float) ($data['bonus'] ?? 0);
+        $ceiling = (int) $data['vale_ceiling_percent'];
+
+        // Unchanged, nothing is written: saving the tab twice should not fill
+        // the rate history with rows that say the same thing.
+        $same = $current
+            && (float) $current->bonus === $bonus
+            && (int) $current->vale_ceiling_percent === $ceiling;
+
+        if (! $same) {
+            PayrollRate::create([
+                'effective_from'             => Carbon::now()->toDateString(),
+                'ot_multiplier'              => $current?->ot_multiplier,
+                'night_diff_multiplier'      => $current?->night_diff_multiplier,
+                'rest_day_multiplier'        => $current?->rest_day_multiplier,
+                'regular_holiday_multiplier' => $current?->regular_holiday_multiplier,
+                'daily_rate'                 => $current?->daily_rate,
+                'sss_rate'                   => $current?->sss_rate,
+                'philhealth_rate'            => $current?->philhealth_rate,
+                'pagibig_rate'               => $current?->pagibig_rate,
+                'withholding_tax'            => $current?->withholding_tax ?? true,
+                'uses_defaults'              => (bool) $current?->uses_defaults,
+                'bonus'                      => $bonus,
+                'vale_ceiling_percent'       => $ceiling,
+                'created_by'                 => auth()->user()->name ?? auth()->user()->username ?? 'admin',
+            ]);
+        }
+
+        return redirect()->route('settings.index', ['tab' => 'bonus'])
+            ->with('success', 'Bonus and vale settings updated!');
     }
 }

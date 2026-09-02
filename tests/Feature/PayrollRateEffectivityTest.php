@@ -211,7 +211,6 @@ class PayrollRateEffectivityTest extends TestCase
             'sss_rate'              => 5.00,
             'philhealth_rate'       => 2.50,
             'pagibig_rate'          => 2.00,
-            'vale_ceiling_percent'  => 100,
         ], $overrides);
     }
 
@@ -342,21 +341,33 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertSame(round($out['gross'] - $out['totalDeductions'], 2), round($out['net'], 2));
     }
 
-    /** The bonus is back on the form, so the form is what sets it. */
-    public function test_the_form_sets_the_bonus(): void
+    /** The bonus has its own tab now, and its own action sets it. */
+    public function test_the_bonus_tab_sets_the_bonus(): void
     {
         $this->rate('2026-09-01', ['bonus' => 750]);
 
         $this->actingAs($this->admin())
-             ->post(route('payroll-rates.store'), $this->payload([
-                 'effective_from' => '2026-10-01',
-                 'bonus'          => 999,
-             ]))
+             ->put(route('settings.bonus.update'), ['bonus' => 999, 'vale_ceiling_percent' => 100])
              ->assertSessionHasNoErrors();
 
-        $this->assertSame(999.0, (float) PayrollRate::newestFirst()->first()->bonus);
-        $this->assertSame(750.0, (float) PayrollRate::effectiveOn('2026-09-15')->bonus,
+        $this->assertSame(999.0, (float) PayrollRate::current()->bonus);
+        $this->assertSame(750.0, (float) PayrollRate::effectiveOn('2026-09-01')->bonus,
             'the earlier row is untouched');
+    }
+
+    /** And the premium form carries it forward rather than dropping it. */
+    public function test_saving_the_premiums_keeps_the_bonus_and_the_ceiling(): void
+    {
+        $this->rate('2026-09-01', ['bonus' => 750, 'vale_ceiling_percent' => 40]);
+
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), $this->payload(['effective_from' => '2026-10-01']))
+             ->assertSessionHasNoErrors();
+
+        $saved = PayrollRate::newestFirst()->first();
+
+        $this->assertSame(750.0, (float) $saved->bonus);
+        $this->assertSame(40, (int) $saved->vale_ceiling_percent);
     }
 
     /** With none on file the column takes 0, not the null it will not hold. */
@@ -404,7 +415,6 @@ class PayrollRateEffectivityTest extends TestCase
              ->post(route('payroll-rates.store'), [
                  'effective_from'       => '2026-10-01',
                  'uses_defaults'        => 1,
-                 'vale_ceiling_percent' => 100,
              ])
              ->assertSessionHasNoErrors();
 
@@ -422,7 +432,6 @@ class PayrollRateEffectivityTest extends TestCase
              ->post(route('payroll-rates.store'), [
                  'effective_from'       => '2026-10-01',
                  'uses_defaults'        => 1,
-                 'vale_ceiling_percent' => 100,
              ])
              ->assertSessionHasNoErrors();
     }
@@ -553,7 +562,6 @@ class PayrollRateEffectivityTest extends TestCase
              ->post(route('payroll-rates.store'), [
                  'effective_from'       => '2026-10-01',
                  'uses_defaults'        => 1,
-                 'vale_ceiling_percent' => 100,
              ])
              ->assertSessionHasNoErrors();
 
@@ -737,7 +745,7 @@ class PayrollRateEffectivityTest extends TestCase
     public function test_a_ceiling_above_a_hundred_is_refused(): void
     {
         $this->actingAs($this->admin())
-             ->post(route('payroll-rates.store'), $this->payload(['vale_ceiling_percent' => 150]))
+             ->put(route('settings.bonus.update'), ['vale_ceiling_percent' => 150])
              ->assertSessionHasErrors('vale_ceiling_percent');
     }
 }

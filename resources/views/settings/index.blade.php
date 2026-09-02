@@ -35,7 +35,7 @@
 
     {{-- Which tab opens. The forms redirect back here, and landing on the first
          one after saving the fourth reads as the save having been lost. --}}
-    @php $tab = in_array(request('tab'), ['attendance', 'labor', 'holiday'], true) ? request('tab') : 'payroll'; @endphp
+    @php $tab = in_array(request('tab'), ['attendance', 'labor', 'holiday', 'bonus'], true) ? request('tab') : 'payroll'; @endphp
 
     <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
         <li class="nav-item" role="presentation">
@@ -56,6 +56,11 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'holiday' ? 'active' : '' }}" id="holiday-tab" data-bs-toggle="tab" data-bs-target="#holiday" type="button" role="tab">
                 <i data-lucide="calendar" class="me-2"></i>{{ __('Holidays') }}
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {{ $tab === 'bonus' ? 'active' : '' }}" id="bonus-tab" data-bs-toggle="tab" data-bs-target="#bonus" type="button" role="tab">
+                <i data-lucide="hand-coins" class="me-2"></i>{{ __('Bonus & Vale') }}
             </button>
         </li>
     </ul>
@@ -143,37 +148,6 @@
                                 @endforeach
                             </div>
                             <p class="pr-block-hint">{{ __('Night differential: 10:00 PM – 6:00 AM. A regular holiday is fixed at 200% by the Labor Code and is not set here.') }}</p>
-                        </section>
-
-                        {{-- Bonus and vale. Neither is statutory — nobody is
-                             obliged to pay a bonus or to lend against wages —
-                             so they sit outside the locked blocks and stay
-                             editable while Statutory defaults is on. --}}
-                        <section class="pr-block">
-                            <div class="pr-block-head">
-                                <i class="fas fa-hand-holding-dollar"></i>
-                                <span>{{ __('Bonus and vale') }}</span>
-                                <small>{{ __("The office's own") }}</small>
-                            </div>
-                            <div class="pr-grid pr-grid-2">
-                                <div class="pr-field">
-                                    <label class="pr-field-label" for="bonus">{{ __('Bonus per period ₱') }}</label>
-                                    <input type="number" step="0.01" min="0" max="1000000"
-                                           id="bonus" name="bonus" placeholder="0.00"
-                                           class="form-control ps-input @error('bonus') is-invalid @enderror"
-                                           value="{{ old('bonus', ($currentRate?->bonus ?? 0) > 0 ? $currentRate->bonus : null) }}">
-                                    @error('bonus')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="pr-field">
-                                    <label class="pr-field-label" for="vale_ceiling_percent">{{ __('Vale ceiling %') }}</label>
-                                    <input type="number" step="1" min="0" max="100"
-                                           id="vale_ceiling_percent" name="vale_ceiling_percent"
-                                           class="form-control ps-input pr-num @error('vale_ceiling_percent') is-invalid @enderror"
-                                           value="{{ old('vale_ceiling_percent', $currentRate?->vale_ceiling_percent ?? 100) }}" required>
-                                    @error('vale_ceiling_percent')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
-                            </div>
-                            <p class="pr-block-hint">{{ __('The bonus is a flat amount added once per employee each pay period. The vale ceiling is the most a cash advance may take from one period, as a share of pay after the statutory deductions — 100% is no ceiling. What it does not collect is still owed; only this period is limited.') }}</p>
                         </section>
 
                         {{-- Deductions --}}
@@ -1545,6 +1519,75 @@
                 renderCalendar();
             })();
             </script>
+        </div>
+
+        <!-- BONUS & VALE TAB -->
+        {{-- Its own form, because a form cannot span two tab panes. Saving adds
+             a dated rate row like the card above does, carrying the premiums
+             and the contributions in force forward — so a bonus raised today
+             cannot reach into a week already paid. --}}
+        <div class="tab-pane fade {{ $tab === 'bonus' ? 'show active' : '' }}" id="bonus" role="tabpanel">
+            <form method="POST" action="{{ route('settings.bonus.update') }}">
+                @csrf
+                @method('PUT')
+
+                <div class="ps-card mb-4">
+                    <div class="ps-card-header">
+                        <i class="fas fa-gift"></i>
+                        <div>
+                            <h6>{{ __('Bonus') }}</h6>
+                            <p>{{ __('A flat amount added once per employee each pay period') }}</p>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="mb-0" style="max-width:320px;">
+                            <label class="ps-label" for="bonus">{{ __('Bonus per period') }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text ps-ig-text">₱</span>
+                                <input type="number" step="0.01" min="0" max="1000000"
+                                       class="form-control ps-input @error('bonus') is-invalid @enderror"
+                                       id="bonus" name="bonus" placeholder="0.00"
+                                       value="{{ old('bonus', ($currentRate?->bonus ?? 0) > 0 ? $currentRate->bonus : null) }}">
+                            </div>
+                            @error('bonus')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <small class="text-muted d-block mt-2">{{ __('Added to net pay, not to gross — it is not wages, so no contribution or tax is computed on it.') }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ps-card mb-4">
+                    <div class="ps-card-header">
+                        <i class="fas fa-hand-holding-dollar"></i>
+                        <div>
+                            <h6>{{ __('Vale ceiling') }}</h6>
+                            <p>{{ __('The most a cash advance may take from one pay period') }}</p>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="mb-0" style="max-width:320px;">
+                            <label class="ps-label" for="vale_ceiling_percent">{{ __('Ceiling') }}</label>
+                            <div class="input-group">
+                                <input type="number" step="1" min="0" max="100"
+                                       class="form-control ps-input @error('vale_ceiling_percent') is-invalid @enderror"
+                                       id="vale_ceiling_percent" name="vale_ceiling_percent"
+                                       value="{{ old('vale_ceiling_percent', $currentRate?->vale_ceiling_percent ?? 100) }}" required>
+                                <span class="input-group-text ps-ig-text">%</span>
+                            </div>
+                            @error('vale_ceiling_percent')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <small class="text-muted d-block mt-2">{{ __('A share of pay after the statutory deductions. 100% is no ceiling. What the ceiling does not collect is still owed — only this period is limited, the balance is untouched.') }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pr-note mb-4">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>{{ __('Neither is statutory — nobody is obliged to pay a bonus or to lend against wages — so both stay editable while Statutory defaults is on. A change takes effect today and adds a dated row; earlier payroll is unchanged.') }}</span>
+                </div>
+
+                <button type="submit" class="btn ps-save-btn">
+                    <i class="fas fa-save me-2"></i>{{ __('Save Bonus & Vale') }}
+                </button>
+            </form>
         </div>
     </div>
 </div>
