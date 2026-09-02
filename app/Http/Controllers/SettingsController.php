@@ -87,8 +87,8 @@ class SettingsController extends Controller
     }
 
     /**
-     * Record a new set of payroll numbers — the premiums, the period bonus and
-     * the employee-share contributions — effective from a date.
+     * Record a new set of payroll numbers — the premiums and the employee-share
+     * contributions — effective from a date.
      *
      * Deliberately an INSERT. These lived on the single settings row, so
      * raising one rewrote history: reopening last month's payroll recomputed it
@@ -107,9 +107,6 @@ class SettingsController extends Controller
 
         $rules = [
             'effective_from' => 'required|date',
-            // A flat amount per employee per pay period. Optional on the form,
-            // but never null on the row: an office paying no bonus has said 0.
-            'bonus'          => 'nullable|numeric|min:0|max:1000000',
             'uses_defaults'  => 'nullable|boolean',
         ];
 
@@ -152,9 +149,13 @@ class SettingsController extends Controller
         // changing a premium must not quietly drop a wage order the office is
         // still being held to.
         //
-        // An empty bonus box is zero, not null — the column is what payroll adds.
-        $data['bonus'] = $data['bonus'] ?? 0;
-        $data['daily_rate'] = PayrollRate::effectiveOn($data['effective_from'])?->daily_rate;
+        // Nor is the bonus. It is moving to the payroll records, and until it
+        // does nothing sets it — so carry the one in force forward too, or
+        // saving a premium would quietly stop paying a bonus people are owed.
+        $prior = PayrollRate::effectiveOn($data['effective_from']);
+
+        $data['bonus']      = $prior?->bonus ?? 0;
+        $data['daily_rate'] = $prior?->daily_rate;
         $data['created_by'] = auth()->user()->name ?? auth()->user()->username ?? 'admin';
 
         PayrollRate::create($data);

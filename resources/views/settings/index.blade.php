@@ -89,20 +89,20 @@
                             <i class="fas fa-gear"></i>
                             <div>
                                 <h6>Payroll settings</h6>
-                                <p>Premiums, bonus and deductions</p>
+                                <p>Premiums and deductions</p>
                             </div>
                         </div>
                         <div class="pr-head-right">
                             {{-- On defaults the row stops naming numbers and reads
                                  the statutory ones at compute time, so a circular
                                  that moves reaches it without anyone retyping. --}}
-                            <label class="pr-defaults" title="Follow the statutory premiums and contribution rates automatically">
+                            <label class="pr-defaults" title="Follow the statutory premiums and contribution rates automatically — the fields below are locked while this is on">
                                 <span class="ps-toggle-switch">
                                     <input type="checkbox" name="uses_defaults" value="1" id="uses_defaults"
                                            {{ old('uses_defaults', $rate?->uses_defaults ?? false) ? 'checked' : '' }}>
                                     <span class="ps-toggle-slider"></span>
                                 </span>
-                                <span class="pr-defaults-text">DOLE defaults</span>
+                                <span class="pr-defaults-text">Statutory defaults</span>
                             </label>
                             <span class="pr-admin"><i class="fas fa-lock"></i> Admin</span>
                         </div>
@@ -111,11 +111,12 @@
                     <div class="ps-card-body">
 
                         {{-- Premiums --}}
-                        <section class="pr-block">
+                        <section class="pr-block pr-block-statutory">
                             <div class="pr-block-head">
                                 <i class="fas fa-clock"></i>
                                 <span>Premium multipliers</span>
                                 <small>National · Labor Code</small>
+                                <span class="pr-block-lock"><i class="fas fa-lock"></i> Statutory</span>
                             </div>
                             <div class="pr-grid">
                                 @foreach($premiums as [$field, $label, $default])
@@ -130,26 +131,6 @@
                                 @endforeach
                             </div>
                             <p class="pr-block-hint">Night differential: 10:00 PM – 6:00 AM. A regular holiday is fixed at 200% by the Labor Code and is not set here.</p>
-                        </section>
-
-                        {{-- Bonus --}}
-                        <section class="pr-block">
-                            <div class="pr-block-head">
-                                <i class="fas fa-gift"></i>
-                                <span>Bonus</span>
-                                <small>Per pay period</small>
-                            </div>
-                            <div class="pr-grid pr-grid-2">
-                                <div class="pr-field">
-                                    <label class="pr-field-label" for="bonus">Bonus (per period) ₱</label>
-                                    <input type="number" step="0.01" min="0"
-                                           id="bonus" name="bonus"
-                                           class="form-control ps-input @error('bonus') is-invalid @enderror"
-                                           value="{{ $rval('bonus', 0) }}">
-                                    @error('bonus')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
-                            </div>
-                            <p class="pr-block-hint">A flat amount added once per employee each pay period, on top of the week's pay. It follows the date on this card, so raising it never reaches a period already paid.</p>
                         </section>
 
                         {{-- Effectivity --}}
@@ -172,11 +153,12 @@
                         </section>
 
                         {{-- Deductions --}}
-                        <section class="pr-block">
+                        <section class="pr-block pr-block-statutory">
                             <div class="pr-block-head">
                                 <i class="fas fa-building-columns"></i>
                                 <span>Deductions (employee share)</span>
                                 <small>Percent of gross</small>
+                                <span class="pr-block-lock"><i class="fas fa-lock"></i> Statutory</span>
                             </div>
 
                             @foreach($contributions as [$field, $label, $caption, $default])
@@ -1580,6 +1562,26 @@
 .pr-block-hint { margin:10px 0 0; font-size:.75rem; line-height:1.6; color:var(--text-muted); }
 .pr-block-hint i { margin-right:4px; }
 
+/* ── On statutory defaults ───────────────────────────────────────────────────
+   The two blocks the switch governs say so, and stop looking like somewhere to
+   type. Dimming the inputs alone reads as fields that failed to load; the badge
+   is what makes it read as a decision the office made. Effectivity and the
+   history are untouched — the date is still the office's to choose. */
+.pr-block-head > .pr-block-lock {
+    display:none; margin-left:auto; flex:none;
+    align-items:center; gap:5px;
+    font-size:.68rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
+    padding:2px 9px; border-radius:999px;
+    background:rgba(22,163,74,.12); color:var(--success,#16a34a);
+}
+.pr-card-locked .pr-block-head > .pr-block-lock { display:inline-flex; }
+.pr-card-locked .pr-block-statutory {
+    border-style:dashed;
+    background:transparent;
+}
+.pr-card-locked .pr-block-statutory .pr-field-label,
+.pr-card-locked .pr-block-statutory .pr-ded-name span { color:var(--text-muted,#8a929b); }
+
 .pr-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 .pr-grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
 @media (max-width:700px){ .pr-grid, .pr-grid-2 { grid-template-columns:1fr; } }
@@ -1935,18 +1937,23 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script>
-// ── DOLE defaults switch ────────────────────────────────────────────────────
+// ── Statutory defaults switch ────────────────────────────────────────────────────
 // On defaults the office is not choosing numbers, so the rate inputs are filled
 // with the statutory ones and locked. They stay readonly rather than disabled
 // because a disabled input is not submitted, and the server still wants to see
 // the form it validated. Whatever they carry is replaced server-side anyway —
 // this is so the screen agrees with what will be saved.
+//
+// The card takes a class of its own too. Dimming six inputs and nothing else
+// reads as fields that failed to load; the block saying "Statutory" is what
+// makes it read as a decision the office made.
 (function () {
     const chk = document.getElementById('uses_defaults');
     if (!chk) return;
 
     const form = chk.closest('form');
-    if (!form) return;
+    const card = form && form.querySelector('.pr-card');
+    if (!form || !card) return;
 
     const DEFAULTS = @json($statutoryDefaults);
 
@@ -1958,6 +1965,8 @@ document.addEventListener('DOMContentLoaded', () => {
             el.readOnly = chk.checked;
             el.classList.toggle('pr-locked', chk.checked);
         });
+
+        card.classList.toggle('pr-card-locked', chk.checked);
     }
 
     chk.addEventListener('change', apply);

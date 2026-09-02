@@ -341,24 +341,35 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertSame(round($out['gross'] - $out['totalDeductions'], 2), round($out['net'], 2));
     }
 
-    public function test_saving_the_form_puts_the_bonus_on_the_row(): void
+    /**
+     * The bonus is off the form — it is moving to the payroll records — so a
+     * rate save has to carry the one in force onto the new row. Dropping it
+     * would quietly stop paying a bonus people are owed.
+     */
+    public function test_saving_the_premiums_keeps_the_bonus_in_force(): void
     {
+        $this->rate('2026-09-01', ['bonus' => 750]);
+
         $this->actingAs($this->admin())
-             ->post(route('payroll-rates.store'), $this->payload(['bonus' => 750]))
+             ->post(route('payroll-rates.store'), $this->payload([
+                 'effective_from' => '2026-10-01',
+                 'bonus'          => 999,   // ignored: there is no such field now
+             ]))
              ->assertSessionHasNoErrors();
 
         $this->assertSame(750.0, (float) PayrollRate::newestFirst()->first()->bonus);
     }
 
-    /** An empty box is zero, not a null the column will not take. */
-    public function test_an_empty_bonus_saves_as_zero(): void
+    /** With none on file the column takes 0, not the null it will not hold. */
+    public function test_a_rate_saved_with_no_bonus_on_file_stores_zero(): void
     {
         $this->actingAs($this->admin())
-             ->post(route('payroll-rates.store'), $this->payload(['bonus' => '']))
+             ->post(route('payroll-rates.store'), $this->payload(['effective_from' => '2000-01-02']))
              ->assertSessionHasNoErrors();
 
         $this->assertSame(0.0, (float) PayrollRate::newestFirst()->first()->bonus);
     }
+
 
     // ── Rate history ─────────────────────────────────────────────────────────
 
@@ -386,7 +397,7 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertSame('2026-06-01', $shown->first()->effective_from->toDateString(), 'newest first');
     }
 
-    // ── The DOLE defaults switch ─────────────────────────────────────────────
+    // ── The statutory defaults switch ────────────────────────────────────────
 
     public function test_saving_on_defaults_records_the_statutory_figures(): void
     {
@@ -394,7 +405,6 @@ class PayrollRateEffectivityTest extends TestCase
              ->post(route('payroll-rates.store'), [
                  'effective_from' => '2026-10-01',
                  'uses_defaults'  => 1,
-                 'bonus'          => 300,
              ])
              ->assertSessionHasNoErrors();
 
@@ -403,7 +413,6 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertTrue($saved->uses_defaults);
         $this->assertSame(1.25, (float) $saved->ot_multiplier);
         $this->assertSame(5.00, (float) $saved->sss_rate);
-        $this->assertSame(300.0, (float) $saved->bonus, 'the bonus is still the office\'s own');
     }
 
     /** The rate fields are locked on screen, so they are not validated. */
