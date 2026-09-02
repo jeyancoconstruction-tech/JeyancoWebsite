@@ -2,9 +2,9 @@
     <div class="lt-info">
         <span class="lt-name">{{ $type->name }}</span>
         <div class="lt-rates">
-            <span class="lt-rate-pill">{{ __('Daily&nbsp;') }}<strong>{{ $type->getFormattedDailyRate() }}</strong></span>
-            <span class="lt-rate-pill">{{ __('Hourly&nbsp;') }}<strong>{{ $type->getFormattedHourlyRate() }}</strong></span>
-            <span class="lt-rate-pill">{{ __('OT&nbsp;') }}<strong>{{ $type->getFormattedOTRate() }}</strong></span>
+            <span class="lt-rate-pill">{{ __('Daily ') }}<strong>{{ $type->getFormattedDailyRate() }}</strong></span>
+            <span class="lt-rate-pill">{{ __('Hourly ') }}<strong>{{ $type->getFormattedHourlyRate() }}</strong></span>
+            <span class="lt-rate-pill">{{ __('OT ') }}<strong>{{ $type->getFormattedOTRate() }}</strong></span>
         </div>
     </div>
     <div class="lt-actions">

@@ -114,6 +114,10 @@ class SettingsController extends Controller
             'effective_from'  => 'required|date',
             'uses_defaults'   => 'nullable|boolean',
             'withholding_tax' => 'nullable|boolean',
+
+            // Neither is statutory, so both stay open while defaults is on.
+            'bonus'                => 'nullable|numeric|min:0|max:1000000',
+            'vale_ceiling_percent' => 'required|integer|min:0|max:100',
         ];
 
         if (! $onDefaults) {
@@ -158,13 +162,10 @@ class SettingsController extends Controller
         // on file still belongs on the row, so carry the one in force forward:
         // changing a premium must not quietly drop a wage order the office is
         // still being held to.
-        //
-        // Nor is the bonus. It is moving to the payroll records, and until it
-        // does nothing sets it — so carry the one in force forward too, or
-        // saving a premium would quietly stop paying a bonus people are owed.
         $prior = PayrollRate::effectiveOn($data['effective_from']);
 
-        $data['bonus']      = $prior?->bonus ?? 0;
+        // An empty bonus box is zero, not null — the column is what payroll adds.
+        $data['bonus']      = $data['bonus'] ?? 0;
         $data['daily_rate'] = $prior?->daily_rate;
         $data['created_by'] = auth()->user()->name ?? auth()->user()->username ?? 'admin';
 

@@ -88,8 +88,8 @@
             <div class="t-sub">{{ count($slips) }} employee(s) &middot; A4 &middot; gupitin sa may putol-putol na linya (&#9986;)</div>
         </div>
         <div style="display:flex;gap:8px;">
-            <a href="javascript:history.back()" class="btn btn-back">{{ __('&larr; Back') }}</a>
-            <button class="btn btn-print" onclick="window.print()">{{ __('&#128424; Print A4') }}</button>
+            <a href="javascript:history.back()" class="btn btn-back">{{ __('← Back') }}</a>
+            <button class="btn btn-print" onclick="window.print()">{{ __('🖨 Print A4') }}</button>
         </div>
     </div>
     <div class="hint">{{ __('Tip: sa print dialog piliin ang') }} <b>A4</b> {{ __('at i-off ang "Headers and footers" para malinis ang gupit.') }}</div>

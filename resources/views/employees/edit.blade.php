@@ -34,7 +34,7 @@
                     <div class="ep-section-head">
                         <span class="ep-section-icon"><i class="fas fa-helmet-safety"></i></span>
                         <div>
-                            <h3 class="ep-section-title">{{ __('Employment &amp; Pay') }}</h3>
+                            <h3 class="ep-section-title">{{ __('Employment & Pay') }}</h3>
                             <p class="ep-section-sub">{{ __('What the worker is paid and where they are assigned.') }}</p>
                         </div>
                     </div>
@@ -219,7 +219,7 @@
                         <div class="col-md-6 col-lg-3">
                             <label class="ep-label">{{ __('Employee ID') }}</label>
                             <input type="text" value="#{{ $employee->id }}" class="form-control ep-mono" readonly>
-                            <span class="ep-hint">{{ __('Used in Payroll &amp; Reports.') }}</span>
+                            <span class="ep-hint">{{ __('Used in Payroll & Reports.') }}</span>
                         </div>
 
                         {{-- Fingerprint ID (read-only) --}}

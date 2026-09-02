@@ -101,7 +101,7 @@
                                 {{-- The name now says what is in the card, so the
                                      line under it carries the fact the name cannot:
                                      these are dated, and saving adds a row. --}}
-                                <p>{{ __('Effectivity-dated &middot; a change adds a row, it never edits one') }}</p>
+                                <p>{{ __('Effectivity-dated · a change adds a row, it never edits one') }}</p>
                             </div>
                         </div>
                         <div class="pr-head-right">
@@ -143,6 +143,37 @@
                                 @endforeach
                             </div>
                             <p class="pr-block-hint">{{ __('Night differential: 10:00 PM – 6:00 AM. A regular holiday is fixed at 200% by the Labor Code and is not set here.') }}</p>
+                        </section>
+
+                        {{-- Bonus and vale. Neither is statutory — nobody is
+                             obliged to pay a bonus or to lend against wages —
+                             so they sit outside the locked blocks and stay
+                             editable while Statutory defaults is on. --}}
+                        <section class="pr-block">
+                            <div class="pr-block-head">
+                                <i class="fas fa-hand-holding-dollar"></i>
+                                <span>{{ __('Bonus and vale') }}</span>
+                                <small>{{ __("The office's own") }}</small>
+                            </div>
+                            <div class="pr-grid pr-grid-2">
+                                <div class="pr-field">
+                                    <label class="pr-field-label" for="bonus">{{ __('Bonus per period ₱') }}</label>
+                                    <input type="number" step="0.01" min="0" max="1000000"
+                                           id="bonus" name="bonus" placeholder="0.00"
+                                           class="form-control ps-input @error('bonus') is-invalid @enderror"
+                                           value="{{ old('bonus', ($currentRate?->bonus ?? 0) > 0 ? $currentRate->bonus : null) }}">
+                                    @error('bonus')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                                <div class="pr-field">
+                                    <label class="pr-field-label" for="vale_ceiling_percent">{{ __('Vale ceiling %') }}</label>
+                                    <input type="number" step="1" min="0" max="100"
+                                           id="vale_ceiling_percent" name="vale_ceiling_percent"
+                                           class="form-control ps-input pr-num @error('vale_ceiling_percent') is-invalid @enderror"
+                                           value="{{ old('vale_ceiling_percent', $currentRate?->vale_ceiling_percent ?? 100) }}" required>
+                                    @error('vale_ceiling_percent')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <p class="pr-block-hint">{{ __('The bonus is a flat amount added once per employee each pay period. The vale ceiling is the most a cash advance may take from one period, as a share of pay after the statutory deductions — 100% is no ceiling. What it does not collect is still owed; only this period is limited.') }}</p>
                         </section>
 
                         {{-- Deductions --}}
@@ -268,6 +299,7 @@
                                         <tr>
                                             <th>{{ __('Effective from') }}</th>
                                             <th class="text-end">{{ __('Bonus') }}</th>
+                                            <th class="text-end">{{ __('Vale cap') }}</th>
                                             <th class="text-end">{{ __('OT') }}</th><th class="text-end">{{ __('Night') }}</th>
                                             <th class="text-end">{{ __('Rest day') }}</th>
                                             <th class="text-end">{{ __('SSS') }}</th><th class="text-end">{{ __('PH') }}</th>
@@ -290,6 +322,7 @@
                                                 @if($r->uses_defaults)<span class="pr-on-defaults">{{ __('defaults') }}</span>@endif
                                             </td>
                                             <td class="text-end">{{ $rr['bonus'] ? '₱' . number_format($rr['bonus'], 2) : '—' }}</td>
+                                            <td class="text-end">{{ $rr['vale_ceiling_percent'] < 100 ? $rr['vale_ceiling_percent'] . '%' : '—' }}</td>
                                             <td class="text-end">{{ number_format($rr['ot_multiplier'], 2) }}</td>
                                             <td class="text-end">{{ number_format($rr['night_diff_multiplier'], 2) }}</td>
                                             <td class="text-end">{{ number_format($rr['rest_day_multiplier'], 2) }}</td>
@@ -479,7 +512,7 @@
                             <i class="fas fa-list-ul"></i>
                             <div>
                                 <h6>{{ __('Labor Types') }}</h6>
-                                <p>{{ __('Hourly = Daily ÷ 8 &nbsp;·&nbsp; OT uses the multiplier from Payroll Settings.') }}</p>
+                                <p>{{ __('Hourly = Daily ÷ 8  ·  OT uses the multiplier from Payroll Settings.') }}</p>
                             </div>
                         </div>
                         <div class="ps-card-body p-0" id="lt-list-container">
@@ -488,9 +521,9 @@
                                 <div class="lt-info">
                                     <span class="lt-name">{{ $type->name }}</span>
                                     <div class="lt-rates">
-                                        <span class="lt-rate-pill">{{ __('Daily&nbsp;') }}<strong>{{ $type->getFormattedDailyRate() }}</strong></span>
-                                        <span class="lt-rate-pill">{{ __('Hourly&nbsp;') }}<strong>{{ $type->getFormattedHourlyRate() }}</strong></span>
-                                        <span class="lt-rate-pill">{{ __('OT&nbsp;') }}<strong>{{ $type->getFormattedOTRate() }}</strong></span>
+                                        <span class="lt-rate-pill">{{ __('Daily ') }}<strong>{{ $type->getFormattedDailyRate() }}</strong></span>
+                                        <span class="lt-rate-pill">{{ __('Hourly ') }}<strong>{{ $type->getFormattedHourlyRate() }}</strong></span>
+                                        <span class="lt-rate-pill">{{ __('OT ') }}<strong>{{ $type->getFormattedOTRate() }}</strong></span>
                                     </div>
                                 </div>
                                 <div class="lt-actions">

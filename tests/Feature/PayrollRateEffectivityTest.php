@@ -211,6 +211,7 @@ class PayrollRateEffectivityTest extends TestCase
             'sss_rate'              => 5.00,
             'philhealth_rate'       => 2.50,
             'pagibig_rate'          => 2.00,
+            'vale_ceiling_percent'  => 100,
         ], $overrides);
     }
 
@@ -341,23 +342,21 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertSame(round($out['gross'] - $out['totalDeductions'], 2), round($out['net'], 2));
     }
 
-    /**
-     * The bonus is off the form — it is moving to the payroll records — so a
-     * rate save has to carry the one in force onto the new row. Dropping it
-     * would quietly stop paying a bonus people are owed.
-     */
-    public function test_saving_the_premiums_keeps_the_bonus_in_force(): void
+    /** The bonus is back on the form, so the form is what sets it. */
+    public function test_the_form_sets_the_bonus(): void
     {
         $this->rate('2026-09-01', ['bonus' => 750]);
 
         $this->actingAs($this->admin())
              ->post(route('payroll-rates.store'), $this->payload([
                  'effective_from' => '2026-10-01',
-                 'bonus'          => 999,   // ignored: there is no such field now
+                 'bonus'          => 999,
              ]))
              ->assertSessionHasNoErrors();
 
-        $this->assertSame(750.0, (float) PayrollRate::newestFirst()->first()->bonus);
+        $this->assertSame(999.0, (float) PayrollRate::newestFirst()->first()->bonus);
+        $this->assertSame(750.0, (float) PayrollRate::effectiveOn('2026-09-15')->bonus,
+            'the earlier row is untouched');
     }
 
     /** With none on file the column takes 0, not the null it will not hold. */
@@ -403,8 +402,9 @@ class PayrollRateEffectivityTest extends TestCase
     {
         $this->actingAs($this->admin())
              ->post(route('payroll-rates.store'), [
-                 'effective_from' => '2026-10-01',
-                 'uses_defaults'  => 1,
+                 'effective_from'       => '2026-10-01',
+                 'uses_defaults'        => 1,
+                 'vale_ceiling_percent' => 100,
              ])
              ->assertSessionHasNoErrors();
 
@@ -420,8 +420,9 @@ class PayrollRateEffectivityTest extends TestCase
     {
         $this->actingAs($this->admin())
              ->post(route('payroll-rates.store'), [
-                 'effective_from' => '2026-10-01',
-                 'uses_defaults'  => 1,
+                 'effective_from'       => '2026-10-01',
+                 'uses_defaults'        => 1,
+                 'vale_ceiling_percent' => 100,
              ])
              ->assertSessionHasNoErrors();
     }
@@ -550,8 +551,9 @@ class PayrollRateEffectivityTest extends TestCase
     {
         $this->actingAs($this->admin())
              ->post(route('payroll-rates.store'), [
-                 'effective_from' => '2026-10-01',
-                 'uses_defaults'  => 1,
+                 'effective_from'       => '2026-10-01',
+                 'uses_defaults'        => 1,
+                 'vale_ceiling_percent' => 100,
              ])
              ->assertSessionHasNoErrors();
 
@@ -648,5 +650,94 @@ class PayrollRateEffectivityTest extends TestCase
 
         $this->assertSame(90, $late['lateMinutes']);
         $this->assertSame(round($onTime['gross'], 2), round($late['gross'], 2));
+    }
+
+    // ── The vale ceiling ─────────────────────────────────────────────────────
+
+    /** An attendance record carrying a cash advance. */
+    private function withVale(string $date, float $vale): Attendance
+    {
+        $rec = $this->record($date, '08:00:00', 8);
+        $rec->update(['vale' => $vale]);
+
+        return $rec->fresh()->load('employee.laborType');
+    }
+
+    /** 100% is no ceiling, which is what the code did before it existed. */
+    public function test_a_full_ceiling_takes_the_whole_vale(): void
+    {
+        $this->rate('2026-01-01', ['sss_rate' => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0, 'withholding_tax' => false]);
+
+        $out = $this->compute($this->withVale('2026-03-04', 600));
+
+        $this->assertSame(600.0, round($out['vale'], 2));
+        $this->assertSame(200.0, round($out['net'], 2), '800 less the whole 600');
+    }
+
+    /**
+     * The point of the ceiling: a worker who borrowed more than they earned
+     * still goes home with something.
+     */
+    public function test_the_ceiling_caps_what_one_period_collects(): void
+    {
+        $this->rate('2026-01-01', [
+            'vale_ceiling_percent' => 50,
+            'sss_rate' => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0, 'withholding_tax' => false,
+        ]);
+
+        $out = $this->compute($this->withVale('2026-03-04', 600));
+
+        $this->assertSame(400.0, round($out['vale'], 2), 'half of 800');
+        $this->assertSame(400.0, round($out['net'], 2), 'the rest is still paid');
+    }
+
+    /** A vale under the ceiling is taken in full — the cap is a limit, not a rate. */
+    public function test_a_small_vale_is_untouched_by_the_ceiling(): void
+    {
+        $this->rate('2026-01-01', [
+            'vale_ceiling_percent' => 50,
+            'sss_rate' => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0, 'withholding_tax' => false,
+        ]);
+
+        $out = $this->compute($this->withVale('2026-03-04', 100));
+
+        $this->assertSame(100.0, round($out['vale'], 2));
+    }
+
+    /** The ceiling is measured on pay after the statutory deductions, not gross. */
+    public function test_the_ceiling_is_measured_after_the_statutory_deductions(): void
+    {
+        $this->rate('2026-01-01', [
+            'vale_ceiling_percent' => 50,
+            'sss_rate' => 10, 'philhealth_rate' => 0, 'pagibig_rate' => 0, 'withholding_tax' => false,
+        ]);
+
+        $out = $this->compute($this->withVale('2026-03-04', 600));
+
+        // 800 gross, 80 SSS, so 720 left — half of that is 360.
+        $this->assertSame(360.0, round($out['vale'], 2));
+    }
+
+    /** Dated like the rest: a ceiling set today does not reopen a paid week. */
+    public function test_the_ceiling_does_not_reach_backwards(): void
+    {
+        $this->rate('2026-01-01', ['sss_rate' => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0, 'withholding_tax' => false]);
+        $this->rate('2026-06-01', [
+            'vale_ceiling_percent' => 50,
+            'sss_rate' => 0, 'philhealth_rate' => 0, 'pagibig_rate' => 0, 'withholding_tax' => false,
+        ]);
+
+        $march = $this->compute($this->withVale('2026-03-04', 600));
+        $july  = $this->compute($this->withVale('2026-07-01', 600));
+
+        $this->assertSame(600.0, round($march['vale'], 2), 'March collected the whole advance');
+        $this->assertSame(400.0, round($july['vale'], 2));
+    }
+
+    public function test_a_ceiling_above_a_hundred_is_refused(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), $this->payload(['vale_ceiling_percent' => 150]))
+             ->assertSessionHasErrors('vale_ceiling_percent');
     }
 }

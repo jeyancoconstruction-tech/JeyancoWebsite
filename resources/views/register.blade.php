@@ -24,7 +24,7 @@
     {{-- ── Header ──────────────────────────────────────────────────────────── --}}
     <div class="rm-header">
         <div>
-            <h1 class="rm-title">{{ __('Register &amp; Manage Employees') }}</h1>
+            <h1 class="rm-title">{{ __('Register & Manage Employees') }}</h1>
             <p class="rm-sub">
                 Newly registered workers and workers detected by the fingerprint kiosk both wait under
                 <strong>{{ __('Pending') }}</strong>. A worker becomes active — and appears across Attendance, Payroll
@@ -307,7 +307,7 @@
 
         <div class="rm-modal-foot">
             <button type="button" class="rm-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-            <button type="submit" class="rm-btn-primary" id="empFormSubmit"><i class="fas fa-check"></i> <span>{{ __('Save &amp; Activate') }}</span></button>
+            <button type="submit" class="rm-btn-primary" id="empFormSubmit"><i class="fas fa-check"></i> <span>{{ __('Save & Activate') }}</span></button>
         </div>
       </form>
     </div>

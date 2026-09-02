@@ -183,7 +183,7 @@
                         </button>
                     </form>
                     <p class="chat-input-hint">
-                        Press <kbd>{{ __('Enter') }}</kbd> {{ __('to send &nbsp;&middot;&nbsp; Powered by Jeyanco Intelligence') }}
+                        Press <kbd>{{ __('Enter') }}</kbd> {{ __('to send  ·  Powered by Jeyanco Intelligence') }}
                     </p>
                 </div>
 

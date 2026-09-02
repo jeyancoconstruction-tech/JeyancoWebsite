@@ -385,6 +385,18 @@ class PayrollService
         $vale             = $onContract ? 0 : (is_numeric($rec->vale) ? $rec->vale : 0);
         $manualDeductions = $onContract ? 0 : (is_numeric($rec->deductions) ? $rec->deductions : 0);
 
+        // A vale is a loan against wages, and taking all of it can send a
+        // worker home with nothing. The ceiling caps what one period may
+        // collect, as a share of what is left after the statutory deductions.
+        // What it does not take is still owed — the balance is untouched, only
+        // this period's collection is limited.
+        $valeCeiling = (int) ($rates['vale_ceiling_percent'] ?? 100);
+
+        if ($valeCeiling < 100) {
+            $afterStatutory = max(0, $gross - $autoDeductions);
+            $vale = min($vale, round($afterStatutory * $valeCeiling / 100, 2));
+        }
+
         $totalDeductions = $autoDeductions + $vale + $manualDeductions;
         $net             = $gross - $totalDeductions;
 

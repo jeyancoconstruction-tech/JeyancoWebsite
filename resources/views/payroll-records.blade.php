@@ -131,7 +131,7 @@
         </div>
         <button type="button" class="btn btn-success fw-600"
                 data-bs-toggle="modal" data-bs-target="#exportPreviewModal">
-            <i class="fas fa-file-excel me-1"></i> {{ __('Preview &amp; Download') }}
+            <i class="fas fa-file-excel me-1"></i> {{ __('Preview & Download') }}
         </button>
     </div>
 
@@ -386,7 +386,7 @@
                                  the arithmetic that reaches net. --}}
                             <div class="rc-math">
                                 <span>{{ __('Gross') }}</span><b id="rcMGross">&mdash;</b>
-                                <span>{{ __('&minus; Deductions') }}</span><b id="rcMDed">&mdash;</b>
+                                <span>{{ __('− Deductions') }}</span><b id="rcMDed">&mdash;</b>
                                 <span>{{ __('+ Bonus') }}</span><b id="rcMBonus">&mdash;</b>
                             </div>
 

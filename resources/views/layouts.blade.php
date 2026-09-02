@@ -259,7 +259,7 @@
             </div>
             <div>
                 <span class="chatbot-name">{{ __('Jeyanco AI') }}</span>
-                <span class="chatbot-status-text">{{ __('Online &bull; Ready to help') }}</span>
+                <span class="chatbot-status-text">{{ __('Online • Ready to help') }}</span>
             </div>
         </div>
         <div class="chatbot-header-btns">
@@ -277,10 +277,10 @@
             </div>
         </div>
         <div class="cb-quick-chips" id="cb-quick-chips">
-            <button class="cb-chip" data-msg="Total employees">{{ __('&#128101; Employees') }}</button>
-            <button class="cb-chip" data-msg="Dashboard overview">{{ __('&#128202; Overview') }}</button>
-            <button class="cb-chip" data-msg="Attendance today">{{ __('&#9989; Attendance') }}</button>
-            <button class="cb-chip" data-msg="help">{{ __('&#10067; Help') }}</button>
+            <button class="cb-chip" data-msg="Total employees">{{ __('👥 Employees') }}</button>
+            <button class="cb-chip" data-msg="Dashboard overview">{{ __('📊 Overview') }}</button>
+            <button class="cb-chip" data-msg="Attendance today">{{ __('✅ Attendance') }}</button>
+            <button class="cb-chip" data-msg="help">{{ __('❓ Help') }}</button>
         </div>
     </div>
 
@@ -289,7 +289,7 @@
             <input type="text" id="chatbot-input" class="cb-input" placeholder="{{ __('Ask something...') }}" autocomplete="off">
             <button id="chatbot-send" class="cb-send-btn"><i class="fas fa-paper-plane"></i></button>
         </div>
-        <p class="cb-hint">{{ __('Press Enter to send &nbsp;&middot;&nbsp; Powered by Jeyanco Intelligence') }}</p>
+        <p class="cb-hint">{{ __('Press Enter to send  ·  Powered by Jeyanco Intelligence') }}</p>
     </div>
 </div>
 

@@ -14,7 +14,7 @@
             </p>
         </div>
         <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
-            <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Register &amp; Manage') }}
+            <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Register & Manage') }}
         </a>
     </div>
 
@@ -36,7 +36,7 @@
                     <div class="ep-section-head">
                         <span class="ep-section-icon"><i class="fas fa-helmet-safety"></i></span>
                         <div>
-                            <h3 class="ep-section-title">{{ __('Employment &amp; Pay') }}</h3>
+                            <h3 class="ep-section-title">{{ __('Employment & Pay') }}</h3>
                             <p class="ep-section-sub">{{ __('What the worker is paid and where they are assigned. Required to activate them.') }}</p>
                         </div>
                     </div>

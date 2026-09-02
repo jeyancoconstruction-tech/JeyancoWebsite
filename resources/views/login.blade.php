@@ -50,7 +50,7 @@
         </button>
 
         <div class="secure-note">
-            <i class="fas fa-lock"></i> {{ __('Secured administrator access &middot; authorized personnel only') }}
+            <i class="fas fa-lock"></i> {{ __('Secured administrator access · authorized personnel only') }}
         </div>
     </form>
 @endsection

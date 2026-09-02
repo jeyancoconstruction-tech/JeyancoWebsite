@@ -26,6 +26,7 @@ class PayrollRate extends Model
         'bonus',
         'uses_defaults',
         'withholding_tax',
+        'vale_ceiling_percent',
         'sss_rate',
         'philhealth_rate',
         'pagibig_rate',
@@ -42,6 +43,7 @@ class PayrollRate extends Model
         'bonus'                      => 'float',
         'uses_defaults'              => 'boolean',
         'withholding_tax'            => 'boolean',
+        'vale_ceiling_percent'       => 'integer',
         'sss_rate'                   => 'float',
         'philhealth_rate'            => 'float',
         'pagibig_rate'               => 'float',
@@ -171,6 +173,10 @@ class PayrollRate extends Model
                 'withholding_tax' => $this->uses_defaults
                     ? true
                     : (bool) ($this->withholding_tax ?? true),
+                // 100 is no ceiling. A vale never takes more than this share of
+                // what is left after the statutory deductions; the rest stays
+                // owed rather than being written off.
+                'vale_ceiling_percent' => min(100, max(0, (int) ($this->vale_ceiling_percent ?? 100))),
             ];
     }
 
@@ -184,7 +190,7 @@ class PayrollRate extends Model
     public static function fallbackRates(): array
     {
         return self::DEFAULTS
-            + ['sss_rate' => 0.0, 'philhealth_rate' => 0.0, 'pagibig_rate' => 0.0, 'daily_rate' => null, 'bonus' => 0.0, 'withholding_tax' => true];
+            + ['sss_rate' => 0.0, 'philhealth_rate' => 0.0, 'pagibig_rate' => 0.0, 'daily_rate' => null, 'bonus' => 0.0, 'withholding_tax' => true, 'vale_ceiling_percent' => 100];
     }
 
     /**
