@@ -144,6 +144,14 @@ class PayrollRecordsController extends Controller
         $mode  = $request->input('mode', 'weekly');
         $today = Carbon::now();
 
+        // Reports takes a week or a single day. A loose range is not a pay
+        // period, so a daily breakdown of one breaks down into days nobody is
+        // paid on — the form does not offer it there, and a URL that asks for
+        // it anyway falls back to the week rather than computing it.
+        if ($mode === 'custom' && $request->input('tab') === 'reports') {
+            $mode = 'weekly';
+        }
+
         if ($mode === 'daily') {
             $date  = $request->filled('date') && strtotime($request->date) ? Carbon::parse($request->date) : $today->copy();
             $from  = $to = $date->toDateString();

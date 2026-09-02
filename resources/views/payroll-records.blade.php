@@ -155,20 +155,20 @@
         <form method="GET" action="{{ route('payroll-records') }}" id="prFilter">
             {{-- Applying a filter must not drop you back onto the other page. --}}
             @if($onReports)<input type="hidden" name="tab" value="reports">@endif
-            {{-- Reports is a weekly read: the daily breakdown is the days inside
-                 a week, so a single date or a loose range has nothing to break
-                 down, and it covers everyone. Weekly stays visible so the badge
-                 below still says what it is showing. --}}
-            <input type="hidden" name="mode" id="mode" value="{{ $onReports ? 'weekly' : $period['mode'] }}">
+            {{-- Reports takes a week or a single day, not a loose range: the
+                 daily breakdown is the days inside a pay period. The controller
+                 already falls a reports URL asking for custom back to the week,
+                 so the mode here is only ever one the form offers. --}}
+            <input type="hidden" name="mode" id="mode" value="{{ $period['mode'] }}">
 
             <div class="report-modes mb-3">
-                <button type="button" class="mode-btn {{ $onReports || $period['mode'] === 'weekly' ? 'active' : '' }}" data-mode="weekly">
+                <button type="button" class="mode-btn {{ $period['mode'] === 'weekly' ? 'active' : '' }}" data-mode="weekly">
                     <i class="fas fa-calendar-week me-1"></i> Weekly (Mon–Sun)
                 </button>
-                @unless($onReports)
                 <button type="button" class="mode-btn {{ $period['mode'] === 'daily' ? 'active' : '' }}" data-mode="daily">
                     <i class="fas fa-calendar-day me-1"></i> Daily
                 </button>
+                @unless($onReports)
                 <button type="button" class="mode-btn {{ $period['mode'] === 'custom' ? 'active' : '' }}" data-mode="custom">
                     <i class="fas fa-calendar-alt me-1"></i> Custom Range
                 </button>
@@ -180,11 +180,11 @@
                     <label class="form-label small fw-bold text-muted mb-1">Week</label>
                     <input type="week" name="week" value="{{ $period['week'] }}" class="form-control" style="border-color: var(--border);">
                 </div>
-                @unless($onReports)
                 <div class="col-auto mode-field" data-for="daily">
                     <label class="form-label small fw-bold text-muted mb-1">Date</label>
                     <input type="date" name="date" value="{{ $period['date'] }}" class="form-control" style="border-color: var(--border);">
                 </div>
+                @unless($onReports)
                 <div class="col-auto mode-field" data-for="custom">
                     <label class="form-label small fw-bold text-muted mb-1">From</label>
                     <input type="date" name="from" value="{{ $period['custom_from'] }}" class="form-control" style="border-color: var(--border);">
@@ -193,12 +193,12 @@
                     <label class="form-label small fw-bold text-muted mb-1">To</label>
                     <input type="date" name="to" value="{{ $period['custom_to'] }}" class="form-control" style="border-color: var(--border);">
                 </div>
+                @endunless
                 <div class="col-md-3">
                     <label class="form-label small fw-bold text-muted mb-1">Employee (name or ID)</label>
                     <input type="text" name="employee" value="{{ $search }}" placeholder="All employees"
                            autocomplete="off" class="form-control" style="border-color: var(--border);">
                 </div>
-                @endunless
                 <div class="col-auto">
                     <button type="submit" class="btn btn-primary fw-600">
                         <i class="fas fa-magnifying-glass me-1"></i> Apply
@@ -211,7 +211,7 @@
             <span class="badge p-2 border" style="background:var(--surface);color:var(--brand);border-color:var(--border);">
                 <i class="fas fa-calendar-alt me-1"></i> {{ ucfirst($period['mode']) }} &middot; {{ $period['label'] }}
             </span>
-            @if($selectedEmployee && ! $onReports)
+            @if($selectedEmployee)
             <span class="badge p-2 border ms-1" style="background:var(--brand-subtle);color:var(--brand);border-color:var(--border);">
                 <i class="fas fa-user me-1"></i> {{ $selectedEmployee['name'] }} (#{{ $selectedEmployee['employee_id'] }})
             </span>
