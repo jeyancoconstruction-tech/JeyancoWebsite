@@ -353,4 +353,21 @@ class SystemSettingsTest extends TestCase
              ->put(route('system-settings.appearance.update'), ['default_theme' => 'neon'])
              ->assertSessionHasErrors('default_theme');
     }
+
+    /**
+     * Saving Light has to make the page light for the person who saved it.
+     * Their own theme is in their own browser and outranks the default, so
+     * without this the screen is unchanged and the save reads as having failed.
+     */
+    public function test_saving_the_theme_switches_the_saver_too(): void
+    {
+        $this->actingAs($this->admin())
+             ->put(route('system-settings.appearance.update'), ['default_theme' => 'light'])
+             ->assertSessionHas('theme_changed', 'light');
+
+        $this->actingAs($this->admin())
+             ->get(route('system-settings.appearance'))
+             ->assertOk()
+             ->assertSee("localStorage.setItem('jeyanco-theme', picked)", false);
+    }
 }

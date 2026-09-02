@@ -99,6 +99,11 @@ class SystemSettingsController extends Controller
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 
-        return $this->save($settings, $data, 'system-settings.appearance');
+        // Whoever saved this has their own theme in their own browser, and it
+        // outranks the default — so without this the page they land on looks
+        // exactly as it did and the save reads as having done nothing. Saving
+        // the default is taken as choosing it for yourself as well.
+        return $this->save($settings, $data, 'system-settings.appearance')
+            ->with('theme_changed', $data['default_theme']);
     }
 }
