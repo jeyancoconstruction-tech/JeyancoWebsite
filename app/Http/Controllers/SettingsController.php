@@ -17,6 +17,9 @@ use Carbon\Carbon;
 
 class SettingsController extends Controller
 {
+    /** How many rate sets the history table shows before it stops being read. */
+    private const RATE_HISTORY_SHOWN = 5;
+
     public function index(Request $request)
     {
         $settings = Setting::first();
@@ -25,8 +28,15 @@ class SettingsController extends Controller
         // Rate history, newest effectivity first: the card shows the set in
         // force and what came before it, because "which numbers paid this
         // period" is the question an audit actually asks.
-        $payrollRates = PayrollRate::newestFirst()->get();
-        $currentRate  = PayrollRate::current();
+        //
+        // Only the five most recent, though. Every change is an insert, so the
+        // list grows for the life of the system and a table that long stops
+        // being read. The older rows are not gone — they still answer for the
+        // days they covered — so the count is shown rather than quietly
+        // dropped.
+        $payrollRates     = PayrollRate::newestFirst()->limit(self::RATE_HISTORY_SHOWN)->get();
+        $payrollRateTotal = PayrollRate::count();
+        $currentRate      = PayrollRate::current();
 
         // Holiday calendar: official PH holidays for the selected year merged
         // with manual entries (auto-recognised, admin-overridable).
@@ -67,7 +77,7 @@ class SettingsController extends Controller
 
         return view('settings.index', compact(
             'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap',
-            'payrollRates', 'currentRate'
+            'payrollRates', 'payrollRateTotal', 'currentRate'
         ));
     }
 

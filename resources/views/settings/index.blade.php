@@ -235,7 +235,12 @@
                              answering for the days they covered. --}}
                         @if($payrollRates->count() > 1)
                         <div class="pr-history">
-                            <p class="pr-history-title">Rate history</p>
+                            <p class="pr-history-title">
+                                Rate history
+                                @if($payrollRateTotal > $payrollRates->count())
+                                    <span class="pr-history-count">newest {{ $payrollRates->count() }} of {{ $payrollRateTotal }}</span>
+                                @endif
+                            </p>
                             <div class="table-responsive">
                                 <table class="ps-dole-table">
                                     <thead>
@@ -1590,6 +1595,12 @@
 .pr-history-title {
     margin:0 0 8px; font-size:.75rem; font-weight:700; letter-spacing:.5px;
     text-transform:uppercase; color:var(--text-secondary,#66707c);
+}
+/* The table is capped, so say what is not on it — a truncated audit list that
+   does not admit to being truncated reads as rows somebody deleted. */
+.pr-history-count {
+    margin-left:8px; font-weight:600; letter-spacing:.3px;
+    text-transform:none; color:var(--text-muted,#8a929b);
 }
 .pr-history-current td { font-weight:600; }
 .pr-in-force {

@@ -359,4 +359,30 @@ class PayrollRateEffectivityTest extends TestCase
 
         $this->assertSame(0.0, (float) PayrollRate::newestFirst()->first()->bonus);
     }
+
+    // ── Rate history ─────────────────────────────────────────────────────────
+
+    /**
+     * Every change is an insert, so the list grows for the life of the system.
+     * The card shows the newest five and says how many there are, because a
+     * truncated audit list that does not admit to being truncated reads as rows
+     * somebody deleted.
+     */
+    public function test_the_rate_history_shows_the_newest_five(): void
+    {
+        foreach (['2026-01-01', '2026-02-01', '2026-03-01', '2026-04-01', '2026-05-01', '2026-06-01'] as $from) {
+            $this->rate($from);
+        }
+
+        $total = PayrollRate::count();
+
+        $response = $this->actingAs($this->admin())->get(route('settings.index'));
+        $response->assertOk();
+
+        $shown = $response->viewData('payrollRates');
+
+        $this->assertCount(5, $shown, 'the table is capped at five');
+        $this->assertSame($total, $response->viewData('payrollRateTotal'), 'the full count is still reported');
+        $this->assertSame('2026-06-01', $shown->first()->effective_from->toDateString(), 'newest first');
+    }
 }
