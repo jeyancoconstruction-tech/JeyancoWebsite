@@ -118,11 +118,16 @@
 @section('content')
 <div class="pr-page">
 
+    {{-- The table lists a row per worker per day either way; what changes is how
+         much of the calendar it covers, so the heading follows the mode rather
+         than always claiming the same span. --}}
+    @php $isDaily = $period['mode'] === 'daily'; @endphp
+
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
     <div class="pr-header d-flex justify-content-between align-items-center mb-3">
         <div>
             <h1>Payroll Records</h1>
-            <p>Daily breakdown of pay, for the period below</p>
+            <p>{{ $isDaily ? 'Daily' : 'Weekly' }} breakdown of pay, for the period below</p>
         </div>
         <button type="button" class="btn btn-success fw-600"
                 data-bs-toggle="modal" data-bs-target="#exportPreviewModal">
@@ -230,7 +235,10 @@
          Payroll Records destination they belonged to. --}}
         <div class="card table-card">
             <div class="table-card-header">
-                <h6><i class="fas fa-calendar-day"></i> Daily Breakdown</h6>
+                <h6>
+                    <i class="fas {{ $isDaily ? 'fa-calendar-day' : 'fa-calendar-week' }}"></i>
+                    {{ $isDaily ? 'Daily' : 'Weekly' }} Breakdown
+                </h6>
             </div>
             <div class="table-responsive">
                 <table class="table align-middle table-hover mb-0">
