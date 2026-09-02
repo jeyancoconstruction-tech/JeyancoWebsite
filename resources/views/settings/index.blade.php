@@ -89,7 +89,7 @@
                             <i class="fas fa-gear"></i>
                             <div>
                                 <h6>Payroll settings</h6>
-                                <p>Wage, premiums, and deductions</p>
+                                <p>Premiums and deductions</p>
                             </div>
                         </div>
                         <span class="pr-admin"><i class="fas fa-lock"></i> Admin</span>
@@ -119,22 +119,14 @@
                             <p class="pr-block-hint">Night differential: 10:00 PM – 6:00 AM. A regular holiday is fixed at 200% by the Labor Code and is not set here.</p>
                         </section>
 
-                        {{-- Daily wage --}}
+                        {{-- Effectivity --}}
                         <section class="pr-block">
                             <div class="pr-block-head">
-                                <i class="fas fa-money-bill-wave"></i>
-                                <span>Daily wage</span>
-                                <small>Effectivity-dated</small>
+                                <i class="fas fa-calendar-day"></i>
+                                <span>Effectivity</span>
+                                <small>Applies to this card</small>
                             </div>
                             <div class="pr-grid pr-grid-2">
-                                <div class="pr-field">
-                                    <label class="pr-field-label" for="daily_rate">Daily rate ₱</label>
-                                    <input type="number" step="0.01" min="0"
-                                           id="daily_rate" name="daily_rate" placeholder="none set"
-                                           class="form-control ps-input @error('daily_rate') is-invalid @enderror"
-                                           value="{{ old('daily_rate', ($rate?->daily_rate ?? 0) > 0 ? $rate->daily_rate : null) }}">
-                                    @error('daily_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
                                 <div class="pr-field">
                                     <label class="pr-field-label" for="effective_from">Effective from</label>
                                     <input type="date" id="effective_from" name="effective_from"
@@ -143,7 +135,7 @@
                                     @error('effective_from')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                             </div>
-                            <p class="pr-block-hint">DOLE minimum wage floor. A labour type paying less than this is lifted to it; leave it empty and each labour type keeps its own rate. The date applies to everything on this card.</p>
+                            <p class="pr-block-hint">The date applies to the premiums and the deductions on this card. The daily wage is set below and carries forward unchanged.</p>
                         </section>
 
                         {{-- Deductions --}}
@@ -281,29 +273,34 @@
                 @csrf
                 @method('PUT')
 
-                {{-- Bonus + rest day. The contributions moved to the dated rate card above. --}}
+                {{-- Daily wage + rest day. The premiums and the contributions
+                     live in the dated card above; the wage sits here because it
+                     is the one number the office changes on its own, apart from
+                     a labour type's own rate. Saving it still adds a dated rate
+                     row, so a period already paid keeps the wage it was paid
+                     at. --}}
                 <div class="row g-4 mb-4">
                     <div class="col-12">
                         <div class="ps-card h-100" id="ot_rate_section">
                             <div class="ps-card-header">
                                 <i class="fas fa-sliders-h"></i>
                                 <div>
-                                    <h6>Bonus & Rest Day</h6>
-                                    <p>Rates, the wage floor and the contributions all live in the dated card above.</p>
+                                    <h6>Daily Wage & Rest Day</h6>
+                                    <p>The premiums and the contributions all live in the dated card above.</p>
                                 </div>
                             </div>
                             <div class="ps-card-body">
                                 <div class="mb-4">
-                                    <label class="ps-label" for="bonus">Bonus (per period)</label>
+                                    <label class="ps-label" for="daily_rate">Daily Wage (₱)</label>
                                     <div class="input-group">
                                         <span class="input-group-text ps-ig-text">₱</span>
                                         <input type="number" step="0.01" min="0"
-                                               class="form-control ps-input @error('bonus') is-invalid @enderror"
-                                               id="bonus" name="bonus"
-                                               value="{{ $settings->bonus ?? 0 }}">
+                                               class="form-control ps-input @error('daily_rate') is-invalid @enderror"
+                                               id="daily_rate" name="daily_rate" placeholder="none set"
+                                               value="{{ old('daily_rate', ($currentRate?->daily_rate ?? 0) > 0 ? $currentRate->daily_rate : null) }}">
                                     </div>
-                                    @error('bonus')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    <small class="text-muted d-block mt-1">Flat amount added per employee each pay period.</small>
+                                    @error('daily_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    <small class="text-muted d-block mt-1">DOLE minimum wage floor. A labour type paying less than this is lifted to it; leave it empty and each labour type keeps its own daily rate. A change takes effect today — payroll already paid is not recomputed.</small>
                                 </div>
                                 <div class="mb-0">
                                     <label class="ps-label">Sunday Rest Day Pay</label>

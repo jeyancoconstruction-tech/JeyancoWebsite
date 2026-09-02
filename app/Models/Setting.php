@@ -7,10 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * The one settings row.
  *
- * Only `bonus` and `sunday_rest_day_enabled` are still written here. The daily
- * rate, the premiums and the contribution rates moved to PayrollRate, where a
- * change is dated and cannot rewrite a period already paid. Their columns are
- * left in place because the opening rate row was seeded from them.
+ * Only `sunday_rest_day_enabled` is still written here. The daily wage, the
+ * premiums and the contribution rates all live on PayrollRate, where a change
+ * is dated and cannot rewrite a period already paid — the wage is set on the
+ * settings page but saved as a rate row. Their columns are left in place
+ * because the opening rate row was seeded from them.
+ *
+ * `bonus` is read by payroll and shown on the payslip, but nothing writes it
+ * any more: the settings field that set it now sets the daily wage instead.
  */
 class Setting extends Model
 {

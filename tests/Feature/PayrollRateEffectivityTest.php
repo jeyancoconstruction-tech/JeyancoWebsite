@@ -209,7 +209,6 @@ class PayrollRateEffectivityTest extends TestCase
             'ot_multiplier'         => 1.25,
             'night_diff_multiplier' => 1.10,
             'rest_day_multiplier'   => 1.30,
-            'daily_rate'            => 645,
             'sss_rate'              => 5.00,
             'philhealth_rate'       => 2.50,
             'pagibig_rate'          => 2.00,
@@ -253,5 +252,92 @@ class PayrollRateEffectivityTest extends TestCase
         $this->actingAs($this->admin())
              ->post(route('payroll-rates.store'), $this->payload(['effective_from' => '']))
              ->assertSessionHasErrors('effective_from');
+    }
+
+    // ── The daily wage, saved from the settings card ─────────────────────────
+
+    /**
+     * The wage input moved off the dated card and onto the settings card below
+     * it, but the wage did not stop being a dated number. Saving it has to add
+     * a row like every other rate change, or a wage rise would reach backwards
+     * into periods already paid.
+     */
+    public function test_saving_the_wage_on_the_settings_form_adds_a_dated_row(): void
+    {
+        $existing = $this->rate('2026-01-01', ['daily_rate' => 610]);
+        $before   = PayrollRate::count();
+
+        $this->actingAs($this->admin())
+             ->put(route('settings.update'), ['daily_rate' => 645, 'sunday_rest_day_enabled' => 1])
+             ->assertSessionHasNoErrors();
+
+        $this->assertSame($before + 1, PayrollRate::count(), 'a new row, not an edit');
+        $this->assertSame(610.0, (float) $existing->fresh()->daily_rate, 'the old row is untouched');
+
+        $saved = PayrollRate::current();
+        $this->assertSame(645.0, (float) $saved->daily_rate);
+        $this->assertSame(now()->toDateString(), $saved->effective_from->toDateString());
+    }
+
+    /** The premiums in force ride along, or saving a wage would reset them. */
+    public function test_the_new_wage_row_carries_the_premiums_forward(): void
+    {
+        $this->rate('2026-01-01', ['ot_multiplier' => 1.50, 'sss_rate' => 4.25, 'daily_rate' => 610]);
+
+        $this->actingAs($this->admin())
+             ->put(route('settings.update'), ['daily_rate' => 645, 'sunday_rest_day_enabled' => 1]);
+
+        $saved = PayrollRate::current();
+        $this->assertSame(1.50, (float) $saved->ot_multiplier);
+        $this->assertSame(4.25, (float) $saved->sss_rate);
+    }
+
+    /**
+     * The rest-day toggle shares this form. Toggling it must not add a rate row
+     * — the history is meant to read as the wage orders that happened.
+     */
+    public function test_saving_an_unchanged_wage_writes_no_row(): void
+    {
+        $this->rate('2026-01-01', ['daily_rate' => 645]);
+        $before = PayrollRate::count();
+
+        $this->actingAs($this->admin())
+             ->put(route('settings.update'), ['daily_rate' => 645, 'sunday_rest_day_enabled' => 1])
+             ->assertSessionHasNoErrors();
+
+        $this->assertSame($before, PayrollRate::count(), 'nothing changed, so nothing was written');
+    }
+
+    /** An empty box is no floor, and 0 already means the same thing. */
+    public function test_an_empty_wage_against_a_zero_floor_writes_no_row(): void
+    {
+        $this->rate('2026-01-01', ['daily_rate' => 0]);
+        $before = PayrollRate::count();
+
+        $this->actingAs($this->admin())
+             ->put(route('settings.update'), ['daily_rate' => '', 'sunday_rest_day_enabled' => 1]);
+
+        $this->assertSame($before, PayrollRate::count());
+    }
+
+    /**
+     * The premium form no longer carries a wage input. It still writes a whole
+     * row, so it has to copy the wage in force onto it — otherwise raising the
+     * overtime multiplier would silently drop the wage order.
+     */
+    public function test_saving_the_premiums_keeps_the_wage_in_force(): void
+    {
+        $this->rate('2026-09-01', ['daily_rate' => 645]);
+
+        $this->actingAs($this->admin())
+             ->post(route('payroll-rates.store'), $this->payload([
+                 'effective_from' => '2026-10-01',
+                 'ot_multiplier'  => 1.50,
+             ]))
+             ->assertSessionHasNoErrors();
+
+        $saved = PayrollRate::newestFirst()->first();
+        $this->assertSame(1.50, (float) $saved->ot_multiplier);
+        $this->assertSame(645.0, (float) $saved->daily_rate, 'the wage rode along');
     }
 }
