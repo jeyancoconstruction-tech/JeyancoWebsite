@@ -230,9 +230,10 @@
         </div>
     </div>
 
-    {{-- ── Daily breakdown ─────────────────────────────────────────────────
+    {{-- ── The breakdown ───────────────────────────────────────────────────
          The whole page. By Employee and Pay Periods were removed with the
-         Payroll Records destination they belonged to. --}}
+         Payroll Records destination they belonged to; a week is now one row
+         per worker here, and a day is one row per shift. --}}
         <div class="card table-card">
             <div class="table-card-header">
                 <h6>
@@ -244,7 +245,7 @@
                 <table class="table align-middle table-hover mb-0">
                     <thead>
                         <tr>
-                            <th class="ps-4">Date</th>
+                            <th class="ps-4">{{ $isDaily ? 'Date' : 'Week' }}</th>
                             <th>Employee</th>
                             <th class="text-end">Hours</th>
                             <th class="text-end">Daily Rate</th>
@@ -256,30 +257,71 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($days as $day)
-                            @foreach($day['details'] as $d)
-                            {{-- The whole computation for the row is already
-                                 here, so the receipt is built from it rather
-                                 than fetched again. --}}
-                            <tr class="pr-row"
-                                data-slip="{{ json_encode($d) }}"
-                                data-date="{{ \Carbon\Carbon::parse($day['date'])->format('l, F j, Y') }}">
-                                <td class="ps-4 text-muted">{{ \Carbon\Carbon::parse($day['date'])->format('m/d/Y (D)') }}</td>
-                                <td class="fw-semibold">{{ $d['name'] }}</td>
-                                <td class="text-end">{{ $d['hours'] }}</td>
-                                <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
-                                <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
-                                <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['bonus'], 2) }}</td>
-                                <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['gross'], 2) }}</td>
-                                <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($d['totalDeductions'], 2) }}</td>
-                                <td class="text-end pe-4 fw-semibold" style="color:var(--brand);">&#8369;{{ number_format($d['net'], 2) }}</td>
+                        @if($isDaily)
+                            @forelse($days as $day)
+                                @foreach($day['details'] as $d)
+                                {{-- The whole computation for the row is already
+                                     here, so the receipt is built from it rather
+                                     than fetched again. --}}
+                                <tr class="pr-row"
+                                    data-slip="{{ json_encode($d) }}"
+                                    data-date="{{ \Carbon\Carbon::parse($day['date'])->format('l, F j, Y') }}">
+                                    <td class="ps-4 text-muted">{{ \Carbon\Carbon::parse($day['date'])->format('m/d/Y (D)') }}</td>
+                                    <td class="fw-semibold">{{ $d['name'] }}</td>
+                                    <td class="text-end">{{ $d['hours'] }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['bonus'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['gross'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($d['totalDeductions'], 2) }}</td>
+                                    <td class="text-end pe-4 fw-semibold" style="color:var(--brand);">&#8369;{{ number_format($d['net'], 2) }}</td>
+                                </tr>
+                                @endforeach
+                            @empty
+                            <tr>
+                                <td colspan="9" class="text-center py-5 text-muted">No records for this period.</td>
                             </tr>
-                            @endforeach
-                        @empty
-                        <tr>
-                            <td colspan="9" class="text-center py-5 text-muted">No records for this period.</td>
-                        </tr>
-                        @endforelse
+                            @endforelse
+                        @else
+                            {{-- A week is one row per worker, not one per shift.
+                                 The daily rate belongs to the worker rather than
+                                 to a day, so it is read off any day they worked. --}}
+                            @php
+                                $rateOf = [];
+                                foreach ($days as $day) {
+                                    foreach ($day['details'] as $d) {
+                                        $rateOf[$d['employee_id']] ??= $d['dailyRate'];
+                                    }
+                                }
+                            @endphp
+                            @forelse($employees as $emp)
+                                @php
+                                    $t    = $emp['totals'];
+                                    $rate = $rateOf[$emp['employee_id']] ?? 0;
+                                @endphp
+                                <tr class="pr-row"
+                                    data-slip="{{ json_encode([
+                                        'employee_id' => $emp['employee_id'],
+                                        'name'        => $emp['name'],
+                                        'dailyRate'   => $rate,
+                                    ]) }}"
+                                    data-date="{{ $period['label'] }}">
+                                    <td class="ps-4 text-muted">{{ $period['label'] }}</td>
+                                    <td class="fw-semibold">{{ $emp['name'] }}</td>
+                                    <td class="text-end">{{ number_format($t['hours'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($rate, 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($t['restDayPay'] ?? 0, 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($t['bonus'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($t['gross'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--danger);">&#8369;{{ number_format($t['totalDeductions'], 2) }}</td>
+                                    <td class="text-end pe-4 fw-semibold" style="color:var(--brand);">&#8369;{{ number_format($t['net'], 2) }}</td>
+                                </tr>
+                            @empty
+                            <tr>
+                                <td colspan="9" class="text-center py-5 text-muted">No records for this period.</td>
+                            </tr>
+                            @endforelse
+                        @endif
                     </tbody>
                 </table>
             </div>
