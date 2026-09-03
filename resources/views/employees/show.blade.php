@@ -78,6 +78,23 @@
                         @endif
                     </dd>
                 </div>
+                <div class="prof-fact">
+                    <dt>{{ __('Shift') }}</dt>
+                    <dd>
+                        @if($employee->shift)
+                            <span class="prof-tag">
+                                <i class="fas {{ $employee->shift->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>
+                                {{ $employee->shift->name }}
+                                — {{ \Carbon\Carbon::parse($employee->shift->starts_at)->format('g:i A') }}
+                            </span>
+                        @else
+                            {{-- Hindi gitling: ang walang tatak ay bumabagsak sa
+                                 office default sa payroll, at iyon ay dapat
+                                 nakikita imbes na mukhang blangkong hanay. --}}
+                            <span class="prof-tag">{{ __('Unassigned') }}</span>
+                        @endif
+                    </dd>
+                </div>
                 {{-- Nasa header na ang Employment; hindi na inuulit dito. --}}
                 @if($employee->isContractual())
                 <div class="prof-fact">

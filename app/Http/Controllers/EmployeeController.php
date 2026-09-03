@@ -20,8 +20,9 @@ class EmployeeController extends Controller
     {
         // Directory shows the live workforce (active). Pending kiosk detections,
         // archived leavers and removed records live on the Register & Manage hub.
-        $employees = Employee::active()->with(['laborType', 'site'])->get();
+        $employees = Employee::active()->with(['laborType', 'site', 'shift'])->get();
         $sites     = Site::orderBy('name')->get();
+        $shifts    = Shift::orderBy('id')->get();
 
         // ── Notifications ──────────────────────────────────────────────────
         $user              = auth()->user();
@@ -59,7 +60,7 @@ class EmployeeController extends Controller
             'contractual' => $contractual,
         ];
 
-        return view('employees.index', compact('employees', 'sites', 'stats'));
+        return view('employees.index', compact('employees', 'sites', 'shifts', 'stats'));
     }
 
     /**
@@ -159,6 +160,7 @@ class EmployeeController extends Controller
     {
         $request->validate(array_merge($this->identityRules($request), [
             'site_id'        => $request->boolean('profile_form') ? 'required|exists:sites,id' : 'nullable|exists:sites,id',
+            'shift_id'       => 'nullable|exists:shifts,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], $this->profileRules($request)), [
@@ -198,7 +200,7 @@ class EmployeeController extends Controller
             'contract_rate'  => $request->filled('contract_rate') ? (float) $request->contract_rate : null,
             'rate_per_hour'  => $request->rate_per_hour ?: 0,
             'labor_type_id'  => $request->labor_type_id ?: null,
-            'shift_id'       => $request->shift_id ?: null,
+            'shift_id'       => $request->shift_id ?: Shift::defaultForNewHire(),
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
             'photo'          => $photoPath,
@@ -240,6 +242,7 @@ class EmployeeController extends Controller
 
         $request->validate(array_merge($this->identityRules($request), [
             'site_id'        => $request->boolean('profile_form') ? 'required|exists:sites,id' : 'nullable|exists:sites,id',
+            'shift_id'       => 'nullable|exists:shifts,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
         ], $this->profileRules($request)), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
@@ -576,6 +579,7 @@ class EmployeeController extends Controller
 
         $laborTypes        = LaborType::orderBy('name')->get();
         $sites             = Site::orderBy('name')->get();
+        $shifts            = Shift::orderBy('id')->get();
         $nextFingerprintId = $this->nextFingerprintId();
 
         $liveSignature = $this->registerSignature($pending, [
@@ -587,7 +591,7 @@ class EmployeeController extends Controller
 
         return view('register', compact(
             'pending', 'active', 'archived', 'removed',
-            'laborTypes', 'sites', 'nextFingerprintId', 'liveSignature'
+            'laborTypes', 'sites', 'shifts', 'nextFingerprintId', 'liveSignature'
         ));
     }
 
@@ -640,6 +644,7 @@ class EmployeeController extends Controller
             'employment_type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
             'contract_rate'   => ['nullable', 'numeric', 'min:0'],
             'site_id'        => 'nullable|exists:sites,id',
+            'shift_id'       => 'nullable|exists:shifts,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], [
@@ -666,6 +671,10 @@ class EmployeeController extends Controller
             'rate_per_hour'  => $request->rate_per_hour,
             'labor_type_id'  => $request->labor_type_id,
             'site_id'        => $request->site_id ?: null,
+            // Nobody joins the workforce untagged: an unassigned worker shows
+            // as nothing on the settings card and falls back to the office
+            // default at payroll time, where no one can see them.
+            'shift_id'       => $request->shift_id ?: ($employee->shift_id ?: Shift::defaultForNewHire()),
             'fingerprint_id' => $fingerprintId,
             // Details alone do not activate anyone. A worker the kiosk detected
             // arrives here with a finger already enrolled and so goes active;
@@ -714,6 +723,36 @@ class EmployeeController extends Controller
             'success'   => true,
             'vale'      => (float) $employee->vale,
             'formatted' => '₱' . number_format($employee->vale, 2),
+        ]);
+    }
+
+    /**
+     * Move one worker between shifts, from the directory.
+     *
+     * The full edit form can do this too, but tagging a whole crew through it
+     * means opening and re-saving every field of every worker to change one
+     * dropdown. This writes the single column and nothing else.
+     *
+     * It takes effect from the next day worked: an attendance record keeps the
+     * shift it was stamped with, so moving somebody to the night crew does not
+     * reach back and make last month's arrivals late.
+     */
+    public function updateShift(Request $request, $id)
+    {
+        $employee = Employee::findOrFail($id);
+
+        $data = $request->validate([
+            'shift_id' => 'nullable|exists:shifts,id',
+        ]);
+
+        $employee->update(['shift_id' => $data['shift_id'] ?: null]);
+
+        $shift = $employee->shift()->first();
+
+        return response()->json([
+            'success'  => true,
+            'shift_id' => $employee->shift_id,
+            'name'     => $shift?->name,
         ]);
     }
 

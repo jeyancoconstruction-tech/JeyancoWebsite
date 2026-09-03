@@ -9,6 +9,8 @@ use App\Models\LaborType;
 use App\Models\Project;
 use App\Models\Kiosk;
 use App\Models\Site;
+use App\Models\Shift;
+use App\Models\SystemSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -176,7 +178,7 @@ class KioskController extends Controller
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
         $site  = $this->activeSite($request, $kiosk);
 
-        $employees = Employee::with('laborType')
+        $employees = Employee::with(['laborType', 'shift'])
             ->whereIn('status', [Employee::STATUS_ACTIVE, Employee::STATUS_PENDING])
             ->when($site, fn ($q) => $q->where('site_id', $site->id))
             ->orderBy('name')
@@ -191,6 +193,7 @@ class KioskController extends Controller
                 'position'         => $e->position ?: ($e->laborType->name ?? 'Worker'),
                 'employment_type'  => $e->employment_type,
                 'employment_label' => $e->employment_label,
+                'shift'            => $this->shiftPayload($e),
                 'fingerprint_id'   => $e->fingerprint_id,
                 'enrolled'         => $enrolled,
                 // What the kiosk puts on the badge. "Pending" here means the
@@ -358,6 +361,9 @@ class KioskController extends Controller
             'kiosk_id'      => $kiosk?->id,
             'site_id'       => $employeeSite?->id,
             'fingerprint_id'=> $fp,
+            // A worker the kiosk enrols starts on the day crew rather than on no
+            // crew at all; the office moves them across on the employee list.
+            'shift_id'      => Shift::defaultForNewHire(),
             // Kiosk registrations wait for admin acceptance before joining the
             // active workforce — the admin Accepts or Rejects them on the
             // Register & Manage page.
@@ -439,13 +445,14 @@ class KioskController extends Controller
      */
     public function getEmployeesWithDetails()
     {
-        $employees = Employee::with('laborType')->get()->map(function ($emp) {
+        $employees = Employee::with(['laborType', 'shift'])->get()->map(function ($emp) {
             return [
                 'id'           => $emp->id,
                 'name'         => $emp->name,
                 'position'     => $emp->position,
                 'rate_per_hour'=> $emp->rate_per_hour,
                 'fingerprint_id'=> $emp->fingerprint_id,
+                'shift'        => $this->shiftPayload($emp),
                 'labor_type'   => $emp->laborType ? [
                     'id'         => $emp->laborType->id,
                     'name'       => $emp->laborType->name,
@@ -900,13 +907,33 @@ class KioskController extends Controller
     {
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
         $site  = $this->activeSite($request, $kiosk);
-        $today = Carbon::now()->setTimezone('Asia/Manila')->format('Y-m-d');
+        $now   = Carbon::now()->setTimezone('Asia/Manila');
+        $today = $now->format('Y-m-d');
+
+        // What a day buys before overtime starts: the standard day less its
+        // unpaid meal period, the same figure payroll divides by. This board
+        // read a bare 8, so an office running nine hours with an hour of lunch
+        // was shown overtime an hour before anybody had earned any.
+        $sysDay = SystemSetting::current();
+        $paidStandard = max(1.0, (float) $sysDay->standard_hours_per_day
+                                 - (int) $sysDay->unpaid_break_minutes / 60);
 
         // Scope to where the device is standing. Without this the Site B board
         // listed everyone who clocked in anywhere today.
-        $rows = Attendance::with('employee')
-            ->where('date', $today)
+        //
+        // Today's date alone is not the day the board has to show. A night
+        // shift clocks in the evening before and is still on site at one in the
+        // morning, on a row dated yesterday — under a plain date filter the
+        // foreman's board went blank on exactly the crew still working. Rows
+        // left open from yesterday are pulled in as well, within the same
+        // window a shift can still be running.
+        $rows = Attendance::with(['employee', 'shift'])
             ->whereNotNull('time_in')
+            ->where(function ($q) use ($today, $now) {
+                $q->where('date', $today)
+                  ->orWhere(fn ($o) => $o->whereNull('time_out')
+                                         ->where('time_in', '>=', $now->copy()->subHours(18)));
+            })
             ->when($site, fn ($q) => $q->where('site_id', $site->id))
             ->get()
             ->groupBy('employee_id');
@@ -924,7 +951,6 @@ class KioskController extends Controller
             // at 8pm showed zero hours and no overtime — the board could only
             // report overtime after they had already gone home, which is too
             // late for the foreman standing in front of it.
-            $now      = Carbon::now()->setTimezone('Asia/Manila');
             $totalMin = 0;
             $working  = false;
             $lastIn   = null;
@@ -944,7 +970,7 @@ class KioskController extends Controller
             }
 
             $totalHours = round($totalMin / 60, 2);
-            $overtime   = max(0, round($totalHours - 8, 2));
+            $overtime   = max(0, round($totalHours - $paidStandard, 2));
 
             // Overtime being earned right now, as opposed to a finished day
             // that happened to run long. The board marks the two differently:
@@ -956,6 +982,7 @@ class KioskController extends Controller
                 'name'           => $emp->name,
                 'position'       => $emp->position ?: 'Worker',
                 'pending'        => $emp->isPending(),
+                'shift'          => $this->shiftPayload($emp),
                 'am_in'          => $this->fmt12($am?->time_in),
                 'am_out'         => $this->fmt12($am?->time_out),
                 'pm_in'          => $this->fmt12($pm?->time_in),
@@ -1038,6 +1065,26 @@ class KioskController extends Controller
     /**
      * Compact employee shape returned to the kiosk display.
      */
+    /**
+     * A worker's shift, as the kiosk sees it.
+     *
+     * The kiosk is a separate application: it can only know about the crews if
+     * the API tells it, so every payload that names a worker names their shift
+     * too. Null where nobody has assigned one — that is a real state the board
+     * should be able to show, not something to paper over with a default.
+     */
+    private function shiftPayload(?Employee $employee): ?array
+    {
+        $shift = $employee?->shift;
+
+        return $shift ? [
+            'id'               => $shift->id,
+            'name'             => $shift->name,
+            'starts_at'        => (string) $shift->starts_at,
+            'crosses_midnight' => (bool) $shift->crosses_midnight,
+        ] : null;
+    }
+
     private function kioskEmployeePayload(Employee $employee): array
     {
         return [
@@ -1047,6 +1094,7 @@ class KioskController extends Controller
             'rate_per_hour'  => $employee->rate_per_hour,
             'fingerprint_id' => $employee->fingerprint_id,
             'status'         => $employee->status,
+            'shift'          => $this->shiftPayload($employee),
         ];
     }
 }

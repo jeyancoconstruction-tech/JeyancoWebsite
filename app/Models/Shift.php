@@ -38,6 +38,22 @@ class Shift extends Model
     }
 
     /**
+     * The shift a worker lands on when nobody has said which.
+     *
+     * A blank is worse than a wrong guess here: it shows as "0 workers" on the
+     * settings card and quietly falls back to the office default at payroll
+     * time, so nobody can see who was never assigned. The day crew is the
+     * ordinary case, and moving somebody to nights is one dropdown.
+     */
+    public static function defaultForNewHire(): ?int
+    {
+        return static::query()
+            ->where('crosses_midnight', false)
+            ->orderBy('id')
+            ->value('id');
+    }
+
+    /**
      * Every shift as a plain array, keyed by id.
      *
      * Payroll resolves a shift per attendance record, so they are loaded once

@@ -77,6 +77,17 @@
                     <i class="fas fa-filter emp-select-icon"></i>
                 </div>
 
+                <div class="emp-select-wrap">
+                    <select id="shiftFilter" class="emp-select">
+                        <option value="">{{ __('All shifts') }}</option>
+                        @foreach($shifts as $sh)
+                            <option value="{{ $sh->id }}">{{ $sh->name }}</option>
+                        @endforeach
+                        <option value="none">{{ __('Unassigned') }}</option>
+                    </select>
+                    <i class="fas fa-user-clock emp-select-icon"></i>
+                </div>
+
                 {{-- Paano nakahanay ang listahan. Iisang <table> lang ang
                      pinagmumulan ng dalawang anyo — CSS lang ang nagbabago —
                      kaya hindi sila puwedeng magkaiba ng laman, at patuloy na
@@ -102,6 +113,7 @@
                         <th>{{ __('Employee') }}</th>
                         <th>{{ __('Site') }}</th>
                         <th>{{ __('Labor Type') }}</th>
+                        <th>{{ __('Shift') }}</th>
                         {{-- "Rate" lang, hindi "Rate / hr": may kada-oras (regular) at
                              may kabuuan ng kontrata (contractual) sa hanay na ito. --}}
                         <th class="text-center">{{ __('Rate') }}</th>
@@ -113,6 +125,7 @@
                 <tbody>
                     @forelse($employees as $emp)
                     <tr data-site="{{ $emp->site_id ?? '' }}"
+                        data-shift="{{ $emp->shift_id ?? '' }}"
                         data-name="{{ strtolower($emp->name) }}"
                         data-position="{{ strtolower($emp->position ?: ($emp->laborType->name ?? '')) }}"
                         data-type="{{ $emp->isContractual() ? 'contractual' : 'regular' }}">
@@ -166,6 +179,27 @@
                             @else
                                 <span class="emp-dash">—</span>
                             @endif
+                        </td>
+
+                        {{-- Shift. Isang dropdown na kusang nagse-save — para
+                             mabilis tatakan ang buong crew nang hindi binubuksan
+                             at muling sinasagutan ang buong edit form kada tao.
+                             Ang bagong shift ay para sa susunod na araw na
+                             papasukan; hawak ng bawat naitalang araw ang shift
+                             na pinagtrabahuhan nito. --}}
+                        <td data-label="Shift">
+                            <div class="emp-shift-wrap {{ $emp->shift_id ? '' : 'is-unset' }}">
+                                <select class="emp-shift" data-id="{{ $emp->id }}"
+                                        aria-label="{{ __('Shift') }} — {{ $emp->name }}">
+                                    <option value="">{{ __('Unassigned') }}</option>
+                                    @foreach($shifts as $sh)
+                                        <option value="{{ $sh->id }}" @selected($emp->shift_id === $sh->id)>
+                                            {{ $sh->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <i class="fas fa-check emp-shift-ok" aria-hidden="true"></i>
+                            </div>
                         </td>
 
                         {{-- Rate --}}
@@ -235,7 +269,7 @@
                     </tr>
                     @empty
                     <tr class="emp-empty-row">
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="emp-empty">
                                 <div class="emp-empty-icon"><i class="fas fa-users"></i></div>
                                 <p class="emp-empty-title">{{ __('No employees yet') }}</p>
@@ -624,6 +658,48 @@
 .emp-badge-site i, .emp-badge-labor i, .emp-badge-fp i { font-size: 9px; color: var(--text-muted); }
 .emp-badge-fp { font-family: ui-monospace,'SF Mono','Courier New',monospace; }
 
+/* ── Shift ────────────────────────────────────────────────────────────────
+   Hugis-badge tulad ng katabi nitong mga hanay, hindi mukhang form control —
+   ang buong hilera ay babasahin bago may babaguhin. Ang kulay ay dumarating
+   lamang kapag may dapat gawin: dilaw kung walang tatak, berdeng tsek kapag
+   naitala na ang pagbabago. */
+.emp-shift-wrap { position: relative; display: inline-flex; align-items: center; }
+.emp-shift {
+    appearance: none; -webkit-appearance: none;
+    font-size: 12px; font-weight: 500; font-family: inherit;
+    color: var(--text-secondary); background: transparent;
+    border: 1px solid var(--border);
+    padding: 3px 26px 3px 9px; border-radius: 6px;
+    cursor: pointer; transition: border-color .15s, color .15s;
+}
+.emp-shift:hover:not(:disabled) { border-color: var(--accent, #2f7fd1); color: var(--text-primary); }
+.emp-shift:focus-visible { outline: 2px solid var(--accent, #2f7fd1); outline-offset: 1px; }
+.emp-shift:disabled { opacity: .55; cursor: progress; }
+.emp-shift option { background: var(--surface, #131c2e); color: var(--text-primary); }
+
+/* Ang caret. Nawala ito kasama ng appearance:none. */
+.emp-shift-wrap::after {
+    content: '\f107'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+    position: absolute; right: 9px; font-size: 10px;
+    color: var(--text-muted); pointer-events: none;
+}
+
+/* Walang tatak: hindi ito error, kaya hindi pula — pero hindi rin dapat
+   matabunan, dahil ang office default ang bumabagsak dito sa payroll. */
+.emp-shift-wrap.is-unset .emp-shift {
+    color: var(--warning, #d98324);
+    border-color: color-mix(in srgb, var(--warning, #d98324) 45%, transparent);
+}
+
+.emp-shift-ok {
+    position: absolute; right: -18px;
+    font-size: 11px; color: var(--success, #16a34a);
+    opacity: 0; transform: scale(.7); pointer-events: none;
+    transition: opacity .18s, transform .18s;
+}
+.emp-shift-wrap.is-saved .emp-shift-ok { opacity: 1; transform: scale(1); }
+.emp-shift-wrap.is-saved .emp-shift { border-color: color-mix(in srgb, var(--success, #16a34a) 50%, transparent); }
+
 .emp-dash { color: var(--text-muted); font-size: 13px; }
 .emp-rate { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 /* Ang halaga ng kontrata ay kabuuan, hindi kada-oras — kaya may maliit na
@@ -919,16 +995,21 @@
 
     function applyFilter() {
         const siteVal  = document.getElementById('siteFilter').value;
+        const shiftVal = document.getElementById('shiftFilter').value;
         const query    = document.getElementById('empSearch').value.trim().toLowerCase();
         const rows     = document.querySelectorAll('#empTable tbody tr[data-site]');
         let visible    = 0;
 
         rows.forEach(r => {
             const siteOk  = !siteVal || r.dataset.site === siteVal;
+            // 'none' ang hanapin kung sino ang wala pang tatak — iyon mismo ang
+            // listahang kailangan mo habang hinahati mo ang dalawang crew.
+            const shiftOk = !shiftVal
+                          || (shiftVal === 'none' ? !r.dataset.shift : r.dataset.shift === shiftVal);
             const nameOk  = !query   || (r.dataset.name || '').includes(query)
                                      || (r.dataset.position || '').includes(query);
             const scopeOk = dirScope === 'all' || r.dataset.type === dirScope;
-            const show    = siteOk && nameOk && scopeOk;
+            const show    = siteOk && shiftOk && nameOk && scopeOk;
             r.style.display = show ? '' : 'none';
             if (show) visible++;
         });
@@ -1005,6 +1086,7 @@
     })();
 
     document.getElementById('siteFilter').addEventListener('change', applyFilter);
+    document.getElementById('shiftFilter').addEventListener('change', applyFilter);
     document.getElementById('empSearch').addEventListener('input', applyFilter);
 
     // Walang maramihang pagbura sa pahinang ito. Inalis ang "Delete All" noon
@@ -1070,6 +1152,59 @@
             } else { flashToast(data.message || 'Update failed.', 'error'); }
         } catch { flashToast('Network error — please try again.', 'error'); }
         finally { this.disabled = false; }
+    });
+
+    // ── Shift ────────────────────────────────────────────────────────────────
+    // Kusang nagse-save ang dropdown. Ang mabilis na tumbok ang buong punto:
+    // hahatiin mo ang crew sa dalawa, at ang pagbukas ng buong edit form kada
+    // tao ay labing-isang pahina para sa labing-isang pindot.
+    document.querySelectorAll('.emp-shift').forEach(sel => {
+        // Ang huling nakaligtas na halaga, para may maibalik kapag pumalya ang
+        // network — kung hindi, ipapakita ng dropdown ang isang tatak na hindi
+        // naman naitala.
+        sel.dataset.last = sel.value;
+
+        sel.addEventListener('change', async function () {
+            const row  = this.closest('tr');
+            const wrap = this.closest('.emp-shift-wrap');
+            const id   = this.dataset.id;
+            const val  = this.value;
+
+            this.disabled = true;
+            try {
+                const r = await fetch(`{{ url('employees') }}/${id}/shift`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                    body: JSON.stringify({ shift_id: val || null }),
+                });
+                const data = await r.json();
+
+                if (data.success) {
+                    this.dataset.last = val;
+                    if (row) row.dataset.shift = val;
+                    if (wrap) {
+                        wrap.classList.toggle('is-unset', !val);
+                        wrap.classList.add('is-saved');
+                        setTimeout(() => wrap.classList.remove('is-saved'), 1400);
+                    }
+                    // Nakasalalay dito ang salain: kung naka-piling "Night" ka
+                    // at inilipat mo ang isa sa Day, dapat lumabas siya agad sa
+                    // listahang tinitingnan mo.
+                    applyFilter();
+                    flashToast(data.name
+                        ? `{{ __('Moved to') }} ${escHtml(data.name)}.`
+                        : `{{ __('Shift removed.') }}`, 'success');
+                } else {
+                    this.value = this.dataset.last;
+                    flashToast(data.message || '{{ __('Update failed.') }}', 'error');
+                }
+            } catch {
+                this.value = this.dataset.last;
+                flashToast('{{ __('Network error — please try again.') }}', 'error');
+            } finally {
+                this.disabled = false;
+            }
+        });
     });
 
     function escHtml(s) {

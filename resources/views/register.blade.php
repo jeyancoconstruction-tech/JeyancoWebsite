@@ -283,6 +283,23 @@
                     </div>
                 </div>
                 <div class="rm-field">
+                    <label class="rm-label">{{ __('Shift') }}</label>
+                    <div class="rm-select-wrap">
+                        <select name="shift_id" id="empShift" class="rm-input">
+                            @foreach($shifts as $sh)
+                                <option value="{{ $sh->id }}" @selected(! $sh->crosses_midnight)>
+                                    {{ $sh->name }} — {{ \Carbon\Carbon::parse($sh->starts_at)->format('g:i A') }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <i class="fas fa-chevron-down rm-select-icon"></i>
+                    </div>
+                    <p class="rm-hint">{{ __('Movable later from the employee list.') }}</p>
+                </div>
+            </div>
+
+            <div class="rm-grid2">
+                <div class="rm-field">
                     <label class="rm-label">{{ __('Fingerprint ID') }}</label>
                     <input type="text" name="fingerprint_id" id="empFp" class="rm-input rm-mono" placeholder="—" autocomplete="off">
                     <p class="rm-hint">{{ __('Captured from the kiosk scan.') }}</p>
