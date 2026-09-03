@@ -120,7 +120,13 @@ class AttendanceController extends Controller
             ->first();
 
         if ($type === 'time_in') {
-            if ($attendance && $attendance->time_in) {
+            // An open day, not a filled slot on today's clock: a worker who has
+            // not clocked out of the morning cannot clock into the afternoon.
+            if ($open = Attendance::openRow($employeeId, $now)) {
+                $attendance = $open;
+            }
+
+            if ($attendance && $attendance->time_in && !$attendance->time_out) {
                 return response()->json([
                     'success' => false,
                     'message' => "Already time-in for $currentSession session."
@@ -136,9 +142,9 @@ class AttendanceController extends Controller
             $attendance->time_in = $now; // full datetime — matches kiosk storage
         }
         elseif ($type === 'time_out') {
-            // A night shift clocks out on the next date in the other session, so
-            // the row it opened is not the one the wall clock points at.
-            $attendance = Attendance::openForTimeOut($employeeId, $now);
+            // The day this worker has open — which for any shift longer than
+            // the half of the day it began in is not the row the clock points at.
+            $attendance = Attendance::openRow($employeeId, $now);
 
             if (!$attendance || !$attendance->time_in) {
                 return response()->json([

@@ -64,7 +64,7 @@ class NightShiftAttendanceTest extends TestCase
         $this->assertSame($this->night()->id, $in->shift_id, 'the shift is stamped on the row');
 
         // Morning: a different date, and the other half of the day.
-        $found = Attendance::openForTimeOut($emp->id, Carbon::parse('2026-09-04 06:00:00'));
+        $found = Attendance::openRow($emp->id, Carbon::parse('2026-09-04 06:00:00'));
 
         $this->assertNotNull($found, 'the night shift must find the row it opened');
         $this->assertSame($in->id, $found->id);
@@ -81,7 +81,7 @@ class NightShiftAttendanceTest extends TestCase
             'time_in'     => Carbon::now(),
         ]);
 
-        $found = Attendance::openForTimeOut($emp->id, Carbon::parse('2026-09-03 11:00:00'));
+        $found = Attendance::openRow($emp->id, Carbon::parse('2026-09-03 11:00:00'));
 
         $this->assertSame($in->id, $found->id);
     }
@@ -99,7 +99,7 @@ class NightShiftAttendanceTest extends TestCase
 
         // Somebody who forgot to clock out yesterday would have that day
         // silently closed at whatever time they touched the kiosk today.
-        $found = Attendance::openForTimeOut($emp->id, Carbon::parse('2026-09-04 06:00:00'));
+        $found = Attendance::openRow($emp->id, Carbon::parse('2026-09-04 06:00:00'));
 
         $this->assertNull($found, 'a day shift never reaches back into yesterday');
     }
@@ -117,7 +117,7 @@ class NightShiftAttendanceTest extends TestCase
 
         // A night shift that was never closed is a broken record for the office
         // to fix, not something to close two days later at the wrong hour.
-        $found = Attendance::openForTimeOut($emp->id, Carbon::parse('2026-09-05 06:00:00'));
+        $found = Attendance::openRow($emp->id, Carbon::parse('2026-09-05 06:00:00'));
 
         $this->assertNull($found);
     }
@@ -134,9 +134,48 @@ class NightShiftAttendanceTest extends TestCase
             'time_out'    => Carbon::parse('2026-09-04 06:00:00'),
         ]);
 
-        $found = Attendance::openForTimeOut($emp->id, Carbon::parse('2026-09-04 06:30:00'));
+        $found = Attendance::openRow($emp->id, Carbon::parse('2026-09-04 06:30:00'));
 
         $this->assertNull($found, 'a finished day stays finished');
+    }
+
+    public function test_a_day_shift_clocks_out_after_noon(): void
+    {
+        $emp = $this->worker('Long Day', $this->day()->id);
+
+        Carbon::setTestNow(Carbon::parse('2026-09-03 06:00:00'));
+        $in = Attendance::create([
+            'employee_id' => $emp->id,
+            'date'        => '2026-09-03',
+            'time_in'     => Carbon::now(),
+        ]);
+
+        $this->assertSame('AM', $in->session);
+
+        // Six in the morning to three in the afternoon is the ordinary day this
+        // office runs, and it crosses noon — the half of the day the row was
+        // filed under is not the half it ends in.
+        $found = Attendance::openRow($emp->id, Carbon::parse('2026-09-03 15:00:00'));
+
+        $this->assertNotNull($found, 'a day that crosses noon must still close');
+        $this->assertSame($in->id, $found->id);
+    }
+
+    public function test_a_closed_morning_leaves_the_afternoon_free(): void
+    {
+        $emp = $this->worker('Lunch Taker', $this->day()->id);
+
+        Carbon::setTestNow(Carbon::parse('2026-09-03 06:00:00'));
+        Attendance::create([
+            'employee_id' => $emp->id,
+            'date'        => '2026-09-03',
+            'time_in'     => Carbon::now(),
+            'time_out'    => Carbon::parse('2026-09-03 11:00:00'),
+        ]);
+
+        // Clocked out for lunch: nothing is open, so clocking back in starts a
+        // fresh stretch rather than being refused as a double time-in.
+        $this->assertNull(Attendance::openRow($emp->id, Carbon::parse('2026-09-03 12:00:00')));
     }
 
     protected function tearDown(): void

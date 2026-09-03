@@ -86,42 +86,32 @@ class Attendance extends Model
         return Carbon::parse($this->date)->isToday() ? 'active' : 'invalid';
     }
 
+    /** A day left open longer than this is a broken record, not a running shift. */
+    private const OPEN_ROW_HOURS = 18;
+
     /**
-     * The row a time-out belongs to.
+     * The day this worker currently has open, if any.
      *
-     * A day worker clocks out in the same session they clocked into, so the
-     * wall clock finds their row. A night worker does not: they clock in at
-     * 10pm on one date in the PM session and out at 6am on the next date in
-     * the AM session, so the row the clock points at is always empty and the
-     * one they actually opened is never looked at.
+     * Attendance used to be filed by calendar date and by half of the day, and
+     * found again the same way. That only holds for a stretch that begins and
+     * ends in the same half of the same date — which a real shift usually does
+     * not. A 6am day shift ending at 3pm crosses noon; a 10pm night shift
+     * crosses midnight into both the next date and the other half. In each case
+     * the clock pointed at an empty slot and the worker was told they had never
+     * timed in, so neither shift could close its own day.
      *
-     * The current session is still tried first — nothing about a day changes.
-     * Only when it holds no open row does this reach back for one, and only
-     * for a shift meant to cross midnight and only while that shift could
-     * plausibly still be running, so a day worker who forgot to clock out
-     * yesterday is not silently closed off today.
+     * What matters is not what the clock reads but whether this worker has a
+     * day still open, so that is what is looked for. The window keeps it from
+     * reaching back to a day somebody forgot to close: an unclosed shift is for
+     * the office to fix, not something to settle at the wrong hour days later.
      */
-    public static function openForTimeOut(int $employeeId, Carbon $now): ?self
+    public static function openRow(int $employeeId, Carbon $now): ?self
     {
-        $current = static::where('employee_id', $employeeId)
-            ->where('date', $now->format('Y-m-d'))
-            ->where('session', $now->format('H') < 12 ? 'AM' : 'PM')
-            ->first();
-
-        if ($current && $current->time_in && !$current->time_out) {
-            return $current;
-        }
-
-        $overnight = static::where('employee_id', $employeeId)
+        return static::where('employee_id', $employeeId)
             ->whereNotNull('time_in')
             ->whereNull('time_out')
-            ->where('time_in', '>=', $now->copy()->subHours(18))
-            ->whereHas('shift', fn ($q) => $q->where('crosses_midnight', true))
+            ->where('time_in', '>=', $now->copy()->subHours(self::OPEN_ROW_HOURS))
             ->latest('time_in')
             ->first();
-
-        // Falling back to the current session keeps every existing refusal
-        // ("already timed out", "cannot time out before timing in") intact.
-        return $overnight ?: $current;
     }
 }

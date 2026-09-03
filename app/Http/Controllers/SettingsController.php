@@ -563,6 +563,7 @@ class SettingsController extends Controller
         $data = $request->validate([
             // A day of zero hours would divide the daily rate by nothing.
             'standard_hours_per_day' => ['required', 'numeric', 'min:1', 'max:24'],
+            'unpaid_break_minutes'   => ['required', 'integer', 'min:0', 'max:240'],
 
             'week_starts_on'         => ['required', 'integer', 'min:0', 'max:6'],
             'payroll_cycle'          => ['required', 'in:weekly,daily'],
@@ -575,6 +576,7 @@ class SettingsController extends Controller
             'shifts.*.grace_period_minutes'      => ['required', 'integer', 'min:0', 'max:120'],
         ], [
             'standard_hours_per_day.min'    => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
+            'unpaid_break_minutes.max'      => 'A meal period longer than four hours is not a break, it is two shifts.',
             'shifts.*.grace_period_minutes.max' => 'Two hours of grace is not a grace period.',
         ]);
 

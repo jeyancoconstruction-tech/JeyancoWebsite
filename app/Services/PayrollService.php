@@ -23,6 +23,15 @@ use Illuminate\Support\Facades\Log;
 class PayrollService
 {
     /**
+     * Work past this many hours in a stretch takes a meal period.
+     *
+     * Article 85 of the Labor Code requires a meal break of at least an hour
+     * for work exceeding five hours, so a stretch shorter than this never had
+     * a break to lose.
+     */
+    private const MEAL_PERIOD_AFTER_HOURS = 5.0;
+
+    /**
      * Resolve the configurable payroll settings + holiday overlay once.
      */
     public function config(): array
@@ -281,11 +290,29 @@ class PayrollService
         $standard   = max(1.0, (float) ($day->standard_hours_per_day ?? 8));
         $autoOt     = (bool) ($day->auto_count_overtime ?? true);
 
+        // The meal period sits inside the standard day. Nine hours on site with
+        // an hour for lunch is eight hours of wage, so the daily rate buys the
+        // standard hours less the break, and overtime starts there too.
+        $breakHours   = max(0.0, (float) ($day->unpaid_break_minutes ?? 0) / 60);
+        $paidStandard = max(1.0, $standard - $breakHours);
+
+        $hours = round(max(0, $hours), 2);
+
+        // A meal period is only taken on a stretch long enough to contain one —
+        // the Labor Code requires it of work exceeding five hours, and that is
+        // the line used here. It keeps the arithmetic honest whichever way the
+        // crew clocks: one straight 6am–3pm record loses the hour, while a
+        // morning and an afternoon record clocked either side of lunch are each
+        // short of the line and lose nothing, because the break is already out.
+        // Never below the line itself, so a longer day is never a smaller wage.
+        if ($breakHours > 0 && $hours > self::MEAL_PERIOD_AFTER_HOURS) {
+            $hours = round(max(self::MEAL_PERIOD_AFTER_HOURS, $hours - $breakHours), 2);
+        }
+
         // Round worked hours to 2 decimals BEFORE computing pay so the
         // displayed hours reconcile exactly with gross (hours × rate = gross).
-        $hours         = round(max(0, $hours), 2);
-        $regular_hours = $autoOt ? min($standard, $hours) : $hours;
-        $ot_hours      = $autoOt ? max(0, $hours - $standard) : 0.0;
+        $regular_hours = $autoOt ? min($paidStandard, $hours) : $hours;
+        $ot_hours      = $autoOt ? max(0, $hours - $paidStandard) : 0.0;
 
         // The multipliers in force on the day being computed, not today's.
         $dateStr = Carbon::parse($rec->date)->toDateString();
@@ -304,7 +331,7 @@ class PayrollService
         $configured = $employee->laborType?->daily_rate;
         $dailyRate  = $configured !== null
             ? (float) $configured
-            : ((float) ($employee->rate_per_hour ?? 0)) * $standard;
+            : ((float) ($employee->rate_per_hour ?? 0)) * $paidStandard;
 
         // The wage order's daily floor for that day, if one is on file. A
         // labour type still carrying last year's rate is paid at the floor
@@ -315,7 +342,7 @@ class PayrollService
             $dailyRate = (float) $wageFloor;
         }
 
-        $rate    = $dailyRate / $standard;
+        $rate    = $dailyRate / $paidStandard;
         $ot_rate = $rate * $rates['ot_multiplier'];
 
         // Contractual workers are settled against their contract, not through

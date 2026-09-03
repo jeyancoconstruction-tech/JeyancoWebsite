@@ -398,13 +398,45 @@
                                        class="form-control ps-input @error('standard_hours_per_day') is-invalid @enderror"
                                        id="standard_hours_per_day" name="standard_hours_per_day"
                                        value="{{ old('standard_hours_per_day', $system->standard_hours_per_day) }}" required>
+                                <small class="text-muted d-block mt-1">{{ __('Clock-in to clock-out, break included') }}</small>
                                 @error('standard_hours_per_day')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
+                            <div>
+                                <label class="ps-label" for="unpaid_break_minutes">{{ __('Unpaid break (min)') }}</label>
+                                <input type="number" step="5" min="0" max="240"
+                                       class="form-control ps-input @error('unpaid_break_minutes') is-invalid @enderror"
+                                       id="unpaid_break_minutes" name="unpaid_break_minutes"
+                                       value="{{ old('unpaid_break_minutes', $system->unpaid_break_minutes) }}" required>
+                                <small class="text-muted d-block mt-1">{{ __('The meal period inside those hours') }}</small>
+                                @error('unpaid_break_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+
+                        {{-- The office should not have to do this arithmetic in
+                             its head to know what it just set. --}}
+                        <div class="sh-sum">
+                            @php
+                                $sumStd   = (float) old('standard_hours_per_day', $system->standard_hours_per_day);
+                                $sumBrk   = (int) old('unpaid_break_minutes', $system->unpaid_break_minutes);
+                                $sumPaid  = max(1, $sumStd - $sumBrk / 60);
+                            @endphp
+                            @foreach($shifts as $sh)
+                                <div>
+                                    <i class="fas {{ $sh->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>
+                                    <b>{{ $sh->name }}</b>
+                                    <span>{{ \Carbon\Carbon::parse($sh->starts_at)->format('g:i a') }}</span>
+                                    <em>{{ __('to') }}</em>
+                                    <span>{{ \Carbon\Carbon::parse($sh->starts_at)->addMinutes((int) round($sumStd * 60))->format('g:i a') }}</span>
+                                    <span class="sh-sum-paid">{{ rtrim(rtrim(number_format($sumPaid, 2), '0'), '.') }} {{ __('paid hours') }}</span>
+                                </div>
+                            @endforeach
                         </div>
                         <small class="text-muted d-block mt-3">
-                            The standard hours divide a labour type's daily rate into an hourly one, and mark where
-                            overtime begins. Lateness is <strong>{{ __('reported, not deducted') }}</strong> — a worker is already
-                            paid only for the hours they worked, and docking on top would cut the same wage twice.
+                            The standard hours less the break are what a labour type's daily rate buys, so that is the
+                            divisor for the hourly rate and the line where overtime begins. A break is only taken off a
+                            stretch longer than five hours — a crew that clocks out for lunch has already left it out.
+                            Lateness is <strong>{{ __('reported, not deducted') }}</strong> — a worker is already paid only for
+                            the hours they worked, and docking on top would cut the same wage twice.
                         </small>
                     </div>
                 </div>
@@ -1726,6 +1758,20 @@
 .sh-def-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
 .sh-def-head > i { color: var(--brand); font-size: 1rem; }
 .sh-def-head b { font-size: .95rem; color: var(--text-primary); }
+.sh-sum { margin-top: 14px; display: grid; gap: 8px; }
+.sh-sum > div {
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    padding: 9px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg-subtle);
+    font-size: .85rem; color: var(--text-secondary);
+}
+.sh-sum > div > i { color: var(--brand); }
+.sh-sum > div > b { color: var(--text-primary); min-width: 46px; }
+.sh-sum em { font-style: normal; opacity: .65; }
+.sh-sum-paid {
+    margin-left: auto; padding: 2px 9px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-primary);
+}
 .sh-count {
     margin-left: auto; font-size: 11px; padding: 2px 9px; border-radius: 999px;
     background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);

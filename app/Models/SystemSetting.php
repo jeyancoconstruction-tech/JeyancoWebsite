@@ -28,6 +28,7 @@ class SystemSetting extends Model
         'expected_time_in',
         'grace_period_minutes',
         'standard_hours_per_day',
+        'unpaid_break_minutes',
         'auto_count_overtime',
         'week_starts_on',
         'payroll_cycle',
@@ -43,6 +44,7 @@ class SystemSetting extends Model
         'lockout_seconds'         => 'integer',
         'grace_period_minutes'    => 'integer',
         'standard_hours_per_day'  => 'float',
+        'unpaid_break_minutes'    => 'integer',
         'auto_count_overtime'     => 'boolean',
         'week_starts_on'          => 'integer',
     ];
@@ -64,6 +66,7 @@ class SystemSetting extends Model
         'expected_time_in'        => '08:00:00',
         'grace_period_minutes'    => 15,
         'standard_hours_per_day'  => 8,
+        'unpaid_break_minutes'    => 0,
         'auto_count_overtime'     => true,
         'week_starts_on'          => 1,
         'payroll_cycle'           => 'weekly',

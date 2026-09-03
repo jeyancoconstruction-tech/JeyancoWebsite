@@ -496,7 +496,11 @@ class KioskController extends Controller
             ->first();
 
         if ($type === 'time_in') {
-            if ($attendance && $attendance->time_in) {
+            if ($open = Attendance::openRow($employeeId, $now)) {
+                $attendance = $open;
+            }
+
+            if ($attendance && $attendance->time_in && !$attendance->time_out) {
                 return response()->json([
                     'success' => false,
                     'message' => "Already timed in for the {$session} session."
@@ -513,9 +517,8 @@ class KioskController extends Controller
             }
             $attendance->time_in = $now;
         } else { // time_out
-            // The row a night shift opened sits on the previous date, in the
-            // other session — the wall clock never points at it.
-            $attendance = Attendance::openForTimeOut($employeeId, $now);
+            // The day this worker has open, wherever the clock happens to be.
+            $attendance = Attendance::openRow($employeeId, $now);
 
             if (!$attendance || !$attendance->time_in) {
                 return response()->json([
@@ -730,7 +733,11 @@ class KioskController extends Controller
             ->first();
 
         if ($request->type === 'time_in') {
-            if ($attendance && $attendance->time_in) {
+            if ($open = Attendance::openRow($employee->id, $now)) {
+                $attendance = $open;
+            }
+
+            if ($attendance && $attendance->time_in && !$attendance->time_out) {
                 return response()->json([
                     'success'  => false,
                     'message'  => "Already timed in for the {$session} session.",
@@ -748,7 +755,7 @@ class KioskController extends Controller
             }
             $attendance->time_in = $now;
         } else { // time_out
-            $attendance = Attendance::openForTimeOut($employee->id, $now);
+            $attendance = Attendance::openRow($employee->id, $now);
 
             if (!$attendance || !$attendance->time_in) {
                 return response()->json([

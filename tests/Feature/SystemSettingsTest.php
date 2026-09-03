@@ -275,6 +275,7 @@ class SystemSettingsTest extends TestCase
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
                  'standard_hours_per_day' => 10,
+                 'unpaid_break_minutes'   => 60,
                  'week_starts_on'         => 0,
                  'payroll_cycle'          => 'daily',
                  'shifts'                 => [
@@ -287,6 +288,7 @@ class SystemSettingsTest extends TestCase
         $s = SystemSetting::current();
 
         $this->assertSame(10.0, $s->standard_hours_per_day);
+        $this->assertSame(60, $s->unpaid_break_minutes, 'the meal period inside those hours');
         $this->assertSame(0, $s->week_starts_on);
         $this->assertSame('daily', $s->payroll_cycle);
         $this->assertFalse($s->auto_count_overtime, 'an unticked box is the off answer');
@@ -317,6 +319,7 @@ class SystemSettingsTest extends TestCase
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
                  'standard_hours_per_day' => 8,
+                 'unpaid_break_minutes'   => 0,
                  'week_starts_on'         => 1,
                  'payroll_cycle'          => 'weekly',
              ])
