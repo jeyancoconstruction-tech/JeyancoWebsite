@@ -40,27 +40,27 @@
     <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'payroll' ? 'active' : '' }}" id="payroll-tab" data-bs-toggle="tab" data-bs-target="#payroll" type="button" role="tab">
-                <i data-lucide="wallet"></i>{{ __('Multipliers and Deductions') }}
+                <i data-lucide="wallet" class="me-2"></i>{{ __('Multipliers and Deductions') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'attendance' ? 'active' : '' }}" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
-                <i data-lucide="clock"></i>{{ __('Attendance') }}
+                <i data-lucide="clock" class="me-2"></i>{{ __('Attendance') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'labor' ? 'active' : '' }}" id="labor-tab" data-bs-toggle="tab" data-bs-target="#labor" type="button" role="tab">
-                <i data-lucide="briefcase"></i>{{ __('Labor Types') }}
+                <i data-lucide="briefcase" class="me-2"></i>{{ __('Labor Types') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'holiday' ? 'active' : '' }}" id="holiday-tab" data-bs-toggle="tab" data-bs-target="#holiday" type="button" role="tab">
-                <i data-lucide="calendar"></i>{{ __('Holidays') }}
+                <i data-lucide="calendar" class="me-2"></i>{{ __('Holidays') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'bonus' ? 'active' : '' }}" id="bonus-tab" data-bs-toggle="tab" data-bs-target="#bonus" type="button" role="tab">
-                <i data-lucide="hand-coins"></i>{{ __('Bonus & Vale') }}
+                <i data-lucide="hand-coins" class="me-2"></i>{{ __('Bonus & Vale') }}
             </button>
         </li>
     </ul>
@@ -1837,75 +1837,28 @@
     font-size: 0.95rem;
 }
 
-/* ── Tabs ────────────────────────────────────────────────────────────────────
-   Ang puwang ay galing sa isang gap, hindi sa padding ng bawat button, kaya
-   pareho ang layo ng bawat pares kahit magkaiba ang haba ng pangalan.
-
-   Ang laman ng bawat button ay flex din: ang layo ng icon sa titik ay isang
-   gap, hindi margin sa <i> — pinapalitan ng Lucide ang <i> ng <svg>, at hindi
-   laging kasama ang klase sa palitan. */
 .settings-tabs {
     border-bottom: 2px solid #e5e7eb;
     margin-bottom: 2rem;
-    gap: .25rem;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
 }
-.settings-tabs::-webkit-scrollbar { display: none; }
-
-.settings-tabs .nav-item { flex: 0 0 auto; }
 
 .settings-tabs .nav-link {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
     color: #6b7280;
-    padding: .85rem 1.15rem;
-    font-weight: 500;
-    white-space: nowrap;
-    background: none;
-    /* Hindi transparent na border: iyon ay may lapad pa rin, at ang
-       lapad na iyon ay lumilipat sa ilalim lang kapag aktibo, kaya
-       gumagalaw nang isang pixel ang titik sa bawat paglipat ng tab. */
     border: none;
-    border-radius: 8px 8px 0 0;
-    box-shadow: none;
-    /* Ang guhit sa ilalim ay hindi border — nakaupo ito sa ibabaw ng guhit ng
-       buong hilera imbes na magdagdag ng taas, kaya walang gumagalaw kapag
-       lumipat ka ng tab. */
-    position: relative;
-    margin-bottom: 0;
-    transition: color .18s ease;
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
 }
 
-.settings-tabs .nav-link::after {
-    content: '';
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 3px;
-    background: #6366f1;
-    border-radius: 3px 3px 0 0;
-    opacity: 0;
-    transition: opacity .18s ease;
+.settings-tabs .nav-link:hover {
+    color: #6366f1;
 }
 
-.settings-tabs .nav-link:hover,
-.settings-tabs .nav-link:focus { color: #6366f1; border-color: transparent; }
-
-/* Panatilihin ang singsing para sa keyboard, pero kasinghugis ng tab —
-   ang malapad na bilog ng Bootstrap ang mukhang kahon na hindi pantay. */
-.settings-tabs .nav-link:focus { box-shadow: none; }
-.settings-tabs .nav-link:focus-visible {
-    outline: 2px solid #6366f1;
-    outline-offset: -2px;
+.settings-tabs .nav-link.active {
+    color: #6366f1;
+    border-bottom: 3px solid #6366f1;
+    background: none;
 }
-
-.settings-tabs .nav-link.active { color: #6366f1; background: none; }
-.settings-tabs .nav-link.active::after { opacity: 1; }
-
-.settings-tabs .nav-link i,
-.settings-tabs .nav-link svg { flex-shrink: 0; width: 16px; height: 16px; }
 
 .settings-content {
     padding: 2rem 0;
@@ -2243,9 +2196,7 @@
 [data-bs-theme="dark"] .settings-header p { color: #94a3b8; }
 [data-bs-theme="dark"] .settings-tabs { border-color: #283449; }
 [data-bs-theme="dark"] .settings-tabs .nav-link { color: #94a3b8; }
-[data-bs-theme="dark"] .settings-tabs .nav-link.active { color: #818cf8; }
-[data-bs-theme="dark"] .settings-tabs .nav-link::after { background: #818cf8; }
-[data-bs-theme="dark"] .settings-tabs .nav-link:focus-visible { outline-color: #818cf8; }
+[data-bs-theme="dark"] .settings-tabs .nav-link.active { color: #818cf8; border-color: #818cf8; }
 [data-bs-theme="dark"] .settings-tabs .nav-link:hover { color: #818cf8; }
 [data-bs-theme="dark"] .payroll-formula { background: #1e3a8a20; border-color: #1e3a8a; color: #93c5fd; }
 [data-bs-theme="dark"] .payroll-config-section { background: #151d2e; border-color: #283449; }
