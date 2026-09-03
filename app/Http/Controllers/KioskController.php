@@ -513,6 +513,10 @@ class KioskController extends Controller
             }
             $attendance->time_in = $now;
         } else { // time_out
+            // The row a night shift opened sits on the previous date, in the
+            // other session — the wall clock never points at it.
+            $attendance = Attendance::openForTimeOut($employeeId, $now);
+
             if (!$attendance || !$attendance->time_in) {
                 return response()->json([
                     'success' => false,
@@ -744,6 +748,8 @@ class KioskController extends Controller
             }
             $attendance->time_in = $now;
         } else { // time_out
+            $attendance = Attendance::openForTimeOut($employee->id, $now);
+
             if (!$attendance || !$attendance->time_in) {
                 return response()->json([
                     'success'  => false,

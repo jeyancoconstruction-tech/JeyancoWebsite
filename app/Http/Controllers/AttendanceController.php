@@ -136,6 +136,10 @@ class AttendanceController extends Controller
             $attendance->time_in = $now; // full datetime — matches kiosk storage
         }
         elseif ($type === 'time_out') {
+            // A night shift clocks out on the next date in the other session, so
+            // the row it opened is not the one the wall clock points at.
+            $attendance = Attendance::openForTimeOut($employeeId, $now);
+
             if (!$attendance || !$attendance->time_in) {
                 return response()->json([
                     'success' => false,
@@ -153,10 +157,11 @@ class AttendanceController extends Controller
 
         $attendance->save();
 
-        // Fire overtime notification when time_out is saved and shift > 8 hours.
+        // Fire overtime notification when a day runs past the standard hours
+        // the office actually set, not a hardcoded eight.
         if ($type === 'time_out' && $attendance->time_in && $attendance->time_out) {
             $hours = abs(Carbon::parse($attendance->time_in)->diffInMinutes(Carbon::parse($attendance->time_out))) / 60;
-            if ($hours > 8) {
+            if ($hours > (float) \App\Models\SystemSetting::current()->standard_hours_per_day) {
                 $employee = $attendance->employee ?? Employee::find($employeeId);
                 $name = $employee ? $employee->name : "Employee #{$employeeId}";
                 AttendanceAlert::fireOnce(

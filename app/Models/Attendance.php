@@ -85,4 +85,43 @@ class Attendance extends Model
         }
         return Carbon::parse($this->date)->isToday() ? 'active' : 'invalid';
     }
+
+    /**
+     * The row a time-out belongs to.
+     *
+     * A day worker clocks out in the same session they clocked into, so the
+     * wall clock finds their row. A night worker does not: they clock in at
+     * 10pm on one date in the PM session and out at 6am on the next date in
+     * the AM session, so the row the clock points at is always empty and the
+     * one they actually opened is never looked at.
+     *
+     * The current session is still tried first — nothing about a day changes.
+     * Only when it holds no open row does this reach back for one, and only
+     * for a shift meant to cross midnight and only while that shift could
+     * plausibly still be running, so a day worker who forgot to clock out
+     * yesterday is not silently closed off today.
+     */
+    public static function openForTimeOut(int $employeeId, Carbon $now): ?self
+    {
+        $current = static::where('employee_id', $employeeId)
+            ->where('date', $now->format('Y-m-d'))
+            ->where('session', $now->format('H') < 12 ? 'AM' : 'PM')
+            ->first();
+
+        if ($current && $current->time_in && !$current->time_out) {
+            return $current;
+        }
+
+        $overnight = static::where('employee_id', $employeeId)
+            ->whereNotNull('time_in')
+            ->whereNull('time_out')
+            ->where('time_in', '>=', $now->copy()->subHours(18))
+            ->whereHas('shift', fn ($q) => $q->where('crosses_midnight', true))
+            ->latest('time_in')
+            ->first();
+
+        // Falling back to the current session keeps every existing refusal
+        // ("already timed out", "cannot time out before timing in") intact.
+        return $overnight ?: $current;
+    }
 }
