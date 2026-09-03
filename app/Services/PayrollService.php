@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\Holiday;
 use App\Models\PayrollRate;
 use App\Models\Bonus;
+use App\Models\Shift;
 use App\Models\SystemSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -45,6 +46,10 @@ class PayrollService
             // shift that starts at 8 has always started at 8 as far as payroll
             // is concerned.
             'day' => SystemSetting::current(),
+
+            // Every shift as a lookup. Payroll resolves one per attendance
+            // record, and a query per row would be thousands.
+            'shifts' => Shift::lookup(),
         ];
     }
 
@@ -202,7 +207,7 @@ class PayrollService
     {
         $cfg = $this->config();
 
-        $query = Attendance::with('employee');
+        $query = Attendance::with(['employee', 'shift']);
         if ($from && $to) {
             $query->whereBetween('date', [$from, $to]);
         } elseif ($from) {
@@ -417,19 +422,27 @@ class PayrollService
         // setting was saved. A worker is already paid only for hours worked.
         $lateMinutes = 0;
 
-        if ($rec->time_in && $day) {
+        // The shift this day was worked under, if one was stamped on it. A
+        // record from before shifts existed has none, and falls back to the
+        // office setting it was computed under — so nothing already paid moves.
+        $shift = $cfg['shifts'][$rec->shift_id] ?? null;
+
+        $startsAt = $shift['starts_at'] ?? (string) ($day->expected_time_in ?? '08:00:00');
+        $grace    = $shift['grace']     ?? (int) ($day->grace_period_minutes ?? 15);
+        $crosses  = $shift['crosses']   ?? (($day->shift ?? 'day') === 'night');
+
+        if ($rec->time_in && ($shift || $day)) {
             $in       = Carbon::parse($rec->time_in);
-            $expected = Carbon::parse($rec->date)->setTimeFromTimeString((string) $day->expected_time_in);
-            $allowed  = $expected->copy()->addMinutes((int) $day->grace_period_minutes);
+            $expected = Carbon::parse($rec->date)->setTimeFromTimeString($startsAt);
+            $allowed  = $expected->copy()->addMinutes($grace);
 
             $actual = $expected->copy()->setTime((int) $in->format('G'), (int) $in->format('i'), 0);
 
-            // A night shift crosses midnight, so a clock-in long before the
-            // expected time is the small hours of the next morning rather than
-            // an arrival most of a day early. Twelve hours is the line: a worker
-            // fifteen minutes early is still early, one at 12:30 AM against a
-            // 10 PM start is two and a half hours late.
-            if (($day->shift ?? 'day') === 'night' && $expected->diffInHours($actual, false) < -12) {
+            // A shift that crosses midnight puts a clock-in long before its
+            // start in the small hours of the next morning, not most of a day
+            // early. Twelve hours is the line: fifteen minutes early is still
+            // early, 12:30 AM against a 10 PM start is two and a half hours late.
+            if ($crosses && $expected->diffInHours($actual, false) < -12) {
                 $actual->addDay();
             }
 
@@ -439,7 +452,7 @@ class PayrollService
         }
 
         return compact(
-            'hours', 'regular_hours', 'ot_hours', 'night_hours', 'lateMinutes', 'rate', 'ot_rate', 'basicPay', 'otPay',
+            'hours', 'regular_hours', 'ot_hours', 'night_hours', 'lateMinutes', 'shift', 'rate', 'ot_rate', 'basicPay', 'otPay',
             'dayEarnings', 'isHoliday', 'holidayType', 'hMultiplier', 'holidayPay', 'isSunday', 'restDayPay',
             'nightDiffPay', 'rates',
             'gross', 'dailyRate',
@@ -546,6 +559,7 @@ class PayrollService
 
                     $employeeSummaries[] = [
                         'employee_id'         => $empId,
+                        'shift'               => $empWeekRecords->first()->shift?->name,
                         'name'                => $employee->name,
                         'position'            => $employee->position ?? '',
                         'workdays'            => count(array_unique($empDates)),
@@ -604,6 +618,7 @@ class PayrollService
                     'id'                  => $detail->id,
                     'employee_id'         => $detail->employee_id,
                     'name'                => $employee->name,
+                    'shift'               => $r['shift']['name'] ?? null,
                     'hours'               => round($r['hours'], 2),
                     'dailyRate'           => $r['dailyRate'] !== null ? round($r['dailyRate'], 2) : round($r['rate'] * 8, 2),
                     'rate'                => round($r['rate'], 2),

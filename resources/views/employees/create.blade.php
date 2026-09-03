@@ -106,6 +106,20 @@
                             <span class="ep-hint">{{ __('Choose a Labor Type to automatically fill the Position.') }}</span>
                         </div>
 
+                        {{-- Which crew they will be on. Every day they work is
+                             stamped with the shift they were on that day. --}}
+                        <div class="col-md-6 col-lg-3 js-regular-only">
+                            <label class="ep-label" for="shift_select">{{ __('Shift') }}</label>
+                            <select id="shift_select" name="shift_id" class="form-select">
+                                <option value="">{{ __('— Select —') }}</option>
+                                @foreach($shifts as $sh)
+                                    <option value="{{ $sh->id }}" {{ old('shift_id') == $sh->id ? 'selected' : '' }}>
+                                        {{ $sh->name }} — {{ \Carbon\Carbon::parse($sh->starts_at)->format('g:i A') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="col-md-6 col-lg-2 js-regular-only">
                             <label class="ep-label" for="rate_per_hour">{{ __('Rate Per Hour') }} <span class="ep-req">*</span></label>
                             <input type="number" step="0.01" id="rate_per_hour" name="rate_per_hour"

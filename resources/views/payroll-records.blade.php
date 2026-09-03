@@ -236,6 +236,7 @@
                         <tr>
                             <th class="ps-4">{{ $isDaily ? 'Date' : 'Week' }}</th>
                             <th>{{ __('Employee') }}</th>
+                            <th>{{ __('Shift') }}</th>
                             <th class="text-end">{{ __('Hours') }}</th>
                             <th class="text-end">{{ __('Daily Rate') }}</th>
                             <th class="text-end">{{ __('Rest Day Pay') }}</th>
@@ -257,6 +258,7 @@
                                     data-date="{{ \Carbon\Carbon::parse($day['date'])->format('l, F j, Y') }}">
                                     <td class="ps-4 text-muted">{{ \Carbon\Carbon::parse($day['date'])->format('m/d/Y (D)') }}</td>
                                     <td class="fw-semibold">{{ $d['name'] }}</td>
+                                    <td class="text-muted">{{ $d['shift'] ?? '—' }}</td>
                                     <td class="text-end">{{ $d['hours'] }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
@@ -268,7 +270,7 @@
                                 @endforeach
                             @empty
                             <tr>
-                                <td colspan="9" class="text-center py-5 text-muted">{{ __('No records for this period.') }}</td>
+                                <td colspan="10" class="text-center py-5 text-muted">{{ __('No records for this period.') }}</td>
                             </tr>
                             @endforelse
                         @else
@@ -276,10 +278,12 @@
                                  The daily rate belongs to the worker rather than
                                  to a day, so it is read off any day they worked. --}}
                             @php
-                                $rateOf = [];
+                                $rateOf  = [];
+                                $shiftOf = [];
                                 foreach ($days as $day) {
                                     foreach ($day['details'] as $d) {
-                                        $rateOf[$d['employee_id']] ??= $d['dailyRate'];
+                                        $rateOf[$d['employee_id']]  ??= $d['dailyRate'];
+                                        $shiftOf[$d['employee_id']] ??= $d['shift'];
                                     }
                                 }
                             @endphp
@@ -297,6 +301,7 @@
                                     data-date="{{ $period['label'] }}">
                                     <td class="ps-4 text-muted">{{ $period['label'] }}</td>
                                     <td class="fw-semibold">{{ $emp['name'] }}</td>
+                                    <td class="text-muted">{{ $shiftOf[$emp['employee_id']] ?? '—' }}</td>
                                     <td class="text-end">{{ number_format($t['hours'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($rate, 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($t['restDayPay'] ?? 0, 2) }}</td>
@@ -307,7 +312,7 @@
                                 </tr>
                             @empty
                             <tr>
-                                <td colspan="9" class="text-center py-5 text-muted">{{ __('No records for this period.') }}</td>
+                                <td colspan="10" class="text-center py-5 text-muted">{{ __('No records for this period.') }}</td>
                             </tr>
                             @endforelse
                         @endif

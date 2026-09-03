@@ -50,7 +50,7 @@ class Employee extends Model
     public const CIVIL_STATUSES = ['Single', 'Married', 'Widowed', 'Separated'];
 
     protected $fillable = [
-        'name', 'rate_per_hour', 'position', 'employment_type', 'contract_rate', 'project_id', 'labor_type_id',
+        'name', 'rate_per_hour', 'position', 'employment_type', 'contract_rate', 'project_id', 'labor_type_id', 'shift_id',
         'site_id', 'kiosk_id', 'status', 'vale', 'fingerprint_id', 'photo', 'archived_at',
         ...self::PROFILE_FIELDS,
         ...self::IDENTITY_FIELDS,
@@ -92,6 +92,12 @@ class Employee extends Model
     public function laborType()
     {
         return $this->belongsTo(LaborType::class, 'labor_type_id');
+    }
+
+    /** The shift this worker is on now. What they worked is on the record. */
+    public function shift()
+    {
+        return $this->belongsTo(Shift::class);
     }
 
     public function attendances()

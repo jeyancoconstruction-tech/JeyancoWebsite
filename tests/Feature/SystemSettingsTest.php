@@ -270,25 +270,30 @@ class SystemSettingsTest extends TestCase
 
     public function test_saving_attendance_writes_the_day_shape(): void
     {
+        $day = \App\Models\Shift::where('name', 'Day')->first();
+
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
-                 'shift'                  => 'day',
-                 'expected_time_in'       => '07:30',
-                 'grace_period_minutes'   => 10,
                  'standard_hours_per_day' => 10,
                  'week_starts_on'         => 0,
                  'payroll_cycle'          => 'daily',
+                 'shifts'                 => [
+                     $day->id => ['starts_at' => '07:30', 'grace_period_minutes' => 10],
+                 ],
              ])
              ->assertSessionHasNoErrors();
 
         SystemSetting::forget();
         $s = SystemSetting::current();
 
-        $this->assertSame(10, $s->grace_period_minutes);
         $this->assertSame(10.0, $s->standard_hours_per_day);
         $this->assertSame(0, $s->week_starts_on);
         $this->assertSame('daily', $s->payroll_cycle);
         $this->assertFalse($s->auto_count_overtime, 'an unticked box is the off answer');
+
+        $day->refresh();
+        $this->assertSame(10, $day->grace_period_minutes);
+        $this->assertStringStartsWith('07:30', (string) $day->starts_at);
     }
 
     /** A day of no hours would divide the daily rate by nothing. */
@@ -296,9 +301,6 @@ class SystemSettingsTest extends TestCase
     {
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
-                 'shift'                  => 'day',
-                 'expected_time_in'       => '08:00',
-                 'grace_period_minutes'   => 15,
                  'standard_hours_per_day' => 0,
                  'week_starts_on'         => 1,
                  'payroll_cycle'          => 'weekly',
@@ -314,9 +316,6 @@ class SystemSettingsTest extends TestCase
     {
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
-                 'shift'                  => 'day',
-                 'expected_time_in'       => '08:00',
-                 'grace_period_minutes'   => 15,
                  'standard_hours_per_day' => 8,
                  'week_starts_on'         => 1,
                  'payroll_cycle'          => 'weekly',

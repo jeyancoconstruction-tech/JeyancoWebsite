@@ -347,49 +347,47 @@
                         </div>
                     </div>
                     <div class="ps-card-body">
-                        {{-- Which shift the office runs. Not decoration beside
-                             the time-in: a night shift crosses midnight, and
-                             lateness has to know that or a worker clocking in at
-                             half past midnight against a 10 PM start reads as
-                             twenty-one hours early instead of two and a half
-                             hours late. --}}
-                        @php $shift = old('shift', $system->shift ?? 'day'); @endphp
-                        <label class="ps-label">{{ __('Shift') }}</label>
+                        {{-- The shifts the office runs. Each worker is put on
+                             one on their profile, and the shift they were on is
+                             stamped on every attendance record — so moving
+                             somebody to the night crew changes what they work
+                             next, not how late they were last month. --}}
+                        <label class="ps-label">{{ __('Shifts') }}</label>
                         <div class="sh-pick mb-3">
-                            <label class="sh-opt {{ $shift === 'day' ? 'on' : '' }}">
-                                <input type="radio" name="shift" value="day" {{ $shift === 'day' ? 'checked' : '' }}>
-                                <i class="fas fa-sun"></i>
-                                <span>
-                                    <b>{{ __('Day shift') }}</b>
-                                    <small>{{ __('Starts and ends on the same date') }}</small>
-                                </span>
-                            </label>
-                            <label class="sh-opt {{ $shift === 'night' ? 'on' : '' }}">
-                                <input type="radio" name="shift" value="night" {{ $shift === 'night' ? 'checked' : '' }}>
-                                <i class="fas fa-moon"></i>
-                                <span>
-                                    <b>{{ __('Night shift') }}</b>
-                                    <small>{{ __('Crosses midnight into the next morning') }}</small>
-                                </span>
-                            </label>
+                            @foreach($shifts as $sh)
+                                <div class="sh-def">
+                                    <div class="sh-def-head">
+                                        <i class="fas {{ $sh->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>
+                                        <b>{{ $sh->name }}</b>
+                                        <span class="sh-count">{{ $sh->employees_count }} {{ __('workers') }}</span>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="ps-label" for="shift_start_{{ $sh->id }}">{{ __('Starts') }}</label>
+                                            <input type="time" class="form-control ps-input"
+                                                   id="shift_start_{{ $sh->id }}"
+                                                   name="shifts[{{ $sh->id }}][starts_at]"
+                                                   value="{{ old("shifts.{$sh->id}.starts_at", substr($sh->starts_at, 0, 5)) }}" required>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="ps-label" for="shift_grace_{{ $sh->id }}">{{ __('Grace (min)') }}</label>
+                                            <input type="number" min="0" max="120" class="form-control ps-input"
+                                                   id="shift_grace_{{ $sh->id }}"
+                                                   name="shifts[{{ $sh->id }}][grace_period_minutes]"
+                                                   value="{{ old("shifts.{$sh->id}.grace_period_minutes", $sh->grace_period_minutes) }}" required>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">
+                                        {{ $sh->crosses_midnight
+                                            ? __('Crosses midnight into the next morning')
+                                            : __('Starts and ends on the same date') }}
+                                    </small>
+                                </div>
+                            @endforeach
                         </div>
+                        @error('shifts')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 
                         <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="ps-label" for="expected_time_in">{{ __('Expected time-in') }}</label>
-                                <input type="time" class="form-control ps-input @error('expected_time_in') is-invalid @enderror"
-                                       id="expected_time_in" name="expected_time_in"
-                                       value="{{ old('expected_time_in', substr($system->expected_time_in, 0, 5)) }}" required>
-                                @error('expected_time_in')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-4">
-                                <label class="ps-label" for="grace_period_minutes">{{ __('Grace period (minutes)') }}</label>
-                                <input type="number" min="0" max="120"
-                                       class="form-control ps-input @error('grace_period_minutes') is-invalid @enderror"
-                                       id="grace_period_minutes" name="grace_period_minutes"
-                                       value="{{ old('grace_period_minutes', $system->grace_period_minutes) }}" required>
-                                @error('grace_period_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            </div>
                             <div class="col-md-4">
                                 <label class="ps-label" for="standard_hours_per_day">{{ __('Standard hours / day') }}</label>
                                 <input type="number" step="0.25" min="1" max="24"
@@ -1710,24 +1708,23 @@
 </div>
 
 <style>
-/* ── Shift picker ──────────────────────────────────────────────────────────
-   Two cards rather than a dropdown: the choice changes how lateness is
-   measured, which is worth a sentence each rather than one word in a list. */
-.sh-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-@media (max-width: 640px) { .sh-pick { grid-template-columns: 1fr; } }
-.sh-opt {
-    display: flex; align-items: center; gap: 12px; margin: 0; cursor: pointer;
-    padding: 12px 14px; border-radius: 6px;
+/* ── Shift definitions ─────────────────────────────────────────────────────
+   Two cards side by side: the start and the grace belong to the shift, not to
+   the office, so they are edited where the shift is named. */
+.sh-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 700px) { .sh-pick { grid-template-columns: 1fr; } }
+.sh-def {
+    padding: 14px; border-radius: 6px;
     border: 1px solid var(--border); background: var(--bg-subtle);
 }
-.sh-opt input { position: absolute; opacity: 0; pointer-events: none; }
-.sh-opt > i { font-size: 1.1rem; color: var(--text-muted); flex: none; }
-.sh-opt b { display: block; font-size: .9rem; color: var(--text-primary); }
-.sh-opt small { display: block; font-size: .75rem; color: var(--text-secondary); line-height: 1.4; }
-.sh-opt.on, .sh-opt:has(input:checked) {
-    border-color: var(--brand); background: var(--brand-subtle);
+.sh-def-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.sh-def-head > i { color: var(--brand); font-size: 1rem; }
+.sh-def-head b { font-size: .95rem; color: var(--text-primary); }
+.sh-count {
+    margin-left: auto; font-size: 11px; padding: 2px 9px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
 }
-.sh-opt.on > i, .sh-opt:has(input:checked) > i { color: var(--brand); }
+
 
 /* ── Bonus grants ──────────────────────────────────────────────────────────
    The picker is a wall of names, so it scrolls rather than pushing the Give

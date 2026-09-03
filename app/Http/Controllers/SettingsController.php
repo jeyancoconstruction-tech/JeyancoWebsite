@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Bonus;
+use App\Models\Shift;
 use App\Models\SystemSetting;
 use App\Models\Setting;
 use App\Models\LaborType;
@@ -58,6 +59,10 @@ class SettingsController extends Controller
 
         $activeEmployees = Employee::active()->orderBy('name')->get(['id', 'name', 'position']);
 
+        // The shifts, with how many people are on each — the count is the part
+        // that says whether the split is actually being used.
+        $shifts = Shift::withCount('employees')->orderBy('id')->get();
+
         // Holiday calendar: official PH holidays for the selected year merged
         // with manual entries (auto-recognised, admin-overridable).
         $holidayYear = (int) $request->input('year', now()->year);
@@ -97,7 +102,7 @@ class SettingsController extends Controller
 
         return view('settings.index', compact(
             'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap',
-            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system', 'bonusGrants', 'activeEmployees'
+            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system', 'bonusGrants', 'activeEmployees', 'shifts'
         ));
     }
 
@@ -556,22 +561,34 @@ class SettingsController extends Controller
     public function updateAttendance(Request $request)
     {
         $data = $request->validate([
-            'shift'                  => ['required', 'in:day,night'],
-            'expected_time_in'       => ['required', 'date_format:H:i'],
-            'grace_period_minutes'   => ['required', 'integer', 'min:0', 'max:120'],
-
             // A day of zero hours would divide the daily rate by nothing.
             'standard_hours_per_day' => ['required', 'numeric', 'min:1', 'max:24'],
 
             'week_starts_on'         => ['required', 'integer', 'min:0', 'max:6'],
             'payroll_cycle'          => ['required', 'in:weekly,daily'],
+
+            // Each shift's own start and grace. The names and whether a shift
+            // crosses midnight are not editable — they are what the two shifts
+            // are, and renaming one would not change which records point at it.
+            'shifts'                             => ['array'],
+            'shifts.*.starts_at'                 => ['required', 'date_format:H:i'],
+            'shifts.*.grace_period_minutes'      => ['required', 'integer', 'min:0', 'max:120'],
         ], [
-            'standard_hours_per_day.min' => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
-            'grace_period_minutes.max'   => 'Two hours of grace is not a grace period.',
+            'standard_hours_per_day.min'    => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
+            'shifts.*.grace_period_minutes.max' => 'Two hours of grace is not a grace period.',
         ]);
 
         // An unticked checkbox posts nothing, which is the off answer.
         $data['auto_count_overtime'] = $request->boolean('auto_count_overtime');
+
+        foreach ($data['shifts'] ?? [] as $id => $fields) {
+            Shift::whereKey($id)->update([
+                'starts_at'            => $fields['starts_at'] . ':00',
+                'grace_period_minutes' => $fields['grace_period_minutes'],
+            ]);
+        }
+
+        unset($data['shifts']);
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
         $settings->fill($data)->save();

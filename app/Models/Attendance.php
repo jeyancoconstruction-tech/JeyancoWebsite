@@ -9,6 +9,7 @@ class Attendance extends Model
 {
     protected $fillable = [
         'employee_id',
+        'shift_id',
         'site_id',
         'kiosk_id',
         'date',
@@ -37,7 +38,21 @@ class Attendance extends Model
             if (empty($attendance->session)) {
                 $attendance->session = now()->format('H') < 12 ? 'AM' : 'PM';
             }
+
+            // The shift the day was worked under, taken once and kept. Stamped
+            // here rather than at each clock-in so no path — the kiosk, the
+            // office screen, an import — can leave it off. Reading the
+            // employee's shift at payroll time instead would mean moving
+            // somebody to the night crew changed how late they were last month.
+            if (empty($attendance->shift_id) && $attendance->employee_id) {
+                $attendance->shift_id = Employee::whereKey($attendance->employee_id)->value('shift_id');
+            }
         });
+    }
+
+    /** The shift this day was worked under, not the worker's shift today. */
+    public function shift() {
+        return $this->belongsTo(Shift::class);
     }
 
     public function employee() {

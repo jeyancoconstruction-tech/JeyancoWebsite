@@ -86,6 +86,7 @@ class PayrollRateEffectivityTest extends TestCase
             'rateTimeline'   => PayrollRate::timeline(),
             'sundayRestDay'  => true,
             'holidayTypeMap' => [],
+            'shifts'         => \App\Models\Shift::lookup(),
         ], $cfgOverrides);
 
         $m = new ReflectionMethod(PayrollService::class, 'computeRecord');
@@ -1004,17 +1005,80 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertGreaterThan(0, $day['nightDiffPay'], '10 PM to 6 AM is night whoever is working');
     }
 
-    public function test_an_unknown_shift_is_refused(): void
+    /** Grace is per shift now, and two hours of it is not a grace period. */
+    public function test_an_absurd_grace_period_is_refused(): void
     {
+        $day = \App\Models\Shift::where('name', 'Day')->first();
+
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
-                 'shift'                  => 'graveyard',
-                 'expected_time_in'       => '22:00',
-                 'grace_period_minutes'   => 15,
                  'standard_hours_per_day' => 8,
                  'week_starts_on'         => 1,
                  'payroll_cycle'          => 'weekly',
+                 'shifts'                 => [
+                     $day->id => ['starts_at' => '08:00', 'grace_period_minutes' => 999],
+                 ],
              ])
-             ->assertSessionHasErrors('shift');
+             ->assertSessionHasErrors('shifts.' . $day->id . '.grace_period_minutes');
+    }
+
+    // ── The shift a day was worked under ─────────────────────────────────────
+
+    /** A record stamped with the night shift is measured against that shift. */
+    public function test_lateness_follows_the_shift_stamped_on_the_record(): void
+    {
+        $this->rate('2026-01-01');
+
+        $night = \App\Models\Shift::where('name', 'Night')->first();
+        $night->update(['starts_at' => '22:00:00', 'grace_period_minutes' => 15]);
+
+        $rec = $this->record('2026-03-04', '00:30:00', 8);
+        $rec->update(['shift_id' => $night->id]);
+
+        $out = $this->compute($rec->fresh()->load('employee.laborType', 'shift'), $this->dayCfg());
+
+        $this->assertSame(150, $out['lateMinutes'], 'measured against 10 PM, not the office default');
+    }
+
+    /**
+     * Moving somebody to another crew must not move how late they already were.
+     * The record keeps the shift it was worked under.
+     */
+    public function test_changing_the_employees_shift_does_not_move_past_lateness(): void
+    {
+        $this->rate('2026-01-01');
+
+        $day   = \App\Models\Shift::where('name', 'Day')->first();
+        $night = \App\Models\Shift::where('name', 'Night')->first();
+        $day->update(['starts_at' => '08:00:00', 'grace_period_minutes' => 15]);
+        $night->update(['starts_at' => '22:00:00', 'grace_period_minutes' => 15]);
+
+        $rec = $this->record('2026-03-04', '09:00:00', 8);
+        $rec->update(['shift_id' => $day->id]);
+
+        // The worker is moved to nights afterwards.
+        $rec->employee->update(['shift_id' => $night->id]);
+
+        $out = $this->compute($rec->fresh()->load('employee.laborType', 'shift'), $this->dayCfg());
+
+        $this->assertSame(60, $out['lateMinutes'], 'still an hour late on the day shift they worked');
+    }
+
+    /** A new record takes the worker's shift without anybody passing it. */
+    public function test_a_new_record_is_stamped_with_the_workers_shift(): void
+    {
+        $night = \App\Models\Shift::where('name', 'Night')->first();
+
+        $rec = $this->record('2026-03-04', '22:00:00', 8);
+        $rec->employee->update(['shift_id' => $night->id]);
+
+        $fresh = Attendance::create([
+            'employee_id' => $rec->employee_id,
+            'date'        => '2026-03-05',
+            'time_in'     => '22:00:00',
+            'time_out'    => '06:00:00',
+        ]);
+
+        $this->assertSame($night->id, $fresh->shift_id);
     }
 }

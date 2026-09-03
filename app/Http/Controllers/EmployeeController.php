@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use App\Models\Employee;
+use App\Models\Shift;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Models\Attendance;
@@ -149,7 +150,9 @@ class EmployeeController extends Controller
         $laborTypes        = LaborType::all();
         $sites             = Site::orderBy('name')->get();
         $nextFingerprintId = $this->nextFingerprintId();
-        return view('employees.create', compact('laborTypes', 'sites', 'nextFingerprintId'));
+        $shifts            = Shift::orderBy('id')->get();
+
+        return view('employees.create', compact('laborTypes', 'sites', 'nextFingerprintId', 'shifts'));
     }
 
     public function store(Request $request)
@@ -195,6 +198,7 @@ class EmployeeController extends Controller
             'contract_rate'  => $request->filled('contract_rate') ? (float) $request->contract_rate : null,
             'rate_per_hour'  => $request->rate_per_hour ?: 0,
             'labor_type_id'  => $request->labor_type_id ?: null,
+            'shift_id'       => $request->shift_id ?: null,
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
             'photo'          => $photoPath,
@@ -225,7 +229,9 @@ class EmployeeController extends Controller
         $employee   = Employee::findOrFail($id);
         $laborTypes = LaborType::all();
         $sites      = Site::orderBy('name')->get();
-        return view('employees.edit', compact('employee', 'laborTypes', 'sites'));
+        $shifts     = Shift::orderBy('id')->get();
+
+        return view('employees.edit', compact('employee', 'laborTypes', 'sites', 'shifts'));
     }
 
     public function update(Request $request, $id)
@@ -260,6 +266,7 @@ class EmployeeController extends Controller
             'contract_rate'  => $request->filled('contract_rate') ? (float) $request->contract_rate : $employee->contract_rate,
             'rate_per_hour'  => $request->rate_per_hour ?: $employee->rate_per_hour,
             'labor_type_id'  => $request->labor_type_id ?: $employee->labor_type_id,
+            'shift_id'       => $request->has('shift_id') ? ($request->shift_id ?: null) : $employee->shift_id,
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
         ], $this->profileData($request, $laborType), $identity);
