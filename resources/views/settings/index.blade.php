@@ -387,8 +387,12 @@
                         </div>
                         @error('shifts')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 
-                        <div class="row g-3">
-                            <div class="col-md-4">
+                        {{-- The same two-column grid the shifts use, so this
+                             field lines up with the Day card above it rather
+                             than sitting at a third of the width on a bootstrap
+                             row with a different gutter. --}}
+                        <div class="sh-pick">
+                            <div>
                                 <label class="ps-label" for="standard_hours_per_day">{{ __('Standard hours / day') }}</label>
                                 <input type="number" step="0.25" min="1" max="24"
                                        class="form-control ps-input @error('standard_hours_per_day') is-invalid @enderror"
@@ -414,15 +418,17 @@
                         </div>
                     </div>
                     <div class="ps-card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
+                        {{-- The same grid as the shifts above, so every field on
+                             this tab sits on one rhythm instead of three. --}}
+                        <div class="sh-pick">
+                            <div>
                                 <label class="ps-label" for="payroll_cycle">{{ __('Cycle') }}</label>
                                 <select class="form-control ps-input" id="payroll_cycle" name="payroll_cycle" required>
                                     <option value="weekly" @selected(old('payroll_cycle', $system->payroll_cycle) === 'weekly')>{{ __('Weekly') }}</option>
                                     <option value="daily"  @selected(old('payroll_cycle', $system->payroll_cycle) === 'daily')>{{ __('Daily') }}</option>
                                 </select>
                             </div>
-                            <div class="col-md-6">
+                            <div>
                                 <label class="ps-label" for="week_starts_on">{{ __('Week starts') }}</label>
                                 <select class="form-control ps-input" id="week_starts_on" name="week_starts_on" required>
                                     @foreach([1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday',
