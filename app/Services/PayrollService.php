@@ -8,6 +8,7 @@ use App\Models\Holiday;
 use App\Models\PayrollRate;
 use App\Models\Bonus;
 use App\Models\Shift;
+use App\Models\ValeAdvance;
 use App\Models\SystemSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -243,6 +244,13 @@ class PayrollService
         $cfg['bonusGrants'] = $dates->isEmpty()
             ? []
             : Bonus::inRange($dates->min(), $dates->max());
+
+        // Advances are filtered on where their schedule begins rather than on
+        // the range: one started months ago may still have instalments left to
+        // collect inside it. A week outside an advance's run is answered zero.
+        $cfg['valeAdvances'] = $dates->isEmpty()
+            ? []
+            : ValeAdvance::upTo($dates->max());
 
         $weeks = $this->groupByWeek($records, $cfg);
 
@@ -536,10 +544,11 @@ class PayrollService
             // resolves once — on the last day of the week, the day the period
             // is paid. A bonus raised mid-week takes effect on the period that
             // ends after it, and never on one already paid.
-            $weekBonus = $this->ratesOn(
+            $weekRates = $this->ratesOn(
                 Carbon::parse($weekGroup->first()->date)->endOfWeek($weekEnd)->toDateString(),
                 $cfg
-            )['bonus'] ?? 0;
+            );
+            $weekBonus = $weekRates['bonus'] ?? 0;
 
             // The one-off grants that land inside this week. A grant names its
             // people, or says everybody — which is not the same as listing them,
@@ -589,6 +598,33 @@ class PayrollService
                 }
 
                 if ($employee) {
+                    // Cash advances being collected this period. The vale
+                    // summed above came off the days themselves; this is the
+                    // instalment on a sum already handed over, so it is a
+                    // figure for the week rather than for any one day.
+                    $advanceDue = 0.0;
+
+                    foreach ($cfg['valeAdvances'] ?? [] as $adv) {
+                        if ($adv['all'] || in_array($empId, $adv['employees'])) {
+                            $advanceDue += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
+                        }
+                    }
+
+                    // The ceiling is a limit on what one period may collect, so
+                    // the instalment answers to it too — and to what the day
+                    // vale has already taken under it. What it does not collect
+                    // stays owed; only this period is limited.
+                    $advanceTaken = $advanceDue;
+                    $ceiling      = (int) ($weekRates['vale_ceiling_percent'] ?? 100);
+
+                    if ($ceiling < 100 && $advanceDue > 0) {
+                        $allowance    = round(max(0, $sumGross - $sumAuto) * $ceiling / 100, 2);
+                        $advanceTaken = max(0, min($advanceDue, round($allowance - $sumVale, 2)));
+                    }
+
+                    $sumVale += $advanceTaken;
+                    $sumNet  -= $advanceTaken;
+
                     $totalDeductions = $sumAuto + $sumVale + $sumManual;
 
                     // The standing bonus, plus whatever this worker was granted
@@ -625,6 +661,8 @@ class PayrollService
                         'autoDeductions'      => round($sumAuto, 2),
                         'late_minutes'        => $sumLate,
                         'vale'                => round($sumVale, 2),
+                        'vale_advance'        => round($advanceTaken, 2),
+                        'vale_advance_due'    => round($advanceDue, 2),
                         'manualDeductions'    => round($sumManual, 2),
                         'totalDeductions'     => round($totalDeductions, 2),
                         'net'                 => round($sumNet, 2),

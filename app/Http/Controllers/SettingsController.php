@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Bonus;
+use App\Models\ValeAdvance;
 use App\Models\Shift;
 use App\Models\SystemSetting;
 use App\Models\Setting;
@@ -59,6 +60,10 @@ class SettingsController extends Controller
 
         $activeEmployees = Employee::active()->orderBy('name')->get(['id', 'name', 'position']);
 
+        $valeAdvances = ValeAdvance::with('employees:id,name')
+            ->orderByDesc('starts_on')->orderByDesc('id')
+            ->limit(20)->get();
+
         // The shifts, with how many people are on each — the count is the part
         // that says whether the split is actually being used.
         $shifts = Shift::withCount('employees')->orderBy('id')->get();
@@ -102,7 +107,7 @@ class SettingsController extends Controller
 
         return view('settings.index', compact(
             'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap',
-            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system', 'bonusGrants', 'activeEmployees', 'shifts'
+            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system', 'bonusGrants', 'valeAdvances', 'activeEmployees', 'shifts'
         ));
     }
 
@@ -756,5 +761,70 @@ class SettingsController extends Controller
 
         return redirect()->route('settings.index', ['tab' => 'bonus'])
             ->with('success', 'Bonus removed.');
+    }
+
+    /**
+     * Hand out a cash advance, to be collected over several pay periods.
+     *
+     * The amount is what each named worker owes, not a sum divided between
+     * them: two people given a ₱4,000 advance over four weeks each pay ₱1,000
+     * a week, which is what "give them both an advance" means.
+     */
+    public function storeValeAdvance(Request $request)
+    {
+        $data = $request->validate([
+            'amount'        => 'required|numeric|min:0.01|max:1000000',
+            'weeks'         => 'required|integer|min:1|max:52',
+            'starts_on'     => 'required|date',
+            'note'          => 'nullable|string|max:160',
+            'all_employees' => 'nullable|boolean',
+            'employees'     => 'array',
+            'employees.*'   => 'integer|exists:employees,id',
+        ], [
+            'amount.min' => 'An advance of nothing is not an advance.',
+            'weeks.min'  => 'An advance is collected over at least one period.',
+            'weeks.max'  => 'A year is as far out as an advance may be spread.',
+        ]);
+
+        $all = $request->boolean('all_employees');
+
+        // Everybody, or somebody. An advance naming nobody would collect from
+        // no one and sit in the list looking as though it were running.
+        if (! $all && empty($data['employees'])) {
+            return back()
+                ->withErrors(['employees' => 'Choose who took it, or tick everybody.'])
+                ->withInput();
+        }
+
+        $advance = ValeAdvance::create([
+            'amount'        => $data['amount'],
+            'weeks'         => $data['weeks'],
+            'starts_on'     => $data['starts_on'],
+            'all_employees' => $all,
+            'note'          => $data['note'] ?? null,
+            'created_by'    => auth()->user()->name ?? auth()->user()->username ?? 'admin',
+        ]);
+
+        if (! $all) {
+            $advance->employees()->sync($data['employees']);
+        }
+
+        return redirect()->route('settings.index', ['tab' => 'bonus'])
+            ->with('success', 'Advance recorded.');
+    }
+
+    /**
+     * Cancel an advance.
+     *
+     * Every period it touched recomputes without it — including ones already
+     * collected, which is why this is a cancellation for an advance entered
+     * wrongly rather than a way to write off what is still owed.
+     */
+    public function destroyValeAdvance(ValeAdvance $valeAdvance)
+    {
+        $valeAdvance->delete();
+
+        return redirect()->route('settings.index', ['tab' => 'bonus'])
+            ->with('success', 'Advance removed.');
     }
 }

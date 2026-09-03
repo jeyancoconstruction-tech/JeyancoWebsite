@@ -169,6 +169,8 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     // Bonuses given to named people. Created and deleted, never edited.
     Route::post  ('/settings/bonus/grants',          [SettingsController::class, 'storeBonusGrant'])->name('bonus-grants.store');
     Route::delete('/settings/bonus/grants/{bonus}',  [SettingsController::class, 'destroyBonusGrant'])->name('bonus-grants.destroy');
+    Route::post  ('/settings/vale/advances',                [SettingsController::class, 'storeValeAdvance'])->name('vale-advances.store');
+    Route::delete('/settings/vale/advances/{valeAdvance}',  [SettingsController::class, 'destroyValeAdvance'])->name('vale-advances.destroy');
     
     // Labor Types
     Route::post('/labor-types/store', [SettingsController::class, 'storeLaborType'])->name('labor-types.store');

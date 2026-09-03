@@ -1636,6 +1636,153 @@
                 </button>
             </form>
 
+            {{-- Handing one out. Its own form: this creates a record, the one
+                 above changes a setting, and posting them together would make
+                 one save mean two different things. --}}
+            <form method="POST" action="{{ route('vale-advances.store') }}">
+                @csrf
+
+                <div class="ps-card mb-4">
+                    <div class="ps-card-header">
+                        <i class="fas fa-hand-holding-dollar"></i>
+                        <div>
+                            <h6>{{ __('Give a cash advance') }}</h6>
+                            <p>{{ __('A sum handed over now, taken back a piece at a time') }}</p>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <label class="ps-label" for="adv_amount">{{ __('Amount each') }}</label>
+                                <div class="input-group">
+                                    <span class="input-group-text ps-ig-text">&#8369;</span>
+                                    <input type="number" step="0.01" min="0.01" max="1000000"
+                                           class="form-control ps-input @error('amount') is-invalid @enderror"
+                                           id="adv_amount" name="amount" placeholder="0.00"
+                                           value="{{ old('amount') }}" required>
+                                </div>
+                                @error('amount')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-2">
+                                <label class="ps-label" for="adv_weeks">{{ __('Over how many weeks') }}</label>
+                                <input type="number" step="1" min="1" max="52"
+                                       class="form-control ps-input @error('weeks') is-invalid @enderror"
+                                       id="adv_weeks" name="weeks" value="{{ old('weeks', 4) }}" required>
+                                @error('weeks')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-3">
+                                <label class="ps-label" for="adv_starts">{{ __('First deduction in the period containing') }}</label>
+                                <input type="date" class="form-control ps-input @error('starts_on') is-invalid @enderror"
+                                       id="adv_starts" name="starts_on"
+                                       value="{{ old('starts_on', now()->toDateString()) }}" required>
+                                @error('starts_on')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label class="ps-label" for="adv_note">{{ __('Reason') }} <span class="text-muted">{{ __('(optional)') }}</span></label>
+                                <input type="text" maxlength="160" class="form-control ps-input"
+                                       id="adv_note" name="note" placeholder="{{ __('e.g. Hospital bill') }}"
+                                       value="{{ old('note') }}">
+                            </div>
+                        </div>
+
+                        {{-- Ang mahirap isipin ay hindi ang kabuuan kundi ang
+                             kada linggo, kaya ito ang ipinapakita habang
+                             tina-type pa lang. --}}
+                        <div class="va-preview" id="advPreview" hidden>
+                            <i class="fas fa-calculator"></i>
+                            <span id="advPreviewText"></span>
+                        </div>
+
+                        <label class="ps-label">{{ __('Who took it') }}</label>
+                        <div class="ps-toggle-row mb-2">
+                            <label class="ps-toggle-switch">
+                                <input type="checkbox" name="all_employees" value="1" id="adv_all"
+                                       {{ old('all_employees') ? 'checked' : '' }}>
+                                <span class="ps-toggle-slider"></span>
+                            </label>
+                            <div class="ps-toggle-label">
+                                {{ __('Everybody active') }} &mdash;
+                                <span class="text-muted">{{ __('each of them owes the amount above, it is not divided between them') }}</span>
+                            </div>
+                        </div>
+
+                        @error('employees')<div class="invalid-feedback d-block mb-2">{{ $message }}</div>@enderror
+
+                        <div class="bg-picker" id="advPicker">
+                            @forelse($activeEmployees as $emp)
+                                <label class="bg-pick">
+                                    <input type="checkbox" name="employees[]" value="{{ $emp->id }}"
+                                           {{ in_array($emp->id, (array) old('employees', [])) ? 'checked' : '' }}>
+                                    <span class="bg-pick-name">{{ $emp->name }}</span>
+                                    @if($emp->position)<span class="bg-pick-role">{{ $emp->position }}</span>@endif
+                                </label>
+                            @empty
+                                <p class="text-muted mb-0">{{ __('No active employees yet.') }}</p>
+                            @endforelse
+                        </div>
+
+                        <button type="submit" class="btn ps-save-btn mt-3">
+                            <i class="fas fa-hand-holding-dollar me-2"></i>{{ __('Record advance') }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="ps-card mb-4">
+                <div class="ps-card-header">
+                    <i class="fas fa-list-check"></i>
+                    <div>
+                        <h6>{{ __('Advances') }}</h6>
+                        <p>{{ __('The twenty most recent') }}</p>
+                    </div>
+                </div>
+                <div class="ps-card-body">
+                    @forelse($valeAdvances as $adv)
+                        @php
+                            // Ilang linggo na ang nakolekta. Hindi ito bilang na
+                            // nakaimbak kundi galing sa iskedyul mismo, kaya
+                            // pareho ang sagot kahit ilang beses tanungin.
+                            $wkStart = (int) $system->week_starts_on;
+                            $first   = $adv->starts_on->copy()->startOfWeek($wkStart);
+                            $elapsed = (int) $first->diffInWeeks(now()->startOfWeek($wkStart), false);
+                            $paidWks = max(0, min($adv->weeks, $elapsed));
+                            $perWeek = round($adv->amount / max(1, $adv->weeks), 2);
+                            $done    = $paidWks >= $adv->weeks;
+                        @endphp
+                        <div class="bg-row">
+                            <div class="bg-row-main">
+                                <span class="bg-amount">&#8369;{{ number_format($adv->amount, 2) }}</span>
+                                <span class="va-terms">
+                                    &#8369;{{ number_format($perWeek, 2) }} &times; {{ $adv->weeks }}
+                                </span>
+                                <span class="bg-when">{{ __('from') }} {{ $adv->starts_on->format('M d, Y') }}</span>
+                                @if($adv->note)<span class="bg-note">{{ $adv->note }}</span>@endif
+                            </div>
+                            <div class="bg-row-who">
+                                @if($adv->all_employees)
+                                    <span class="bg-all">{{ __('Everybody active') }}</span>
+                                @else
+                                    {{ $adv->employees->pluck('name')->join(', ') }}
+                                @endif
+                            </div>
+                            <span class="va-progress {{ $done ? 'is-done' : '' }}">
+                                {{ $done ? __('Paid off') : $paidWks . ' / ' . $adv->weeks }}
+                            </span>
+                            <form method="POST" action="{{ route('vale-advances.destroy', $adv) }}"
+                                  onsubmit="return confirm('{{ __('Remove this advance? Every period it touched recomputes without it, including ones already collected.') }}');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="bg-remove" title="{{ __('Remove') }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    @empty
+                        <p class="text-muted mb-0">{{ __('No advances yet.') }}</p>
+                    @endforelse
+                </div>
+            </div>
+
             {{-- Bonuses given to named people. Its own form: this one creates a
                  record, the one above changes a setting, and posting them
                  together would make one save mean two different things. --}}
@@ -1791,6 +1938,37 @@
    The picker is a wall of names, so it scrolls rather than pushing the Give
    button off the screen; and a chosen name is filled, not just ticked, so the
    selection reads at a glance. */
+/* ── Cash advances ─────────────────────────────────────────────────────────
+   Ginagamit nito ang mga hilera ng bonus, may dalawang dagdag lang: ang
+   kasunduan (magkano kada linggo) at kung nasaan na ito ngayon. */
+.va-preview {
+    display: flex; align-items: center; gap: 9px;
+    margin-bottom: 14px; padding: 9px 13px; border-radius: 6px;
+    font-size: .85rem;
+    color: var(--text-secondary);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+}
+.va-preview i { color: var(--brand); }
+.va-preview b { color: var(--text-primary); }
+
+.va-terms {
+    font-size: 12px; padding: 2px 9px; border-radius: 999px;
+    background: var(--bg-subtle); border: 1px solid var(--border);
+    color: var(--text-secondary); white-space: nowrap;
+}
+
+.va-progress {
+    font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+    padding: 2px 10px; border-radius: 999px; white-space: nowrap;
+    color: var(--text-secondary);
+    background: var(--surface); border: 1px solid var(--border);
+}
+.va-progress.is-done {
+    color: var(--success, #16a34a);
+    border-color: color-mix(in srgb, var(--success, #16a34a) 40%, transparent);
+}
+
 .bg-picker {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 8px; max-height: 260px; overflow-y: auto;
@@ -2459,6 +2637,44 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tax) tax.addEventListener('change', paintTax);
     chk.addEventListener('change', apply);
     apply();
+})();
+</script>
+
+<script>
+// Ang tanong na hindi kayang sagutin ng kabuuan: magkano ang mababawas kada
+// linggo. Dito ito sinasagot habang tina-type pa lang, dahil doon nakasalalay
+// kung kakayanin ba ito ng tao — hindi sa kung magkano ang hiniram.
+(function () {
+    const amount = document.getElementById('adv_amount');
+    const weeks  = document.getElementById('adv_weeks');
+    const box    = document.getElementById('advPreview');
+    const text   = document.getElementById('advPreviewText');
+
+    if (!amount || !weeks || !box || !text) return;
+
+    const peso = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function draw() {
+        const total = parseFloat(amount.value);
+        const n     = parseInt(weeks.value, 10);
+
+        if (!(total > 0) || !(n > 0)) { box.hidden = true; return; }
+
+        // Ang huli ang may dala ng sukli, gaya ng sa payroll — kung hindi, may
+        // natitirang sentimo na habambuhay na utang.
+        const even = Math.round((total / n) * 100) / 100;
+        const last = Math.round((total - even * (n - 1)) * 100) / 100;
+
+        text.innerHTML = '<b>&#8369;' + peso.format(even) + '</b> a week for <b>' + n + '</b> '
+                       + (n === 1 ? 'week' : 'weeks')
+                       + (last !== even ? ', last one &#8369;' + peso.format(last) : '')
+                       + ' &mdash; &#8369;' + peso.format(total) + ' in all, per person.';
+        box.hidden = false;
+    }
+
+    amount.addEventListener('input', draw);
+    weeks.addEventListener('input', draw);
+    draw();
 })();
 </script>
 @endsection

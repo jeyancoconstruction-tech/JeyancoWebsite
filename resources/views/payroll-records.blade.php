@@ -389,7 +389,7 @@
                                     <div class="ln"><span class="k" id="rcPhilK">{{ __('PhilHealth') }}</span><span class="v" id="rcPhil">&mdash;</span></div>
                                     <div class="ln"><span class="k" id="rcPagK">{{ __('Pag-IBIG') }}</span><span class="v" id="rcPag">&mdash;</span></div>
                                     <div class="ln"><span class="k" id="rcTaxK">{{ __('Withholding tax') }}</span><span class="v" id="rcTax">&mdash;</span></div>
-                                    <div class="ln"><span class="k">{{ __('Vale / cash advance') }}</span><span class="v" id="rcVale">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcValeK">{{ __('Vale / cash advance') }}</span><span class="v" id="rcVale">&mdash;</span></div>
                                     <div class="ln"><span class="k">{{ __('Other adjustments') }}</span><span class="v" id="rcOther">&mdash;</span></div>
                                     <div class="ln sum"><span class="k">{{ __('Total deductions') }}</span><span class="v" id="rcDed" style="color:var(--danger);">&mdash;</span></div>
                                 </div>
@@ -541,13 +541,14 @@
     $slipMap = [];
     foreach ($employees as $emp) {
         $t = $emp['totals'];
-        $sss = $phil = $pag = $tax = $vale = $other = 0;
+        $sss = $phil = $pag = $tax = $vale = $other = $adv = 0;
         foreach ($emp['periods'] as $pp) {
             $sss   += $pp['sssDeduction'];
             $phil  += $pp['philhealthDeduction'];
             $pag   += $pp['pagibigDeduction'];
             $tax   += $pp['withholdingTax'];
             $vale  += $pp['vale'];
+            $adv   += $pp['vale_advance'] ?? 0;
             $other += $pp['manualDeductions'];
         }
 
@@ -573,6 +574,7 @@
             'pag'       => round($pag, 2),
             'tax'       => round($tax, 2),
             'vale'      => round($vale, 2),
+            'advance'   => round($adv, 2),
             'other'     => round($other, 2),
             'late'      => $t['late_minutes'] ?? 0,
             'ded'       => $t['totalDeductions'],
@@ -648,6 +650,12 @@
         set('rcPhil',  money(s.phil));
         set('rcPag',   money(s.pag));
         set('rcTax',   money(s.tax));
+        // Ang bahagi ng vale na hulog sa isang advance. Nasa loob na ito ng
+        // kabuuan sa tabi; ang pangalan lang ang idinadagdag, dahil ang tanong
+        // ng manggagawa ay hindi kung magkano kundi kung bakit.
+        set('rcValeK', Number(s.advance) > 0
+            ? 'Vale / cash advance (' + money(s.advance) + ' instalment)'
+            : 'Vale / cash advance');
         set('rcVale',  money(s.vale));
         set('rcOther', money(s.other));
         set('rcDed',   money(s.ded));
