@@ -1842,7 +1842,18 @@
     margin-bottom: 2rem;
 }
 
+/* Pantay ang lapad ng bawat tab. Ang lapad noon ay sunod sa haba ng pangalan,
+   kaya lumalaki ang "Multipliers and Deductions" at lumiliit ang "Holidays".
+   Hinahati na ngayon nang pantay ang buong hilera; ang pinakamahabang pangalan
+   ang nagtatakda ng pinakamaliit, kaya walang naiipit kahit kumitid ang
+   screen. */
+.settings-tabs { flex-wrap: nowrap; }
+
+.settings-tabs .nav-item { flex: 1 1 0; min-width: max-content; }
+
 .settings-tabs .nav-link {
+    width: 100%;
+    text-align: center;
     color: #6b7280;
     border: none;
     padding: 1rem 1.5rem;
