@@ -59,7 +59,7 @@ class PayrollBreakTest extends TestCase
         return $m->invoke(app(PayrollService::class), $rec, [
             'rateTimeline'   => PayrollRate::timeline(),
             'bonus'          => 0,
-            'sundayRestDay'  => false,
+            'restDayEnabled'  => false,
             'holidayTypeMap' => [],
             'day'            => $system,
             'shifts'         => [],

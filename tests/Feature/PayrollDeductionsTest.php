@@ -70,7 +70,7 @@ class PayrollDeductionsTest extends TestCase
         $cfg = [
             'rateTimeline'   => PayrollRate::timeline(),
             'bonus'          => 0,
-            'sundayRestDay'  => true,
+            'restDayEnabled'  => true,
             'holidayTypeMap' => [],
         ];
 

@@ -84,7 +84,7 @@ class PayrollRateEffectivityTest extends TestCase
         $cfg = array_merge([
             'sss' => 0, 'philhealth' => 0, 'pagibig' => 0,
             'rateTimeline'   => PayrollRate::timeline(),
-            'sundayRestDay'  => true,
+            'restDayEnabled'  => true,
             'holidayTypeMap' => [],
             'shifts'         => \App\Models\Shift::lookup(),
         ], $cfgOverrides);
@@ -287,7 +287,7 @@ class PayrollRateEffectivityTest extends TestCase
         $weeks = $m->invoke(app(PayrollService::class), collect([$rec]), [
             'sss' => 0, 'philhealth' => 0, 'pagibig' => 0,
             'rateTimeline'   => PayrollRate::timeline(),
-            'sundayRestDay'  => true,
+            'restDayEnabled'  => true,
             'holidayTypeMap' => [],
         ]);
 
@@ -683,7 +683,7 @@ class PayrollRateEffectivityTest extends TestCase
 
         $days = $m->invoke(app(PayrollService::class), collect([$rec]), array_merge([
             'rateTimeline'   => PayrollRate::timeline(),
-            'sundayRestDay'  => true,
+            'restDayEnabled'  => true,
             'holidayTypeMap' => [],
             'shifts'         => \App\Models\Shift::lookup(),
         ], $this->dayCfg()));
@@ -821,7 +821,7 @@ class PayrollRateEffectivityTest extends TestCase
         $weeks = $m->invoke(app(PayrollService::class), $records, [
             'sss' => 0, 'philhealth' => 0, 'pagibig' => 0,
             'rateTimeline'   => PayrollRate::timeline(),
-            'sundayRestDay'  => true,
+            'restDayEnabled'  => true,
             'holidayTypeMap' => [],
             'day'            => \App\Models\SystemSetting::current(),
             'bonusGrants'    => \App\Models\Bonus::inRange('2000-01-01', '2099-12-31'),

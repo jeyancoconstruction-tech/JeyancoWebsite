@@ -37,6 +37,7 @@ class PayrollService
     public function config(): array
     {
         $settings = Setting::first();
+        $system   = SystemSetting::current();
 
         return [
             // Multipliers, the wage floor, the period bonus and the
@@ -45,7 +46,14 @@ class PayrollService
             // numbers that applied then. Loaded once as a timeline and resolved
             // per attendance date — a query per record would be thousands.
             'rateTimeline'   => PayrollRate::timeline(),
-            'sundayRestDay'  => $settings?->sunday_rest_day_enabled ?? true,
+            'restDayEnabled' => $settings?->sunday_rest_day_enabled ?? true,
+
+            // Which day of the week is the rest day. Not a separate setting:
+            // it is the seventh day of the week the office actually runs, so
+            // moving the week's start moves the rest day with it. A week that
+            // begins on Monday rests on Sunday; one that begins on Sunday rests
+            // on Saturday.
+            'restDayOn' => $system->restDayOn(),
             // Day-type multipliers are fixed by PH labor law, not configurable.
             // See doleFactors() for the whole table.
             'holidayTypeMap' => Holiday::typeMap(),   // 'Y-m-d' => 'regular'|'special'|'custom'
@@ -54,7 +62,7 @@ class PayrollService
             // office runs rather than what a circular says it must pay, and a
             // shift that starts at 8 has always started at 8 as far as payroll
             // is concerned.
-            'day' => SystemSetting::current(),
+            'day' => $system,
 
             // Every shift as a lookup. Payroll resolves one per attendance
             // record, and a query per row would be thousands.
@@ -369,12 +377,23 @@ class PayrollService
         $holidayType = $cfg['holidayTypeMap'][$dateStr] ?? null;
         $isHoliday   = $holidayType !== null;
 
-        // Sunday rest day. A frozen per-record decision (rest_day_applied) wins
-        // so past Sundays never recalculate when the global setting is toggled;
-        // null means "follow the current global setting" (current week + future).
-        $isSunday    = Carbon::parse($rec->date)->dayOfWeek === Carbon::SUNDAY;
-        $applyRest   = $rec->rest_day_applied !== null ? (bool) $rec->rest_day_applied : $cfg['sundayRestDay'];
-        $isRestDay   = $isSunday && $applyRest;
+        // The rest day is the seventh day of the working week, so it follows
+        // where that week begins rather than being fixed to Sunday. A frozen
+        // per-record decision (rest_day_applied) still wins, so a day already
+        // settled does not recalculate when the office changes its week; null
+        // means "follow the current setting" — this week and future ones.
+        $restDayOn = (int) ($cfg['restDayOn'] ?? Carbon::SUNDAY);
+        $onRestDay = Carbon::parse($rec->date)->dayOfWeek === $restDayOn;
+
+        // rest_day_applied is the whole answer, not half of it. It used to be
+        // ANDed with the weekday, which was enough while the rest day was
+        // always Sunday — a frozen Sunday stayed a Sunday. Now that the day
+        // moves with the week, the weekday is exactly what the freeze has to
+        // survive: a settled day keeps what it was settled as, whichever day of
+        // the week it has since become.
+        $isRestDay = $rec->rest_day_applied !== null
+            ? (bool) $rec->rest_day_applied
+            : ($onRestDay && ($cfg['restDayEnabled'] ?? true));
 
         [$hMultiplier, $otFactor] = $this->doleFactors($holidayType, $isRestDay, $rates);
 
@@ -480,7 +499,7 @@ class PayrollService
 
         return compact(
             'hours', 'regular_hours', 'ot_hours', 'night_hours', 'lateMinutes', 'shift', 'rate', 'ot_rate', 'basicPay', 'otPay',
-            'dayEarnings', 'isHoliday', 'holidayType', 'hMultiplier', 'holidayPay', 'isSunday', 'restDayPay',
+            'dayEarnings', 'isHoliday', 'holidayType', 'hMultiplier', 'holidayPay', 'onRestDay', 'restDayPay',
             'nightDiffPay', 'rates',
             'gross', 'dailyRate',
             'sssDeduction', 'philhealthDeduction', 'pagibigDeduction', 'withholdingTax', 'autoDeductions',

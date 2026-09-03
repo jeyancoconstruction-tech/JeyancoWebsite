@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
@@ -84,6 +85,24 @@ class Attendance extends Model
             return 'present';
         }
         return Carbon::parse($this->date)->isToday() ? 'active' : 'invalid';
+    }
+
+    /**
+     * Rows falling on one day of the week, in Carbon's numbering (0 = Sunday).
+     *
+     * There is no portable SQL for this. MySQL has DAYOFWEEK, counting Sunday
+     * as 1; SQLite has strftime('%w'), counting it as 0; and the suite runs on
+     * SQLite while production runs on MySQL. Written as raw DAYOFWEEK at the
+     * call site it threw on every test run — and passed anyway, because the
+     * assertions there did not look at the response status.
+     */
+    public function scopeOnDayOfWeek(Builder $query, int $dayOfWeek): Builder
+    {
+        $expression = $query->getConnection()->getDriverName() === 'sqlite'
+            ? "CAST(strftime('%w', date) AS INTEGER)"
+            : '(DAYOFWEEK(date) - 1)';
+
+        return $query->whereRaw("{$expression} = ?", [$dayOfWeek]);
     }
 
     /** A day left open longer than this is a broken record, not a running shift. */

@@ -37,6 +37,26 @@ class SystemSetting extends Model
         'shift',
     ];
 
+    /**
+     * Which day of the week is the rest day.
+     *
+     * Not a setting of its own: it is the seventh day of the week the office
+     * actually runs, so moving where the week starts moves the rest day with
+     * it. A week beginning Monday rests on Sunday; one beginning Sunday rests
+     * on Saturday. Returned in Carbon's numbering, 0 = Sunday.
+     */
+    public function restDayOn(): int
+    {
+        return (((int) $this->week_starts_on) + 6) % 7;
+    }
+
+    /** That day's name, for a screen that has to say which one it means. */
+    public function restDayName(): string
+    {
+        return ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
+                'Thursday', 'Friday', 'Saturday'][$this->restDayOn()];
+    }
+
     protected $casts = [
         'session_timeout_minutes' => 'integer',
         'password_min_length'     => 'integer',

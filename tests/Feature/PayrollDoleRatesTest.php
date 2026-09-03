@@ -45,7 +45,7 @@ class PayrollDoleRatesTest extends TestCase
             'sss' => 0, 'philhealth' => 0, 'pagibig' => 0,
             'rateTimeline'   => [['from' => '2000-01-01', 'rates' => PayrollRate::fallbackRates()]],
             'bonus'          => 0,
-            'sundayRestDay'  => true,
+            'restDayEnabled'  => true,
             'holidayTypeMap' => [],
         ], $overrides);
     }
@@ -198,7 +198,7 @@ class PayrollDoleRatesTest extends TestCase
     /** Turning the rest-day setting off makes a Sunday an ordinary day. */
     public function test_a_sunday_with_the_rest_day_setting_off(): void
     {
-        $out = $this->compute($this->record('2026-09-06', 10), $this->cfg(['sundayRestDay' => false]));
+        $out = $this->compute($this->record('2026-09-06', 10), $this->cfg(['restDayEnabled' => false]));
 
         $this->assertSame(1050.0, round($out['gross'], 2));
         $this->assertSame(0.0, $out['restDayPay']);

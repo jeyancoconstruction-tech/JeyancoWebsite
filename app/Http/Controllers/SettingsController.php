@@ -225,7 +225,7 @@ class SettingsController extends Controller
             $weekStart = Carbon::now()->startOfWeek(Carbon::MONDAY)->toDateString();
             Attendance::whereNull('rest_day_applied')
                 ->whereDate('date', '<', $weekStart)
-                ->whereRaw('DAYOFWEEK(date) = 1') // 1 = Sunday in MySQL
+                ->onDayOfWeek(SystemSetting::current()->restDayOn())
                 ->update(['rest_day_applied' => $oldRestEnabled]);
         }
 
@@ -593,12 +593,55 @@ class SettingsController extends Controller
         unset($data['shifts']);
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
+
+        $oldWeekStart = (int) ($settings->week_starts_on ?? Carbon::MONDAY);
+        $newWeekStart = (int) $data['week_starts_on'];
+
         $settings->fill($data)->save();
         SystemSetting::forget();
+
+        if ($oldWeekStart !== $newWeekStart) {
+            $this->freezePastRestDays($oldWeekStart, $newWeekStart);
+        }
 
         // Back to the tab it was saved from, or the save reads as lost.
         return redirect()->route('settings.index', ['tab' => 'attendance'])
             ->with('success', 'Attendance settings updated!');
+    }
+
+    /**
+     * Hold every settled day at the rest-day answer it was settled under.
+     *
+     * The rest day is the seventh day of the working week, so moving where the
+     * week begins moves it — and its 130% premium. Left alone that would reach
+     * backwards: a Saturday that was an ordinary day would gain a premium it
+     * was never paid, and the Sunday beside it would lose one it was. Payroll
+     * Records and the payslips already handed out would stop agreeing with each
+     * other.
+     *
+     * So both are written down before the change takes hold — the day that was
+     * the rest day keeps it, the day about to become one is marked as not — and
+     * only the current week onwards follows the new start. Records already
+     * carrying an answer are left alone; theirs was settled earlier still.
+     */
+    private function freezePastRestDays(int $oldWeekStart, int $newWeekStart): void
+    {
+        $restEnabled = Setting::find(1)?->sunday_rest_day_enabled ?? true;
+
+        // The week in progress follows the new start along with the future —
+        // measured from where the week used to begin, which is the week the
+        // office is actually standing in as it saves.
+        $currentWeek = Carbon::now()->startOfWeek($oldWeekStart)->toDateString();
+
+        $seventhDay = fn (int $weekStart) => ($weekStart + 6) % 7;
+
+        foreach ([$seventhDay($oldWeekStart) => $restEnabled,
+                  $seventhDay($newWeekStart) => false] as $dow => $answer) {
+            Attendance::whereNull('rest_day_applied')
+                ->whereDate('date', '<', $currentWeek)
+                ->onDayOfWeek($dow)
+                ->update(['rest_day_applied' => $answer]);
+        }
     }
 
     /**

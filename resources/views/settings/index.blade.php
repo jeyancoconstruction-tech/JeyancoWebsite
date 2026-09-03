@@ -465,9 +465,17 @@
                                 <select class="form-control ps-input" id="week_starts_on" name="week_starts_on" required>
                                     @foreach([1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday',
                                               5 => 'Friday', 6 => 'Saturday', 0 => 'Sunday'] as $n => $label)
-                                        <option value="{{ $n }}" @selected((int) old('week_starts_on', $system->week_starts_on) === $n)>{{ $label }}</option>
+                                        <option value="{{ $n }}" @selected((int) old('week_starts_on', $system->week_starts_on) === $n)>{{ __($label) }}</option>
                                     @endforeach
                                 </select>
+                                @php
+                                    $wk      = (int) old('week_starts_on', $system->week_starts_on);
+                                    $restDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
+                                                'Thursday', 'Friday', 'Saturday'][($wk + 6) % 7];
+                                @endphp
+                                <small class="text-muted d-block mt-1">
+                                    {{ __('Rest day') }}: <strong>{{ __($restDay) }}</strong> — {{ __('the seventh day of the week') }}
+                                </small>
                             </div>
                         </div>
 
@@ -486,10 +494,11 @@
                         </div>
 
                         <small class="text-muted d-block mt-3">
-                            The cycle is the period Payroll Records opens on. Changing where the week starts regroups
-                            every period on screen — it does not alter what any day was paid, but a week already
-                            handed out will be split differently from the payslip that went with it.
-                            Turn auto-overtime off and the extra hours still pay, at the plain rate.
+                            The cycle is the period Payroll Records opens on. The rest day is the seventh day of
+                            that week, so moving the start moves the rest day — and its premium — with it. A day
+                            already settled keeps the answer it was settled under; this week and future ones follow
+                            the new start, and a week already handed out will be split differently from the payslip
+                            that went with it. Turn auto-overtime off and the extra hours still pay, at the plain rate.
                         </small>
                     </div>
                 </div>
