@@ -541,6 +541,7 @@ class PayrollService
                 $sumHours = $sumGross = $sumOvertime = $sumHoliday = $sumRestDay = $sumNightDiff = 0;
                 $sumSss = $sumPhil = $sumPagibig = $sumTax = $sumAuto = 0;
                 $sumVale = $sumManual = $sumNet = 0;
+                $sumLate = 0;
                 $empDates = [];
 
                 foreach ($empWeekRecords as $rec) {
@@ -563,6 +564,7 @@ class PayrollService
                     $sumTax      += $r['withholdingTax'];
                     $sumAuto     += $r['autoDeductions'];
                     $sumVale     += $r['vale'];
+                    $sumLate     += $r['lateMinutes'];
                     $sumManual   += $r['manualDeductions'];
                     $sumNet      += $r['net'];
                 }
@@ -602,6 +604,7 @@ class PayrollService
                         'pagibigDeduction'    => round($sumPagibig, 2),
                         'withholdingTax'      => round($sumTax, 2),
                         'autoDeductions'      => round($sumAuto, 2),
+                        'late_minutes'        => $sumLate,
                         'vale'                => round($sumVale, 2),
                         'manualDeductions'    => round($sumManual, 2),
                         'totalDeductions'     => round($totalDeductions, 2),
@@ -652,6 +655,7 @@ class PayrollService
                     'basicPay'            => round($r['basicPay'], 2),
                     'ot_hours'            => round($r['ot_hours'], 2),
                     'ot_rate'             => round($r['ot_rate'], 2),
+                    'late_minutes'        => $r['lateMinutes'],
                     'otPay'               => round($r['otPay'], 2),
                     'holidayPay'          => round($r['holidayPay'], 2),
                     'restDayPay'          => round($r['restDayPay'], 2),

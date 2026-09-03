@@ -665,6 +665,32 @@ class PayrollRateEffectivityTest extends TestCase
         $this->assertSame(round($onTime['gross'], 2), round($late['gross'], 2));
     }
 
+    /**
+     * And it reaches the screen.
+     *
+     * Lateness was computed on every record and then dropped: no row, no
+     * receipt and no export carried it, so an office that set a grace period
+     * had set a number nothing would ever show them.
+     */
+    public function test_lateness_reaches_the_daily_row(): void
+    {
+        $this->rate('2026-01-01');
+
+        $rec = $this->record('2026-03-04', '08:45:00', 8);
+
+        $m = new ReflectionMethod(PayrollService::class, 'groupByDay');
+        $m->setAccessible(true);
+
+        $days = $m->invoke(app(PayrollService::class), collect([$rec]), array_merge([
+            'rateTimeline'   => PayrollRate::timeline(),
+            'sundayRestDay'  => true,
+            'holidayTypeMap' => [],
+            'shifts'         => \App\Models\Shift::lookup(),
+        ], $this->dayCfg()));
+
+        $this->assertSame(45, $days[0]['details'][0]['late_minutes']);
+    }
+
     // ── The vale ceiling ─────────────────────────────────────────────────────
 
     /** An attendance record carrying a cash advance. */

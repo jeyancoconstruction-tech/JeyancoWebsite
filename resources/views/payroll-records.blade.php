@@ -35,6 +35,17 @@
     [data-bs-theme="dark"] .pr-summary-bar { background: var(--surface); border-color: var(--border); }
     [data-bs-theme="dark"] .pr-stat        { border-right-color: var(--border); border-bottom-color: var(--border); }
 
+    /* Lateness is reported, never deducted — so it is a note on the row,
+       not a figure in the money columns. */
+    .pr-late {
+        display: inline-block; margin-left: 6px;
+        padding: 1px 7px; border-radius: 999px;
+        font-size: 11px; font-weight: 600;
+        color: var(--warning, #d98324);
+        background: color-mix(in srgb, var(--warning, #d98324) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--warning, #d98324) 35%, transparent);
+    }
+
     /* ── The receipt: a payslip laid out inside the modal ─────────────────── */
     .emp-slip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; height: 100%; }
     .emp-slip-head { display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid var(--brand); padding-bottom: 8px; margin-bottom: 10px; }
@@ -258,7 +269,12 @@
                                     data-date="{{ \Carbon\Carbon::parse($day['date'])->format('l, F j, Y') }}">
                                     <td class="ps-4 text-muted">{{ \Carbon\Carbon::parse($day['date'])->format('m/d/Y (D)') }}</td>
                                     <td class="fw-semibold">{{ $d['name'] }}</td>
-                                    <td class="text-muted">{{ $d['shift'] ?? '—' }}</td>
+                                    <td class="text-muted">
+                                        {{ $d['shift'] ?? '—' }}
+                                        @if(($d['late_minutes'] ?? 0) > 0)
+                                            <span class="pr-late" title="{{ __('Past the grace period for this shift') }}">{{ $d['late_minutes'] }}m {{ __('late') }}</span>
+                                        @endif
+                                    </td>
                                     <td class="text-end">{{ $d['hours'] }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
@@ -301,7 +317,12 @@
                                     data-date="{{ $period['label'] }}">
                                     <td class="ps-4 text-muted">{{ $period['label'] }}</td>
                                     <td class="fw-semibold">{{ $emp['name'] }}</td>
-                                    <td class="text-muted">{{ $shiftOf[$emp['employee_id']] ?? '—' }}</td>
+                                    <td class="text-muted">
+                                        {{ $shiftOf[$emp['employee_id']] ?? '—' }}
+                                        @if(($t['late_minutes'] ?? 0) > 0)
+                                            <span class="pr-late" title="{{ __('Total past the grace period this period') }}">{{ $t['late_minutes'] }}m {{ __('late') }}</span>
+                                        @endif
+                                    </td>
                                     <td class="text-end">{{ number_format($t['hours'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($rate, 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($t['restDayPay'] ?? 0, 2) }}</td>
@@ -553,6 +574,7 @@
             'tax'       => round($tax, 2),
             'vale'      => round($vale, 2),
             'other'     => round($other, 2),
+            'late'      => $t['late_minutes'] ?? 0,
             'ded'       => $t['totalDeductions'],
             'net'       => $t['net'],
         ];
@@ -568,6 +590,15 @@
 
     const SLIPS = @json($slipMap);
     const RATES = @json($rates);
+
+    // The hours a daily rate buys: the standard day less its unpaid break, which
+    // is what payroll divides by. This read 8, so a nine-hour day with an hour
+    // of lunch showed an hourly rate the payslip below it did not use.
+    @php
+        $sysDay    = \App\Models\SystemSetting::current();
+        $paidHours = max(1, (float) $sysDay->standard_hours_per_day - (int) $sysDay->unpaid_break_minutes / 60);
+    @endphp
+    const PAID_HOURS = {{ $paidHours }};
     const printBase = @json(route('payslip.batch', ['from' => $period['from'], 'to' => $period['to']]));
 
     const peso  = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -590,8 +621,9 @@
         // The rate the days were priced at, taken from the row that was clicked
         // — a labour type's rate is per worker, not per period.
         const daily = Number(d.dailyRate) || 0;
-        set('rcBasis', money(daily) + '/day · ' + money(daily / 8) + '/hr · '
-                     + s.workdays + ' day' + (s.workdays === 1 ? '' : 's') + ' pasok');
+        set('rcBasis', money(daily) + '/day · ' + money(daily / PAID_HOURS) + '/hr · '
+                     + s.workdays + ' day' + (s.workdays === 1 ? '' : 's') + ' pasok'
+                     + (s.late > 0 ? ' · ' + s.late + 'm late' : ''));
 
         // Each line names what produced it, because "why is this 250" is the
         // question a column of totals cannot answer.
