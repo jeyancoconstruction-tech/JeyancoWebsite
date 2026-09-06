@@ -76,7 +76,19 @@
             <div class="logo-wrapper">
                 <img src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" class="brand-icon" alt="Logo">
             </div>
-            <span class="brand-text typing">{{ $company?->company_name ?? 'Jeyanco Construction' }}</span>
+            @php
+                // The reference stacks the name: first word large, the remainder
+                // spaced beneath it. Split the real company name rather than
+                // hard-coding, so a renamed company still renders correctly.
+                $brandName  = $company?->company_name ?? 'Jeyanco Construction';
+                $brandParts = preg_split('/\s+/', trim($brandName), 2);
+            @endphp
+            <span class="brand-text typing">
+                <span class="brand-line1">{{ $brandParts[0] ?? $brandName }}</span>
+                @if(!empty($brandParts[1]))
+                    <span class="brand-line2">{{ $brandParts[1] }}</span>
+                @endif
+            </span>
         </div>
 
         <nav class="nav-menu">
@@ -176,7 +188,7 @@
                 <i data-lucide="search"></i>
                 <input type="text" id="global-search-input" placeholder="{{ __('Search data...') }}" autocomplete="off">
                 <div id="search-suggestions" class="search-suggestions-dropdown"></div>
-                <kbd>/</kbd>
+                <kbd>⌘ K</kbd>
             </div>
 
             <button class="theme-switch" id="themeToggle" type="button" role="switch" aria-label="{{ __('Toggle dark mode') }}" title="{{ __('Toggle dark / light mode') }}">
@@ -209,7 +221,7 @@
             <div class="dropdown">
                 <div class="profile-capsule" data-bs-toggle="dropdown">
                     <div class="avatar-box">
-                        <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=6366f1&color=fff&bold=true" alt="User">
+                        <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=1769E0&color=fff&bold=true" alt="User">
                     </div>
                     <div class="profile-info d-none d-md-block">
                         <span class="u-name">{{ auth()->user()->name ?? 'ADMIN123' }}</span>

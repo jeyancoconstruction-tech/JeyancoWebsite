@@ -1,64 +1,80 @@
 /* =============================================================================
-   JEYANCO CONSTRUCTION · DESIGN TOKENS + FLAT ENTERPRISE OVERRIDES
+   JEYANCO CONSTRUCTION · DESIGN TOKENS + UI SYSTEM
    -----------------------------------------------------------------------------
-   Loaded LAST. Retheme the whole app on ONE brand blue (Jeyanco #1E5C9B),
-   neutral gray-black dark mode, 6px radius, flat surfaces, monochrome type.
+   Loaded LAST, so this file owns the final visual language: a deep navy rail,
+   one corporate blue (#1769E0), white cards on a light grey page, 8–12px radii
+   and shadows you feel rather than see.
+
    Visual layer ONLY — no markup, scripts, Blade/JS directives, IDs, routes,
-   form actions, polling or handlers are touched. Overrides existing token
-   names so every component inherits the system. Uses the app's real theme
-   selector: html[data-bs-theme="light|dark"] (the working toggle).
+   form actions, polling or handlers are touched. Everything here hangs off
+   class names the app already renders, and off its real theme selector:
+   html[data-bs-theme="light|dark"] (the working toggle).
    ============================================================================= */
 
 /* ── 1 · TOKENS ─────────────────────────────────────────────────────────── */
 html[data-bs-theme="light"] {
-    --bg: #F7F8F9;            --bg-body: #F7F8F9;
+    --bg: #F4F6FA;            --bg-body: #F4F6FA;
     --surface: #FFFFFF;       --bg-surface: #FFFFFF;   --bg-elevated: #FFFFFF;
-    --bg-subtle: #F1F3F5;     --sidebar-bg: #FFFFFF;
-    --border: #E3E6E9;        --border-md: #D3D8DD;
-    --text-primary: #1B2430;  --text-secondary: #66707C;  --text-muted: #8A929B;
-    --brand: #1E5C9B;         --brand-strong: #174A7E;    --brand-subtle: #EDF3F9;
-    --primary: #1E5C9B;       --primary-mid: #174A7E;     --primary-light: #1E5C9B;
-    --primary-soft: #EDF3F9;  --accent: #1E5C9B;
-    --success: #2F7D4F;       --danger: #B3403A;          --warning: #A66A1E;
+    --bg-subtle: #F0F3F8;
+    --border: #E4E9F0;        --border-md: #D2DAE6;
+    --text-primary: #0F1E33;  --text-secondary: #5B6A80;  --text-muted: #8A96A8;
+    --brand: #1769E0;         --brand-strong: #1257BC;    --brand-subtle: #EAF1FD;
+    --primary: #1769E0;       --primary-mid: #1257BC;     --primary-light: #1769E0;
+    --primary-soft: #EAF1FD;  --accent: #1769E0;
+    --success: #12874A;       --danger: #D0342C;          --warning: #B7791F;
+    --success-soft: #E7F5ED;  --danger-soft: #FCECEB;     --warning-soft: #FDF4E3;
+    --violet: #6D5BD0;        --violet-soft: #EEEBFA;
 }
 html[data-bs-theme="dark"] {
-    --bg: #16181B;            --bg-body: #16181B;
-    --surface: #1E2125;       --bg-surface: #1E2125;   --bg-elevated: #24282D;
-    --bg-subtle: #191C20;     --sidebar-bg: #191C20;
-    --border: #2C3036;        --border-md: #3A3F46;
-    --text-primary: #E6E8EA;  --text-secondary: #98A0A9;  --text-muted: #767E87;
-    --brand: #5B95CF;         --brand-strong: #7FAEDD;    --brand-subtle: #1D2A38;
-    --primary: #5B95CF;       --primary-mid: #7FAEDD;     --primary-light: #5B95CF;
-    --primary-soft: #1D2A38;  --accent: #5B95CF;
-    --success: #6FB08A;       --danger: #D4756F;          --warning: #C99A5B;
+    --bg: #0C1522;            --bg-body: #0C1522;
+    --surface: #131E2D;       --bg-surface: #131E2D;   --bg-elevated: #182437;
+    --bg-subtle: #101A28;
+    --border: #223049;        --border-md: #2E3F5C;
+    --text-primary: #E8EDF5;  --text-secondary: #9AA9BF;  --text-muted: #78879E;
+    --brand: #4F97F5;         --brand-strong: #6FAEFF;    --brand-subtle: #152742;
+    --primary: #4F97F5;       --primary-mid: #6FAEFF;     --primary-light: #4F97F5;
+    --primary-soft: #152742;  --accent: #4F97F5;
+    --success: #3FBF74;       --danger: #E86A62;          --warning: #D9A441;
+    --success-soft: #12291F;  --danger-soft: #2C1817;     --warning-soft: #2A2114;
+    --violet: #9280E8;        --violet-soft: #1E1A33;
 }
+
+/* The rail is navy in BOTH themes — it is the brand's anchor, not a surface
+   that follows the page. Its own text tokens travel with it. */
+html[data-bs-theme="light"], html[data-bs-theme="dark"] {
+    --sidebar-bg: #071A33;
+    --sidebar-bg-deep: #05142A;
+    --sidebar-text: #A9BAD0;
+    --sidebar-text-strong: #FFFFFF;
+    --sidebar-section: #62789A;
+    --sidebar-hover: rgba(255, 255, 255, 0.07);
+    --sidebar-active: rgba(23, 105, 224, 0.20);
+    --sidebar-accent: #3B8BF0;
+    --sidebar-border: rgba(255, 255, 255, 0.07);
+}
+
 :root {
-    --radius-sm: 6px; --radius-md: 6px; --radius-lg: 6px;
-    --shadow-xs: none;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-    --shadow-md: 0 1px 3px rgba(0,0,0,0.07);
-    --shadow-lg: 0 2px 8px rgba(0,0,0,0.10);
-    --shadow-xl: 0 4px 16px rgba(0,0,0,0.12);
-    --transition: all 0.12s ease;
+    --radius-sm: 8px; --radius-md: 10px; --radius-lg: 12px;
+    --shadow-xs: 0 1px 2px rgba(15, 30, 51, 0.04);
+    --shadow-sm: 0 1px 2px rgba(15, 30, 51, 0.05), 0 1px 3px rgba(15, 30, 51, 0.04);
+    --shadow-md: 0 2px 4px rgba(15, 30, 51, 0.05), 0 4px 12px rgba(15, 30, 51, 0.06);
+    --shadow-lg: 0 4px 10px rgba(15, 30, 51, 0.07), 0 12px 28px rgba(15, 30, 51, 0.09);
+    --shadow-xl: 0 8px 20px rgba(15, 30, 51, 0.10), 0 24px 48px rgba(15, 30, 51, 0.12);
+    --transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Always keep a vertical scrollbar so the layout (incl. the top nav bar) never
    shifts horizontally when a scrollbar appears/disappears — e.g. on theme toggle. */
 html { overflow-y: scroll !important; scrollbar-gutter: stable; }
-body { overflow-x: hidden; }
+body { overflow-x: hidden; background: var(--bg-body) !important; }
 
 /* THE fix for the nav bar growing/shrinking on theme toggle: dark-mode.css set
    a taller topbar (68px) and wider sidebar (260px) ONLY in dark mode, so both
    changed size when switching. Pin them identical in BOTH themes. */
 html[data-bs-theme="dark"], html[data-bs-theme="light"] {
-    --topbar-height: 56px !important;
-    --sidebar-width: 240px !important;
+    --topbar-height: 60px !important;
+    --sidebar-width: 244px !important;
 }
-
-/* Analytics KPI icons: uniform brand box + brand icon, visible in BOTH themes.
-   (Inline light bg + monochrome-neutralised icon colour made them vanish on the
-   dark cards.) */
-.main-content .an-kpi-icon { background: var(--brand-subtle) !important; color: var(--brand) !important; }
 
 /* Raise content on EVERY page: drop the extra top padding page wrappers add on
    top of the already-tight container padding, so every page starts near the top. */
@@ -72,115 +88,242 @@ body, .table, .rm-table, .stat-value, .total-amount-display,
    32px override in enterprise.css while light used 20px — the content sat at a
    different height per theme.) Same specificity, loaded later, so it wins. */
 html[data-bs-theme="dark"] .main-content .container-fluid.py-4,
-html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 14px 24px 24px !important; }
+html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 18px 26px 28px !important; }
 @media (max-width: 991px) {
     html[data-bs-theme="dark"] .main-content .container-fluid.py-4,
-    html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 12px 14px 20px !important; }
+    html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 14px 14px 22px !important; }
 }
 
-/* ── 2 · RADIUS · exactly 6px (avatars stay circular) ───────────────────── */
-.card, .analytics-card, .table-card, .weekly-card, .modal-content, .btn,
-.form-control, .form-select, .rm-card, .rm-input, .rm-btn-primary, .rm-btn-ghost,
-.rm-btn-complete, .rm-btn-accept, .rm-btn-reject, .rm-menu, .rm-menu-btn, .rm-badge,
-.rm-modal, .rm-pill, .mode-btn, .map-btn, .map-input, .map-select, .open-box-wrapper,
-.emp-search, .emp-select, .clock-widget, .stat-delta, .badge, .notif-dropdown,
-.notif-icon-wrap, .notif-wrapper, .search-container, .profile-capsule, .theme-switch,
-.an-badge-blue, .an-badge-purple, .an-period-chip, .chatbot-window, .cb-input {
-    border-radius: 6px !important;
+/* ── 2 · RADIUS ─────────────────────────────────────────────────────────── */
+.card, .analytics-card, .table-card, .weekly-card, .modal-content,
+.rm-card, .open-box-wrapper, .notif-dropdown, .chatbot-window {
+    border-radius: var(--radius-md) !important;
 }
+.btn, .form-control, .form-select, .rm-input, .rm-btn-primary, .rm-btn-ghost,
+.rm-btn-complete, .rm-btn-accept, .rm-btn-reject, .rm-menu, .rm-menu-btn,
+.rm-modal, .mode-btn, .map-btn, .map-input, .map-select,
+.emp-search, .emp-select, .clock-widget, .notif-icon-wrap, .notif-wrapper,
+.search-container, .profile-capsule, .theme-switch, .cb-input {
+    border-radius: var(--radius-sm) !important;
+}
+.badge, .rm-badge, .rm-pill, .stat-delta, .an-badge-blue, .an-badge-purple,
+.an-period-chip { border-radius: 999px !important; }
 [class^="emp-av-"], [class*=" emp-av-"], .rm-person-avatar, .la-avatar,
 .avatar-box, .avatar-box img, .ava, .brand-icon { border-radius: 50% !important; }
 
-/* ── 3 · SURFACES · flat, 1px border, no shadow, no colour bars ─────────── */
+/* ── 3 · SURFACES · white cards, hairline border, shadow you feel ───────── */
 .card, .analytics-card, .table-card, .weekly-card {
     background: var(--surface) !important;
     border: 1px solid var(--border) !important;
-    box-shadow: none !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
-.card:hover, .analytics-card:hover, .table-card:hover, .weekly-card:hover {
-    transform: none !important; box-shadow: none !important;
+.analytics-card:hover, .table-card:hover {
+    box-shadow: var(--shadow-md) !important;
     border-color: var(--border-md) !important;
 }
 .analytics-card::before, .weekly-card::before,
 .an-kpi-card::before, .an-card::before { display: none !important; }
 
-/* ── 4 · SIDEBAR · theme-aware (light rail in light mode, dark in dark),
-   2px brand active bar, readable brand name + monochrome icons in both. */
-.sidebar { background: var(--sidebar-bg) !important; border-right: 1px solid var(--border) !important; }
-.brand-title { border-bottom-color: var(--border) !important; }
+/* ── 4 · SIDEBAR · deep navy rail in both themes ────────────────────────── */
+/* The photo is stacked UNDER a near-opaque navy so the rail still reads as
+   navy and the labels keep their contrast; the site only shows through at the
+   foot, where there is nothing to read. The URL is relative to this
+   stylesheet, so it survives being served from a sub-directory. */
+.sidebar {
+    background:
+        linear-gradient(180deg,
+            rgba(7, 26, 51, 0.97) 0%,
+            rgba(7, 26, 51, 0.95) 38%,
+            rgba(7, 24, 47, 0.82) 58%,
+            rgba(6, 21, 42, 0.66) 78%,
+            rgba(6, 20, 40, 0.58) 100%),
+        url("images/jeyanco_sidebar_background.jpg") center bottom / cover no-repeat,
+        var(--sidebar-bg) !important;
+    border-right: none !important;
+    box-shadow: 1px 0 0 rgba(15, 30, 51, 0.06);
+}
+.sidebar-top { position: relative; z-index: 1; }
+
+.brand-title {
+    border-bottom: 1px solid var(--sidebar-border) !important;
+    padding-bottom: 16px !important;
+}
 .brand-text {
     background: none !important;
     -webkit-background-clip: initial !important; background-clip: initial !important;
-    -webkit-text-fill-color: var(--text-primary) !important; color: var(--text-primary) !important;
+    -webkit-text-fill-color: var(--sidebar-text-strong) !important;
+    color: var(--sidebar-text-strong) !important;
     /* Always one consistent line (was width-dependent: sometimes 1, sometimes 2). */
     white-space: nowrap !important;
-    font-size: 11px !important; letter-spacing: 0.4px !important; line-height: 1.15 !important;
+    font-size: 12px !important; font-weight: 700 !important;
+    letter-spacing: 0.06em !important; line-height: 1.15 !important;
+    text-transform: uppercase;
 }
-.logo-wrapper { border-radius: 50% !important; overflow: hidden; background: transparent !important; padding: 0 !important; }
+.logo-wrapper {
+    border-radius: 50% !important; overflow: hidden;
+    background: #fff !important; padding: 2px !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
 .brand-icon { border-radius: 50% !important; }
-.menu-section { color: var(--text-secondary) !important; opacity: 1 !important; letter-spacing: .08em; }
-.nav-link { color: var(--text-secondary) !important; font-weight: 500 !important; }
-.nav-link:hover { color: var(--text-primary) !important; background: var(--brand-subtle) !important; }
-.nav-link.active { color: var(--brand) !important; background: var(--brand-subtle) !important; font-weight: 600 !important; }
-.nav-link svg, .nav-link i[data-lucide] { color: currentColor !important; opacity: 1 !important; }
-.nav-link.active svg, .nav-link.active i[data-lucide] { color: var(--brand) !important; }
-.nav-link.active::before { background: var(--brand) !important; }
-.nav-pending-badge { background: transparent !important; color: var(--text-secondary) !important; border: 1px solid var(--border) !important; }
 
-/* ── 5 · TOP BAR · flat, no pulse ──────────────────────────────────────── */
-.topbar { box-shadow: none !important; border-bottom: 1px solid var(--border) !important; }
-.status-pill { background: transparent !important; border: none !important; color: var(--text-secondary) !important; padding-left: 0 !important; }
-.status-pill .dot, .status-pill .dot.pulse { animation: none !important; box-shadow: none !important; background: var(--success) !important; }
-.fab-pulse-ring, .cb-status-dot { animation: none !important; }
-.search-container, .notif-wrapper, .profile-capsule, .theme-switch { border: 1px solid var(--border) !important; box-shadow: none !important; }
+.menu-section {
+    color: var(--sidebar-section) !important; opacity: 1 !important;
+    font-size: 10px !important; font-weight: 700 !important;
+    letter-spacing: 0.12em !important; text-transform: uppercase;
+    margin: 18px 0 6px !important; padding-left: 14px !important;
+}
+.nav-menu .nav-link {
+    color: var(--sidebar-text) !important; font-weight: 500 !important;
+    font-size: 13.5px !important; border-radius: var(--radius-sm) !important;
+    margin: 1px 8px !important; padding: 9px 12px !important;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.nav-menu .nav-link:hover {
+    color: var(--sidebar-text-strong) !important; background: var(--sidebar-hover) !important;
+}
+.nav-menu .nav-link.active {
+    color: #fff !important;
+    background: var(--brand) !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(23, 105, 224, 0.35);
+}
+.nav-menu .nav-link svg, .nav-menu .nav-link i[data-lucide] {
+    color: currentColor !important; opacity: 0.85 !important;
+    width: 18px !important; height: 18px !important;
+}
+.nav-menu .nav-link.active svg, .nav-menu .nav-link.active i[data-lucide] {
+    color: #fff !important; opacity: 1 !important;
+}
+/* The pill carries the state on its own; an edge bar would clutter it. */
+.nav-menu .nav-link.active::before { display: none !important; }
+.nav-pending-badge {
+    background: var(--brand) !important; color: #fff !important;
+    border: none !important; font-weight: 700 !important; font-size: 10.5px !important;
+    min-width: 19px; height: 19px; border-radius: 999px !important;
+    display: inline-flex; align-items: center; justify-content: center;
+}
 
-/* ── 6 · BUTTONS · one primary (brand); secondary outline; danger muted ── */
-.btn { border-radius: 6px !important; box-shadow: none !important; font-weight: 500 !important; }
+
+/* Brand lockup: name stacked over its qualifier, as in the reference. */
+.brand-text { display: block; }
+.brand-line1 {
+    display: block; font-size: 15px !important; font-weight: 800 !important;
+    letter-spacing: 0.04em !important; color: var(--sidebar-text-strong) !important;
+    -webkit-text-fill-color: var(--sidebar-text-strong) !important; line-height: 1.1;
+    text-transform: uppercase;
+}
+.brand-line2 {
+    display: block; margin-top: 3px;
+    font-size: 9.5px !important; font-weight: 600 !important;
+    letter-spacing: 0.22em !important; text-transform: uppercase;
+    color: var(--sidebar-section) !important;
+    -webkit-text-fill-color: var(--sidebar-section) !important;
+}
+
+/* The live indicator is a bare dot beside the page title in the reference,
+   so the wording and the rule that followed it are hidden rather than removed
+   (the element still carries the state for anything reading the DOM). */
+.status-pill {
+    background: transparent !important; padding: 0 !important;
+    gap: 0 !important; min-width: 0 !important;
+}
+.status-pill span { display: none !important; }
+.topbar .v-divider { display: none !important; }
+
+/* ── 5 · TOP BAR ───────────────────────────────────────────────────────── */
+.topbar {
+    background: var(--surface) !important;
+    box-shadow: none !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.page-main-title {
+    font-size: 15px !important; font-weight: 700 !important;
+    color: var(--text-primary) !important; letter-spacing: -0.01em; margin: 0 !important;
+}
+.topbar-breadcrumb { font-size: 11.5px !important; color: var(--text-muted) !important; }
+.topbar-breadcrumb .active { color: var(--brand) !important; font-weight: 600; }
+.status-pill {
+    background: var(--success-soft) !important; border: none !important;
+    color: var(--success) !important; font-weight: 600 !important;
+    font-size: 10.5px !important; letter-spacing: 0.06em; border-radius: 999px !important;
+    padding: 5px 11px !important;
+}
+.status-pill .dot, .status-pill .dot.pulse {
+    box-shadow: none !important; background: var(--brand) !important;
+    width: 8px !important; height: 8px !important; border-radius: 50% !important;
+}
+.fab-pulse-ring { display: none !important; }
+.cb-status-dot { animation: none !important; }
+.search-container, .notif-wrapper, .profile-capsule, .theme-switch {
+    border: 1px solid var(--border) !important;
+    background: var(--bg-subtle) !important;
+    box-shadow: none !important;
+}
+.search-container:focus-within {
+    border-color: var(--brand) !important; background: var(--surface) !important;
+}
+.notif-wrapper:hover, .profile-capsule:hover, .theme-switch:hover {
+    border-color: var(--border-md) !important;
+}
+.notif-badge {
+    background: var(--danger) !important; color: #fff !important;
+    border: 2px solid var(--surface) !important;
+}
+
+/* ── 6 · BUTTONS · one primary; secondary outline; danger tinted ────────── */
+.btn { box-shadow: none !important; font-weight: 600 !important; font-size: 13.5px; }
 .btn-primary, .btn-success {
     background: var(--brand) !important; border: 1px solid var(--brand) !important; color: #fff !important;
+    box-shadow: 0 1px 2px rgba(23, 105, 224, 0.24) !important;
 }
 .btn-primary:hover, .btn-success:hover {
-    background: var(--brand-strong) !important; border-color: var(--brand-strong) !important; color: #fff !important;
+    background: var(--brand-strong) !important; border-color: var(--brand-strong) !important;
+    color: #fff !important; box-shadow: 0 3px 8px rgba(23, 105, 224, 0.28) !important;
 }
 .btn-light, .btn-secondary, .btn-outline-secondary, .btn-outline-primary, .btn-view-all {
-    background: var(--surface) !important; border: 1px solid var(--border) !important; color: var(--text-primary) !important;
+    background: var(--surface) !important; border: 1px solid var(--border) !important;
+    color: var(--text-primary) !important; font-weight: 600 !important;
 }
 .btn-light:hover, .btn-secondary:hover, .btn-outline-secondary:hover, .btn-view-all:hover {
-    background: var(--brand-subtle) !important; border-color: var(--border-md) !important;
+    background: var(--brand-subtle) !important; border-color: var(--brand) !important;
+    color: var(--brand) !important;
 }
 .btn-danger {
-    background: var(--surface) !important; border: 1px solid var(--border) !important; color: var(--danger) !important;
+    background: var(--danger-soft) !important; border: 1px solid transparent !important;
+    color: var(--danger) !important;
 }
-.btn-danger:hover { background: var(--brand-subtle) !important; color: var(--danger) !important; }
+.btn-danger:hover { background: var(--danger) !important; color: #fff !important; }
 /* Inline hard-coded electric-blue fills → brand (no JS colours touched) */
 .main-content [style*="background:#3b82f6"], .main-content [style*="background: #3b82f6"],
 .main-content [style*="background:#2563eb"], .main-content [style*="background: #2563eb"] {
     background: var(--brand) !important;
 }
 
-/* ── 7 · INPUTS · 1px border, 6px, focus = 1px brand (no glow) ──────────── */
+/* ── 7 · INPUTS ────────────────────────────────────────────────────────── */
 .form-control, .form-select, .rm-input, .emp-search, .emp-select, .map-input, .map-select, .cb-input {
     background: var(--surface) !important; border: 1px solid var(--border) !important;
     color: var(--text-primary) !important; box-shadow: none !important;
+    font-size: 13.5px;
 }
 .form-control:focus, .form-select:focus, .rm-input:focus, .emp-search:focus,
 .emp-select:focus, .map-input:focus, .map-select:focus, .cb-input:focus {
-    border-color: var(--brand) !important; box-shadow: none !important; outline: none !important;
+    border-color: var(--brand) !important;
+    box-shadow: 0 0 0 3px var(--brand-subtle) !important; outline: none !important;
 }
 .form-switch .form-check-input:checked, .form-check-input:checked {
     background-color: var(--brand) !important; border-color: var(--brand) !important;
 }
 
-/* ── 8 · TABS · underline, 2px brand active, no fills/icons ─────────────── */
+/* ── 8 · TABS · underline, 2px brand active ────────────────────────────── */
 .pr-tabs .nav-link.active, .att-tabs .nav-link.active,
 .nav-tabs .nav-link.active, .an-tab.active {
     color: var(--brand) !important; border-bottom: 2px solid var(--brand) !important; background: none !important;
 }
 /* Employees and Register & Manage use a pill instead of the underline: the
    page surface lifted out of the background, ringed thinly, with a 4px brand
-   bar down the left edge. The blue belongs on the edge and the label, not in
-   the fill — a brand-tinted fill read as a heavy box. The inactive tab carries
-   the very same borders in transparent, so activating one cannot shift it. */
+   bar down the left edge. The inactive tab carries the very same borders in
+   transparent, so activating one cannot shift it. */
 .rm-tab, .dir-tab {
     border: 1px solid transparent !important;
     border-left: 4px solid transparent !important;
@@ -189,84 +332,137 @@ html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 14px 
 .rm-tab.active, .dir-tab.active {
     color: var(--brand) !important;
     background: var(--surface) !important;
+    border-color: var(--border) !important;
     border-left-color: var(--brand) !important;
-}
-/* The ring is the theme's own brand at low alpha; there is no token for it,
-   and a neutral --border reads grey against the surface fill. */
-html[data-bs-theme="light"] .rm-tab.active, html[data-bs-theme="light"] .dir-tab.active {
-    border-color: rgba(30,92,155,0.22) !important; border-left-color: var(--brand) !important;
-}
-html[data-bs-theme="dark"] .rm-tab.active, html[data-bs-theme="dark"] .dir-tab.active {
-    border-color: rgba(91,149,207,0.22) !important; border-left-color: var(--brand) !important;
+    box-shadow: var(--shadow-xs) !important;
 }
 .mode-btn.active {
-    background: var(--brand-subtle) !important; color: var(--brand) !important; border-color: var(--brand) !important;
+    background: var(--brand) !important; color: #fff !important; border-color: var(--brand) !important;
 }
 
-/* ── 9 · STAT CARDS · no icon box, no colour bar, plain trend text ──────── */
-.icon-box { background: transparent !important; box-shadow: none !important; }
-.icon-box i { color: var(--text-secondary) !important; }
-.stat-value { font-size: 28px !important; font-weight: 600 !important; }
-.stat-delta, .stat-delta.up, .stat-delta.down, .stat-delta.flat {
-    background: transparent !important; padding: 0 !important; font-weight: 500 !important;
-    color: var(--text-secondary) !important;
+/* ── 9 · STAT CARDS · tinted icon tile, coloured trend pill ────────────── */
+.analytics-card { padding: 16px 18px !important; }
+.stat-label {
+    font-size: 11px !important; font-weight: 600 !important;
+    color: var(--text-secondary) !important; letter-spacing: 0.04em !important;
+    text-transform: none !important;
+}
+.stat-value {
+    font-size: 26px !important; font-weight: 700 !important;
+    color: var(--text-primary) !important; letter-spacing: -0.02em !important;
+}
+.stat-sub { font-size: 11.5px !important; color: var(--text-muted) !important; }
+.icon-box {
+    box-shadow: none !important; width: 40px !important; height: 40px !important;
+    border-radius: var(--radius-sm) !important;
+}
+/* Bootstrap's bg-*-opacity-10 utilities are what the cards already carry, so
+   the tile colour comes from the markup that is there — only the icon needs
+   pinning, because the flat theme had greyed every one of them out. */
+.icon-box i.text-primary { color: var(--brand) !important; }
+.icon-box i.text-success { color: var(--success) !important; }
+.icon-box i.text-warning { color: var(--warning) !important; }
+.icon-box i.text-danger  { color: var(--danger)  !important; }
+.analytics-card:hover .icon-box { transform: scale(1.06); }
+
+.stat-delta {
+    padding: 4px 10px !important; font-weight: 600 !important; font-size: 11px !important;
+}
+.stat-delta.up   { color: var(--success) !important; background: var(--success-soft) !important; }
+.stat-delta.down { color: var(--danger)  !important; background: var(--danger-soft)  !important; }
+.stat-delta.flat { color: var(--text-muted) !important; background: var(--bg-subtle) !important; }
+.stat-delta .sd-note { font-weight: 500; opacity: 0.9; }
+
+/* ── 10 · PANEL HEADERS ────────────────────────────────────────────────── */
+.table-card-header {
+    border-bottom: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.table-card-header h6 {
+    font-size: 13.5px !important; font-weight: 700 !important;
+    color: var(--text-primary) !important; margin: 0 !important;
+    display: flex; align-items: center; gap: 9px;
+}
+.table-card-header h6 i { color: var(--brand) !important; font-size: 13px; }
+.btn-view-all {
+    font-size: 12px !important; padding: 5px 11px !important;
+    border-radius: var(--radius-sm) !important;
 }
 
-/* ── 10 · TAGS / BADGES / PILLS · one neutral outline style ─────────────── */
+/* ── 11 · TAGS / BADGES ────────────────────────────────────────────────── */
 .badge, .rm-badge, .rm-badge-site, .rm-badge-labor, .rm-pill, .rm-tab-count,
 .an-badge-blue, .an-badge-purple, .an-period-chip, .emp-tag, .emp-count {
-    background: transparent !important; color: var(--text-secondary) !important;
-    border: 1px solid var(--border) !important; font-weight: 500 !important; box-shadow: none !important;
+    background: var(--bg-subtle) !important; color: var(--text-secondary) !important;
+    border: 1px solid var(--border) !important; font-weight: 600 !important;
+    box-shadow: none !important; font-size: 11px !important; padding: 4px 10px !important;
 }
 
-/* ── 11 · AVATARS · uniform brand-subtle, no rainbow ───────────────────── */
+/* ── 12 · AVATARS ──────────────────────────────────────────────────────── */
 [class^="emp-av-"], [class*=" emp-av-"], .rm-person-avatar, .la-avatar {
-    background: var(--brand-subtle) !important; color: var(--brand) !important; border: none !important;
+    background: var(--brand-subtle) !important; color: var(--brand) !important;
+    border: none !important; font-weight: 700 !important;
 }
 
-/* ── 12 · TABLES · flat rows, 1px border, sticky header ─────────────────── */
+/* ── 13 · TABLES ───────────────────────────────────────────────────────── */
 .table, .rm-table { border-color: var(--border) !important; }
 .table > :not(caption) > * > *, .rm-table td, .rm-table th { border-color: var(--border) !important; }
 .table thead th, .rm-table thead th {
-    background: var(--surface) !important; color: var(--text-secondary) !important;
+    background: var(--bg-subtle) !important; color: var(--text-secondary) !important;
     border-bottom: 1px solid var(--border) !important;
+    font-size: 10.5px !important; font-weight: 700 !important;
+    letter-spacing: 0.06em !important; text-transform: uppercase;
+    padding-top: 10px !important; padding-bottom: 10px !important;
 }
+.table tbody td { font-size: 13px !important; color: var(--text-primary) !important; }
+.table tbody tr { transition: background 0.12s ease; }
 .table tbody tr:hover td, .rm-table tbody tr:hover td { background: var(--brand-subtle) !important; }
+.table tbody tr:last-child td { border-bottom: none !important; }
 
-/* ── 13 · FLOATING AI BUTTON · brand blue, sized down, no pulse ring ───── */
+/* ── 14 · FLOATING AI BUTTON ───────────────────────────────────────────── */
 .chatbot-fab {
-    background: var(--surface) !important; border: 1px solid var(--border) !important;
-    color: var(--text-secondary) !important; box-shadow: none !important;
-    width: 44px !important; height: 44px !important;
+    background: var(--brand) !important; border: none !important;
+    color: #fff !important; width: 50px !important; height: 50px !important;
+    box-shadow: 0 6px 18px -4px rgba(23, 105, 224, 0.5) !important;
 }
-.chatbot-fab i { color: var(--text-secondary) !important; }
-/* Light mode had no override for the rule above, so the FAB rendered as a
-   white circle on a white page — present and clickable, but invisible. Dark
-   never showed the bug because enterprise.css repaints the button blue there;
-   light now gets the same treatment so the two themes agree. */
+.chatbot-fab i { color: #fff !important; }
+.chatbot-fab:hover { box-shadow: 0 10px 24px -4px rgba(23, 105, 224, 0.6) !important; }
 html[data-bs-theme="light"] .chatbot-fab {
-    background: linear-gradient(135deg, #2563EB, #4f46e5) !important;
-    border-color: transparent !important;
-    color: #fff !important;
-    box-shadow: 0 6px 18px -6px rgba(37,99,235,0.55) !important;
-}
-html[data-bs-theme="light"] .chatbot-fab:hover {
-    box-shadow: 0 10px 24px -6px rgba(37,99,235,0.65) !important;
+    background: var(--brand) !important; border-color: transparent !important; color: #fff !important;
 }
 html[data-bs-theme="light"] .chatbot-fab i { color: #fff !important; }
-.fab-pulse-ring { display: none !important; }
 
-/* ── 14 · MODALS · 6px, 1px border, plain header ───────────────────────── */
-.modal-content { border: 1px solid var(--border) !important; box-shadow: var(--shadow-lg) !important; background: var(--surface) !important; }
+/* ── 15 · MODALS ───────────────────────────────────────────────────────── */
+.modal-content {
+    border: 1px solid var(--border) !important; box-shadow: var(--shadow-xl) !important;
+    background: var(--surface) !important;
+}
+.modal-header { background: var(--sidebar-bg) !important; border-bottom: none !important; }
 
-/* ── 15 · FOCUS · single brand ring, no glow ───────────────────────────── */
+/* ── 16 · FOCUS · single brand ring ────────────────────────────────────── */
 html[data-bs-theme="dark"] :focus-visible,
 html[data-bs-theme="light"] :focus-visible {
-    box-shadow: 0 0 0 2px var(--brand-subtle), 0 0 0 3px var(--brand) !important; border-radius: 6px;
+    box-shadow: 0 0 0 3px var(--brand-subtle), 0 0 0 4px var(--brand) !important;
+    border-radius: var(--radius-sm);
 }
 
-/* ── 16 · TYPE · page titles 20px / 600 (not oversized/800) ─────────────── */
+/* ── 17 · TYPE ─────────────────────────────────────────────────────────── */
 html[data-bs-theme="dark"] h1, html[data-bs-theme="light"] h1,
-.pr-header h1, .greeting-title {
-    font-size: 20px !important; font-weight: 600 !important; letter-spacing: -0.01em !important;
+.pr-header h1 {
+    font-size: 20px !important; font-weight: 700 !important; letter-spacing: -0.02em !important;
+}
+
+/* ── 17b · SMALL SCREENS · the breadcrumb crowds the title on a phone ── */
+@media (max-width: 575px) {
+    .topbar-breadcrumb { display: none !important; }
+    .page-main-title { font-size: 14px !important; }
+    .topbar { padding-left: 12px !important; padding-right: 12px !important; }
+    .topbar .gap-4 { gap: 10px !important; }
+}
+
+/* ── 18 · MOTION · practical only, and never against the user's wishes ─── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important; transition-duration: 0.01ms !important;
+    }
 }
