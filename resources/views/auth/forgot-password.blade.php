@@ -9,9 +9,8 @@
         @csrf
 
         <div class="form-group {{ $errors->has('login') ? 'has-error' : '' }}">
-            <label for="login">{{ __('Username / Email') }}</label>
+            <label for="login"><i class="fas fa-user" aria-hidden="true"></i> {{ __('Username / Email') }}</label>
             <div class="input-wrap">
-                <i class="fas fa-user lead"></i>
                 <input type="text" id="login" name="login" value="{{ old('login') }}"
                        required autofocus autocomplete="username" spellcheck="false"
                        autocapitalize="none" placeholder="{{ __('Enter your username or email') }}">

@@ -1,7 +1,10 @@
 @extends('auth.layout')
 
 @section('title', 'Admin Login')
-@section('heading', 'Admin Login')
+{{-- Two-tone heading, as in the brand reference: dark "Admin", blue "Login". --}}
+@section('heading')
+    {{ __('Admin') }} <span class="accent">{{ __('Login') }}</span>
+@endsection
 @section('subheading', 'Sign in to access the management dashboard')
 
 @section('form')
@@ -9,22 +12,23 @@
         @csrf
 
         <div class="form-group {{ $errors->has('username') ? 'has-error' : '' }}">
-            <label for="username">{{ __('Username / Email') }}</label>
+            <label for="username"><i class="fas fa-user" aria-hidden="true"></i> {{ __('Username / Email') }}</label>
             <div class="input-wrap">
-                <i class="fas fa-user lead"></i>
                 {{-- type="text", not "email": this box takes either form, and
                      type="email" would make the browser reject a plain username. --}}
                 <input type="text" id="username" name="username" value="{{ old('username') }}"
                        required autofocus autocomplete="username" spellcheck="false"
-                       autocapitalize="none" placeholder="{{ __('Enter your username or email') }}">
+                       autocapitalize="none" aria-describedby="usernameHint"
+                       placeholder="{{ __('Enter your username or email') }}">
             </div>
-            <p class="field-hint">{{ __('Sign in with either your username or the email on your account.') }}</p>
+            {{-- The reference card shows no hint line here, so it is kept for
+                 screen readers only rather than dropped outright. --}}
+            <p class="field-hint sr-only" id="usernameHint">{{ __('Sign in with either your username or the email on your account.') }}</p>
         </div>
 
         <div class="form-group {{ $errors->has('password') ? 'has-error' : '' }}">
-            <label for="password">{{ __('Password') }}</label>
+            <label for="password"><i class="fas fa-lock" aria-hidden="true"></i> {{ __('Password') }}</label>
             <div class="input-wrap">
-                <i class="fas fa-lock lead"></i>
                 <input type="password" id="password" name="password"
                        required autocomplete="current-password" placeholder="{{ __('Enter your password') }}">
                 <button type="button" class="toggle-pass" id="togglePass" aria-label="{{ __('Show password') }}" title="{{ __('Show / hide password') }}">
@@ -50,7 +54,11 @@
         </button>
 
         <div class="secure-note">
-            <i class="fas fa-lock"></i> {{ __('Secured administrator access · authorized personnel only') }}
+            <i class="fas fa-shield" aria-hidden="true"></i>
+            <span class="secure-text">
+                <span class="secure-title">{{ __('Secured administrator access') }}</span>
+                <span class="secure-meta">{{ __('Authorized personnel only') }}</span>
+            </span>
         </div>
     </form>
 @endsection
