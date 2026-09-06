@@ -44,8 +44,13 @@
         .auth-scrim { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 
         .auth-bg {
-            background: #0d2340 url("{{ asset('images/login-background.jpg') }}") center / cover no-repeat;
+            background: #0d2340 url("{{ asset('images/login-background.png') }}") center / cover no-repeat;
+            /* Breathes between 1 and 1.06 rather than looping back to the start,
+               so there is never a jump. Scaling up only ever hides edges. */
+            animation: siteDrift 24s ease-in-out infinite alternate;
+            will-change: transform;
         }
+        @keyframes siteDrift { from { transform: scale(1); } to { transform: scale(1.06); } }
         /* The photograph is already graded and carries its own angled panels, so
            this only has to hold contrast under the branding copy. */
         .auth-scrim {
@@ -119,15 +124,15 @@
             border-radius: 14px;
             overflow: hidden;
             box-shadow: 0 34px 70px -18px rgba(2, 10, 24, 0.62), 0 4px 14px rgba(2, 10, 24, 0.3);
-            animation: cardIn 0.35s ease;
+            animation: cardIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
         }
-        @keyframes cardIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes cardIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 
         .card-head {
             position: relative;
             display: flex; align-items: center; gap: 22px;
             padding: 34px 46px;
-            background: #0e2a50 url("{{ asset('images/login-background.jpg') }}") 62% 38% / 240% auto no-repeat;
+            background: #0e2a50 url("{{ asset('images/login-background.png') }}") 62% 38% / 240% auto no-repeat;
         }
         .card-head::before {
             content: ''; position: absolute; inset: 0;
@@ -263,8 +268,8 @@
             transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
         }
         .btn-login i { font-size: 17px; }
-        .btn-login:hover:not(:disabled) { background: var(--blue-dark); box-shadow: 0 10px 22px rgba(21, 96, 189, 0.34); }
-        .btn-login:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 5px 12px rgba(21, 96, 189, 0.3); }
+        .btn-login:hover:not(:disabled) { background: var(--blue-dark); transform: translateY(-1px); box-shadow: 0 12px 24px rgba(21, 96, 189, 0.36); }
+        .btn-login:active:not(:disabled) { transform: translateY(0); box-shadow: 0 5px 12px rgba(21, 96, 189, 0.3); }
         .btn-login:focus-visible { outline: 3px solid rgba(26, 115, 216, 0.45); outline-offset: 2px; }
         .btn-login:disabled { opacity: 0.72; cursor: not-allowed; }
 
@@ -361,6 +366,8 @@
 
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+            .auth-bg { animation: none; transform: none; }
+            .btn-login:hover:not(:disabled) { transform: none; }
         }
     </style>
     @stack('styles')
