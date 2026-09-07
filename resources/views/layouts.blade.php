@@ -169,12 +169,6 @@
                     <i data-lucide="file-text"></i> <span>{{ __('Payslips') }}</span>
                 </a>
             @endif
-            @if(auth()->user()?->canAccessModule('deductions'))
-                <a class="nav-link {{ request()->is('deductions*') ? 'active' : '' }}" href="{{ route('deductions.index') }}">
-                    <i data-lucide="percent"></i> <span>{{ __('Deductions & Contributions') }}</span>
-                </a>
-            @endif
-
             {{-- Admin only, like the rest of the settings page it opens. It sits
                  under Payroll Records rather than in SYSTEM because that is what
                  it configures. --}}

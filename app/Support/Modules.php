@@ -22,7 +22,6 @@ final class Modules
     public const SITE_ATT    = 'site-attendance';
     public const PROCESSING  = 'payroll-processing';
     public const PAYSLIPS    = 'payslips';
-    public const DEDUCTIONS  = 'deductions';
     public const REPORTS     = 'payroll-reports';
     public const USERS       = 'users-roles';
     public const AUDIT       = 'audit-logs';
@@ -38,12 +37,12 @@ final class Modules
         // — but not user administration, the audit trail, or the device rail.
         User::ROLE_STAFF => [
             self::LEAVE, self::LOANS, self::ASSIGNMENTS, self::SITE_ATT,
-            self::PROCESSING, self::PAYSLIPS, self::DEDUCTIONS, self::REPORTS,
+            self::PROCESSING, self::PAYSLIPS, self::REPORTS,
         ],
 
         User::ROLE_PAYROLL => [
             self::LEAVE, self::LOANS, self::SITE_ATT,
-            self::PROCESSING, self::PAYSLIPS, self::DEDUCTIONS, self::REPORTS,
+            self::PROCESSING, self::PAYSLIPS, self::REPORTS,
         ],
 
         User::ROLE_HR => [
@@ -106,7 +105,6 @@ final class Modules
             self::SITE_ATT    => 'Site Attendance',
             self::PROCESSING  => 'Payroll Processing',
             self::PAYSLIPS    => 'Payslips',
-            self::DEDUCTIONS  => 'Deductions & Contributions',
             self::REPORTS     => 'Payroll Reports',
             self::USERS       => 'Users & Roles',
             self::AUDIT       => 'Audit Logs',

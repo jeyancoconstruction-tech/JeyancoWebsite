@@ -247,14 +247,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/payslips/{item}/print',     [\App\Http\Controllers\PayslipsController::class, 'print'])->name('payslips.print');
     });
 
-    // ── PAYROLL · Deductions & Contributions ──────────────────────────────
-    Route::middleware('module:deductions')->group(function () {
-        Route::get   ('/deductions',                     [\App\Http\Controllers\DeductionController::class, 'index'])->name('deductions.index');
-        Route::post  ('/deductions',                     [\App\Http\Controllers\DeductionController::class, 'store'])->name('deductions.store');
-        Route::put   ('/deductions/{deduction}',         [\App\Http\Controllers\DeductionController::class, 'update'])->name('deductions.update');
-        Route::patch ('/deductions/{deduction}/toggle',  [\App\Http\Controllers\DeductionController::class, 'toggle'])->name('deductions.toggle');
-    });
-
     // ── INSIGHTS · Payroll Reports ────────────────────────────────────────
     Route::middleware('module:payroll-reports')->group(function () {
         Route::get('/payroll-reports', [\App\Http\Controllers\PayrollReportController::class, 'index'])->name('payroll-reports.index');
