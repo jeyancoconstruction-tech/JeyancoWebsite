@@ -62,6 +62,10 @@
          remaining shifts, z-index clashes and overflow bugs. --}}
     <link rel="stylesheet" href="{{ $cssv('ui-fixes.css') }}">
 
+    {{-- Sidebar density. The rail carries twenty links now; this is the
+         arithmetic that keeps them on one screen. --}}
+    <link rel="stylesheet" href="{{ $cssv('nav-fit.css') }}">
+
     @stack('styles')
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
