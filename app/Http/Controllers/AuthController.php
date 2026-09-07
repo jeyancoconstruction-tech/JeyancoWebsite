@@ -95,6 +95,12 @@ class AuthController extends Controller
 
             Auth::user()->forceFill(['last_login_at' => now()])->saveQuietly();
 
+            // Land in light mode. The layout normally lets a remembered
+            // choice outrank the office default — that is what makes the theme
+            // toggle stick — so signing in has to say so explicitly, or a
+            // browser holding 'dark' would keep winning.
+            $request->session()->flash('force_theme', 'light');
+
             return redirect()->intended(route('dashboard'));
         }
 

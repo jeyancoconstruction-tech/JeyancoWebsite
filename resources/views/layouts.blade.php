@@ -10,7 +10,7 @@
          used the toggle has their own choice in this browser, and it wins. --}}
     <script>
         (function () {
-            var fallback = @json($company?->default_theme ?? 'dark');
+            var fallback = @json($company?->default_theme ?? 'light');
             try {
                 var stored = localStorage.getItem('jeyanco-theme');
                 document.documentElement.setAttribute('data-bs-theme', stored || fallback);
@@ -19,6 +19,19 @@
             }
         })();
     </script>
+
+    @if(session('force_theme'))
+        {{-- Just signed in. Set the remembered choice as well as the attribute,
+             so the rest of the session stays light and the toggle still works
+             from there. --}}
+        <script>
+            (function () {
+                var t = @json(session('force_theme'));
+                try { localStorage.setItem('jeyanco-theme', t); } catch (e) {}
+                document.documentElement.setAttribute('data-bs-theme', t);
+            })();
+        </script>
+    @endif
 
     @if(session('theme_changed'))
         {{-- The default was just changed. The person who changed it has their

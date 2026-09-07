@@ -69,49 +69,7 @@
    rendering something unreadable and calling it fitted. */
 .dash-grid { grid-template-rows: minmax(160px, 0.88fr) minmax(160px, 1.12fr) !important; }
 
-/* ── 4 · Under about 700px of viewport the rail drops its group labels ────
-   Twenty items plus six labels cannot fit 625px at a legible row height.
-   The labels are the part that can go: a hairline above each group keeps the
-   grouping visible, and every destination stays reachable without scrolling —
-   which is the whole point of the rail. */
-/* 700-790px: ten pixels short of the base tier, which is enough to scroll.
-   Trim the row, keep the labels. 20x26 + 5x18 + 22 + 46 = 698px. */
-@media (min-height: 701px) and (max-height: 790px) {
-    .nav-menu .nav-link { padding: 4px 11px !important; line-height: 18px !important; }
-    .menu-section { margin: 5px 0 2px !important; font-size: 8px !important; }
-    .sidebar-top { padding: 11px 9px !important; }
-    .brand-title { padding: 2px 6px 9px !important; }
-    .logo-wrapper, .brand-icon { width: 28px !important; height: 28px !important; }
-}
-
-@media (max-height: 700px) {
-    .menu-section {
-        font-size: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        height: 9px !important;
-        position: relative;
-    }
-    .menu-section::after {
-        content: ''; position: absolute; left: 12px; right: 12px; top: 4px;
-        border-top: 1px solid var(--sidebar-border, rgba(255,255,255,0.07));
-    }
-    .nav-menu .menu-section:first-of-type { display: none !important; }
-
-    .nav-menu .nav-link {
-        padding: 4px 11px !important;
-        line-height: 17px !important;
-        font-size: 12px !important;
-    }
-    .sidebar-top { padding: 10px 8px !important; }
-    .brand-title { padding: 2px 6px 8px !important; }
-    .logo-wrapper, .brand-icon { width: 26px !important; height: 26px !important; }
-    .brand-text { font-size: 11px !important; }
-
-    /* 20 x 25 + 5 x 9 + 20 + 40 = 605px, inside a 625px viewport. */
-}
-
-/* ── 5 · Shorter viewports get a tighter frame all round ─────────────────── */
+/* ── 4 · Shorter viewports get a tighter frame all round ─────────────────── */
 @media (max-height: 700px) and (min-width: 992px) {
     /* -48px, not -40: .main-content carries min-height:100vh and the topbar sits
        inside it, so the container's own padding has to come out of the same

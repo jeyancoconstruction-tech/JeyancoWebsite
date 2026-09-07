@@ -126,20 +126,13 @@ html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 18px 
 .an-kpi-card::before, .an-card::before { display: none !important; }
 
 /* ── 4 · SIDEBAR · deep navy rail in both themes ────────────────────────── */
-/* The photo is stacked UNDER a near-opaque navy so the rail still reads as
-   navy and the labels keep their contrast; the site only shows through at the
-   foot, where there is nothing to read. The URL is relative to this
-   stylesheet, so it survives being served from a sub-directory. */
+/* Flat navy, no photograph. The picture used to sit under a near-opaque wash
+   and was barely visible; once the rail filled with twenty items it was
+   competing with the labels rather than decorating anything, and it cost a
+   90KB download on every page. A shallow vertical gradient gives the rail its
+   depth instead. */
 .sidebar {
-    background:
-        linear-gradient(180deg,
-            rgba(7, 26, 51, 0.975) 0%,
-            rgba(7, 26, 51, 0.970) 55%,
-            rgba(7, 24, 47, 0.955) 78%,
-            rgba(6, 21, 42, 0.900) 92%,
-            rgba(6, 20, 40, 0.760) 100%),
-        url("images/jeyanco_sidebar_background.jpg") center bottom / cover no-repeat,
-        var(--sidebar-bg) !important;
+    background: linear-gradient(180deg, #0a2244 0%, #071a33 58%, #051325 100%) !important;
     border-right: none !important;
     box-shadow: 1px 0 0 rgba(15, 30, 51, 0.06);
 }

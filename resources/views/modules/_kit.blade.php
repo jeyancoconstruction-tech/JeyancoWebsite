@@ -75,9 +75,25 @@
     text-transform: uppercase; color: var(--text-muted);
 }
 .mod-filters .form-control,
-.mod-filters .form-select { height: 36px; font-size: 13px; padding: 0 10px; min-width: 140px; }
-.mod-filters .form-select { padding-right: 30px; }
-.mod-filter-grow { flex: 1 1 200px; }
+.mod-filters .form-select { height: 36px; font-size: 13px; padding: 0 10px; min-width: 118px; }
+.mod-filters .form-select { padding-right: 28px; }
+.mod-filter-grow { flex: 1 1 180px; }
+
+/* A native date box renders wider than its min-width because of the picker
+   glyph. Left at the global 150px, five filters plus Apply and Reset spilled
+   onto a second row on a 1366px laptop and left a band of dead space above
+   the buttons. */
+.mod-filters input[type="date"] { min-width: 128px !important; }
+.mod-filters .mod-filter { flex: 0 1 auto; min-width: 0; }
+
+/* A hidden input is still a flex child: it contributes nothing visible and a
+   full 10px gap, which was the eight pixels that pushed Apply onto its own
+   row. Take it out of the flow entirely. */
+.mod-filters input[type="hidden"] { display: none; }
+
+/* A select is as wide as its longest option — "Leave Without Pay" was making
+   the type filter 177px. It can truncate; the open list still shows it whole. */
+.mod-filters .form-select { max-width: 150px; text-overflow: ellipsis; }
 .mod-filter-grow .form-control { width: 100%; }
 .mod-filter-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
 
