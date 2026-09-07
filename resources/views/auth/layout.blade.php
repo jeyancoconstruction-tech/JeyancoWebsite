@@ -90,8 +90,8 @@
         /* ── The card ─────────────────────────────────────────────────── */
         .auth-card {
             position: relative; z-index: 1;
-            width: min(1120px, 100%);
-            display: grid; grid-template-columns: 0.86fr 1fr;
+            width: min(960px, 100%);
+            display: grid; grid-template-columns: 0.82fr 1fr;
             background: #fff;
             border-radius: 14px;
             box-shadow: 0 24px 70px rgba(13, 42, 79, 0.13),
@@ -104,13 +104,13 @@
             background: linear-gradient(168deg, var(--navy-700) 0%, var(--navy-800) 46%, var(--navy-900) 100%);
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
-            padding: 74px 44px;
+            padding: 52px 34px;
             text-align: center;
             position: relative;
         }
 
         .brand-mark {
-            width: 170px; height: 170px;
+            width: 132px; height: 132px;
             border-radius: 50%;
             object-fit: contain;
             display: block;
@@ -121,8 +121,8 @@
         }
 
         .brand-tagline {
-            margin-top: 30px;
-            font-size: 21px; font-weight: 400; letter-spacing: 0.01em;
+            margin-top: 22px;
+            font-size: 18px; font-weight: 400; letter-spacing: 0.01em;
             color: #eaf1fb;
             line-height: 1.35;
         }
@@ -134,7 +134,7 @@
 
         /* ── Form panel ───────────────────────────────────────────────── */
         .auth-panel {
-            padding: 72px 60px 60px;
+            padding: 46px 44px 40px;
             display: flex; flex-direction: column; justify-content: center;
             background: #fff;
         }
@@ -146,14 +146,14 @@
         }
 
         .auth-panel h1 {
-            font-size: 33px; font-weight: 700; letter-spacing: -0.025em;
+            font-size: 26px; font-weight: 700; letter-spacing: -0.025em;
             color: var(--ink); line-height: 1.15;
         }
         .auth-panel h1 .accent { color: var(--blue); }
 
         .card-lede {
-            margin-top: 12px;
-            font-size: 14.5px; line-height: 1.55; color: var(--muted);
+            margin-top: 9px;
+            font-size: 13.5px; line-height: 1.5; color: var(--muted);
             max-width: 42ch;
         }
 
@@ -170,7 +170,7 @@
         /* ── Fields ───────────────────────────────────────────────────── */
         .login-form { margin-top: 26px; }
 
-        .form-group { margin-bottom: 18px; }
+        .form-group { margin-bottom: 14px; }
         .form-group > label {
             display: block; margin-bottom: 8px;
             font-size: 13.5px; font-weight: 600; color: #16283f;
@@ -184,7 +184,7 @@
         }
 
         .input-wrap input {
-            width: 100%; height: 50px;
+            width: 100%; height: 44px;
             padding: 0 15px 0 43px;
             font-family: inherit; font-size: 14.5px; color: var(--ink);
             background: #fff;
@@ -267,7 +267,7 @@
 
         /* ── Button ───────────────────────────────────────────────────── */
         .btn-login {
-            width: 100%; height: 52px;
+            width: 100%; height: 46px;
             display: inline-flex; align-items: center; justify-content: center; gap: 10px;
             font-family: inherit; font-size: 15.5px; font-weight: 600; color: #fff;
             background: var(--blue); border: none; border-radius: 9px;
