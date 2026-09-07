@@ -723,7 +723,9 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 
 /* Validation. :user-invalid fires only after the field has been interacted
    with, so a form that has not been touched is never painted red — and the
-   server's own @error output still lands on .is-invalid exactly as before. */
+   server's own validation output still lands on .is-invalid exactly as before.
+   (Do not write the Blade directive's name here: this is a CSS comment to a
+   human, but Blade parses the whole file and would compile it.) */
 .emp-modal .form-control.is-invalid,
 .emp-modal .form-select.is-invalid,
 .emp-modal .form-control:user-invalid,
