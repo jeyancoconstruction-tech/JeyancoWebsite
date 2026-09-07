@@ -199,3 +199,62 @@ html[data-bs-theme="light"], html[data-bs-theme="dark"] {
     .mod-stat-value, .rm-stat-num { font-size: 1.16rem !important; }
     .mod-table tbody td { padding: 7px 11px !important; }
 }
+
+/* ── 3 · DIALOG DENSITY ───────────────────────────────────────────────────
+   The New Loan dialog measured 736px in a 768px viewport — it filled the
+   screen, and the taller ones needed their own scrollbar. It is nine fields
+   and a note; it does not need 17px of header padding, 42px inputs and 14px
+   between every row.
+
+        head   71 -> 53      input   42 -> 37
+        body  636 -> ~470    row gap 14 -> 10
+        foot   69 -> 55      width  620 -> 560
+
+   Applied to the shared dialog chrome, so every screen that opens one gets
+   the same proportions. */
+.emp-dialog { max-width: 560px !important; }
+
+.emp-head { padding: 10px 16px !important; gap: 11px !important; }
+.emp-head-icon { width: 30px !important; height: 30px !important; font-size: 12px !important; }
+.emp-head-title { font-size: 14px !important; }
+.emp-head-sub { font-size: 11px !important; line-height: 1.35 !important; }
+.emp-head-x { width: 27px !important; height: 27px !important; }
+
+/* .emp-body carries !important in the partial, and a <style> in the page body
+   comes after a <link> in the head — so an equal-specificity rule here loses
+   the tie however important it is. Two classes beats one. */
+.emp-modal .emp-body { padding: 14px 16px 15px !important; }
+
+.emp-modal .form-control,
+.emp-modal .form-select { height: 37px !important; font-size: 13px !important; padding: 0 11px !important; }
+.emp-modal .form-select { padding-right: 30px !important; }
+.emp-modal textarea.form-control { height: 52px !important; padding: 7px 11px !important; }
+
+.emp-modal .ep-label { font-size: .66rem !important; margin-bottom: 4px !important; }
+.emp-modal .ep-hint  { font-size: .69rem !important; margin-top: 3px !important; line-height: 1.3 !important; }
+
+.emp-field + .emp-field { margin-top: 10px !important; }
+.mod-form-grid { gap: 10px !important; }
+/* Inside a grid the fields are siblings AND grid items, so they were taking
+   the row-gap and the sibling margin both — twenty pixels between every row
+   where ten was meant. */
+.mod-form-grid .emp-field + .emp-field { margin-top: 0 !important; }
+.emp-group + .emp-group { margin-top: 13px !important; }
+.emp-group-head { margin-bottom: 9px !important; padding-bottom: 6px !important; font-size: .68rem !important; }
+
+.emp-rate { height: 37px !important; }
+.emp-fp-input { padding-left: 33px !important; }
+
+.emp-foot { padding: 10px 16px !important; }
+.emp-btn-cancel, .emp-btn-save { height: 36px !important; font-size: 13px !important; padding: 0 15px !important; }
+.emp-foot-note { font-size: .69rem !important; }
+
+/* A dialog taller than the screen scrolls its own body rather than the page,
+   and never exceeds the viewport it opened in. */
+.emp-dialog.modal-dialog-scrollable .modal-content { max-height: calc(100vh - 3rem) !important; }
+@media (max-height: 700px) {
+    .emp-modal .form-control, .emp-modal .form-select { height: 34px !important; }
+    .emp-modal .emp-body { padding: 11px 14px 12px !important; }
+    .emp-field + .emp-field { margin-top: 8px !important; }
+    .mod-form-grid { gap: 8px !important; }
+}
