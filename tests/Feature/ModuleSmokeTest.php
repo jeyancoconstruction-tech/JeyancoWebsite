@@ -71,14 +71,17 @@ class ModuleSmokeTest extends TestCase
             'status' => 'active', 'fingerprint_id' => '1',
         ]);
 
-        // A day the kiosk would have recorded.
+        // A day the kiosk would have recorded. time_in/time_out are timestamp
+        // columns, not time columns — SQLite accepts a bare 'HH:MM:SS' but
+        // MySQL rejects it, so write what the kiosk actually writes.
+        $day = now()->subDay()->startOfDay();
         Attendance::create([
             'employee_id' => $this->employee->id,
             'site_id'     => $this->site->id,
             'shift_id'    => $shift->id,
-            'date'        => now()->subDay()->toDateString(),
-            'time_in'     => '08:00:00',
-            'time_out'    => '17:00:00',
+            'date'        => $day->toDateString(),
+            'time_in'     => $day->copy()->setTime(8, 0)->toDateTimeString(),
+            'time_out'    => $day->copy()->setTime(17, 0)->toDateTimeString(),
         ]);
     }
 
