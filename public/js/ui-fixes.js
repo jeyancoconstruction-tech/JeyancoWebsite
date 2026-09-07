@@ -49,6 +49,16 @@
     }
     window.jeyancoUI.nudgeMaps = nudgeMaps;
 
+    /* A deliberate resize of a card, as opposed to the window changing size.
+       Leaflet's invalidateSize keeps the centre and the zoom, so a box that
+       suddenly grows simply shows much more map — maximising the Site Tracker
+       zoomed the view out to the whole region. A map that cares can listen for
+       this and put back the ground it was showing; the dashboard does. */
+    function announceResize() {
+        document.dispatchEvent(new CustomEvent('jeyanco:card-resize'));
+        nudgeMaps();
+    }
+
 
     /* ── 1 · DATE FIELDS OPEN ON CLICK ──────────────────────────────────────
        A native date input only opens its calendar from the small glyph at the
@@ -181,7 +191,7 @@
             card.classList.toggle('is-min', on);
             setState(minBtn, on, on ? 'fa-window-maximize' : 'fa-window-minimize');
             if (minBtn) minBtn.setAttribute('aria-expanded', on ? 'false' : 'true');
-            if (!on) nudgeMaps();
+            if (!on) announceResize();
         }
 
         function maximise(on) {
@@ -212,7 +222,7 @@
 
             setState(maxBtn, on, on ? 'fa-compress' : 'fa-expand');
             if (maxBtn) maxBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
-            nudgeMaps();
+            announceResize();
         }
 
         if (minBtn) minBtn.addEventListener('click', function () { minimise(!isMin()); });

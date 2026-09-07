@@ -296,20 +296,29 @@ input.flatpickr-input[readonly] {
 .site-tracker-slot { display: none; }
 .site-tracker-slot.is-active { display: block; }
 
+/* Expanded, not fullscreen. Stretching the card to the edges of a wide
+   monitor gave the map a viewport several times its own width, which is more
+   room than the job needs and leaves the controls stranded in a corner. A
+   centred panel of about three times the docked size is the useful size. */
 .site-tracker.is-max {
     position: fixed;
-    top: 3vh; left: 3vw; right: 3vw; bottom: 3vh;
-    width: auto !important; height: auto !important;
-    margin: 0; z-index: 1113;
+    /* Centred with inset + auto margins rather than a translate: the hover
+       rule further down sets transform: none on every .table-card, which would
+       have thrown a translated panel back into the corner on mouse-over. */
+    inset: 0;
+    margin: auto;
+    width: min(860px, 94vw) !important;
+    height: min(580px, 86vh) !important;
+    z-index: 1113;
     box-shadow: var(--shadow-xl) !important;
     display: flex; flex-direction: column;
 }
 .site-tracker.is-max .st-body { flex: 1 1 auto; min-height: 0; }
-/* #kioskMap is already flex-grow:1, so it simply fills whatever the enlarged
-   card leaves it — the floor only guarantees the map is worth looking at. */
-.site-tracker.is-max #kioskMap { min-height: 320px !important; }
+/* #kioskMap is already flex-grow:1, so it fills whatever the enlarged card
+   leaves it — the floor only guarantees the map is worth looking at. */
+.site-tracker.is-max #kioskMap { min-height: 280px !important; }
 .site-tracker.is-max .map-input,
-.site-tracker.is-max .map-select { max-width: 420px; }
+.site-tracker.is-max .map-select { max-width: 380px; }
 
 .st-backdrop {
     position: fixed; inset: 0; z-index: 1112;
@@ -318,7 +327,10 @@ input.flatpickr-input[readonly] {
     animation: uiFadeIn .15s ease-out;
 }
 @media (max-width: 575px) {
-    .site-tracker.is-max { top: 0; left: 0; right: 0; bottom: 0; border-radius: 0 !important; }
+    .site-tracker.is-max {
+        width: 100vw !important; height: 100vh !important;
+        border-radius: 0 !important;
+    }
 }
 
 
@@ -330,9 +342,12 @@ input.flatpickr-input[readonly] {
 .clock-shell { position: relative; }
 
 /* The banner clipped its children so its ::before scrim would follow the
-   rounded corner — which would also have sliced the popover in half. Give the
-   scrim the radius directly instead, and the banner no longer needs to clip. */
-.welcome-banner { overflow: visible; }
+   rounded corner — which also sliced the popover in half. Give the scrim the
+   radius directly instead, and the banner no longer needs to clip.
+
+   !important because @stack('styles') renders AFTER this file, so the page's
+   own .welcome-banner { overflow: hidden } would otherwise win the tie. */
+.welcome-banner { overflow: visible !important; }
 .welcome-banner::before { border-radius: inherit; }
 
 .mini-cal {

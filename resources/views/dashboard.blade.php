@@ -717,6 +717,21 @@
         setTimeout(fixSize, 300);
         setTimeout(fixSize, 900);
 
+        // Minimising or maximising the card changes the map's box. Leaflet's
+        // invalidateSize holds the centre and the zoom, so a box that grows
+        // three times over simply shows three times the ground — maximising
+        // pulled the view back to the whole region and lost the site you were
+        // looking at. Read the bounds while Leaflet still has the old size
+        // cached, then put the very same ground back at the new size: bigger
+        // box, same place, more detail. Nothing else about the map changes.
+        document.addEventListener('jeyanco:card-resize', () => {
+            const showing = map.getBounds();
+            requestAnimationFrame(() => {
+                map.invalidateSize({ animate: false });
+                map.fitBounds(showing, { animate: false });
+            });
+        });
+
         const siteSelect  = document.getElementById('siteSelect');
         const saveBtn     = document.getElementById('siteSaveBtn');
         const searchInput = document.getElementById('siteSearch');
