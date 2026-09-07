@@ -221,115 +221,199 @@
     </div>
 </div>
 
-{{-- ════════════════════════════ EMPLOYEE FORM MODAL ═══════════════════════ --}}
-<div class="modal fade" id="empFormModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" style="max-width:540px;">
-    <div class="modal-content rm-modal">
+{{-- ════════════════════════════ EMPLOYEE FORM MODAL ═══════════════════════
+     One modal serves four jobs — Add, Confirm, Complete and Edit — with the
+     title, the sub-line and the submit label swapped by openModal(). It now
+     speaks the same language as the Register Employee page: the .ep-* chrome
+     from employees/_profile_styles.blade.php, Bootstrap form controls the
+     design tokens already theme for both modes, and the app's own brand rather
+     than the electric blue this modal alone still used.
+
+     Every id, name and value is unchanged — the JS below and the controllers
+     behind it read exactly what they read before. --}}
+<div class="modal fade" id="empFormModal" tabindex="-1" aria-hidden="true" aria-labelledby="empFormTitle">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog">
+    <div class="modal-content emp-modal">
       <form id="empForm" method="POST" enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="_method" id="empFormMethod" value="POST">
         <input type="hidden" name="_form_mode" id="empFormModeField" value="">
         <input type="hidden" name="_form_id" id="empFormIdField" value="">
 
-        <div class="rm-modal-head">
-            <div>
-                <h6 class="rm-modal-title" id="empFormTitle">{{ __('Complete Registration') }}</h6>
-                <p class="rm-modal-sub" id="empFormSub">{{ __('Set this worker\'s details to activate them.') }}</p>
+        <div class="emp-head">
+            <span class="emp-head-icon" aria-hidden="true"><i class="fas fa-helmet-safety"></i></span>
+            <div class="emp-head-text">
+                <h6 class="emp-head-title" id="empFormTitle">{{ __('Complete Registration') }}</h6>
+                <p class="emp-head-sub" id="empFormSub">{{ __('Set this worker\'s details to activate them.') }}</p>
             </div>
-            <button type="button" class="rm-modal-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
+            <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
         </div>
 
-        <div class="rm-modal-body">
-            <div class="rm-field">
-                <label class="rm-label">{{ __('Full Name') }} <span class="req">*</span></label>
-                <input type="text" name="name" id="empName" class="rm-input" placeholder="{{ __('Enter full name') }}" autocomplete="off" required>
-            </div>
+        <div class="modal-body emp-body">
 
-            <div class="rm-grid2">
-                <div class="rm-field">
-                    <label class="rm-label">{{ __('Labor Type') }} <span class="req">*</span></label>
-                    <div class="rm-select-wrap">
-                        <select name="labor_type_id" id="empLabor" class="rm-input" required>
+            {{-- The page-level alert sits behind the modal, so when validation
+                 sent the admin back here the form reopened saying nothing at
+                 all about what was wrong. Same errors, shown where they can be
+                 read and beside the field that raised them. --}}
+            @if($errors->any())
+                <div class="emp-alert" role="alert">
+                    <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+                    <div>
+                        <strong>{{ __('Please fix the following:') }}</strong>
+                        <ul>@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+                    </div>
+                </div>
+            @endif
+
+            <section class="emp-group">
+                <h3 class="emp-group-head">{{ __('Worker') }}</h3>
+                <div class="emp-field">
+                    <label class="ep-label" for="empName">{{ __('Full Name') }} <span class="ep-req" aria-hidden="true">*</span></label>
+                    <input type="text" name="name" id="empName"
+                           class="form-control @error('name') is-invalid @enderror"
+                           placeholder="{{ __('e.g. Juan Santos Dela Cruz') }}"
+                           autocomplete="off" required aria-required="true"
+                           aria-describedby="empNameHint">
+                    @error('name')
+                        <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                    @else
+                        <span class="ep-hint" id="empNameHint">{{ __('First, middle and last name, as it should read on the payslip.') }}</span>
+                    @enderror
+                </div>
+            </section>
+
+            <section class="emp-group">
+                <h3 class="emp-group-head">{{ __('Employment & Pay') }}</h3>
+                <div class="emp-grid">
+                    <div class="emp-field">
+                        <label class="ep-label" for="empLabor">{{ __('Labor Type') }} <span class="ep-req" aria-hidden="true">*</span></label>
+                        <select name="labor_type_id" id="empLabor"
+                                class="form-select @error('labor_type_id') is-invalid @enderror"
+                                required aria-required="true">
                             <option value="">{{ __('— Select —') }}</option>
                             @foreach($laborTypes as $lt)
                                 <option value="{{ $lt->id }}" data-daily="{{ $lt->daily_rate }}">{{ $lt->name }}</option>
                             @endforeach
                         </select>
-                        <i class="fas fa-chevron-down rm-select-icon"></i>
+                        @error('labor_type_id')
+                            <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                        @enderror
                     </div>
-                </div>
-                <div class="rm-field">
-                    <label class="rm-label">{{ __('Rate / hour') }}</label>
-                    <div class="rm-rate-box">
-                        <span class="rm-rate-cur">₱</span>
-                        <span id="empRateView" class="rm-rate-val">—</span>
-                        <input type="hidden" name="rate_per_hour" id="empRate">
-                    </div>
-                    <p class="rm-hint" id="empRateHint">{{ __('Auto from labor type') }}</p>
-                </div>
-            </div>
 
-            <div class="rm-grid2">
-                <div class="rm-field">
-                    <label class="rm-label">{{ __('Site') }}</label>
-                    <div class="rm-select-wrap">
-                        <select name="site_id" id="empSite" class="rm-input">
+                    <div class="emp-field">
+                        <label class="ep-label" for="empRateView">{{ __('Rate / hour') }}</label>
+                        {{-- Filled from the labor type, never typed. It reads as a
+                             locked field, the same way Register Employee shows a
+                             value the form works out for you. --}}
+                        <div class="emp-rate" id="empRateBox" aria-live="polite">
+                            <span class="emp-rate-cur" aria-hidden="true">₱</span>
+                            <span id="empRateView" class="emp-rate-val" tabindex="-1">—</span>
+                            <i class="fas fa-lock emp-rate-lock" aria-hidden="true" title="{{ __('Set by the labor type') }}"></i>
+                            <input type="hidden" name="rate_per_hour" id="empRate">
+                        </div>
+                        <span class="ep-hint" id="empRateHint">{{ __('Auto from labor type') }}</span>
+                    </div>
+
+                    <div class="emp-field">
+                        <label class="ep-label" for="empSite">{{ __('Site') }}</label>
+                        <select name="site_id" id="empSite" class="form-select @error('site_id') is-invalid @enderror">
                             <option value="">{{ __('— Unassigned —') }}</option>
                             @foreach($sites as $s)
                                 <option value="{{ $s->id }}">{{ $s->name }}</option>
                             @endforeach
                         </select>
-                        <i class="fas fa-chevron-down rm-select-icon"></i>
+                        @error('site_id')
+                            <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                        @enderror
                     </div>
-                </div>
-                <div class="rm-field">
-                    <label class="rm-label">{{ __('Shift') }}</label>
-                    <div class="rm-select-wrap">
-                        <select name="shift_id" id="empShift" class="rm-input">
+
+                    <div class="emp-field">
+                        <label class="ep-label" for="empShift">{{ __('Shift') }}</label>
+                        <select name="shift_id" id="empShift" class="form-select @error('shift_id') is-invalid @enderror"
+                                aria-describedby="empShiftHint">
                             @foreach($shifts as $sh)
                                 <option value="{{ $sh->id }}" @selected(! $sh->crosses_midnight)>
                                     {{ $sh->name }} — {{ \Carbon\Carbon::parse($sh->starts_at)->format('g:i A') }}
                                 </option>
                             @endforeach
                         </select>
-                        <i class="fas fa-chevron-down rm-select-icon"></i>
+                        @error('shift_id')
+                            <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                        @else
+                            <span class="ep-hint" id="empShiftHint">{{ __('Movable later from the employee list.') }}</span>
+                        @enderror
                     </div>
-                    <p class="rm-hint">{{ __('Movable later from the employee list.') }}</p>
                 </div>
-            </div>
+            </section>
 
-            <div class="rm-grid2">
-                <div class="rm-field">
-                    <label class="rm-label">{{ __('Fingerprint ID') }}</label>
-                    <input type="text" name="fingerprint_id" id="empFp" class="rm-input rm-mono" placeholder="—" autocomplete="off">
-                    <p class="rm-hint">{{ __('Captured from the kiosk scan.') }}</p>
-                </div>
-            </div>
+            <section class="emp-group">
+                <h3 class="emp-group-head">{{ __('Kiosk & Photo') }}</h3>
 
-            <div class="rm-field">
-                <label class="rm-label">{{ __('Photo') }} <span class="rm-optional">{{ __('(optional)') }}</span></label>
-                <div class="rm-photo-row">
-                    <div class="rm-photo-box" id="empPhotoBox">
-                        <i class="fas fa-user" id="empPhotoIcon"></i>
-                        <img id="empPhotoPreview" src="" alt="" style="display:none;">
+                <div class="emp-field">
+                    <label class="ep-label" for="empFp">
+                        {{ __('Fingerprint ID') }}
+                        <span class="ep-optional">{{ __('(from the kiosk)') }}</span>
+                    </label>
+                    <div class="emp-fp">
+                        <span class="emp-fp-icon" aria-hidden="true"><i class="fas fa-fingerprint"></i></span>
+                        <input type="text" name="fingerprint_id" id="empFp"
+                               class="form-control emp-fp-input ep-mono @error('fingerprint_id') is-invalid @enderror"
+                               placeholder="{{ __('Not enrolled yet') }}" autocomplete="off"
+                               inputmode="numeric" aria-describedby="empFpHint">
                     </div>
-                    <div>
-                        <button type="button" class="rm-btn-ghost" id="empPhotoPick"><i class="fas fa-images"></i> {{ __('Choose') }}</button>
-                        <button type="button" class="rm-btn-ghost rm-btn-danger-ghost" id="empPhotoClear" style="display:none;"><i class="fas fa-times"></i> {{ __('Remove') }}</button>
-                        <input type="file" name="photo" id="empPhoto" accept="image/jpg,image/jpeg,image/png" hidden>
-                    </div>
+                    @error('fingerprint_id')
+                        <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                    @else
+                        <span class="ep-hint" id="empFpHint">{{ __('The slot this worker\'s finger is stored in on the kiosk. Filled in by the scan — change it only if the kiosk was re-enrolled.') }}</span>
+                    @enderror
                 </div>
-            </div>
+
+                <div class="emp-field">
+                    <label class="ep-label" id="empPhotoLabel">{{ __('Photo') }} <span class="ep-optional">{{ __('(optional)') }}</span></label>
+                    <div class="emp-photo" role="group" aria-labelledby="empPhotoLabel">
+                        <div class="emp-photo-box" id="empPhotoBox">
+                            <i class="fas fa-user" id="empPhotoIcon" aria-hidden="true"></i>
+                            <img id="empPhotoPreview" src="" alt="{{ __('Selected photo') }}" style="display:none;">
+                        </div>
+                        <div class="emp-photo-side">
+                            <div class="emp-photo-actions">
+                                <button type="button" class="emp-btn-ghost" id="empPhotoPick">
+                                    <i class="fas fa-images" aria-hidden="true"></i>
+                                    <span id="empPhotoPickLabel">{{ __('Choose') }}</span>
+                                </button>
+                                <button type="button" class="emp-btn-ghost emp-btn-ghost-danger" id="empPhotoClear" style="display:none;">
+                                    <i class="fas fa-trash-can" aria-hidden="true"></i> <span>{{ __('Remove') }}</span>
+                                </button>
+                                <input type="file" name="photo" id="empPhoto" accept="image/jpg,image/jpeg,image/png" hidden>
+                            </div>
+                            <span class="ep-hint">{{ __('JPG or PNG. Shown beside the worker\'s name across the app.') }}</span>
+                        </div>
+                    </div>
+                    @error('photo')
+                        <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                    @enderror
+                </div>
+            </section>
         </div>
 
-        <div class="rm-modal-foot">
-            <button type="button" class="rm-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-            <button type="submit" class="rm-btn-primary" id="empFormSubmit"><i class="fas fa-check"></i> <span>{{ __('Save & Activate') }}</span></button>
+        <div class="emp-foot">
+            <p class="emp-foot-note"><span class="ep-req" aria-hidden="true">*</span> {{ __('Required') }}</p>
+            <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+            <button type="submit" class="emp-btn-save" id="empFormSubmit">
+                <i class="fas fa-check" aria-hidden="true"></i> <span>{{ __('Save & Activate') }}</span>
+            </button>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+{{-- The Register Employee page's own chrome — .ep-label, .ep-hint, .ep-req,
+     .ep-optional, .ep-mono. Included rather than copied, so the modal and the
+     full form cannot drift apart. --}}
+@include('employees._profile_styles')
 
 {{-- ── Styles ──────────────────────────────────────────────────────────────── --}}
 <style>
@@ -344,7 +428,7 @@
 .rm-sub { font-size:.875rem; color:#64748b; margin:0; max-width:640px; }
 
 .rm-btn-primary { height:42px; padding:0 20px; font-size:14px; font-weight:700; color:#fff; border:none; border-radius:9px; cursor:pointer;
-    background:#3b82f6; display:inline-flex; align-items:center; gap:8px; box-shadow:none; transition:transform .1s, opacity .15s; white-space:nowrap; }
+    background:var(--brand,#1769e0); display:inline-flex; align-items:center; gap:8px; box-shadow:none; transition:transform .1s, opacity .15s; white-space:nowrap; }
 .rm-btn-primary:hover { opacity:.93; transform:translateY(-1px); }
 /* Register Employee is an <a>, so keep it looking like the button it replaced. */
 a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decoration:none; color:#fff; }
@@ -511,34 +595,6 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 .rm-empty-sub { font-size:13px; color:#94a3b8; margin:0; max-width:380px; }
 
 /* modal */
-.rm-modal { border:none; border-radius:16px; overflow:hidden; }
-.rm-modal-head { display:flex; justify-content:space-between; align-items:flex-start; padding:18px 22px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; }
-.rm-modal-title { font-size:16px; font-weight:700; margin:0 0 2px; }
-.rm-modal-sub { font-size:12px; opacity:.82; margin:0; }
-.rm-modal-x { background:rgba(255,255,255,.12); border:none; color:#fff; width:30px; height:30px; border-radius:8px; cursor:pointer; }
-.rm-modal-body { padding:20px 22px; display:flex; flex-direction:column; gap:14px; }
-.rm-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-@media(max-width:480px){ .rm-grid2{ grid-template-columns:1fr; } }
-.rm-field { display:flex; flex-direction:column; }
-.rm-label { font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; }
-.req { color:#dc2626; }
-.rm-optional { font-weight:400; color:#94a3b8; font-size:12px; }
-.rm-input { width:100%; height:42px; border:1.5px solid #e2e8f0; border-radius:8px; padding:0 13px; font-size:14px; color:#0f172a; background:#fff; outline:none; appearance:none; -webkit-appearance:none; transition:border-color .15s, box-shadow .15s; }
-.rm-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.08); }
-.rm-mono { font-family:monospace; }
-.rm-hint { font-size:12px; color:#94a3b8; margin:5px 0 0; }
-.rm-select-wrap { position:relative; }
-.rm-select-wrap .rm-input { padding-right:32px; cursor:pointer; }
-.rm-select-icon { position:absolute; right:11px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:11px; pointer-events:none; }
-.rm-rate-box { height:42px; border:1.5px solid #e2e8f0; border-radius:8px; display:flex; align-items:center; gap:4px; padding:0 13px; background:#f8fafc; }
-.rm-rate-cur { font-size:13px; color:#94a3b8; font-weight:600; }
-.rm-rate-val { font-size:15px; font-weight:700; color:#3b82f6; }
-.rm-photo-row { display:flex; align-items:center; gap:14px; }
-.rm-photo-box { width:64px; height:64px; border-radius:12px; border:2px dashed #e2e8f0; background:#f8fafc; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#94a3b8; font-size:22px; flex-shrink:0; }
-.rm-photo-box img { width:100%; height:100%; object-fit:cover; }
-.rm-modal-foot { display:flex; justify-content:flex-end; gap:10px; padding:16px 22px; border-top:1px solid #f1f5f9; }
-.rm-btn-cancel { height:42px; padding:0 18px; font-size:14px; font-weight:600; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; border-radius:9px; cursor:pointer; }
-.rm-btn-cancel:hover { background:#e2e8f0; }
 
 /* ── Dark mode ───────────────────────────────────────────────────────────── */
 [data-bs-theme="dark"] .rm-title { color:#e8edf5; }
@@ -576,15 +632,259 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 [data-bs-theme="dark"] .rm-menu-item:hover { background:#283449; }
 [data-bs-theme="dark"] .rm-empty-icon { background:#1c2740; color:#475569; }
 [data-bs-theme="dark"] .rm-empty-title { color:#9fb0c7; }
-[data-bs-theme="dark"] .rm-modal { background:#151d2e; }
-[data-bs-theme="dark"] .rm-label { color:#cbd5e1; }
-[data-bs-theme="dark"] .rm-input { background:#0f1a2e; border-color:#283449; color:#e8edf5; }
-[data-bs-theme="dark"] .rm-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
-[data-bs-theme="dark"] .rm-rate-box { background:#0f1a2e; border-color:#283449; }
-[data-bs-theme="dark"] .rm-rate-val { color:#93c5fd; }
-[data-bs-theme="dark"] .rm-photo-box { background:#0f1a2e; border-color:#283449; }
-[data-bs-theme="dark"] .rm-modal-foot { border-top-color:#1c2740; }
-[data-bs-theme="dark"] .rm-btn-cancel { background:#1c2740; border-color:#283449; color:#94a3b8; }
+
+/* ── Employee form modal ──────────────────────────────────────────────────
+   Every colour is a design token, so light and dark follow the same rules and
+   there is no parallel [data-bs-theme="dark"] block to keep in sync — the same
+   discipline employees/_profile_styles.blade.php already follows. The .ep-*
+   labels, hints and required marks come from that partial, included below, so
+   this modal and the Register Employee page cannot drift apart. */
+
+.emp-dialog { max-width: 620px; }
+
+.emp-modal {
+    border: 1px solid var(--border, #e4e9f0) !important;
+    border-radius: var(--radius-lg, 12px) !important;
+    overflow: hidden;
+    box-shadow: var(--shadow-xl, 0 24px 48px rgba(15,30,51,.14));
+}
+
+/* ── Head ─────────────────────────────────────────────────────────────── */
+/* Navy, like every other modal header in the app — this one was the last
+   place still wearing the old electric-blue gradient. */
+.emp-head {
+    display: flex; align-items: flex-start; gap: 13px;
+    padding: 17px 20px;
+    background: var(--sidebar-bg, #071a33);
+    color: #fff;
+}
+.emp-head-icon {
+    flex: none; width: 34px; height: 34px; border-radius: var(--radius-md, 10px);
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.10);
+    color: #8fbef7; font-size: 14px;
+}
+.emp-head-text { flex: 1 1 auto; min-width: 0; }
+.emp-head-title { font-size: 15.5px; font-weight: 700; margin: 0 0 2px; color: #fff; letter-spacing: -.01em; }
+.emp-head-sub { font-size: 12px; line-height: 1.4; margin: 0; color: #a9c0da; }
+.emp-head-x {
+    flex: none; width: 30px; height: 30px; padding: 0;
+    background: rgba(255,255,255,.10); border: none; border-radius: var(--radius-sm, 8px);
+    color: #cfe0f5; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background .15s ease, color .15s ease;
+}
+.emp-head-x:hover { background: rgba(255,255,255,.20); color: #fff; }
+.emp-head-x:focus-visible { outline: 2px solid #8fbef7; outline-offset: 2px; }
+
+/* ── Body ─────────────────────────────────────────────────────────────── */
+.emp-body {
+    padding: 18px 20px 20px !important;
+    background: var(--bg-surface, #fff);
+}
+
+/* Groups carry the same eyebrow rule .ep-subhead uses on the full form, so a
+   modal and a page read as the same document. The first has no rule above it. */
+.emp-group + .emp-group { margin-top: 18px; }
+.emp-group-head {
+    font-size: .74rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted, #8a96a8);
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border, #e4e9f0);
+}
+
+.emp-field { display: flex; flex-direction: column; min-width: 0; }
+.emp-field + .emp-field { margin-top: 14px; }
+
+.emp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 14px; }
+.emp-grid .emp-field + .emp-field { margin-top: 0; }
+
+/* ── Controls ─────────────────────────────────────────────────────────── */
+/* One height, one radius, one focus ring, matching the Register Employee page.
+   design-tokens.css paints .form-control / .form-select with !important, so the
+   sizing here is deliberately the only thing this file asserts about them. */
+.emp-modal .form-control,
+.emp-modal .form-select {
+    height: 42px;
+    padding: 0 13px;
+    font-size: 14px;
+}
+.emp-modal .form-select { padding-right: 34px; cursor: pointer; }
+.emp-modal .form-control:hover:not(:focus):not(:disabled),
+.emp-modal .form-select:hover:not(:focus) { border-color: var(--border-md, #d2dae6) !important; }
+.emp-modal .form-control:disabled,
+.emp-modal .form-control[readonly] {
+    background: var(--bg-subtle, #f0f3f8) !important;
+    color: var(--text-secondary, #5b6a80) !important;
+    cursor: not-allowed;
+}
+
+/* Validation. :user-invalid fires only after the field has been interacted
+   with, so a form that has not been touched is never painted red — and the
+   server's own @error output still lands on .is-invalid exactly as before. */
+.emp-modal .form-control.is-invalid,
+.emp-modal .form-select.is-invalid,
+.emp-modal .form-control:user-invalid,
+.emp-modal .form-select:user-invalid {
+    border-color: var(--danger, #d0342c) !important;
+}
+.emp-modal .form-control.is-invalid:focus,
+.emp-modal .form-select.is-invalid:focus,
+.emp-modal .form-control:user-invalid:focus,
+.emp-modal .form-select:user-invalid:focus {
+    box-shadow: 0 0 0 3px var(--danger-soft, #fcecec) !important;
+}
+
+.emp-err {
+    display: flex; align-items: flex-start; gap: 6px;
+    font-size: .74rem; line-height: 1.4;
+    color: var(--danger, #d0342c);
+    margin: 5px 0 0;
+}
+.emp-err i { margin-top: 2px; flex: none; font-size: .7rem; }
+
+.emp-alert {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 11px 13px; margin-bottom: 16px;
+    font-size: 13px; line-height: 1.45;
+    color: var(--danger, #d0342c);
+    background: var(--danger-soft, #fcecec);
+    border: 1px solid var(--danger, #d0342c);
+    border-radius: var(--radius-md, 10px);
+}
+.emp-alert i { margin-top: 3px; flex: none; }
+.emp-alert strong { font-weight: 700; }
+.emp-alert ul { margin: 4px 0 0; padding-left: 17px; }
+
+/* ── Rate · a value the form works out for you ────────────────────────── */
+.emp-rate {
+    height: 42px; display: flex; align-items: center; gap: 5px;
+    padding: 0 13px;
+    background: var(--bg-subtle, #f0f3f8);
+    border: 1px solid var(--border, #e4e9f0);
+    border-radius: var(--radius-sm, 8px);
+}
+.emp-rate-cur { font-size: 13px; font-weight: 600; color: var(--text-muted, #8a96a8); }
+.emp-rate-val {
+    font-size: 15px; font-weight: 700; color: var(--brand, #1769e0);
+    font-variant-numeric: tabular-nums; outline: none;
+}
+.emp-rate-lock { margin-left: auto; font-size: 10px; color: var(--text-muted, #8a96a8); }
+
+/* ── Fingerprint · say what the number is ─────────────────────────────── */
+.emp-fp { position: relative; }
+.emp-fp-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted, #8a96a8); font-size: 14px; pointer-events: none;
+    transition: color .15s ease;
+}
+.emp-fp-input { padding-left: 36px !important; }
+.emp-fp:focus-within .emp-fp-icon { color: var(--brand, #1769e0); }
+
+/* ── Photo ────────────────────────────────────────────────────────────── */
+.emp-photo {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px;
+    border: 1px dashed var(--border-md, #d2dae6);
+    border-radius: var(--radius-md, 10px);
+    background: var(--bg-subtle, #f0f3f8);
+}
+.emp-photo-box {
+    flex: none; width: 68px; height: 68px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    background: var(--bg-surface, #fff);
+    border: 2px solid var(--border, #e4e9f0);
+    color: var(--text-muted, #8a96a8); font-size: 24px;
+}
+.emp-photo-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.emp-photo-side { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.emp-photo-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.emp-btn-ghost {
+    height: 34px; padding: 0 12px;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--text-secondary, #5b6a80);
+    background: var(--bg-surface, #fff);
+    border: 1px solid var(--border, #e4e9f0);
+    border-radius: var(--radius-sm, 8px);
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.emp-btn-ghost:hover {
+    background: var(--brand-subtle, #eaf1fd);
+    color: var(--brand, #1769e0);
+    border-color: var(--brand, #1769e0);
+}
+.emp-btn-ghost-danger:hover {
+    background: var(--danger-soft, #fcecec);
+    color: var(--danger, #d0342c);
+    border-color: var(--danger, #d0342c);
+}
+.emp-btn-ghost:focus-visible { outline: 2px solid var(--brand, #1769e0); outline-offset: 2px; }
+
+.emp-foot {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 20px;
+    background: var(--bg-surface, #fff);
+    border-top: 1px solid var(--border, #e4e9f0);
+}
+.emp-foot-note {
+    margin: 0 auto 0 0;
+    font-size: .74rem;
+    color: var(--text-muted, #8a96a8);
+}
+
+.emp-btn-cancel, .emp-btn-save {
+    height: 40px; padding: 0 18px;
+    font-size: 13.5px; font-weight: 600;
+    border-radius: var(--radius-sm, 8px);
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    white-space: nowrap;
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.emp-btn-cancel {
+    color: var(--text-primary, #0f1e33);
+    background: var(--bg-surface, #fff);
+    border: 1px solid var(--border, #e4e9f0);
+}
+.emp-btn-cancel:hover { background: var(--bg-subtle, #f0f3f8); border-color: var(--border-md, #d2dae6); }
+
+.emp-btn-save {
+    color: #fff; font-weight: 700;
+    background: var(--brand, #1769e0);
+    border: 1px solid var(--brand, #1769e0);
+    box-shadow: 0 1px 2px rgba(23,105,224,.24);
+}
+.emp-btn-save:hover {
+    background: var(--brand-strong, #1257bc);
+    border-color: var(--brand-strong, #1257bc);
+    color: #fff;
+}
+.emp-btn-save:disabled {
+    opacity: .65; cursor: progress;
+    background: var(--brand, #1769e0); border-color: var(--brand, #1769e0);
+}
+.emp-btn-cancel:focus-visible, .emp-btn-save:focus-visible {
+    outline: 2px solid var(--brand, #1769e0); outline-offset: 2px;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 575px) {
+    .emp-grid { grid-template-columns: 1fr; }
+    .emp-head { padding: 14px 15px; }
+    .emp-body { padding: 15px !important; }
+    .emp-foot { padding: 12px 15px; flex-wrap: wrap; }
+    .emp-foot-note { width: 100%; margin: 0 0 4px; }
+    .emp-btn-cancel, .emp-btn-save { flex: 1 1 0; }
+    .emp-photo { flex-direction: column; align-items: flex-start; }
+}
+
 </style>
 
 {{-- ── Script ──────────────────────────────────────────────────────────────── --}}
@@ -689,16 +989,24 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
     }
     laborEl.addEventListener('change', updateRate);
 
+    // The pick button says what it will actually do: there is nothing to
+    // replace until a photo is on screen.
+    const photoPickLbl = document.getElementById('empPhotoPickLabel');
+    function setPhotoLabel(has) {
+        if (photoPickLbl) photoPickLbl.textContent = has ? 'Replace' : 'Choose';
+    }
+
     function clearPhoto() {
         photoEl.value = ''; photoPrev.src = ''; photoPrev.style.display = 'none';
         photoIcon.style.display = ''; photoClr.style.display = 'none';
+        setPhotoLabel(false);
     }
     document.getElementById('empPhotoPick').addEventListener('click', () => photoEl.click());
     photoClr.addEventListener('click', clearPhoto);
     photoEl.addEventListener('change', function (e) {
         const f = e.target.files[0]; if (!f) return;
         const r = new FileReader();
-        r.onload = ev => { photoPrev.src = ev.target.result; photoPrev.style.display = 'block'; photoIcon.style.display = 'none'; photoClr.style.display = ''; };
+        r.onload = ev => { photoPrev.src = ev.target.result; photoPrev.style.display = 'block'; photoIcon.style.display = 'none'; photoClr.style.display = ''; setPhotoLabel(true); };
         r.readAsDataURL(f);
     });
 
@@ -712,6 +1020,7 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
         if (d.photo) {
             photoPrev.src = d.photo; photoPrev.style.display = 'block';
             photoIcon.style.display = 'none'; photoClr.style.display = '';
+            setPhotoLabel(true);
         }
         modeField.value = mode;
         idField.value   = d.id || '';

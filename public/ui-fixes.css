@@ -175,6 +175,35 @@ html[data-bs-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator
     filter: invert(1) brightness(1.6);
 }
 
+/* ── 4b · SELECTS HAVE NO ARROW ─────────────────────────────────────────────
+   design-tokens.css and enterprise.css both paint form fields with the
+   `background:` SHORTHAND and !important. The shorthand resets every
+   background-* longhand it does not name, so Bootstrap's chevron —
+   `background-image` on .form-select — is set to none on every select in the
+   app, and nothing puts it back. Bootstrap also sets appearance: none, so the
+   browser draws no native arrow either: the control looks exactly like a text
+   input until you click it. The employee modal only ever looked right because
+   it drew a Font Awesome chevron of its own on top.
+
+   One chevron, from the same token palette, restored for every select. The
+   theme-scoped selectors match the specificity of the rules that wiped it, and
+   this file loads last, so the tie falls here. */
+html[data-bs-theme="light"] .form-select,
+html[data-bs-theme="dark"] .form-select,
+.form-select {
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 11px 8px !important;
+    padding-right: 34px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 12'%3E%3Cpath fill='none' stroke='%235B6A80' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 4l6 6 6-6'/%3E%3C/svg%3E") !important;
+}
+html[data-bs-theme="dark"] .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 12'%3E%3Cpath fill='none' stroke='%239AA9BF' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 4l6 6 6-6'/%3E%3C/svg%3E") !important;
+}
+/* A disabled select should not advertise a menu it will not open. */
+.form-select:disabled { background-image: none !important; opacity: .65; }
+
+
 /* Flatpickr (payroll records, Add Custom Holiday) renders its calendar into
    <body> at z-index 999 — under the modal at 1130, so inside the holiday modal
    the picker opened invisibly behind the dialog. */
