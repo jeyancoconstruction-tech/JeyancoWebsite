@@ -1,0 +1,170 @@
+/* =============================================================================
+   JEYANCO CONSTRUCTION · RAIL THEMING + CONTAINER DENSITY
+   -----------------------------------------------------------------------------
+   Two jobs, loaded after nav-fit.css so both win their ties.
+
+   1 · The rail follows the theme. It was navy in BOTH themes by an earlier
+       decision — "the brand's anchor, not a surface that follows the page".
+       That is a defensible choice, but it is not what was asked for: light
+       mode should give a white rail, dark mode a dark one. Every colour on it
+       moves to a token so one set of rules serves both.
+
+   2 · The containers come down to the rail's density. Once the menu rows were
+       28px, cards built for a roomier page looked oversized beside them —
+       stat blocks a third taller than they needed, headings at 1.45rem, table
+       rows at 13px on 13px of padding. Everything here is a reduction; no
+       component is restyled, recoloured or moved.
+   ============================================================================= */
+
+/* ── 1 · RAIL TOKENS ──────────────────────────────────────────────────────
+   design-tokens.css defines these once for both themes. Redefining them per
+   theme is all it takes, because the rail's rules already read them — the one
+   exception is .sidebar's own background, which was a hardcoded navy gradient
+   and is pointed at the tokens below. */
+html[data-bs-theme="light"] {
+    --sidebar-bg:          #ffffff;
+    --sidebar-bg-2:        #fbfcfe;
+    --sidebar-text:        #55657c;
+    --sidebar-text-strong: #0f1e33;
+    --sidebar-section:     #97a3b4;
+    --sidebar-hover:       #f0f4fa;
+    --sidebar-active:      var(--brand);
+    --sidebar-border:      #e4e9f0;
+    --sidebar-edge:        #e4e9f0;
+}
+html[data-bs-theme="dark"] {
+    --sidebar-bg:          #0e1826;
+    --sidebar-bg-2:        #0a1421;
+    --sidebar-text:        #9aa9bf;
+    --sidebar-text-strong: #e8edf5;
+    --sidebar-section:     #64748b;
+    --sidebar-hover:       rgba(255, 255, 255, 0.06);
+    --sidebar-active:      var(--brand);
+    --sidebar-border:      #1e2a3d;
+    --sidebar-edge:        #1c2740;
+}
+
+.sidebar {
+    background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%) !important;
+    border-right: 1px solid var(--sidebar-edge) !important;
+    box-shadow: none !important;
+}
+
+.brand-title { border-bottom: 1px solid var(--sidebar-border) !important; }
+.brand-text  { color: var(--sidebar-text-strong) !important;
+               -webkit-text-fill-color: var(--sidebar-text-strong) !important; }
+
+/* The mark carried a drop shadow tuned for navy behind it. On white it reads
+   as smudge, so it goes; the disc has plenty of contrast on either ground. */
+.brand-icon { filter: none !important; }
+
+.menu-section { color: var(--sidebar-section) !important; }
+
+.nav-menu .nav-link { color: var(--sidebar-text) !important; }
+.nav-menu .nav-link:hover {
+    background: var(--sidebar-hover) !important;
+    color: var(--sidebar-text-strong) !important;
+}
+/* The active pill stays brand blue with white on it in both themes — it is
+   the one thing on the rail that should not change with the ground. */
+.nav-menu .nav-link.active {
+    background: var(--brand) !important;
+    color: #fff !important;
+    box-shadow: 0 1px 3px rgba(23, 105, 224, 0.30) !important;
+}
+.nav-menu .nav-link.active svg,
+.nav-menu .nav-link.active i[data-lucide] { color: #fff !important; }
+
+/* The hairline that replaces the group labels on a short screen. */
+@media (max-height: 700px) {
+    .menu-section::after { border-top-color: var(--sidebar-border) !important; }
+}
+
+.sidebar-top::-webkit-scrollbar-thumb { background: var(--border-md) !important; }
+.sidebar-top { scrollbar-color: var(--border-md) transparent !important; }
+
+/* The mobile overlay dims the page, not the rail. */
+.sidebar-overlay { background: rgba(15, 23, 42, 0.42); }
+
+
+/* ── 2 · CONTAINER DENSITY ────────────────────────────────────────────────
+   Page headings first. 1.45rem beside a 12.5px menu row is a mismatch, not a
+   hierarchy. */
+/* Every page names its heading differently — .attendance-title, .dir-title,
+   .an-title, .pr-header h1 and so on — so each has to be listed. Missing one
+   is why Attendance still opened at 26px after the first pass. */
+.rm-title, .site-title, .mod-title, .page-title,
+.attendance-title, .dir-title, .an-title, .ai-header-title,
+.pr-header h1, .employee-container h2, .dashboard-wrapper h2,
+.main-content .container-fluid > h1,
+.main-content .container-fluid > div > h1 {
+    font-size: 1.18rem !important;
+    line-height: 1.2 !important;
+    letter-spacing: -.018em !important;
+    margin-bottom: 3px !important;
+}
+.rm-sub, .site-header-sub, .mod-sub { font-size: .8rem !important; }
+.rm-header, .site-header, .mod-head { margin-bottom: 14px !important; }
+
+/* Stat blocks. These were the worst offenders: a number, a label and a line of
+   context do not need 22px of padding above and below. */
+.rm-stat, .mod-stat, .dir-stat, .stat-card, .analytics-card {
+    padding: 11px 13px !important;
+}
+.rm-stat-num, .mod-stat-value, .dir-stat-value { font-size: 1.28rem !important; line-height: 1.15 !important; }
+.rm-stat-label, .mod-stat-label, .dir-stat-label { font-size: .66rem !important; }
+.mod-stats, .rm-stats { gap: 9px !important; margin-bottom: 13px !important; }
+
+/* Panels and cards. */
+.mod-card, .rm-card, .site-card, .table-card, .emp-card, .ep-section {
+    border-radius: var(--radius-md) !important;
+}
+.mod-card { margin-bottom: 13px !important; }
+.mod-card-head, .table-card-header, .rm-card-head {
+    padding: 10px 14px !important;
+}
+.mod-card-title, .table-card-header h6 { font-size: .84rem !important; }
+.mod-card-body, .ep-section { padding: 13px 14px !important; }
+
+/* Tables — the densest thing on the page and where the space really is. */
+.mod-table thead th, .rm-table thead th, .acct-table thead th,
+.attendance-table thead th {
+    padding: 7px 12px !important; font-size: .64rem !important;
+}
+.mod-table tbody td, .rm-table tbody td, .acct-table tbody td,
+.attendance-table tbody td {
+    padding: 8px 12px !important; font-size: 12.5px !important;
+}
+.mod-avatar, .rm-person-avatar, .emp-av { width: 26px !important; height: 26px !important; font-size: 10px !important; }
+
+/* Filters. */
+.mod-filters, .rm-filters { padding: 10px 14px !important; gap: 9px !important; }
+.mod-filters .form-control, .mod-filters .form-select { height: 34px !important; font-size: 12.5px !important; }
+
+/* Buttons across the app come down one notch, so a page header is not taller
+   than the content it introduces. */
+.rm-btn-primary, .rm-btn-danger, .site-add-btn { height: 36px !important; font-size: 13px !important; padding: 0 14px !important; }
+.mod-btn { height: 34px !important; font-size: 12.5px !important; }
+.mod-btn.sm { height: 28px !important; font-size: 11.5px !important; }
+
+/* Employee directory cards — the grid was showing five very tall cards. */
+.emp-card { padding: 13px !important; }
+.emp-card-name { font-size: .92rem !important; }
+.emp-row { padding: 5px 0 !important; font-size: 12px !important; }
+
+/* The page gutter itself. */
+.main-content .container-fluid.py-4 { padding: 14px 20px 20px !important; }
+@media (max-width: 991px) {
+    .main-content .container-fluid.py-4 { padding: 12px 12px 16px !important; }
+}
+
+/* On a short laptop, tighter still. */
+@media (max-height: 700px) {
+    .main-content .container-fluid.py-4 { padding: 11px 16px 16px !important; }
+    .rm-title, .site-title, .mod-title, .page-title,
+    .attendance-title, .dir-title, .an-title, .ai-header-title,
+    .pr-header h1 { font-size: 1.08rem !important; }
+    .rm-stat, .mod-stat, .dir-stat { padding: 9px 12px !important; }
+    .mod-stat-value, .rm-stat-num { font-size: 1.16rem !important; }
+    .mod-table tbody td { padding: 7px 11px !important; }
+}

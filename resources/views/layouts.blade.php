@@ -5,6 +5,12 @@
     <title>@yield('page_title') | Jeyanco Payroll</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    {{-- The shipped favicon.ico is a zero-byte file, which is why the tab
+         showed a blank globe. These are generated from the real mark. --}}
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="64x64" href="{{ asset('favicon-64.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicon-180.png') }}">
+
     {{-- Apply the theme BEFORE paint to prevent a flash of the wrong one. The
          fallback is the office's default from System Settings; a viewer who has
          used the toggle has their own choice in this browser, and it wins. --}}
@@ -78,6 +84,10 @@
     {{-- Sidebar density. The rail carries twenty links now; this is the
          arithmetic that keeps them on one screen. --}}
     <link rel="stylesheet" href="{{ $cssv('nav-fit.css') }}">
+
+    {{-- The rail follows the theme, and the containers come down to its
+         density. Loaded last so both win their ties. --}}
+    <link rel="stylesheet" href="{{ $cssv('density.css') }}">
 
     @stack('styles')
 
