@@ -100,11 +100,24 @@
         }
 
         /* ── Brand panel ──────────────────────────────────────────────── */
+        /* The site photograph sits in the lower half of the panel, under a
+           navy that is near-opaque where the mark and the tagline are and
+           thins out below them — so the building reads without ever competing
+           with the type. One 114KB JPEG, cropped to the panel's shape, rather
+           than the 1.8MB original scaled down by the browser. */
         .auth-brand {
-            background: linear-gradient(168deg, var(--navy-700) 0%, var(--navy-800) 46%, var(--navy-900) 100%);
+            background:
+                linear-gradient(180deg,
+                    rgba(18, 53, 102, 0.97) 0%,
+                    rgba(18, 53, 102, 0.94) 34%,
+                    rgba(15, 45, 88, 0.78)  52%,
+                    rgba(13, 42, 79, 0.56)  72%,
+                    rgba(11, 36, 70, 0.46)  100%),
+                url("{{ asset('images/login-panel.jpg') }}") center center / cover no-repeat,
+                var(--navy-800);
             display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            padding: 52px 34px;
+            align-items: center; justify-content: flex-start;
+            padding: 62px 34px 44px;
             text-align: center;
             position: relative;
         }
@@ -297,7 +310,7 @@
         /* ── Responsive ───────────────────────────────────────────────── */
         @media (max-width: 900px) {
             .auth-card { grid-template-columns: 1fr; max-width: 480px; }
-            .auth-brand { padding: 34px 28px 30px; }
+            .auth-brand { padding: 30px 26px 26px; }
             .brand-mark { width: 96px; height: 96px; }
             .brand-tagline { margin-top: 16px; font-size: 17px; }
             .brand-rule { margin-top: 14px; }
@@ -315,7 +328,7 @@
         /* Short laptops: the card must not need the page to scroll. */
         @media (min-width: 901px) and (max-height: 760px) {
             body { padding: 18px 20px; }
-            .auth-brand { padding: 34px 36px; }
+            .auth-brand { padding: 40px 30px 32px; }
             .brand-mark { width: 128px; height: 128px; }
             .brand-tagline { margin-top: 20px; font-size: 18px; }
             .auth-panel { padding: 34px 46px 30px; }
