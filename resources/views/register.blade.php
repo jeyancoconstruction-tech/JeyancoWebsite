@@ -25,11 +25,10 @@
     <div class="rm-header">
         <div>
             <h1 class="rm-title">{{ __('Register & Manage Employees') }}</h1>
-            <p class="rm-sub">
-                Newly registered workers and workers detected by the fingerprint kiosk both wait under
-                <strong>{{ __('Pending') }}</strong>. A worker becomes active — and appears across Attendance, Payroll
-                and the Dashboard — once their fingerprint is enrolled at the kiosk.
-            </p>
+            {{-- One line. The only thing here that cannot be guessed from the
+                 page is why a worker sits in Pending; where they show up once
+                 they are active is evident from the app itself. --}}
+            <p class="rm-sub">{{ __('New workers and kiosk detections stay in Pending until a fingerprint is enrolled.') }}</p>
         </div>
         <div class="rm-header-actions">
             {{-- "Clear All Fingerprints" used to sit here. It wiped every enrolled
