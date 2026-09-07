@@ -353,7 +353,12 @@
 
     <main class="auth-card">
         <section class="auth-brand">
-            <img class="brand-mark" src="{{ asset('images/JeyancoLogo.png') }}" alt="Jeyanco Construction">
+            {{-- logo-mark.png, not JeyancoLogo.png: the original's disc sits
+                 3.5px right and 9.5px high of its own canvas centre (margins
+                 16/9 across, 3/22 down), so a ring drawn on the image box came
+                 out visibly thicker at the bottom left. This one is trimmed to
+                 the disc and re-centred. --}}
+            <img class="brand-mark" src="{{ asset('images/logo-mark.png') }}" alt="Jeyanco Construction">
             <p class="brand-tagline">{{ __('Building a Better Tomorrow') }}</p>
             <span class="brand-rule" aria-hidden="true"></span>
         </section>

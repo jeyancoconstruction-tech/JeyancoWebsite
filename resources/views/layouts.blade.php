@@ -107,7 +107,7 @@
     <div class="sidebar-top">
         <div class="brand-title mb-4">
             <div class="logo-wrapper">
-                <img src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" class="brand-icon" alt="Logo">
+                <img src="{{ $company?->logoUrl() ?? asset('images/logo-mark.png') }}" class="brand-icon" alt="Logo">
             </div>
             @php
                 // The reference stacks the name: first word large, the remainder
