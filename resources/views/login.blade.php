@@ -1,36 +1,34 @@
 @extends('auth.layout')
 
-@section('title', 'Admin Login')
-{{-- Two-tone heading, as in the brand reference: dark "Admin", blue "Login". --}}
-@section('heading')
-    {{ __('Admin') }} <span class="accent">{{ __('Login') }}</span>
-@endsection
-@section('subheading', 'Sign in to access the management dashboard')
+@section('title', 'Sign In')
+@section('eyebrow', __('Welcome back'))
+@section('heading', __('Sign in to your account'))
+@section('subheading', __('Access your Jeyanco Construction dashboard and manage your projects efficiently.'))
 
 @section('form')
     <form action="{{ route('login.post') }}" method="POST" class="login-form" id="loginForm" autocomplete="on">
         @csrf
 
         <div class="form-group {{ $errors->has('username') ? 'has-error' : '' }}">
-            <label for="username"><i class="fas fa-user" aria-hidden="true"></i> {{ __('Username / Email') }}</label>
+            <label for="username">{{ __('Username') }}</label>
             <div class="input-wrap">
                 {{-- type="text", not "email": this box takes either form, and
                      type="email" would make the browser reject a plain username. --}}
                 <input type="text" id="username" name="username" value="{{ old('username') }}"
                        required autofocus autocomplete="username" spellcheck="false"
                        autocapitalize="none" aria-describedby="usernameHint"
-                       placeholder="{{ __('Enter your username or email') }}">
+                       placeholder="{{ __('Enter your username') }}">
+                <i class="fas fa-user field-icon" aria-hidden="true"></i>
             </div>
-            {{-- The reference card shows no hint line here, so it is kept for
-                 screen readers only rather than dropped outright. --}}
             <p class="field-hint sr-only" id="usernameHint">{{ __('Sign in with either your username or the email on your account.') }}</p>
         </div>
 
         <div class="form-group {{ $errors->has('password') ? 'has-error' : '' }}">
-            <label for="password"><i class="fas fa-lock" aria-hidden="true"></i> {{ __('Password') }}</label>
+            <label for="password">{{ __('Password') }}</label>
             <div class="input-wrap">
                 <input type="password" id="password" name="password"
                        required autocomplete="current-password" placeholder="{{ __('Enter your password') }}">
+                <i class="fas fa-lock field-icon" aria-hidden="true"></i>
                 <button type="button" class="toggle-pass" id="togglePass" aria-label="{{ __('Show password') }}" title="{{ __('Show / hide password') }}">
                     <i class="fas fa-eye"></i>
                 </button>
@@ -42,24 +40,18 @@
 
         <div class="form-options">
             <div class="remember-me">
-                <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}>
+                <input type="checkbox" id="remember" name="remember" {{ old('remember', true) ? 'checked' : '' }}>
                 <label for="remember">{{ __('Remember me') }}</label>
             </div>
             <a class="forgot-link" href="{{ route('password.request') }}">{{ __('Forgot password?') }}</a>
         </div>
 
         <button type="submit" class="btn-login" id="loginBtn">
-            <i class="fas fa-right-to-bracket"></i>
-            <span class="btn-label">{{ __('Sign In') }}</span>
+            <span class="btn-label">{{ __('Login') }}</span>
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
         </button>
 
-        <div class="secure-note">
-            <i class="fas fa-shield" aria-hidden="true"></i>
-            <span class="secure-text">
-                <span class="secure-title">{{ __('Secured administrator access') }}</span>
-                <span class="secure-meta">{{ __('Authorized personnel only') }}</span>
-            </span>
-        </div>
+        <div class="login-footer">{{ __('Jeyanco Construction') }}</div>
     </form>
 @endsection
 
@@ -99,8 +91,8 @@
 
         function reset() {
             btn.disabled = false;
-            btn.querySelector('i').className = 'fas fa-right-to-bracket';
-            btn.querySelector('.btn-label').textContent = 'Sign In';
+            btn.querySelector('i').className = 'fas fa-arrow-right';
+            btn.querySelector('.btn-label').textContent = 'Login';
         }
 
         form.addEventListener('submit', function (e) {
@@ -110,7 +102,7 @@
             btn.querySelector('.btn-label').textContent = 'Signing in...';
         });
 
-        // Coming Back to this page restores it from the browser's cache with
+        // Coming back to this page restores it from the browser's cache with
         // the button still spinning and disabled — which looks like a frozen
         // login. Put it back to a usable state.
         window.addEventListener('pageshow', function (e) {
