@@ -52,7 +52,10 @@ class DashboardController extends Controller
             ->where('date', Carbon::today()->format('Y-m-d'))
             ->whereNotNull('time_in')
             ->orderByDesc('time_in')
-            ->take(6)
+            // The panel is full height on the one-screen layout and scrolls its
+            // own body, so six rows left a third of it empty. Twelve fills it
+            // and the rest is a scroll away rather than a page away.
+            ->take(12)
             ->get();
 
         // ── Recent Activities feed (derived from real records) ─────────────
@@ -79,7 +82,7 @@ class DashboardController extends Controller
         $recentActivities = $recentActivities
             ->filter(fn ($a) => $a['time'] !== null)
             ->sortByDesc('time')
-            ->take(6)
+            ->take(8)
             ->values();
 
         // Attendance chart

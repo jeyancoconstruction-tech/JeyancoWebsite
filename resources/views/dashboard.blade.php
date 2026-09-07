@@ -167,15 +167,16 @@
             </div>
             <div class="panel-body flexcol st-body">
 
+                    {{-- One row. Two stacked rows plus a wrapping hint left the
+                         map about 100px tall, which is not a map. Every id is
+                         exactly as it was — the Leaflet code is untouched. --}}
                     <div class="map-ctl">
                         <input id="siteSearch" class="map-input" type="text" placeholder="{{ __('Search a place…') }}">
                         <button id="siteSearchBtn" class="map-btn secondary" type="button" title="{{ __('Search') }}"><i class="fas fa-search"></i></button>
-                    </div>
-                    <div class="map-ctl">
                         <select id="siteSelect" class="map-select" title="{{ __('Piliin ang site na itatakda') }}"></select>
                         <button id="siteSaveBtn" class="map-btn primary" type="button" title="{{ __('Save location') }}"><i class="fas fa-map-pin"></i> {{ __('Save') }}</button>
                     </div>
-                    <div id="siteMapHint" class="map-hint">{{ __('Pumili ng site, mag-search o mag-click sa map, tapos Save.') }}</div>
+                    <div id="siteMapHint" class="map-hint">{{ __('Search or click the map, then Save.') }}</div>
                     <div id="kioskMap" class="rounded-3 overflow-hidden flex-grow-1"></div>
             </div>
         </section>
@@ -334,6 +335,16 @@
     // Labor Hours Chart
     const ctx = document.getElementById('attendanceChart');
     if (ctx) {
+        // The chart is canvas, so it inherits nothing. Take the colours from
+        // the same custom properties the rest of the page is painted with, or
+        // the grid stays light-mode white on a dark panel.
+        const css       = getComputedStyle(document.documentElement);
+        const tok       = (n, fb) => (css.getPropertyValue(n) || '').trim() || fb;
+        const cBrand    = tok('--brand', '#1769E0');
+        const cBorder   = tok('--border', '#e4e9f0');
+        const cMuted    = tok('--text-muted', '#8a96a8');
+        const cSurface  = tok('--bg-surface', '#ffffff');
+        const cInk      = tok('--text-primary', '#0f1e33');
         new Chart(ctx.getContext('2d'), {
             type: 'line',
             data: {
@@ -341,14 +352,14 @@
                 datasets: [{
                     label: 'Hours Worked',
                     data: {!! json_encode($attendanceData ?? []) !!},
-                    borderColor: '#1769E0',
-                    backgroundColor: 'rgba(23,105,224,0.10)',
+                    borderColor: cBrand,
+                    backgroundColor: 'transparent',
                     fill: true,
                     tension: 0.4,
                     pointRadius: 4,
                     pointHoverRadius: 6,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#1769E0',
+                    pointBackgroundColor: cSurface,
+                    pointBorderColor: cBrand,
                     pointBorderWidth: 2
                 }]
             },
@@ -359,9 +370,9 @@
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleColor: '#94a3b8',
-                        bodyColor: '#f8fafc',
+                        backgroundColor: cInk,
+                        titleColor: cMuted,
+                        bodyColor: cSurface,
                         padding: 10,
                         borderRadius: 8,
                         callbacks: { label: ctx => ' ' + ctx.parsed.y + ' hrs' }
@@ -370,12 +381,15 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#f1f5f9', drawBorder: false },
-                        ticks: { font: { size: 11 }, color: '#94a3b8' }
+                        border: { display: false },
+                        grid: { color: cBorder, drawBorder: false, lineWidth: 1 },
+                        // Whole workers, never 7.5 of one.
+                        ticks: { font: { size: 10 }, color: cMuted, precision: 0, maxTicksLimit: 5 }
                     },
                     x: {
+                        border: { display: false },
                         grid: { display: false },
-                        ticks: { font: { size: 11 }, color: '#94a3b8' }
+                        ticks: { font: { size: 10 }, color: cMuted, maxRotation: 0, autoSkipPadding: 12 }
                     }
                 }
             }
@@ -466,7 +480,7 @@
                     if (bounds.length === 1) map.setView(bounds[0], 16);
                     else if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40] });
                 }
-                setHint('Pumili ng site, mag-search o mag-click sa map para itakda ang lokasyon, tapos i-Save.');
+                setHint('Pumili ng site, i-click ang mapa, tapos Save.');
             } catch (e) {
                 setHint('Hindi ma-load ang listahan ng sites.', '#ef4444');
             }

@@ -133,11 +133,11 @@ html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 18px 
 .sidebar {
     background:
         linear-gradient(180deg,
-            rgba(7, 26, 51, 0.97) 0%,
-            rgba(7, 26, 51, 0.95) 38%,
-            rgba(7, 24, 47, 0.82) 58%,
-            rgba(6, 21, 42, 0.66) 78%,
-            rgba(6, 20, 40, 0.58) 100%),
+            rgba(7, 26, 51, 0.975) 0%,
+            rgba(7, 26, 51, 0.970) 55%,
+            rgba(7, 24, 47, 0.955) 78%,
+            rgba(6, 21, 42, 0.900) 92%,
+            rgba(6, 20, 40, 0.760) 100%),
         url("images/jeyanco_sidebar_background.jpg") center bottom / cover no-repeat,
         var(--sidebar-bg) !important;
     border-right: none !important;

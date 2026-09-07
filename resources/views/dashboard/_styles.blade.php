@@ -92,10 +92,15 @@ a.kpi:hover { border-color: var(--brand); background: var(--brand-subtle); }
 .kpi-ic.red    { background: var(--danger-soft);    color: var(--danger); }
 .kpi-body { min-width: 0; }
 .kpi-label {
-    font-size: .62rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    font-size: .6rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
     color: var(--text-muted); margin: 0; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis;
 }
+/* Six tiles across 1440px leaves ~120px of text per tile. At the old tracking
+   "Outstanding Vale" clipped to "OUTSTANDING VA…"; the icon gives up a few
+   pixels so the label can say what it is. */
+.kpi { gap: 8px; padding: 10px 11px; }
+.kpi-ic { width: 30px; height: 30px; flex: 0 0 30px; font-size: 12px; }
 .kpi-value {
     font-size: 1.02rem; font-weight: 700; color: var(--text-primary);
     font-variant-numeric: tabular-nums; line-height: 1.2; margin: 1px 0 0;
@@ -110,7 +115,9 @@ a.kpi:hover { border-color: var(--brand); background: var(--brand-subtle); }
 .dash-grid {
     display: grid;
     grid-template-columns: 1.25fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
+    /* The map earns the taller half: a seven-point line reads fine short, a
+       map at 100px does not. */
+    grid-template-rows: 0.88fr 1.12fr;
     gap: var(--dash-gap);
     flex: 1 1 auto;
     min-height: 0;
@@ -209,11 +216,26 @@ a.row-item:hover, .row-item.hoverable:hover { background: var(--bg-subtle); }
 
 /* The Site Tracker keeps every id and control it already had; only the box
    around it is tighter. Its maximise still lifts it out of this grid. */
+/* One control row, not two: search, site and Save side by side, so the map
+   keeps the height instead of the chrome. */
+.area-map .st-body { gap: 6px; padding: 8px 10px; }
 .area-map .map-ctl { flex-wrap: nowrap; gap: 6px; }
-.area-map .map-input, .area-map .map-select { height: 30px; font-size: 12px; padding: 0 9px; }
-.area-map .map-btn { height: 30px; padding: 0 10px; font-size: 12px; }
-.area-map .map-hint { min-height: 26px; font-size: 10.5px; line-height: 1.25; }
-.area-map #kioskMap { flex: 1 1 auto; min-height: 120px !important; height: auto !important; border-radius: var(--radius-sm); }
+.area-map .map-input { flex: 1 1 auto; min-width: 70px; }
+.area-map .map-select { flex: 1 1 90px; min-width: 0; }
+.area-map .map-input, .area-map .map-select { height: 29px; font-size: 12px; padding: 0 8px; }
+.area-map .map-select { padding-right: 22px !important; background-position: right 6px center !important; }
+.area-map .map-btn { height: 29px; padding: 0 9px; font-size: 11.5px; flex: 0 0 auto; }
+
+/* The hint changes length as you search and save; one reserved line keeps the
+   map from resizing under it. */
+.area-map .map-hint {
+    min-height: 15px; max-height: 15px; font-size: 10px; line-height: 15px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+}
+.area-map #kioskMap {
+    flex: 1 1 auto; min-height: 118px !important; height: auto !important;
+    border-radius: var(--radius-sm);
+}
 
 /* ── Below a laptop, one screen stops being the right answer ───────────
    A phone cannot hold six panels legibly, so the page is allowed to scroll
