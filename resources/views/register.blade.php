@@ -113,6 +113,11 @@
                             <td>@include('employees._fp', ['e' => $e])</td>
                             <td class="text-center"><span class="rm-pill">{{ $e->attendances_count }}</span></td>
                             <td class="rm-actions">
+                                {{-- data-photo is what openModal() reads to show the
+                                     worker's current picture. The pending rows have
+                                     always passed it; this button never did, so
+                                     editing an active worker opened on an empty photo
+                                     box however many photos they already had. --}}
                                 <button class="rm-btn-ghost js-emp-edit"
                                         data-mode="edit"
                                         data-id="{{ $e->id }}"
@@ -120,7 +125,8 @@
                                         data-labor="{{ $e->labor_type_id }}"
                                         data-rate="{{ $e->rate_per_hour }}"
                                         data-site="{{ $e->site_id }}"
-                                        data-fp="{{ $e->fingerprint_id }}">
+                                        data-fp="{{ $e->fingerprint_id }}"
+                                        data-photo="{{ $e->photo ? asset('storage/' . $e->photo) : '' }}">
                                     <i class="fas fa-pen"></i> {{ __('Edit') }}
                                 </button>
                                 @include('employees._menu', ['e' => $e, 'context' => 'active'])
@@ -1063,6 +1069,9 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
         openModal(btn.dataset.mode, {
             id: btn.dataset.id, name: btn.dataset.name, labor: btn.dataset.labor,
             rate: btn.dataset.rate, site: btn.dataset.site, fp: btn.dataset.fp,
+            // openModal() has always handled d.photo; it was simply never
+            // passed, so no row could show the picture it already had.
+            photo: btn.dataset.photo,
         });
     });
     // "Register Employee" is a link to the full form now — no modal to open.

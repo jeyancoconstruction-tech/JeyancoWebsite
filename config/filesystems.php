@@ -43,6 +43,15 @@ return [
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
+
+            // Employee photos land in storage/app/public and are read back as
+            // /storage/<path>, which only resolves if public/storage exists.
+            // That symlink is git-ignored and nothing in the deploy created it,
+            // so every uploaded photo 404'd and the upload looked broken.
+            // 'serve' registers a route that reads the file from the disk
+            // directly, so the photo shows with or without the symlink.
+            'serve' => true,
+
             'throw' => false,
             'report' => false,
         ],
