@@ -926,6 +926,7 @@
 }
 </style>
 
+@include('employees._modal_styles')
 @endsection
 
 {{-- ── Script ─────────────────────────────────────────────────────────────────

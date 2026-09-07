@@ -190,6 +190,7 @@
 
 @include('modules._kit')
 @include('employees._profile_styles')
+@include('employees._modal_styles')
 
 @push('scripts')
 <script>

@@ -87,6 +87,37 @@ html[data-bs-theme="dark"] {
 .sidebar-overlay { background: rgba(15, 23, 42, 0.42); }
 
 
+/* ── 1b · MODAL HEADERS KEEP THE NAVY ─────────────────────────────────────
+   A regression from the block above, and a wide one. Dialog headers were
+   painted with var(--sidebar-bg) — .emp-head for the employee, leave, loan,
+   assignment and payroll dialogs, and .modal-header for every Bootstrap modal
+   in the app. Making that token follow the theme turned all of them white,
+   while their titles stayed white: an invisible heading and a close button you
+   had to hunt for.
+
+   A dialog header is not the rail. It gets its own token, navy in both themes,
+   which is what it was before the rail started moving. */
+html[data-bs-theme="light"], html[data-bs-theme="dark"] {
+    --modal-head:      #071a33;
+    --modal-head-text: #ffffff;
+    --modal-head-sub:  #a9c0da;
+}
+
+.emp-head,
+.modal-header {
+    background: var(--modal-head) !important;
+    border-bottom: none !important;
+}
+.emp-head-title, .modal-header .modal-title, .modal-header h5, .modal-header h6 {
+    color: var(--modal-head-text) !important;
+}
+.emp-head-sub { color: var(--modal-head-sub) !important; }
+.emp-head-icon { background: rgba(255, 255, 255, 0.10) !important; color: #8fbef7 !important; }
+.emp-head-x { background: rgba(255, 255, 255, 0.10) !important; color: #cfe0f5 !important; }
+.emp-head-x:hover { background: rgba(255, 255, 255, 0.20) !important; color: #fff !important; }
+.modal-header .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: .8; }
+
+
 /* ── 2 · CONTAINER DENSITY ────────────────────────────────────────────────
    Page headings first. 1.45rem beside a 12.5px menu row is a mismatch, not a
    hierarchy. */
