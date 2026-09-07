@@ -1,0 +1,461 @@
+/* =============================================================================
+   JEYANCO CONSTRUCTION · UI STABILITY & POLISH LAYER
+   -----------------------------------------------------------------------------
+   Loaded LAST — after design-tokens.css — so it settles the remaining layout
+   bugs without redesigning anything. Visual / behavioural only: no colours are
+   rebranded, no component is replaced, no markup or business logic is assumed.
+
+   Sections
+     1 · Scroll & layout stability (the page must never jump sideways)
+     2 · Top bar — no reflow on focus, hover or notification
+     3 · Overlays — one z-index ladder for every popup on the page
+     4 · Date inputs & the Flatpickr popup
+     5 · Maps (Leaflet) — stacking context + stable hint row
+     6 · Site Tracker — minimise / maximise chrome
+     7 · Clock calendar popover
+     8 · Cards, tables, overflow
+     9 · Responsive tidy-ups
+   ============================================================================= */
+
+
+/* ── 1 · SCROLL & LAYOUT STABILITY ──────────────────────────────────────────
+   design-tokens.css pinned `overflow-y: scroll` on <html> to stop the page
+   shifting when a scrollbar appears. That works for short pages, but Bootstrap
+   still measures the scrollbar when a modal opens and pushes `padding-right`
+   onto <body> — so every modal, on every page, shoved the whole layout ~15px to
+   the left and let it snap back on close.
+
+   `scrollbar-gutter: stable` reserves the strip permanently instead, which
+   survives the overflow being switched to hidden. The gutter is then the single
+   source of truth and Bootstrap's compensation padding is neutralised. */
+html {
+    overflow-y: auto !important;
+    scrollbar-gutter: stable;
+}
+body {
+    /* Bootstrap writes this inline on every modal open — always zero. */
+    padding-right: 0 !important;
+    overflow-x: hidden;
+}
+
+/* Scroll is locked on <html> (the real scroller) rather than <body>, so the
+   page behind a modal or the mobile sidebar genuinely stops moving. The gutter
+   above keeps the width identical while it is locked. */
+html.ui-scroll-lock { overflow: hidden !important; }
+html.ui-scroll-lock body { overflow: visible !important; }
+
+/* Anchoring stops async content (notification list, search results, live
+   attendance polling) from yanking the scroll position out from under a read. */
+body { overflow-anchor: auto; }
+
+/* A page whose content is shorter than the viewport used to sit at a different
+   width from a long one. Reserving the gutter removes that; this keeps the
+   content column itself from ever forcing a horizontal scrollbar. */
+.main-content { min-width: 0; max-width: 100%; }
+.main-content .container-fluid { max-width: 100%; }
+
+
+/* ── 2 · TOP BAR · no reflow on focus / hover / badge ───────────────────────
+   layouts.css grew the search box from 220px to 260px on focus, which shoved
+   the theme switch, the bell and the profile capsule 40px to the left the
+   moment anyone clicked into it. Fixed width, state carried by colour only. */
+.search-container,
+.search-container:focus-within {
+    width: 244px !important;
+    flex: 0 0 244px;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.search-container input { min-width: 0; }
+
+/* The badge is absolutely positioned, but it was toggled between `none` and
+   `flex` with no reserved box; giving the bell a fixed square keeps the row
+   from twitching when the first notification lands. */
+.notif-wrapper { width: 38px !important; height: 38px !important; flex: 0 0 38px; }
+
+/* The user block changes width with the name length on every page load; pin a
+   ceiling and truncate so the top bar's right edge is identical everywhere. */
+.profile-capsule { max-width: 220px; }
+.profile-info { min-width: 0; overflow: hidden; }
+.profile-info .u-name,
+.profile-info .u-role {
+    display: block; max-width: 130px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* The topbar is sticky; it must clear the page, and its own popups must clear
+   it in turn. */
+.topbar { z-index: 1000; }
+
+
+/* ── 3 · OVERLAYS · one z-index ladder ──────────────────────────────────────
+   Values were scattered from 1000 to 9999 across six files, so a dropdown could
+   land under a map control and a Flatpickr calendar under a modal. The ladder,
+   lowest to highest:
+       0     page content, maps
+       1000  sticky topbar / sticky table heads
+       1080  row menus
+       1100  sidebar
+       1112  site-tracker backdrop      1113  maximised site tracker
+       1120  modal backdrop             1130  modal
+       1200  date pickers, tooltips     2000  chatbot
+       9000  notifications              9500  toasts                            */
+.dropdown-menu          { z-index: 1090; }
+.rm-menu, .emp-menu     { z-index: 1080; }
+.notif-dropdown         { z-index: 9000; }
+
+/* Popups open over the page, never inside its flow — none of them may take part
+   in layout or the row beneath them reflows as they appear. */
+.notif-dropdown,
+.search-suggestions-dropdown { position: absolute; }
+.notif-dropdown { max-width: calc(100vw - 24px); }
+.search-suggestions-dropdown > div { max-height: min(400px, 60vh); }
+
+/* Bootstrap animates the dropdown by toggling display, which repaints the whole
+   row. Fading opacity instead keeps the neighbours perfectly still. */
+.dropdown-menu.show { animation: uiFadeIn .12s ease-out; }
+@keyframes uiFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* A scrollable dialog scrolls inside itself; a plain one is left to Bootstrap,
+   which scrolls the .modal around it — capping the dialog's height here would
+   clip a tall form instead. Containing the overscroll stops a flick at the end
+   of a modal's list from carrying on into the page behind it. */
+.modal-dialog-scrollable .modal-content { max-height: calc(100vh - 2rem); }
+.modal-body, .notif-dd-list, .table-responsive { overscroll-behavior: contain; }
+
+/* An active tab carried an underline (2px on Settings, 3px on Attendance) that
+   an inactive tab did not reserve, so every tab switch nudged the row and the
+   panel below it. The strip is now reserved in both states, at one width, on
+   every tab family in the app. */
+.nav-tabs .nav-link,
+.att-tabs .nav-link,
+.pr-tabs .nav-link {
+    border-bottom: 2px solid transparent !important;
+    transition: color .15s ease, border-color .15s ease;
+}
+.nav-tabs .nav-link.active,
+.att-tabs .nav-link.active,
+.pr-tabs .nav-link.active { border-bottom-color: var(--brand) !important; }
+
+/* Toasts are fixed and must never widen the page. */
+[style*="position:fixed"][style*="right:20px"],
+[style*="position: fixed"][style*="right: 20px"] { max-width: calc(100vw - 40px); }
+
+
+/* ── 4 · DATE INPUTS & FLATPICKR ────────────────────────────────────────────
+   A native `<input type="date">` only opens its picker from the small calendar
+   glyph at the right edge; clicking the field itself does nothing, which reads
+   as broken. ui-fixes.js calls showPicker() on click — these rules make the
+   whole field look clickable and give the glyph a real hit area. */
+input[type="date"],
+input[type="week"],
+input[type="month"],
+input[type="time"] {
+    cursor: pointer;
+    /* Safari/iOS shrink-wraps date inputs and the row jitters as the value
+       changes width. A stable min-width holds the field still. */
+    min-width: 150px;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="week"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    padding: 4px;
+    margin-right: -2px;
+    border-radius: 4px;
+    opacity: .55;
+    transition: opacity .15s ease, background .15s ease;
+}
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="date"]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
+html[data-bs-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+html[data-bs-theme="dark"] input[type="week"]::-webkit-calendar-picker-indicator,
+html[data-bs-theme="dark"] input[type="month"]::-webkit-calendar-picker-indicator,
+html[data-bs-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.6);
+}
+
+/* Flatpickr (payroll records, Add Custom Holiday) renders its calendar into
+   <body> at z-index 999 — under the modal at 1130, so inside the holiday modal
+   the picker opened invisibly behind the dialog. */
+.flatpickr-calendar { z-index: 1200 !important; }
+.flatpickr-calendar,
+.flatpickr-calendar.open {
+    box-shadow: var(--shadow-lg) !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+    font-family: inherit;
+}
+.flatpickr-months,
+.flatpickr-weekdays,
+.flatpickr-weekdaycontainer { background: var(--surface) !important; }
+.flatpickr-month,
+.flatpickr-current-month,
+.flatpickr-weekday { color: var(--text-primary) !important; fill: var(--text-primary) !important; }
+.flatpickr-day { color: var(--text-primary) !important; border-radius: var(--radius-sm) !important; }
+.flatpickr-day:hover { background: var(--brand-subtle) !important; border-color: transparent !important; }
+.flatpickr-day.today { border-color: var(--brand) !important; }
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover {
+    background: var(--brand) !important; border-color: var(--brand) !important; color: #fff !important;
+}
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay { color: var(--text-muted) !important; }
+.flatpickr-months .flatpickr-prev-month svg,
+.flatpickr-months .flatpickr-next-month svg { fill: var(--text-secondary) !important; }
+
+/* Flatpickr's altInput replaces the field's classes with its own, so a picker
+   attached to a bespoke input lost that page's styling and sat a few pixels off
+   its neighbours. Give the replacement the same box as everything else. */
+input.flatpickr-input.form-control,
+.form-control.flatpickr-input,
+input.flatpickr-input[readonly] {
+    background: var(--surface) !important;
+    color: var(--text-primary) !important;
+    cursor: pointer;
+}
+
+
+/* ── 5 · MAPS · stacking context + a hint row that cannot resize ────────────
+   Leaflet's own panes run to z-index 700 and its controls to 1000, all of them
+   escaping into the page's stacking context because .leaflet-container never
+   declared one. On the dashboard the zoom buttons painted straight over the
+   sticky top bar while scrolling. z-index: 0 on the positioned container traps
+   the whole map in its own context without touching Leaflet's internals. */
+.leaflet-container {
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
+    border-radius: var(--radius-sm);
+    background: var(--bg-subtle);
+}
+/* The global :focus-visible ring in design-tokens.css wrapped a 4px glow round
+   the entire map. Keyboard users still need to see where they are, so the ring
+   is kept — just sized for a 300px box rather than a button. */
+.leaflet-container:focus { outline: none !important; box-shadow: none !important; }
+.leaflet-container:focus-visible {
+    outline: 2px solid var(--brand) !important;
+    outline-offset: 1px;
+    box-shadow: none !important;
+}
+
+/* The Project Sites hint line rewrites itself on every search, pin and save.
+   One-line messages and two-line messages gave the map two different heights,
+   and Leaflet does not re-measure on its own — so the tiles tore. Reserving two
+   lines keeps the map box constant whatever the message says. */
+.map-hint {
+    min-height: 30px;
+    display: flex; align-items: flex-start;
+    line-height: 1.35;
+    transition: color .15s ease;
+}
+
+/* The controls row wrapped unpredictably between the search field and its
+   button. Keep the button glued to the field it belongs to. */
+.map-ctl { flex-wrap: nowrap; }
+.map-ctl .map-btn { flex: 0 0 auto; }
+@media (max-width: 380px) { .map-ctl { flex-wrap: wrap; } }
+
+
+/* ── 6 · SITE TRACKER · minimise / maximise ─────────────────────────────────
+   Chrome only. The map instance, its markers, the search, the site picker, the
+   save call and the live-GPS poll are untouched — the card is resized around
+   them and Leaflet is told to re-measure. */
+.site-tracker { transition: none; }
+.site-tracker:hover { transform: none !important; }
+
+.st-actions { display: flex; align-items: center; gap: 4px; margin-left: 10px; }
+.st-btn {
+    width: 26px; height: 26px; flex: 0 0 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--text-secondary);
+    font-size: 11px; line-height: 1; cursor: pointer; padding: 0;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.st-btn:hover { background: var(--brand-subtle); color: var(--brand); border-color: var(--brand); }
+.st-btn:active { transform: none; }
+
+/* The header must stay on one line however long the GPS status string gets. */
+.site-tracker .table-card-header { gap: 10px; flex-wrap: nowrap; }
+.site-tracker .table-card-header h6 { flex: 0 0 auto; white-space: nowrap; }
+.site-tracker #kiosk-status {
+    flex: 1 1 auto; min-width: 0; text-align: right;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Minimised — the body is hidden and the card shrinks to its header. The column
+   keeps the row's height, so the two neighbouring cards do not move. */
+.site-tracker.is-min .st-body { display: none; }
+.site-tracker.is-min { height: auto !important; align-self: flex-start; }
+
+/* Maximised — the card lifts out of the grid into a fixed frame. A placeholder
+   of the recorded height holds its slot open so nothing behind it reflows. */
+.site-tracker-slot { display: none; }
+.site-tracker-slot.is-active { display: block; }
+
+.site-tracker.is-max {
+    position: fixed;
+    top: 3vh; left: 3vw; right: 3vw; bottom: 3vh;
+    width: auto !important; height: auto !important;
+    margin: 0; z-index: 1113;
+    box-shadow: var(--shadow-xl) !important;
+    display: flex; flex-direction: column;
+}
+.site-tracker.is-max .st-body { flex: 1 1 auto; min-height: 0; }
+/* #kioskMap is already flex-grow:1, so it simply fills whatever the enlarged
+   card leaves it — the floor only guarantees the map is worth looking at. */
+.site-tracker.is-max #kioskMap { min-height: 320px !important; }
+.site-tracker.is-max .map-input,
+.site-tracker.is-max .map-select { max-width: 420px; }
+
+.st-backdrop {
+    position: fixed; inset: 0; z-index: 1112;
+    background: rgba(6, 20, 40, .55);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    animation: uiFadeIn .15s ease-out;
+}
+@media (max-width: 575px) {
+    .site-tracker.is-max { top: 0; left: 0; right: 0; bottom: 0; border-radius: 0 !important; }
+}
+
+
+/* ── 7 · CLOCK CALENDAR POPOVER ─────────────────────────────────────────────
+   The dashboard clock is drawn as a calendar tile but did nothing when clicked.
+   It now opens a read-only month view. Absolutely positioned, so the banner
+   underneath it never moves. */
+.clock-widget { cursor: pointer; user-select: none; }
+.clock-shell { position: relative; }
+
+/* The banner clipped its children so its ::before scrim would follow the
+   rounded corner — which would also have sliced the popover in half. Give the
+   scrim the radius directly instead, and the banner no longer needs to clip. */
+.welcome-banner { overflow: visible; }
+.welcome-banner::before { border-radius: inherit; }
+
+.mini-cal {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    width: 260px; padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 1200;
+    animation: uiFadeIn .12s ease-out;
+    cursor: default;
+}
+.mini-cal[hidden] { display: none; }
+.mini-cal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+}
+.mini-cal-title {
+    font-size: 12.5px; font-weight: 700; color: var(--text-primary);
+    letter-spacing: .01em;
+}
+.mini-cal-nav {
+    width: 24px; height: 24px; flex: 0 0 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--text-secondary);
+    font-size: 10px; cursor: pointer; padding: 0;
+    transition: background .15s ease, color .15s ease;
+}
+.mini-cal-nav:hover { background: var(--brand-subtle); color: var(--brand); }
+
+.mini-cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+}
+.mini-cal-dow {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .06em;
+    color: var(--text-muted); text-align: center;
+    text-transform: uppercase; padding-bottom: 4px;
+}
+.mini-cal-day {
+    height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11.5px; font-variant-numeric: tabular-nums;
+    color: var(--text-primary); border-radius: 6px;
+}
+.mini-cal-day.is-muted { color: var(--text-muted); opacity: .5; }
+.mini-cal-day.is-today {
+    background: var(--brand); color: #fff; font-weight: 700;
+}
+.mini-cal-foot {
+    margin-top: 9px; padding-top: 9px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: var(--text-secondary);
+}
+.mini-cal-today-btn {
+    border: none; background: none; padding: 0;
+    font-size: 11px; font-weight: 600; color: var(--brand); cursor: pointer;
+}
+
+
+/* ── 8 · CARDS, TABLES, OVERFLOW ────────────────────────────────────────────
+   enterprise.css lifts every card 3px on hover. On a stat tile that is polish;
+   on a panel you are typing into, or one holding a map, the whole thing slides
+   out from under the cursor. Keep the lift where it belongs and drop it where
+   it fights the content. */
+html[data-bs-theme="dark"] .site-card:hover,
+html[data-bs-theme="light"] .site-card:hover,
+html[data-bs-theme="dark"] .dashboard-card:hover,
+html[data-bs-theme="light"] .dashboard-card:hover,
+.table-card:hover, .site-card:hover {
+    transform: none !important;
+}
+
+/* A flex or grid child will not shrink below its content unless told to. A long
+   worker name or a wide table inside a card was therefore widening the column
+   it sat in, pushing the row menu past the card's edge. */
+.table-card, .site-card, .card { min-width: 0; }
+.table-card > .table-responsive { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+
+/* Wide tables scroll inside their own box instead of pushing the page sideways
+   (`.table-card` is overflow:hidden, so an unwrapped table was simply cut off). */
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.attendance-table, .acct-table, .rm-table { min-width: 620px; }
+@media (min-width: 992px) {
+    .attendance-table, .acct-table, .rm-table { min-width: 0; }
+}
+
+/* Sticky table heads sit above their own rows and well below the top bar. */
+thead th[style*="sticky"] { z-index: 2; }
+
+/* Rows of mixed content (avatar + name + badge) sat on different baselines. */
+.table td, .table th { vertical-align: middle; }
+
+/* A spinner inside a flex row was being squashed to an oval. */
+.spinner-border-sm { flex: 0 0 auto; }
+
+
+/* ── 9 · RESPONSIVE TIDY-UPS ────────────────────────────────────────────────
+   Between the sidebar breakpoint (1024px) and Bootstrap's lg (992px) the three
+   dashboard columns were already stacked while the rail still took 244px, so
+   the cards were squeezed. Match the two. */
+@media (max-width: 1024px) {
+    .main-content { margin-left: 0; }
+    .topbar { padding-left: 14px !important; padding-right: 14px !important; }
+}
+@media (max-width: 767px) {
+    .welcome-banner { flex-direction: column; align-items: flex-start; }
+    .welcome-banner .clock-shell { width: 100%; }
+    .welcome-banner .clock-widget { width: 100%; }
+    .mini-cal { left: 0; right: auto; width: min(260px, calc(100vw - 40px)); }
+    /* Header actions wrap onto their own line rather than overlapping. */
+    .table-card-header { flex-wrap: wrap; row-gap: 8px; }
+    .site-tracker .table-card-header { flex-wrap: nowrap; }
+}
+@media (max-width: 575px) {
+    .site-layout { gap: 14px; }
+    .modal-dialog { margin: .5rem; }
+}
+
+/* The reduced-motion block in design-tokens.css kills durations globally;
+   make sure nothing here depends on an animation actually running. */
+@media (prefers-reduced-motion: reduce) {
+    .dropdown-menu.show, .mini-cal, .st-backdrop { animation: none !important; }
+}

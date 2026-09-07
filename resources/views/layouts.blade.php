@@ -47,7 +47,9 @@
     <link rel="stylesheet" href="{{ $cssv('attendance.css') }}">
     <link rel="stylesheet" href="{{ $cssv('ai.css') }}">
     <link rel="stylesheet" href="{{ $cssv('analytics.css') }}">
-    <link rel="stylesheet" href="{{ $cssv('login.css') }}">
+    @if(file_exists(public_path('login.css')))
+        <link rel="stylesheet" href="{{ $cssv('login.css') }}">
+    @endif
     <link rel="stylesheet" href="{{ $cssv('dark-mode.css') }}">
 
     {{-- Enterprise design system — loaded LAST so it owns the final visual language --}}
@@ -55,6 +57,10 @@
 
     {{-- Jeyanco brand design tokens — loaded AFTER enterprise so it owns the final palette --}}
     <link rel="stylesheet" href="{{ $cssv('design-tokens.css') }}">
+
+    {{-- Layout-stability and polish layer — loaded LAST so it settles the
+         remaining shifts, z-index clashes and overflow bugs. --}}
+    <link rel="stylesheet" href="{{ $cssv('ui-fixes.css') }}">
 
     @stack('styles')
 
@@ -579,14 +585,19 @@
         if (!toggle || !sidebar || !overlay) return;
 
         function openSidebar() {
+            if (sidebar.classList.contains('active')) return;
             sidebar.classList.add('active');
             overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
+            // <html> is the scrolling element (body's overflow did nothing but
+            // clip). ui-fixes.js reserves the scrollbar gutter, so locking it
+            // no longer moves the page sideways.
+            if (window.jeyancoUI) window.jeyancoUI.lockScroll();
         }
         function closeSidebar() {
+            if (!sidebar.classList.contains('active')) return;
             sidebar.classList.remove('active');
             overlay.classList.remove('active');
-            document.body.style.overflow = '';
+            if (window.jeyancoUI) window.jeyancoUI.unlockScroll();
         }
 
         toggle.addEventListener('click', function() {
@@ -628,6 +639,11 @@
 </script>  
 
 @stack('scripts')
+
+{{-- Shared UI behaviour fixes: date fields open on click, scroll locks that
+     cannot shift the layout, maps that re-measure, the Site Tracker's
+     minimise / maximise and the clock's month popover. --}}
+<script src="{{ asset('js/ui-fixes.js') }}?v={{ @filemtime(public_path('js/ui-fixes.js')) ?: '1' }}"></script>
 
 {{-- ── Notification Bell — CSS ─────────────────────────────────────────────── --}}
 <style>

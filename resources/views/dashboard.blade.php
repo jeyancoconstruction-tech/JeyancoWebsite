@@ -246,12 +246,22 @@
             <p class="greeting-sub">{{ __('Here\'s what\'s happening at Jeyanco Construction today.') }}</p>
             <span class="wb-rule" aria-hidden="true"></span>
         </div>
-        <div class="clock-widget d-none d-sm-flex">
-            <div class="clock-ic"><i class="fas fa-calendar-days"></i></div>
-            <div>
-                <div class="clock-time" id="current-time">--:-- --</div>
-                <div class="clock-date" id="current-date">{{ now()->format('l, F d, Y') }}</div>
+        {{-- The tile is drawn as a calendar and now behaves like one: clicking
+             it opens a read-only month view. The shell is the positioning
+             context, so the popover overlays the banner instead of pushing it
+             open. The two clock ids are unchanged — the live ticker still
+             writes to them. --}}
+        <div class="clock-shell d-none d-sm-block">
+            <div class="clock-widget" id="clockWidget" role="button" tabindex="0"
+                 aria-haspopup="dialog" aria-expanded="false"
+                 title="{{ __('Open calendar') }}">
+                <div class="clock-ic"><i class="fas fa-calendar-days"></i></div>
+                <div>
+                    <div class="clock-time" id="current-time">--:-- --</div>
+                    <div class="clock-date" id="current-date">{{ now()->format('l, F d, Y') }}</div>
+                </div>
             </div>
+            <div class="mini-cal" id="miniCal" role="dialog" aria-label="{{ __('Calendar') }}" hidden></div>
         </div>
     </div>
 
@@ -504,14 +514,36 @@
 
         {{-- Project Sites (interactive map — search / set location / live kiosk GPS) --}}
         <div class="col-lg-4">
-            <div class="table-card h-100 d-flex flex-column">
+            <div class="table-card site-tracker h-100 d-flex flex-column" id="siteTrackerCard">
                 <div class="table-card-header">
                     <h6><i class="fas fa-map-location-dot"></i> {{ __('Project Sites') }}</h6>
                     <span id="kiosk-status" style="font-size:11.5px;color:var(--text-secondary);font-weight:500;">
                         <i class="fas fa-circle-notch fa-spin"></i> {{ __('Locating…') }}
                     </span>
+                    {{-- Window chrome only. The map, its markers, the place
+                         search, the site picker, the save call and the live GPS
+                         poll are untouched — the card is resized around them and
+                         Leaflet is asked to re-measure afterwards. --}}
+                    <div class="st-actions">
+                        <button type="button" class="st-btn" id="siteTrackerMin"
+                                aria-expanded="true"
+                                title="{{ __('Minimize Site Tracker') }}"
+                                aria-label="{{ __('Minimize Site Tracker') }}"
+                                data-label-on="{{ __('Minimize Site Tracker') }}"
+                                data-label-off="{{ __('Restore Site Tracker') }}">
+                            <i class="fas fa-window-minimize"></i>
+                        </button>
+                        <button type="button" class="st-btn" id="siteTrackerMax"
+                                aria-pressed="false"
+                                title="{{ __('Maximize Site Tracker') }}"
+                                aria-label="{{ __('Maximize Site Tracker') }}"
+                                data-label-on="{{ __('Maximize Site Tracker') }}"
+                                data-label-off="{{ __('Restore Site Tracker') }}">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="p-3 flex-grow-1 d-flex flex-column">
+                <div class="st-body p-3 flex-grow-1 d-flex flex-column">
                     <div class="map-ctl">
                         <input id="siteSearch" class="map-input" type="text" placeholder="{{ __('Search a place…') }}">
                         <button id="siteSearchBtn" class="map-btn secondary" type="button" title="{{ __('Search') }}"><i class="fas fa-search"></i></button>

@@ -160,12 +160,25 @@ html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 18px 
     letter-spacing: 0.06em !important; line-height: 1.15 !important;
     text-transform: uppercase;
 }
+/* The mark is a transparent PNG that already carries its own badge, so it sits
+   straight on the navy rail. The white disc and the ring around it read as a
+   sticker pasted on the sidebar; a soft drop-shadow lifts it instead. */
 .logo-wrapper {
-    border-radius: 50% !important; overflow: hidden;
-    background: #fff !important; padding: 2px !important;
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14);
+    background: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible;
+    width: 36px; height: 36px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
 }
-.brand-icon { border-radius: 50% !important; }
+.brand-icon {
+    border-radius: 0 !important;
+    width: 36px !important; height: 36px !important;
+    object-fit: contain;
+    background: transparent !important;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+}
 
 .menu-section {
     color: var(--sidebar-section) !important; opacity: 1 !important;

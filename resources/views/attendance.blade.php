@@ -98,6 +98,7 @@
         <!-- ===== TODAY ===== -->
         <div class="tab-pane fade show active" id="att-today" role="tabpanel">
             <div class="table-card">
+                <div class="table-responsive">
                 <table class="attendance-table w-100">
                     <thead>
                         <tr>
@@ -148,6 +149,7 @@
                         @endforelse
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
 
@@ -173,6 +175,7 @@
             </div>
 
             <div class="table-card">
+                <div class="table-responsive">
                 <table class="attendance-table w-100" id="historyTable">
                     <thead>
                         <tr>
@@ -232,6 +235,7 @@
                         @endforelse
                     </tbody>
                 </table>
+                </div>
 
                 <div class="mt-3">
                     {{ $historyAttendances->links() }}
