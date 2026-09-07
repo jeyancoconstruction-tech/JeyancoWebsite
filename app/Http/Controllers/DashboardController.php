@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\Attendance;
+use App\Models\Kiosk;
 use App\Services\PayrollService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -88,6 +91,16 @@ class DashboardController extends Controller
             $attendanceData[] = Attendance::where('date', $date->format('Y-m-d'))->count();
         }
 
+        // ── Still on site: timed in today and not yet out ──────────────────
+        $stillIn = Attendance::where('date', Carbon::today()->format('Y-m-d'))
+            ->whereNotNull('time_in')
+            ->whereNull('time_out')
+            ->count();
+
+        // ── The action queue, and the counters beside it ───────────────────
+        $attention = $this->buildAttention($stillIn);
+        $devices   = $this->deviceSummary();
+
         return view('dashboard', compact(
             'employees',
             'totalEmployees',
@@ -100,7 +113,122 @@ class DashboardController extends Controller
             'todayAttendance',
             'recentActivities',
             'attendanceLabels',
-            'attendanceData'
+            'attendanceData',
+            'stillIn',
+            'attention',
+            'devices'
         ));
+    }
+
+    /**
+     * What is waiting for someone to act on it.
+     *
+     * Every row is a real count over real records and links to the screen that
+     * clears it; a row with nothing outstanding is left out entirely rather
+     * than shown as a zero. The extension modules are consulted only once
+     * their tables exist, so a server that has not run the new migrations yet
+     * still renders this page — it simply has fewer rows.
+     */
+    private function buildAttention(int $stillIn): array
+    {
+        $rows = [];
+
+        $pendingKiosk = Employee::pending()->count();
+        if ($pendingKiosk > 0) {
+            $rows[] = [
+                'icon'  => 'fa-user-plus',
+                'tone'  => 'warn',
+                'label' => 'Kiosk registrations to complete',
+                'count' => $pendingKiosk,
+                'url'   => route('employees.register'),
+            ];
+        }
+
+        if ($stillIn > 0) {
+            $rows[] = [
+                'icon'  => 'fa-user-clock',
+                'tone'  => 'info',
+                'label' => 'Workers still timed in',
+                'count' => $stillIn,
+                'url'   => url('/attendance'),
+            ];
+        }
+
+        if (Schema::hasTable('leave_requests')) {
+            $n = \App\Models\LeaveRequest::where('status', 'pending')->count();
+            if ($n > 0) {
+                $rows[] = [
+                    'icon'  => 'fa-calendar-day',
+                    'tone'  => 'warn',
+                    'label' => 'Leave requests awaiting a decision',
+                    'count' => $n,
+                    'url'   => route('leave.index', ['tab' => 'leave', 'status' => 'pending']),
+                ];
+            }
+        }
+
+        if (Schema::hasTable('overtime_requests')) {
+            $n = \App\Models\OvertimeRequest::where('status', 'pending')->count();
+            if ($n > 0) {
+                $rows[] = [
+                    'icon'  => 'fa-clock',
+                    'tone'  => 'warn',
+                    'label' => 'Overtime claims awaiting approval',
+                    'count' => $n,
+                    'url'   => route('leave.index', ['tab' => 'overtime', 'status' => 'pending']),
+                ];
+            }
+        }
+
+        if (Schema::hasTable('payroll_runs')) {
+            $open = \App\Models\PayrollRun::whereIn('status', ['draft', 'calculated'])->count();
+            if ($open > 0) {
+                $rows[] = [
+                    'icon'  => 'fa-calculator',
+                    'tone'  => 'info',
+                    'label' => 'Payroll runs open for review',
+                    'count' => $open,
+                    'url'   => route('payroll-processing.index', ['status' => 'calculated']),
+                ];
+            }
+
+            $toFinalize = \App\Models\PayrollRun::where('status', 'approved')->count();
+            if ($toFinalize > 0) {
+                $rows[] = [
+                    'icon'  => 'fa-lock',
+                    'tone'  => 'ok',
+                    'label' => 'Approved runs ready to finalise',
+                    'count' => $toFinalize,
+                    'url'   => route('payroll-processing.index', ['status' => 'approved']),
+                ];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Kiosk presence, from the same cache entry KioskLocationController fills
+     * from the Pi's heartbeat. Read-only, and it invents nothing: a kiosk that
+     * has never reported is counted as offline because that is what it is.
+     */
+    private function deviceSummary(): array
+    {
+        $kiosks  = Kiosk::all();
+        $online  = 0;
+
+        foreach ($kiosks as $k) {
+            $fix = Cache::get('kiosk_location_' . $k->id) ?? Cache::get('kiosk_location_' . $k->code);
+            $seen = $fix['last_seen'] ?? null;
+            if ($seen && Carbon::parse($seen)->diffInSeconds(now()) <= 180) {
+                $online++;
+            }
+        }
+
+        return [
+            'total'   => $kiosks->count(),
+            'online'  => $online,
+            'offline' => $kiosks->count() - $online,
+        ];
     }
 }
