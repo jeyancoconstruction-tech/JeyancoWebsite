@@ -5,6 +5,8 @@
 @push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 @include('dashboard._styles')
+{{-- Laptop sizing, after the base so it wins the ties. --}}
+@include('dashboard._laptop')
 @endpush
 
 @section('content')
