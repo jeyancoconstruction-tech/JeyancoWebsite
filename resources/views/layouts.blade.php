@@ -128,15 +128,53 @@
                 @endif
             </a>
 
+            @if(auth()->user()?->canAccessModule('leave'))
+                <a class="nav-link {{ request()->is('leave-overtime*') ? 'active' : '' }}" href="{{ route('leave.index') }}">
+                    <i data-lucide="calendar-clock"></i> <span>{{ __('Leave & Overtime') }}</span>
+                </a>
+            @endif
+            @if(auth()->user()?->canAccessModule('loans'))
+                <a class="nav-link {{ request()->is('loans*') ? 'active' : '' }}" href="{{ route('loans.index') }}">
+                    <i data-lucide="hand-coins"></i> <span>{{ __('Loans & Advances') }}</span>
+                </a>
+            @endif
+
             <div class="menu-section">{{ __('PROJECT') }}</div>
             <a class="nav-link {{ request()->is('sites*') ? 'active' : '' }}" href="{{ route('sites.index') }}">
                 <i data-lucide="map-pin"></i> <span>{{ __('Sites') }}</span>
             </a>
 
+            @if(auth()->user()?->canAccessModule('assignments'))
+                <a class="nav-link {{ request()->is('project-assignments*') ? 'active' : '' }}" href="{{ route('assignments.index') }}">
+                    <i data-lucide="clipboard-list"></i> <span>{{ __('Project Assignment') }}</span>
+                </a>
+            @endif
+            @if(auth()->user()?->canAccessModule('site-attendance'))
+                <a class="nav-link {{ request()->is('site-attendance*') ? 'active' : '' }}" href="{{ route('site-attendance.index') }}">
+                    <i data-lucide="hard-hat"></i> <span>{{ __('Site Attendance') }}</span>
+                </a>
+            @endif
+
             <div class="menu-section">{{ __('PAYROLL') }}</div>
-            <a class="nav-link {{ request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
+            @if(auth()->user()?->canAccessModule('payroll-processing'))
+                <a class="nav-link {{ request()->is('payroll-processing*') ? 'active' : '' }}" href="{{ route('payroll-processing.index') }}">
+                    <i data-lucide="calculator"></i> <span>{{ __('Payroll Processing') }}</span>
+                </a>
+            @endif
+            <a class="nav-link {{ (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*')) && ! request()->is('payroll-processing*') && ! request()->is('payroll-reports*') && ! request()->is('payslips*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
             </a>
+            @if(auth()->user()?->canAccessModule('payslips'))
+                <a class="nav-link {{ request()->is('payslips*') ? 'active' : '' }}" href="{{ route('payslips.index') }}">
+                    <i data-lucide="file-text"></i> <span>{{ __('Payslips') }}</span>
+                </a>
+            @endif
+            @if(auth()->user()?->canAccessModule('deductions'))
+                <a class="nav-link {{ request()->is('deductions*') ? 'active' : '' }}" href="{{ route('deductions.index') }}">
+                    <i data-lucide="percent"></i> <span>{{ __('Deductions & Contributions') }}</span>
+                </a>
+            @endif
+
             {{-- Admin only, like the rest of the settings page it opens. It sits
                  under Payroll Records rather than in SYSTEM because that is what
                  it configures. --}}
@@ -150,14 +188,39 @@
             <a class="nav-link {{ request()->is('analytics*') ? 'active' : '' }}" href="{{ url('/analytics') }}">
                 <i data-lucide="bar-chart-3"></i> <span>{{ __('Analytics') }}</span>
             </a>
+            @if(auth()->user()?->canAccessModule('payroll-reports'))
+                <a class="nav-link {{ request()->is('payroll-reports*') ? 'active' : '' }}" href="{{ route('payroll-reports.index') }}">
+                    <i data-lucide="file-bar-chart"></i> <span>{{ __('Payroll Reports') }}</span>
+                </a>
+            @endif
             <a class="nav-link {{ request()->is('ai-assistant*') ? 'active' : '' }}" href="{{ url('/ai-assistant') }}">
                 <i data-lucide="bot"></i> <span>{{ __('Jeyanco AI') }}</span>
             </a>
+
+            @if(! auth()->user()?->isAdmin() && auth()->user()?->canAccessModule('devices'))
+                {{-- A Site Supervisor never sees the admin SYSTEM block below,
+                     but does watch the kiosk on their own site. --}}
+                <div class="menu-section">{{ __('SYSTEM') }}</div>
+                <a class="nav-link {{ request()->is('device-monitoring*') ? 'active' : '' }}" href="{{ route('devices.index') }}">
+                    <i data-lucide="monitor-smartphone"></i> <span>{{ __('Device Monitoring') }}</span>
+                </a>
+            @endif
 
             @if(auth()->user()?->isAdmin())
                 {{-- Accounts is a tab of System Settings now, so one entry
                      covers both and stays lit on either. --}}
                 <div class="menu-section">{{ __('SYSTEM') }}</div>
+                <a class="nav-link {{ request()->is('users-roles*') ? 'active' : '' }}" href="{{ route('users-roles.index') }}">
+                    <i data-lucide="shield-check"></i> <span>{{ __('Users & Roles') }}</span>
+                </a>
+                <a class="nav-link {{ request()->is('audit-logs*') ? 'active' : '' }}" href="{{ route('audit-logs.index') }}">
+                    <i data-lucide="scroll-text"></i> <span>{{ __('Audit Logs') }}</span>
+                </a>
+                @if(auth()->user()?->canAccessModule('devices'))
+                    <a class="nav-link {{ request()->is('device-monitoring*') ? 'active' : '' }}" href="{{ route('devices.index') }}">
+                        <i data-lucide="monitor-smartphone"></i> <span>{{ __('Device Monitoring') }}</span>
+                    </a>
+                @endif
                 <a class="nav-link {{ request()->is('system-settings*') || request()->is('accounts*') ? 'active' : '' }}" href="{{ route('system-settings.about') }}">
                     <i data-lucide="sliders-horizontal"></i> <span>{{ __('System Settings') }}</span>
                 </a>

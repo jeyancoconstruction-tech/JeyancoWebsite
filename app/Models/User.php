@@ -20,10 +20,32 @@ class User extends Authenticatable
     /** Day-to-day operations only — no Settings, no Account Management. */
     public const ROLE_STAFF = 'staff';
 
+    // Narrower roles for the modules added around payroll. They are additions,
+    // not a replacement: every existing account keeps the role it has, and
+    // 'staff' still means exactly what it meant before. What each one may open
+    // is declared in App\Support\Modules, and applies only to those modules —
+    // the older screens keep the guards they already had.
+
+    /** Payroll, its reports and payslips. No employee administration. */
+    public const ROLE_PAYROLL = 'payroll_officer';
+
+    /** People: employees, leave, overtime, loans. No payroll figures. */
+    public const ROLE_HR = 'hr';
+
+    /** One site's crew: assignments, site attendance, overtime approval. */
+    public const ROLE_SUPERVISOR = 'site_supervisor';
+
+    /** A worker's own records only. */
+    public const ROLE_EMPLOYEE = 'employee';
+
     /** Roles the Admin may assign, with their human labels. */
     public const ROLES = [
-        self::ROLE_ADMIN => 'Administrator',
-        self::ROLE_STAFF => 'Staff',
+        self::ROLE_ADMIN      => 'Administrator',
+        self::ROLE_STAFF      => 'Staff',
+        self::ROLE_PAYROLL    => 'Payroll Officer',
+        self::ROLE_HR         => 'HR',
+        self::ROLE_SUPERVISOR => 'Site Supervisor',
+        self::ROLE_EMPLOYEE   => 'Employee',
     ];
 
     /**
@@ -92,6 +114,15 @@ class User extends Authenticatable
     public function isStaff(): bool
     {
         return $this->role === self::ROLE_STAFF;
+    }
+
+    /**
+     * May this account open one of the modules added around payroll?
+     * Older screens are not governed by this — they keep their own guards.
+     */
+    public function canAccessModule(string $module): bool
+    {
+        return \App\Support\Modules::allows($this, $module);
     }
 
     /** Human label for the assigned role. */

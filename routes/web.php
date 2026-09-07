@@ -187,3 +187,90 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::delete('/holidays/{id}', [SettingsController::class, 'deleteHoliday'])->name('holidays.delete');
 
 });
+
+// =========================================================================
+// EXTENSION MODULES
+// -------------------------------------------------------------------------
+// Added alongside the routes above; none of them is modified. Each is guarded
+// by 'auth' and 'active' exactly as the existing signed-in routes are, plus
+// 'module:<key>' from App\Support\Modules — which governs only these routes,
+// so no account loses access to a screen it could already reach.
+// =========================================================================
+Route::middleware(['auth', 'active'])->group(function () {
+
+    // ── WORKFORCE · Leave & Overtime ──────────────────────────────────────
+    Route::middleware('module:leave')->group(function () {
+        Route::get ('/leave-overtime', [\App\Http\Controllers\LeaveOvertimeController::class, 'index'])->name('leave.index');
+        Route::post('/leave-overtime/leave',    [\App\Http\Controllers\LeaveOvertimeController::class, 'storeLeave'])->name('leave.store');
+        Route::post('/leave-overtime/overtime', [\App\Http\Controllers\LeaveOvertimeController::class, 'storeOvertime'])->name('overtime.store');
+        Route::patch('/leave-overtime/{kind}/{id}/decide', [\App\Http\Controllers\LeaveOvertimeController::class, 'decide'])
+            ->whereIn('kind', ['leave', 'overtime'])->name('leave.decide');
+    });
+
+    // ── WORKFORCE · Loans & Advances ──────────────────────────────────────
+    Route::middleware('module:loans')->group(function () {
+        Route::get ('/loans',              [\App\Http\Controllers\LoanController::class, 'index'])->name('loans.index');
+        Route::post('/loans',              [\App\Http\Controllers\LoanController::class, 'store'])->name('loans.store');
+        Route::put ('/loans/{loan}',       [\App\Http\Controllers\LoanController::class, 'update'])->name('loans.update');
+        Route::post('/loans/{loan}/payment', [\App\Http\Controllers\LoanController::class, 'recordPayment'])->name('loans.payment');
+    });
+
+    // ── PROJECT · Assignment ──────────────────────────────────────────────
+    Route::middleware('module:assignments')->group(function () {
+        Route::get ('/project-assignments', [\App\Http\Controllers\ProjectAssignmentController::class, 'index'])->name('assignments.index');
+        Route::post('/project-assignments', [\App\Http\Controllers\ProjectAssignmentController::class, 'store'])->name('assignments.store');
+        Route::patch('/project-assignments/{assignment}/end', [\App\Http\Controllers\ProjectAssignmentController::class, 'end'])->name('assignments.end');
+    });
+
+    // ── PROJECT · Site Attendance (read-only over the kiosk's records) ─────
+    Route::middleware('module:site-attendance')->group(function () {
+        Route::get('/site-attendance', [\App\Http\Controllers\SiteAttendanceController::class, 'index'])->name('site-attendance.index');
+    });
+
+    // ── PAYROLL · Processing ──────────────────────────────────────────────
+    Route::middleware('module:payroll-processing')->group(function () {
+        Route::get   ('/payroll-processing',              [\App\Http\Controllers\PayrollProcessingController::class, 'index'])->name('payroll-processing.index');
+        Route::post  ('/payroll-processing',              [\App\Http\Controllers\PayrollProcessingController::class, 'store'])->name('payroll-processing.store');
+        Route::get   ('/payroll-processing/{run}',        [\App\Http\Controllers\PayrollProcessingController::class, 'show'])->name('payroll-processing.show');
+        Route::post  ('/payroll-processing/{run}/calculate', [\App\Http\Controllers\PayrollProcessingController::class, 'calculate'])->name('payroll-processing.calculate');
+        Route::post  ('/payroll-processing/{run}/approve',   [\App\Http\Controllers\PayrollProcessingController::class, 'approve'])->name('payroll-processing.approve');
+        Route::post  ('/payroll-processing/{run}/finalize',  [\App\Http\Controllers\PayrollProcessingController::class, 'finalize'])->name('payroll-processing.finalize');
+        Route::post  ('/payroll-processing/{run}/reopen',    [\App\Http\Controllers\PayrollProcessingController::class, 'reopen'])->name('payroll-processing.reopen');
+        Route::delete('/payroll-processing/{run}',        [\App\Http\Controllers\PayrollProcessingController::class, 'destroy'])->name('payroll-processing.destroy');
+    });
+
+    // ── PAYROLL · Payslips (issued from a signed-off run) ─────────────────
+    Route::middleware('module:payslips')->group(function () {
+        Route::get('/payslips',                  [\App\Http\Controllers\PayslipsController::class, 'index'])->name('payslips.index');
+        Route::get('/payslips/run/{run}/print',  [\App\Http\Controllers\PayslipsController::class, 'printRun'])->name('payslips.print-run');
+        Route::get('/payslips/{item}',           [\App\Http\Controllers\PayslipsController::class, 'show'])->name('payslips.show');
+        Route::get('/payslips/{item}/print',     [\App\Http\Controllers\PayslipsController::class, 'print'])->name('payslips.print');
+    });
+
+    // ── PAYROLL · Deductions & Contributions ──────────────────────────────
+    Route::middleware('module:deductions')->group(function () {
+        Route::get   ('/deductions',                     [\App\Http\Controllers\DeductionController::class, 'index'])->name('deductions.index');
+        Route::post  ('/deductions',                     [\App\Http\Controllers\DeductionController::class, 'store'])->name('deductions.store');
+        Route::put   ('/deductions/{deduction}',         [\App\Http\Controllers\DeductionController::class, 'update'])->name('deductions.update');
+        Route::patch ('/deductions/{deduction}/toggle',  [\App\Http\Controllers\DeductionController::class, 'toggle'])->name('deductions.toggle');
+    });
+
+    // ── INSIGHTS · Payroll Reports ────────────────────────────────────────
+    Route::middleware('module:payroll-reports')->group(function () {
+        Route::get('/payroll-reports', [\App\Http\Controllers\PayrollReportController::class, 'index'])->name('payroll-reports.index');
+    });
+
+    // ── SYSTEM · Device Monitoring (read-only over the kiosk's own data) ───
+    Route::middleware('module:devices')->group(function () {
+        Route::get('/device-monitoring', [\App\Http\Controllers\DeviceMonitoringController::class, 'index'])->name('devices.index');
+    });
+});
+
+// SYSTEM · Users & Roles and Audit Logs — Admin only, joining the existing
+// admin group's guards rather than replacing them.
+Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
+    Route::get  ('/users-roles',             [\App\Http\Controllers\UserRoleController::class, 'index'])->name('users-roles.index');
+    Route::patch('/users-roles/{user}/role', [\App\Http\Controllers\UserRoleController::class, 'updateRole'])->name('users-roles.update');
+
+    Route::get('/audit-logs', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit-logs.index');
+});

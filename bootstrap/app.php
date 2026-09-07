@@ -27,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'is_admin' => \App\Http\Middleware\IsAdmin::class,
             'active'   => \App\Http\Middleware\EnsureAccountIsActive::class,
+            // Guards only the modules added alongside it: module:payslips.
+            'module'   => \App\Http\Middleware\HasModuleAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
