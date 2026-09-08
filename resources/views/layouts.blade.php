@@ -281,6 +281,8 @@
                 <kbd>⌘ K</kbd>
             </div>
 
+            @include('partials.guide')
+
             <button class="theme-switch" id="themeToggle" type="button" role="switch" aria-label="{{ __('Toggle dark mode') }}" title="{{ __('Toggle dark / light mode') }}">
                 <span class="ts-knob">
                     <i data-lucide="sun" class="ts-sun"></i>
@@ -311,7 +313,7 @@
             <div class="dropdown">
                 <div class="profile-capsule" data-bs-toggle="dropdown">
                     <div class="avatar-box">
-                        <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=1769E0&color=fff&bold=true" alt="User">
+                        <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=1668DC&color=fff&bold=true" alt="User">
                     </div>
                     <div class="profile-info d-none d-md-block">
                         <span class="u-name">{{ auth()->user()->name ?? 'ADMIN123' }}</span>
