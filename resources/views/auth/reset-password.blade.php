@@ -10,7 +10,7 @@
         <input type="hidden" name="token" value="{{ $token }}">
 
         <div class="form-group {{ $errors->has('email') ? 'has-error' : '' }}">
-            <label for="email"><i class="fas fa-envelope" aria-hidden="true"></i> {{ __('Email') }}</label>
+            <label for="email">{{ __('Email') }}</label>
             <div class="input-wrap">
                 {{-- Carried from the emailed link. Kept editable rather than hidden so a
                      mistyped or truncated link can still be corrected here. --}}
@@ -21,7 +21,7 @@
         </div>
 
         <div class="form-group {{ $errors->has('password') ? 'has-error' : '' }}">
-            <label for="password"><i class="fas fa-lock" aria-hidden="true"></i> {{ __('New password') }}</label>
+            <label for="password">{{ __('New password') }}</label>
             <div class="input-wrap">
                 <input type="password" id="password" name="password" required autofocus
                        autocomplete="new-password" placeholder="{{ __('At least 8 characters') }}">
@@ -36,7 +36,7 @@
         </div>
 
         <div class="form-group {{ $errors->has('password_confirmation') ? 'has-error' : '' }}">
-            <label for="password_confirmation"><i class="fas fa-lock" aria-hidden="true"></i> {{ __('Confirm new password') }}</label>
+            <label for="password_confirmation">{{ __('Confirm new password') }}</label>
             <div class="input-wrap">
                 <input type="password" id="password_confirmation" name="password_confirmation"
                        required autocomplete="new-password" placeholder="{{ __('Type it again') }}">
@@ -48,7 +48,6 @@
         </div>
 
         <button type="submit" class="btn-login" id="resetBtn">
-            <i class="fas fa-key"></i>
             <span class="btn-label">{{ __('Reset password') }}</span>
         </button>
 
@@ -95,7 +94,7 @@
             if (confirm.value === '') { hint.textContent = ''; return; }
             const ok = pw.value === confirm.value;
             hint.textContent = ok ? 'Passwords match.' : 'Passwords do not match yet.';
-            hint.style.color = ok ? '#86efac' : '#fbbf24';
+            hint.style.color = ok ? '#027a48' : '#b54708';
         }
         pw.addEventListener('input', check);
         confirm.addEventListener('input', check);
@@ -109,14 +108,12 @@
         form.addEventListener('submit', function (e) {
             if (btn.disabled) { e.preventDefault(); return; }
             btn.disabled = true;
-            btn.querySelector('i').className = 'fas fa-circle-notch fa-spin';
             btn.querySelector('.btn-label').textContent = 'Saving...';
         });
 
         window.addEventListener('pageshow', function (e) {
             if (!e.persisted) return;
             btn.disabled = false;
-            btn.querySelector('i').className = 'fas fa-key';
             btn.querySelector('.btn-label').textContent = 'Reset password';
         });
     })();

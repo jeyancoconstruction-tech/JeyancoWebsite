@@ -9,7 +9,7 @@
         @csrf
 
         <div class="form-group {{ $errors->has('login') ? 'has-error' : '' }}">
-            <label for="login"><i class="fas fa-user" aria-hidden="true"></i> {{ __('Username / Email') }}</label>
+            <label for="login">{{ __('Username / Email') }}</label>
             <div class="input-wrap">
                 <input type="text" id="login" name="login" value="{{ old('login') }}"
                        required autofocus autocomplete="username" spellcheck="false"
@@ -22,7 +22,6 @@
         </div>
 
         <button type="submit" class="btn-login" id="forgotBtn">
-            <i class="fas fa-paper-plane"></i>
             <span class="btn-label">{{ __('Send reset link') }}</span>
         </button>
 
@@ -41,14 +40,12 @@
         form.addEventListener('submit', function (e) {
             if (btn.disabled) { e.preventDefault(); return; }
             btn.disabled = true;
-            btn.querySelector('i').className = 'fas fa-circle-notch fa-spin';
             btn.querySelector('.btn-label').textContent = 'Sending...';
         });
 
         window.addEventListener('pageshow', function (e) {
             if (!e.persisted) return;
             btn.disabled = false;
-            btn.querySelector('i').className = 'fas fa-paper-plane';
             btn.querySelector('.btn-label').textContent = 'Send reset link';
         });
     })();

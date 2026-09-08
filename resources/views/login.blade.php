@@ -1,35 +1,30 @@
 @extends('auth.layout')
 
 @section('title', 'Sign In')
-@section('eyebrow', __('Welcome back'))
-@section('heading', __('Sign in to your account'))
-@section('subheading', __('Access your Jeyanco Construction dashboard and manage your projects efficiently.'))
+@section('heading', __('Sign in'))
+@section('subheading', __('Access the management dashboard'))
 
 @section('form')
-    <form action="{{ route('login.post') }}" method="POST" class="login-form" id="loginForm" autocomplete="on">
+    <form action="{{ route('login.post') }}" method="POST" class="login-form" id="loginForm">
         @csrf
 
         <div class="form-group {{ $errors->has('username') ? 'has-error' : '' }}">
-            <label for="username">{{ __('Username') }}</label>
+            <label for="username">{{ __('Username or email') }}</label>
             <div class="input-wrap">
-                {{-- type="text", not "email": this box takes either form, and
-                     type="email" would make the browser reject a plain username. --}}
+                {{-- text, not email: this box takes either one. --}}
                 <input type="text" id="username" name="username" value="{{ old('username') }}"
-                       required autofocus autocomplete="username" spellcheck="false"
-                       autocapitalize="none" aria-describedby="usernameHint"
-                       placeholder="{{ __('Enter your username') }}">
-                <i class="fas fa-user field-icon" aria-hidden="true"></i>
+                       required autofocus autocomplete="username" spellcheck="false" autocapitalize="none"
+                       placeholder="{{ __('you@jeyanco.com') }}">
             </div>
-            <p class="field-hint sr-only" id="usernameHint">{{ __('Sign in with either your username or the email on your account.') }}</p>
         </div>
 
         <div class="form-group {{ $errors->has('password') ? 'has-error' : '' }}">
             <label for="password">{{ __('Password') }}</label>
             <div class="input-wrap">
-                <input type="password" id="password" name="password"
-                       required autocomplete="current-password" placeholder="{{ __('Enter your password') }}">
-                <i class="fas fa-lock field-icon" aria-hidden="true"></i>
-                <button type="button" class="toggle-pass" id="togglePass" aria-label="{{ __('Show password') }}" title="{{ __('Show / hide password') }}">
+                <input type="password" id="password" name="password" required
+                       autocomplete="current-password" placeholder="{{ __('Enter your password') }}">
+                <button type="button" class="toggle-pass" id="togglePass"
+                        aria-label="{{ __('Show password') }}" title="{{ __('Show / hide password') }}">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
@@ -40,81 +35,60 @@
 
         <div class="form-options">
             <div class="remember-me">
-                <input type="checkbox" id="remember" name="remember" {{ old('remember', true) ? 'checked' : '' }}>
+                <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}>
                 <label for="remember">{{ __('Remember me') }}</label>
             </div>
             <a class="forgot-link" href="{{ route('password.request') }}">{{ __('Forgot password?') }}</a>
         </div>
 
         <button type="submit" class="btn-login" id="loginBtn">
-            <span class="btn-label">{{ __('Login') }}</span>
-            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            <span class="btn-label">{{ __('Sign in') }}</span>
         </button>
-
-        <div class="login-footer">{{ __('Jeyanco Construction') }}</div>
     </form>
 @endsection
 
 @push('scripts')
 <script>
-    // Password show/hide
-    (function () {
-        const btn = document.getElementById('togglePass');
-        const input = document.getElementById('password');
-        btn.addEventListener('click', function () {
-            const show = input.type === 'password';
-            input.type = show ? 'text' : 'password';
-            btn.querySelector('i').className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
-            btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-            input.focus();
-        });
-    })();
+(function () {
+    const form   = document.getElementById('loginForm');
+    const user   = document.getElementById('username');
+    const pass   = document.getElementById('password');
+    const toggle = document.getElementById('togglePass');
+    const caps   = document.getElementById('capsHint');
+    const btn    = document.getElementById('loginBtn');
+    const label  = btn.querySelector('.btn-label');
 
-    // Caps Lock warning on the password field.
-    (function () {
-        const input = document.getElementById('password');
-        const hint = document.getElementById('capsHint');
-        function check(e) {
-            // getModifierState is unavailable on some virtual keyboards.
-            if (typeof e.getModifierState !== 'function') return;
-            hint.classList.toggle('show', e.getModifierState('CapsLock'));
-        }
-        input.addEventListener('keydown', check);
-        input.addEventListener('keyup', check);
-        input.addEventListener('blur', function () { hint.classList.remove('show'); });
-    })();
+    toggle.addEventListener('click', function () {
+        const show = pass.type === 'password';
+        pass.type = show ? 'text' : 'password';
+        toggle.querySelector('i').className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+        toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        pass.focus();
+    });
 
-    // Submit loading state (prevents double submit, gives feedback).
-    (function () {
-        const form = document.getElementById('loginForm');
-        const btn = document.getElementById('loginBtn');
+    function capsLock(e) {
+        if (typeof e.getModifierState !== 'function') return;
+        caps.classList.toggle('show', e.getModifierState('CapsLock'));
+    }
+    pass.addEventListener('keydown', capsLock);
+    pass.addEventListener('keyup', capsLock);
+    pass.addEventListener('blur', function () { caps.classList.remove('show'); });
 
-        function reset() {
-            btn.disabled = false;
-            btn.querySelector('i').className = 'fas fa-arrow-right';
-            btn.querySelector('.btn-label').textContent = 'Login';
-        }
+    form.addEventListener('submit', function (e) {
+        if (btn.disabled) { e.preventDefault(); return; }
+        btn.disabled = true;
+        label.textContent = 'Signing in...';
+    });
 
-        form.addEventListener('submit', function (e) {
-            if (btn.disabled) { e.preventDefault(); return; }
-            btn.disabled = true;
-            btn.querySelector('i').className = 'fas fa-circle-notch fa-spin';
-            btn.querySelector('.btn-label').textContent = 'Signing in...';
-        });
+    // bfcache hands the page back with the button still disabled.
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        btn.disabled = false;
+        label.textContent = 'Sign in';
+    });
 
-        // Coming back to this page restores it from the browser's cache with
-        // the button still spinning and disabled — which looks like a frozen
-        // login. Put it back to a usable state.
-        window.addEventListener('pageshow', function (e) {
-            if (e.persisted) reset();
-        });
-    })();
-
-    // Keep focus where the visitor needs to type: after a rejected attempt
-    // the username is refilled, so the password box is the next step.
-    (function () {
-        const username = document.getElementById('username');
-        if (username.value.trim() !== '') document.getElementById('password').focus();
-    })();
+    // Failed attempt: username comes back filled, password does not.
+    if (user.value !== '') pass.focus();
+})();
 </script>
 @endpush
