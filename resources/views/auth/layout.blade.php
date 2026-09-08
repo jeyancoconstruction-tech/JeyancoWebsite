@@ -72,7 +72,7 @@
            seconds; the two figures on it keep at their work. Transform and
            opacity only, so none of it costs a layout pass. */
         .trolley { animation: travel 16s ease-in-out infinite; }
-        .hoist   { transform-origin: 1248px 118px; animation: hoist 16s ease-in-out infinite; }
+        .hoist   { transform-origin: 1248px 176px; animation: hoist 16s ease-in-out infinite; }
         .load    { animation: load 16s ease-in-out infinite; }
 
         @keyframes travel {
@@ -86,15 +86,17 @@
             86%, 100% { transform: scaleY(.34); }
         }
         @keyframes load {
-            0%, 20%   { transform: translateY(-63px); }
+            0%, 20%   { transform: translateY(-79px); }
             44%, 62%  { transform: translateY(0); }
-            86%, 100% { transform: translateY(-63px); }
+            86%, 100% { transform: translateY(-79px); }
         }
 
         .f1 { animation: floor1 24s ease-out infinite; }
         .f2 { animation: floor2 24s ease-out infinite; }
         .f3 { animation: floor3 24s ease-out infinite; }
         .f4 { animation: floor4 24s ease-out infinite; }
+        .f5 { animation: floor5 24s ease-out infinite; }
+        .f6 { animation: floor6 24s ease-out infinite; }
 
         @keyframes floor1 {
             0%, 5%    { opacity: 0; transform: translateY(-9px); }
@@ -114,6 +116,16 @@
         @keyframes floor4 {
             0%, 41%   { opacity: 0; transform: translateY(-9px); }
             47%, 86%  { opacity: 1; transform: translateY(0); }
+            95%, 100% { opacity: 0; transform: translateY(-9px); }
+        }
+        @keyframes floor5 {
+            0%, 53%   { opacity: 0; transform: translateY(-9px); }
+            59%, 86%  { opacity: 1; transform: translateY(0); }
+            95%, 100% { opacity: 0; transform: translateY(-9px); }
+        }
+        @keyframes floor6 {
+            0%, 65%   { opacity: 0; transform: translateY(-9px); }
+            71%, 86%  { opacity: 1; transform: translateY(0); }
             95%, 100% { opacity: 0; transform: translateY(-9px); }
         }
 
@@ -280,40 +292,49 @@
 <body>
     <div class="site-art" aria-hidden="true">
         {{-- A site elevation, all of it on one ground line: a tower finished,
-             two frames going up, and the plant working between them. The card
-             covers the middle of the run, which is why nothing tall is drawn
-             there. --}}
-        <svg class="art-scene" viewBox="0 0 1440 412">
-            <path d="M0 410h1440"/>
+             two frames going up, and the plant working between them. The band
+             is deep enough for the buildings to read as buildings; the plant
+             and the figures keep their size because only the viewBox height
+             changed, not its width. --}}
+        <svg class="art-scene" viewBox="0 0 1440 560">
+            <path d="M0 558h1440"/>
 
-            {{-- Tower already standing: thirteen floors, parapet and mast. --}}
-            <path d="M20 410V70M140 410V70M20 70h120"/>
-            <path d="M14 62h132v8H14z"/>
-            <path d="M80 62V34M74 44h12"/>
-            <path d="M60 410V70M100 410V70"/>
-            <path d="M20 386h120M20 362h120M20 338h120M20 314h120M20 290h120M20 266h120M20 242h120M20 218h120M20 194h120M20 170h120M20 146h120M20 122h120M20 98h120"/>
-            <path d="M66 410v-26h28v26"/>
+            {{-- Tower already standing: eighteen floors, parapet and mast. --}}
+            <path d="M20 558V60M160 558V60M20 60h140"/>
+            <path d="M14 52h152v8H14z"/>
+            <path d="M90 52V24M84 34h12"/>
+            <path d="M67 558V60M113 558V60"/>
+            <path d="M20 532h140M20 506h140M20 480h140M20 454h140M20 428h140M20 402h140M20 376h140M20 350h140M20 324h140M20 298h140M20 272h140M20 246h140M20 220h140M20 194h140M20 168h140M20 142h140M20 116h140M20 90h140"/>
+            <path d="M76 558v-30h28v30"/>
 
             {{-- Frame going up. Ground floor poured, the rest arrives a storey
                  at a time, starter bars left standing for the next pour. --}}
-            <path d="M180 410V355M275 410V355M370 410V355M465 410V355"/>
-            <path d="M180 410h285M180 355h285"/>
+            <path d="M180 558V500M275 558V500M370 558V500M465 558V500"/>
+            <path d="M180 558h285M180 500h285"/>
             <g class="f1">
-                <path d="M180 355V300M275 355V300M370 355V300M465 355V300"/>
-                <path d="M180 300h285M275 355 180 300"/>
+                <path d="M180 500V442M275 500V442M370 500V442M465 500V442"/>
+                <path d="M180 442h285M275 500 180 442"/>
             </g>
             <g class="f2">
-                <path d="M180 300V245M275 300V245M370 300V245M465 300V245"/>
-                <path d="M180 245h285M180 300 275 245"/>
+                <path d="M180 442V384M275 442V384M370 442V384M465 442V384"/>
+                <path d="M180 384h285M180 442 275 384"/>
             </g>
             <g class="f3">
-                <path d="M180 245V190M275 245V190M370 245V190M465 245V190"/>
-                <path d="M180 190h285"/>
+                <path d="M180 384V326M275 384V326M370 384V326M465 384V326"/>
+                <path d="M180 326h285"/>
             </g>
             <g class="f4">
-                <path d="M174 190V170M186 190V170M269 190V170M281 190V170M364 190V170M376 190V170M459 190V170M471 190V170"/>
+                <path d="M180 326V268M275 326V268M370 326V268M465 326V268"/>
+                <path d="M180 268h285M275 326 180 268"/>
             </g>
-            <g class="worker w-hammer" transform="translate(225 355)">
+            <g class="f5">
+                <path d="M180 268V210M275 268V210M370 268V210M465 268V210"/>
+                <path d="M180 210h285"/>
+            </g>
+            <g class="f6">
+                <path d="M174 210V190M186 210V190M269 210V190M281 210V190M364 210V190M376 210V190M459 210V190M471 210V190"/>
+            </g>
+            <g class="worker w-hammer" transform="translate(225 500)">
                 <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
                 <circle cx="0" cy="-26" r="4.5"/>
                 <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
@@ -321,7 +342,7 @@
             </g>
 
             {{-- Ground hand carrying a plank across. --}}
-            <g class="worker" transform="translate(515 410)">
+            <g class="worker" transform="translate(515 558)">
                 <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
                 <circle cx="0" cy="-26" r="4.5"/>
                 <path d="M0-21v12M0-9-6 0M0-9 6 0"/>
@@ -329,13 +350,13 @@
             </g>
 
             {{-- Blocks on a pallet. --}}
-            <g transform="translate(545 410)">
+            <g transform="translate(545 558)">
                 <path d="M0-6h46v6H0z"/>
                 <path d="M4-24h16v18H4zM26-24h16v18H26z"/>
             </g>
 
             {{-- Excavator, boom working. --}}
-            <g transform="translate(610 410)">
+            <g transform="translate(610 558)">
                 <path d="M2-18h72l-6 18H8z"/>
                 <circle cx="16" cy="-9" r="4"/><circle cx="38" cy="-9" r="4"/><circle cx="60" cy="-9" r="4"/>
                 <path d="M16-44h32v26H16z"/>
@@ -348,7 +369,7 @@
             </g>
 
             {{-- Tipper. --}}
-            <g transform="translate(750 410)">
+            <g transform="translate(750 558)">
                 <circle cx="20" cy="-11" r="11"/><circle cx="76" cy="-11" r="11"/>
                 <path d="M4-22h92"/>
                 <path d="M4-56h54v34H4z"/>
@@ -356,13 +377,13 @@
             </g>
 
             {{-- Pipe stacked three high. --}}
-            <g transform="translate(862 410)">
+            <g transform="translate(862 558)">
                 <circle cx="10" cy="-10" r="10"/><circle cx="30" cy="-10" r="10"/><circle cx="50" cy="-10" r="10"/>
                 <circle cx="20" cy="-27" r="10"/><circle cx="40" cy="-27" r="10"/>
             </g>
 
             {{-- Mixer, drum turning. --}}
-            <g transform="translate(940 410)">
+            <g transform="translate(940 558)">
                 <circle cx="20" cy="-11" r="11"/><circle cx="76" cy="-11" r="11"/>
                 <path d="M4-22h94"/>
                 <path d="M4-48h24l8 16v10H4z"/>
@@ -376,21 +397,25 @@
                 <path d="M84-32 96-22 86-18z"/>
             </g>
 
-            {{-- Second frame, a storey behind the first. --}}
-            <path d="M1060 410V355M1150 410V355M1240 410V355"/>
-            <path d="M1060 410h180M1060 355h180"/>
+            {{-- Second frame, two storeys behind the first. --}}
+            <path d="M1060 558V500M1150 558V500M1240 558V500"/>
+            <path d="M1060 558h180M1060 500h180"/>
             <g class="f2">
-                <path d="M1060 355V300M1150 355V300M1240 355V300"/>
-                <path d="M1060 300h180M1150 355 1060 300"/>
+                <path d="M1060 500V442M1150 500V442M1240 500V442"/>
+                <path d="M1060 442h180M1150 500 1060 442"/>
             </g>
             <g class="f3">
-                <path d="M1060 300V245M1150 300V245M1240 300V245"/>
-                <path d="M1060 245h180"/>
+                <path d="M1060 442V384M1150 442V384M1240 442V384"/>
+                <path d="M1060 384h180"/>
             </g>
             <g class="f4">
-                <path d="M1054 245V225M1066 245V225M1144 245V225M1156 245V225M1234 245V225M1246 245V225"/>
+                <path d="M1060 384V326M1150 384V326M1240 384V326"/>
+                <path d="M1060 326h180M1060 384 1150 326"/>
             </g>
-            <g class="worker w-signal" transform="translate(1100 355)">
+            <g class="f5">
+                <path d="M1054 326V306M1066 326V306M1144 326V306M1156 326V306M1234 326V306M1246 326V306"/>
+            </g>
+            <g class="worker w-signal" transform="translate(1100 500)">
                 <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
                 <circle cx="0" cy="-26" r="4.5"/>
                 <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
@@ -398,21 +423,21 @@
             </g>
 
             {{-- Tower crane, jib out over the right frame. --}}
-            <path d="M1330 410V95M1352 410V95"/>
-            <path d="M1330 410h22M1330 358h22M1330 306h22M1330 254h22M1330 202h22M1330 150h22M1330 98h22"/>
-            <path d="M1330 410 1352 358 1330 306 1352 254 1330 202 1352 150 1330 98"/>
-            <path d="M1330 95 1341 72 1352 95"/>
-            <path d="M1341 72 1200 95M1341 72 1415 95"/>
-            <path d="M1330 95H1200M1330 118H1212l-12-23"/>
-            <path d="M1330 118 1300 95M1300 118 1270 95M1270 118 1240 95M1240 118 1212 96"/>
-            <path d="M1352 95H1415M1352 118H1405M1405 92h22v30h-22z"/>
-            <path d="M1330 118h22v22h-22z"/>
+            <path d="M1330 558V150M1352 558V150"/>
+            <path d="M1330 558h22M1330 500h22M1330 442h22M1330 384h22M1330 326h22M1330 268h22M1330 210h22M1330 152h22"/>
+            <path d="M1330 558 1352 500 1330 442 1352 384 1330 326 1352 268 1330 210 1352 152"/>
+            <path d="M1330 150 1341 122 1352 150"/>
+            <path d="M1341 122 1200 150M1341 122 1415 150"/>
+            <path d="M1330 150H1200M1330 176H1212l-12-26"/>
+            <path d="M1330 176 1300 150M1300 176 1270 150M1270 176 1240 150M1240 176 1212 152"/>
+            <path d="M1352 150H1415M1352 176H1405M1405 146h22v34h-22z"/>
+            <path d="M1330 176h22v24h-22z"/>
             <g class="trolley">
-                <path d="M1240 110h16v8h-16z"/>
-                <path class="hoist" d="M1248 118v96"/>
+                <path d="M1240 168h16v8h-16z"/>
+                <path class="hoist" d="M1248 176v120"/>
                 <g class="load">
-                    <path d="M1240 214h16v10h-16z"/>
-                    <path d="M1248 224 1234 232M1248 224 1262 232M1228 232h40"/>
+                    <path d="M1240 296h16v10h-16z"/>
+                    <path d="M1248 306 1234 314M1248 306 1262 314M1228 314h40"/>
                 </g>
             </g>
         </svg>
