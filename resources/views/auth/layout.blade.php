@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Jeyanco | @yield('title', 'Admin')</title>
+    <title>{{ $company?->company_name ?? 'Jeyanco' }} | @yield('title', 'Admin')</title>
 
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="64x64" href="{{ asset('favicon-64.png') }}">
@@ -446,9 +446,12 @@
     <main class="auth-shell">
         <div class="auth-card">
             <header class="brand">
-                {{-- logo-mark.png is the logo trimmed to the disc and re-centred. --}}
-                <img class="brand-mark" src="{{ asset('images/logo-mark.png') }}" alt="">
-                <p class="brand-name">Jeyanco Construction</p>
+                {{-- The uploaded logo if Settings has one. The fallback is not
+                     logoUrl()'s: that returns the full artwork, and this page
+                     wants logo-mark.png, the same file trimmed to the disc. --}}
+                <img class="brand-mark" alt=""
+                     src="{{ $company?->logo_path ? $company->logoUrl() : asset('images/logo-mark.png') }}">
+                <p class="brand-name">{{ $company?->company_name ?? 'Jeyanco Construction' }}</p>
                 <h1>@yield('heading')</h1>
                 <p class="card-lede">@yield('subheading')</p>
             </header>

@@ -239,10 +239,18 @@
 .acct-table thead th {
     text-align: left; font-size: 11.5px; font-weight: 700; letter-spacing: .4px;
     text-transform: uppercase; color: #64748b;
-    padding: 13px 18px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+    padding: 11px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
     white-space: nowrap;
 }
-.acct-table tbody td { padding: 13px 18px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.acct-table tbody td { padding: 11px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+
+/* Actions shrink to their icons and the account column takes what is left, so
+   the row fits a 1280 window instead of running off the end of it. The wrap
+   still scrolls, but only on a screen narrower than the table can go. */
+.acct-table th:last-child,
+.acct-table td:last-child { width: 1%; white-space: nowrap; }
+.acct-table th:first-child,
+.acct-table td:first-child { max-width: 240px; }
 .acct-table tbody tr:last-child td { border-bottom: none; }
 .acct-table tbody tr:hover { background: #f8fafc; }
 .acct-table tbody tr.is-off { opacity: .62; }
@@ -252,7 +260,8 @@
 .acct-avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
 .acct-person-text { display: flex; flex-direction: column; min-width: 0; }
 .acct-name { font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 7px; }
-.acct-email { font-size: 12px; color: #94a3b8; }
+/* A long address truncates rather than widening the column past the window. */
+.acct-email { font-size: 12px; color: #94a3b8; overflow-wrap: anywhere; }
 .acct-you {
     font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
     background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca;
@@ -261,8 +270,11 @@
 .acct-user {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
     background: #f1f5f9; color: #334155; padding: 3px 8px; border-radius: 6px;
+    /* Some accounts use an address as the username. Wrap it rather than cut
+       it: the point of the column is to show what someone types to sign in. */
+    display: inline-block; max-width: 190px; overflow-wrap: anywhere;
 }
-.acct-dim { color: #64748b; font-size: 12.5px; white-space: nowrap; }
+.acct-dim { color: #64748b; font-size: 12.5px; }
 
 .acct-pill {
     display: inline-block; font-size: 11.5px; font-weight: 700;
