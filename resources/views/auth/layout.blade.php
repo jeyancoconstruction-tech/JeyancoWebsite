@@ -536,11 +536,22 @@
                  the crane in the markup because SVG paints in order, and the
                  crane has to cross it rather than the other way round. --}}
             <g class="far">
-                <path d="M1334 558V108M1436 558V108M1334 108h102"/>
-                <path d="M1328 100h114v8h-114z"/>
-                <path d="M1360 100v-14h22v14"/>
-                <path d="M1368 558V108M1402 558V108"/>
-                <path d="M1334 534h102M1334 510h102M1334 486h102M1334 462h102M1334 438h102M1334 414h102M1334 390h102M1334 366h102M1334 342h102M1334 318h102M1334 294h102M1334 270h102M1334 246h102M1334 222h102M1334 198h102M1334 174h102M1334 150h102"/>
+                <path d="M1318 558V56M1440 558V56M1318 56h122"/>
+                <path d="M1312 48h134v8h-134z"/>
+                <path d="M1344 48v-14h22v14"/>
+                <path d="M1358 558V56M1400 558V56"/>
+                <path d="M1318 534h122M1318 510h122M1318 486h122M1318 462h122M1318 438h122M1318 414h122M1318 390h122M1318 366h122M1318 342h122M1318 318h122M1318 294h122M1318 270h122M1318 246h122M1318 222h122M1318 198h122M1318 174h122M1318 150h122M1318 126h122M1318 102h122M1318 78h122"/>
+            </g>
+
+            {{-- A second block behind the right-hand frame, so the mass at
+                 this end answers the pair at the other. Floors stop at 320,
+                 the height the frame in front reaches; below that it is two
+                 walls, for the same reason as the one on the left. --}}
+            <g class="far">
+                <path d="M1096 558V100M1246 558V100M1096 100h150"/>
+                <path d="M1090 92h162v8h-162z"/>
+                <path d="M1171 100V300"/>
+                <path d="M1096 126h150M1096 152h150M1096 178h150M1096 204h150M1096 230h150M1096 256h150M1096 282h150M1096 308h150"/>
             </g>
 
             {{-- Tower crane, jib out over the right frame. --}}
