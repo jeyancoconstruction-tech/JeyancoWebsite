@@ -62,6 +62,9 @@
         }
         .site-art .heavy { stroke: rgba(255, 255, 255, .27); stroke-width: 2.4; }
         .site-art .fine  { stroke: rgba(255, 255, 255, .10); stroke-width: 1; }
+        /* Distance, not detail: light enough to sit behind the crane, solid
+           enough to read as a building rather than disappear. */
+        .site-art .far   { stroke: rgba(255, 255, 255, .135); stroke-width: 1.3; }
         /* The drawing scales with the window; the pen width should not. */
         .site-art path, .site-art circle { vector-effect: non-scaling-stroke; }
 
@@ -512,6 +515,19 @@
                 <circle cx="0" cy="-26" r="4.5"/>
                 <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
                 <path class="arm" d="M0-18 7-27"/>
+            </g>
+
+            {{-- A finished block standing behind the crane. Drawn entirely on
+                 the fine pen: the crane in front of it is on the heavy one, so
+                 the weight alone puts this one further away. It comes before
+                 the crane in the markup because SVG paints in order, and the
+                 crane has to cross it rather than the other way round. --}}
+            <g class="far">
+                <path d="M1334 558V200M1436 558V200M1334 200h102"/>
+                <path d="M1328 192h114v8h-114z"/>
+                <path d="M1360 192v-14h22v14"/>
+                <path d="M1368 558V200M1402 558V200"/>
+                <path d="M1334 534h102M1334 510h102M1334 486h102M1334 462h102M1334 438h102M1334 414h102M1334 390h102M1334 366h102M1334 342h102M1334 318h102M1334 294h102M1334 270h102M1334 246h102M1334 222h102"/>
             </g>
 
             {{-- Tower crane, jib out over the right frame. --}}
