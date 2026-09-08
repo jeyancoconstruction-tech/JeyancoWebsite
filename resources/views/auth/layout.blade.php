@@ -52,8 +52,9 @@
         }
 
         .site-art { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+        /* Both drawings stand on the same line, clear of the window edge. */
         .site-art svg {
-            position: absolute; bottom: 0;
+            position: absolute; bottom: 22px;
             fill: none; stroke: rgba(255, 255, 255, .16);
             stroke-width: 2; stroke-linecap: square;
         }
@@ -63,6 +64,63 @@
         /* Below this the card is most of the window and the drawings only
            crowd it. */
         @media (max-width: 1080px) { .site-art { display: none; } }
+
+        /* The site is working. The crane runs its trolley out, lowers a beam
+           and takes the hook back up; the frame gains a floor every few
+           seconds; the two figures on it keep at their work. Transform and
+           opacity only, so none of it costs a layout pass. */
+        .trolley { animation: travel 16s ease-in-out infinite; }
+        .hoist   { transform-origin: 274px 122px; animation: hoist 16s ease-in-out infinite; }
+        .load    { animation: load 16s ease-in-out infinite; }
+
+        @keyframes travel {
+            0%, 14%   { transform: translateX(0); }
+            38%, 72%  { transform: translateX(-54px); }
+            96%, 100% { transform: translateX(0); }
+        }
+        @keyframes hoist {
+            0%, 20%   { transform: scaleY(.34); }
+            44%, 62%  { transform: scaleY(1); }
+            86%, 100% { transform: scaleY(.34); }
+        }
+        @keyframes load {
+            0%, 20%   { transform: translateY(-79px); }
+            44%, 62%  { transform: translateY(0); }
+            86%, 100% { transform: translateY(-79px); }
+        }
+
+        .f1 { animation: floor1 24s ease-out infinite; }
+        .f2 { animation: floor2 24s ease-out infinite; }
+        .f3 { animation: floor3 24s ease-out infinite; }
+        .f4 { animation: floor4 24s ease-out infinite; }
+
+        @keyframes floor1 {
+            0%, 5%    { opacity: 0; transform: translateY(-9px); }
+            11%, 86%  { opacity: 1; transform: translateY(0); }
+            95%, 100% { opacity: 0; transform: translateY(-9px); }
+        }
+        @keyframes floor2 {
+            0%, 17%   { opacity: 0; transform: translateY(-9px); }
+            23%, 86%  { opacity: 1; transform: translateY(0); }
+            95%, 100% { opacity: 0; transform: translateY(-9px); }
+        }
+        @keyframes floor3 {
+            0%, 29%   { opacity: 0; transform: translateY(-9px); }
+            35%, 86%  { opacity: 1; transform: translateY(0); }
+            95%, 100% { opacity: 0; transform: translateY(-9px); }
+        }
+        @keyframes floor4 {
+            0%, 41%   { opacity: 0; transform: translateY(-9px); }
+            47%, 86%  { opacity: 1; transform: translateY(0); }
+            95%, 100% { opacity: 0; transform: translateY(-9px); }
+        }
+
+        .worker .arm { transform-origin: 0 -18px; }
+        .w-hammer .arm { animation: hammer .78s ease-in-out infinite alternate; }
+        .w-signal .arm { animation: signal 2.6s ease-in-out infinite alternate; }
+
+        @keyframes hammer { from { transform: rotate(-6deg); }  to { transform: rotate(-52deg); } }
+        @keyframes signal { from { transform: rotate(-13deg); } to { transform: rotate(15deg); } }
 
         .auth-shell { position: relative; z-index: 1; width: 100%; max-width: 408px; }
 
@@ -206,19 +264,52 @@
 
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { transition-duration: .01ms !important; }
+            .site-art * { animation: none !important; }
         }
     </style>
     @stack('styles')
 </head>
 <body>
     <div class="site-art" aria-hidden="true">
-        {{-- Frame under construction: four columns, five slabs, starter bars
-             left standing for the next pour. --}}
+        {{-- Frame going up: the ground floor is poured, the rest arrives a
+             storey at a time, and the starter bars wait for the next pour. --}}
         <svg class="art-frame" viewBox="0 0 420 320">
-            <path d="M40 320V60M150 320V60M260 320V60M370 320V60"/>
-            <path d="M40 320h330M40 260h330M40 200h330M40 140h330M40 80h330"/>
-            <path d="M40 260l110-60M150 200L40 140"/>
-            <path d="M34 60V38M46 60V38M144 60V38M156 60V38M254 60V38M266 60V38M364 60V38M376 60V38"/>
+            <path d="M40 320V260M150 320V260M260 320V260M370 320V260"/>
+            <path d="M40 320h330M40 260h330"/>
+
+            <g class="f1">
+                <path d="M40 260V200M150 260V200M260 260V200M370 260V200"/>
+                <path d="M40 200h330M150 260 40 200"/>
+            </g>
+            <g class="f2">
+                <path d="M40 200V140M150 200V140M260 200V140M370 200V140"/>
+                <path d="M40 140h330M40 200 150 140"/>
+            </g>
+            <g class="f3">
+                <path d="M40 140V80M150 140V80M260 140V80M370 140V80"/>
+                <path d="M40 80h330"/>
+            </g>
+            <g class="f4">
+                <path d="M34 80V58M46 80V58M144 80V58M156 80V58M254 80V58M266 80V58M364 80V58M376 80V58"/>
+            </g>
+
+            {{-- Three on site: one setting steel, one calling the crane in,
+                 one carrying a plank across. --}}
+            <g class="worker w-hammer" transform="translate(95 260)">
+                <circle cx="0" cy="-26" r="4.5"/>
+                <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
+                <path class="arm" d="M0-18 8-21M6-24 11-19"/>
+            </g>
+            <g class="worker w-signal" transform="translate(305 320)">
+                <circle cx="0" cy="-26" r="4.5"/>
+                <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
+                <path class="arm" d="M0-18 7-27"/>
+            </g>
+            <g class="worker" transform="translate(210 320)">
+                <circle cx="0" cy="-26" r="4.5"/>
+                <path d="M0-21v12M0-9-6 0M0-9 6 0"/>
+                <path d="M0-18-8-22M0-18 8-22M-14-22h28"/>
+            </g>
         </svg>
 
         {{-- Tower crane: mast, A-frame, jib and counter-jib on their tie bars. --}}
@@ -233,8 +324,14 @@
             <path d="M150 90H70M150 120H84"/>
             <path d="M58 86h26v38H58z"/>
             <path d="M150 120h30v26h-30z"/>
-            <path d="M266 112h16v10h-16z"/>
-            <path d="M274 122v168M266 290h16v13h-16z"/>
+            <g class="trolley">
+                <path d="M266 112h16v10h-16z"/>
+                <path class="hoist" d="M274 122v120"/>
+                <g class="load">
+                    <path d="M266 242h16v12h-16z"/>
+                    <path d="M274 254 258 264M274 254 290 264M252 264h44"/>
+                </g>
+            </g>
         </svg>
     </div>
 
