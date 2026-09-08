@@ -328,134 +328,186 @@
             <path d="M112 34h12"/>
             <path class="fine" d="M118 24 98 70M118 24 138 70"/>
 
-            {{-- Frame going up. Ground floor poured, the rest arrives a storey
-                 at a time, starter bars left standing for the next pour. --}}
-            <path class="heavy" d="M180 558V500M275 558V500M370 558V500M465 558V500"/>
-            <path d="M180 558h285M180 500h285"/>
-                <path class="fine" d="M180 506h285"/>
+            {{-- Frame going up, six storeys. Starter bars wait for the next pour. --}}
+            <path class="heavy" d="M180 558V500M256 558V500M332 558V500M408 558V500"/>
+            <path d="M180 558h228M180 500h228"/>
+            <path class="fine" d="M180 506h228"/>
             <g class="f1">
-                <path class="heavy" d="M180 500V442M275 500V442M370 500V442M465 500V442"/>
-                <path d="M180 442h285"/>
-                <path class="fine" d="M180 448h285M275 500 180 442"/>
+                <path class="heavy" d="M180 500V442M256 500V442M332 500V442M408 500V442"/>
+                <path d="M180 442h228"/>
+                <path class="fine" d="M180 448h228M256 500 180 442"/>
             </g>
             <g class="f2">
-                <path class="heavy" d="M180 442V384M275 442V384M370 442V384M465 442V384"/>
-                <path d="M180 384h285"/>
-                <path class="fine" d="M180 390h285M180 442 275 384"/>
+                <path class="heavy" d="M180 442V384M256 442V384M332 442V384M408 442V384"/>
+                <path d="M180 384h228"/>
+                <path class="fine" d="M180 390h228M180 442 256 384"/>
             </g>
             <g class="f3">
-                <path class="heavy" d="M180 384V326M275 384V326M370 384V326M465 384V326"/>
-                <path d="M180 326h285"/>
-                <path class="fine" d="M180 332h285"/>
+                <path class="heavy" d="M180 384V326M256 384V326M332 384V326M408 384V326"/>
+                <path d="M180 326h228"/>
+                <path class="fine" d="M180 332h228"/>
             </g>
             <g class="f4">
-                <path class="heavy" d="M180 326V268M275 326V268M370 326V268M465 326V268"/>
-                <path d="M180 268h285"/>
-                <path class="fine" d="M180 274h285M275 326 180 268"/>
+                <path class="heavy" d="M180 326V268M256 326V268M332 326V268M408 326V268"/>
+                <path d="M180 268h228"/>
+                <path class="fine" d="M180 274h228M256 326 180 268"/>
             </g>
             <g class="f5">
-                <path class="heavy" d="M180 268V210M275 268V210M370 268V210M465 268V210"/>
-                <path d="M180 210h285"/>
-                <path class="fine" d="M180 216h285"/>
+                <path class="heavy" d="M180 268V210M256 268V210M332 268V210M408 268V210"/>
+                <path d="M180 210h228"/>
+                <path class="fine" d="M180 216h228"/>
             </g>
             <g class="f6">
-                <path class="fine" d="M174 210V190M186 210V190M269 210V190M281 210V190M364 210V190M376 210V190M459 210V190M471 210V190"/>
+                <path class="fine" d="M174 210V190M186 210V190M250 210V190M262 210V190M326 210V190M338 210V190M402 210V190M414 210V190"/>
             </g>
-            {{-- Scaffold against the finished face, lifts braced both ways. --}}
-            <path d="M470 558V442M480 558V442"/>
-            <path class="fine" d="M470 558h10M470 520h10M470 482h10M470 444h10"/>
-            <path class="fine" d="M470 558 480 520M480 558 470 520M470 520 480 482M480 520 470 482M470 482 480 444M480 482 470 444"/>
 
-            <g class="worker w-hammer" transform="translate(225 500)">
+            <path d="M413 558V442M423 558V442"/>
+            <path class="fine" d="M413 558h10M413 520h10M413 482h10M413 444h10"/>
+            <path class="fine" d="M413 558 423 520M423 558 413 520M413 520 423 482M423 520 413 482M413 482 423 444M423 482 413 444"/>
+
+            <g class="worker w-hammer" transform="translate(218 500)">
                 <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
                 <circle cx="0" cy="-26" r="4.5"/>
                 <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
                 <path class="arm" d="M0-18 8-21M6-24 11-19"/>
             </g>
 
-            {{-- Ground hand carrying a plank across. --}}
-            <g class="worker" transform="translate(515 558)">
-                <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
-                <circle cx="0" cy="-26" r="4.5"/>
-                <path d="M0-21v12M0-9-6 0M0-9 6 0"/>
-                <path d="M0-18-8-22M0-18 8-22M-14-22h28"/>
+            {{-- Blocks on a pallet, inside the ground bay. --}}
+            <g transform="translate(268 558)">
+                <path d="M0-6h46v6H0z"/>
+                <path class="fine" d="M4-24h16v18H4zM26-24h16v18H26z"/>
             </g>
 
-            {{-- Blocks on a pallet. --}}
-            <g transform="translate(545 558)">
-                <path d="M0-6h46v6H0z"/>
-                <path d="M4-24h16v18H4zM26-24h16v18H26z"/>
+            {{-- Second frame, three storeys and only just out of the ground. --}}
+            <path class="heavy" d="M448 558V500M524 558V500M600 558V500"/>
+            <path d="M448 558h152M448 500h152"/>
+            <path class="fine" d="M448 506h152"/>
+            <g class="f1">
+                <path class="heavy" d="M448 500V442M524 500V442M600 500V442"/>
+                <path d="M448 442h152"/>
+                <path class="fine" d="M448 448h152M524 500 448 442"/>
+            </g>
+            <g class="f2">
+                <path class="heavy" d="M448 442V384M524 442V384M600 442V384"/>
+                <path d="M448 384h152"/>
+                <path class="fine" d="M448 390h152"/>
+            </g>
+            <g class="f3">
+                <path class="fine" d="M442 384V364M454 384V364M518 384V364M530 384V364M594 384V364M606 384V364"/>
+            </g>
+
+            <g class="worker worker" transform="translate(486 558)">
+                <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
+                <circle cx="0" cy="-26" r="4.5"/>
+                <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
+                <path class="arm" d="M0-18 7-27"/>
             </g>
 
             {{-- Excavator, boom working. --}}
-            <g transform="translate(610 558)">
+            <g transform="translate(626 558)">
                 <path d="M2-18h72l-6 18H8z"/>
                 <circle cx="16" cy="-9" r="4"/><circle cx="38" cy="-9" r="4"/><circle cx="60" cy="-9" r="4"/>
                 <path d="M16-44h32v26H16z"/>
-                <path d="M20-40h12v10H20z"/>
+                <path class="fine" d="M20-40h12v10H20z"/>
                 <g class="boom">
                     <path d="M46-32 80-62 106-44"/>
-                    <path d="M54-40 76-54"/>
+                    <path class="fine" d="M54-40 76-54"/>
                     <path d="M106-44 110-31 96-25 92-38z"/>
                 </g>
             </g>
 
+            {{-- Mixer, drum turning. --}}
+            <g transform="translate(756 558)">
+                <circle cx="20" cy="-11" r="11"/><circle cx="76" cy="-11" r="11"/>
+                <path d="M4-22h94"/>
+                <path d="M4-48h24l8 16v10H4z"/>
+                <path class="fine" d="M56-58h16l-4 8h-8z"/>
+                <circle cx="62" cy="-38" r="20"/>
+                <g class="drum fine">
+                    <path d="M62-50a12 12 0 0 1 12 12"/>
+                    <path d="M74-38a12 12 0 0 1-12 12"/>
+                    <path d="M50-38a12 12 0 0 1 12-12"/>
+                </g>
+                <path class="fine" d="M84-32 96-22 86-18z"/>
+            </g>
+
+            {{-- Third frame, five storeys. --}}
+            <path class="heavy" d="M878 558V500M954 558V500M1030 558V500"/>
+            <path d="M878 558h152M878 500h152"/>
+            <path class="fine" d="M878 506h152"/>
+            <g class="f1">
+                <path class="heavy" d="M878 500V442M954 500V442M1030 500V442"/>
+                <path d="M878 442h152"/>
+                <path class="fine" d="M878 448h152"/>
+            </g>
+            <g class="f2">
+                <path class="heavy" d="M878 442V384M954 442V384M1030 442V384"/>
+                <path d="M878 384h152"/>
+                <path class="fine" d="M878 390h152M878 442 954 384"/>
+            </g>
+            <g class="f3">
+                <path class="heavy" d="M878 384V326M954 384V326M1030 384V326"/>
+                <path d="M878 326h152"/>
+                <path class="fine" d="M878 332h152"/>
+            </g>
+            <g class="f4">
+                <path class="heavy" d="M878 326V268M954 326V268M1030 326V268"/>
+                <path d="M878 268h152"/>
+                <path class="fine" d="M878 274h152M954 326 878 268"/>
+            </g>
+            <g class="f5">
+                <path class="fine" d="M872 268V248M884 268V248M948 268V248M960 268V248M1024 268V248M1036 268V248"/>
+            </g>
+
+            <g class="worker w-hammer" transform="translate(916 500)">
+                <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
+                <circle cx="0" cy="-26" r="4.5"/>
+                <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
+                <path class="arm" d="M0-18 8-21M6-24 11-19"/>
+            </g>
+
+            {{-- Pipe stacked three high, inside the ground bay. --}}
+            <g class="fine" transform="translate(890 558)">
+                <circle cx="10" cy="-10" r="10"/><circle cx="30" cy="-10" r="10"/><circle cx="50" cy="-10" r="10"/>
+                <circle cx="20" cy="-27" r="10"/><circle cx="40" cy="-27" r="10"/>
+            </g>
+
             {{-- Tipper. --}}
-            <g transform="translate(750 558)">
+            <g transform="translate(1052 558)">
                 <circle cx="20" cy="-11" r="11"/><circle cx="76" cy="-11" r="11"/>
                 <path d="M4-22h92"/>
                 <path d="M4-56h54v34H4z"/>
                 <path d="M62-44h22l10 16v6H62z"/>
             </g>
 
-            {{-- Pipe stacked three high. --}}
-            <g transform="translate(862 558)">
-                <circle cx="10" cy="-10" r="10"/><circle cx="30" cy="-10" r="10"/><circle cx="50" cy="-10" r="10"/>
-                <circle cx="20" cy="-27" r="10"/><circle cx="40" cy="-27" r="10"/>
-            </g>
+            <path d="M1152 558V442M1162 558V442"/>
+            <path class="fine" d="M1152 558h10M1152 520h10M1152 482h10M1152 444h10"/>
+            <path class="fine" d="M1152 558 1162 520M1162 558 1152 520M1152 520 1162 482M1162 520 1152 482M1152 482 1162 444M1162 482 1152 444"/>
 
-            {{-- Mixer, drum turning. --}}
-            <g transform="translate(940 558)">
-                <circle cx="20" cy="-11" r="11"/><circle cx="76" cy="-11" r="11"/>
-                <path d="M4-22h94"/>
-                <path d="M4-48h24l8 16v10H4z"/>
-                <path d="M56-58h16l-4 8h-8z"/>
-                <circle cx="62" cy="-38" r="20"/>
-                <g class="drum">
-                    <path d="M62-50a12 12 0 0 1 12 12"/>
-                    <path d="M74-38a12 12 0 0 1-12 12"/>
-                    <path d="M50-38a12 12 0 0 1 12-12"/>
-                </g>
-                <path d="M84-32 96-22 86-18z"/>
-            </g>
-
-            {{-- Second frame, two storeys behind the first. --}}
-            <path class="heavy" d="M1060 558V500M1150 558V500M1240 558V500"/>
-            <path d="M1060 558h180M1060 500h180"/>
-                <path class="fine" d="M1060 506h180"/>
+            {{-- Fourth frame, four storeys, the one the crane is serving. --}}
+            <path class="heavy" d="M1168 558V500M1244 558V500M1320 558V500"/>
+            <path d="M1168 558h152M1168 500h152"/>
+            <path class="fine" d="M1168 506h152"/>
             <g class="f2">
-                <path class="heavy" d="M1060 500V442M1150 500V442M1240 500V442"/>
-                <path d="M1060 442h180"/>
-                <path class="fine" d="M1060 448h180M1150 500 1060 442"/>
+                <path class="heavy" d="M1168 500V442M1244 500V442M1320 500V442"/>
+                <path d="M1168 442h152"/>
+                <path class="fine" d="M1168 448h152M1244 500 1168 442"/>
             </g>
             <g class="f3">
-                <path class="heavy" d="M1060 442V384M1150 442V384M1240 442V384"/>
-                <path d="M1060 384h180"/>
-                <path class="fine" d="M1060 390h180"/>
+                <path class="heavy" d="M1168 442V384M1244 442V384M1320 442V384"/>
+                <path d="M1168 384h152"/>
+                <path class="fine" d="M1168 390h152"/>
             </g>
             <g class="f4">
-                <path class="heavy" d="M1060 384V326M1150 384V326M1240 384V326"/>
-                <path d="M1060 326h180"/>
-                <path class="fine" d="M1060 332h180M1060 384 1150 326"/>
+                <path class="heavy" d="M1168 384V326M1244 384V326M1320 384V326"/>
+                <path d="M1168 326h152"/>
+                <path class="fine" d="M1168 332h152"/>
             </g>
             <g class="f5">
-                <path class="fine" d="M1054 326V306M1066 326V306M1144 326V306M1156 326V306M1234 326V306M1246 326V306"/>
+                <path class="fine" d="M1162 326V306M1174 326V306M1238 326V306M1250 326V306M1314 326V306M1326 326V306"/>
             </g>
-            <path d="M1250 558V480M1260 558V480"/>
-            <path class="fine" d="M1250 558h10M1250 520h10M1250 482h10"/>
-            <path class="fine" d="M1250 558 1260 520M1260 558 1250 520M1250 520 1260 482M1260 520 1250 482"/>
 
-            <g class="worker w-signal" transform="translate(1100 500)">
+            <g class="worker w-signal" transform="translate(1206 500)">
                 <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
                 <circle cx="0" cy="-26" r="4.5"/>
                 <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
