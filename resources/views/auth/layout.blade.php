@@ -21,11 +21,10 @@
             --blue:      #1668dc;
             --blue-dark: #1257bc;
 
-            --ink:    #101828;
-            --text:   #344054;
-            --muted:  #667085;
-            --line:   #d0d5dd;
-            --ground: #f2f4f7;
+            --ink:   #101828;
+            --text:  #344054;
+            --muted: #667085;
+            --line:  #d0d5dd;
 
             --danger:  #b42318;
             --success: #027a48;
@@ -42,25 +41,37 @@
             font-family: 'Inter', 'Segoe UI', sans-serif;
             font-size: 14px; line-height: 1.5;
             color: var(--text);
-            background: var(--ground);
+            background-color: var(--navy-dark);
+            background-image:
+                radial-gradient(950px 640px at 50% 44%, rgba(72, 132, 216, .22), transparent 72%),
+                repeating-linear-gradient(0deg,  rgba(255,255,255,.055) 0 1px, transparent 1px 160px),
+                repeating-linear-gradient(90deg, rgba(255,255,255,.055) 0 1px, transparent 1px 160px),
+                repeating-linear-gradient(0deg,  rgba(255,255,255,.028) 0 1px, transparent 1px 32px),
+                repeating-linear-gradient(90deg, rgba(255,255,255,.028) 0 1px, transparent 1px 32px),
+                linear-gradient(165deg, #143a70 0%, var(--navy-dark) 55%, #071a33 100%);
         }
 
-        /* Height follows the viewport so the edge always lands in the
-           card's upper third, whatever the screen. */
-        .auth-band {
-            position: absolute; top: 0; left: 0; right: 0;
-            height: 42vh; min-height: 200px;
-            background: linear-gradient(180deg, var(--navy) 0%, var(--navy-dark) 100%);
+        .site-art { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+        .site-art svg {
+            position: absolute; bottom: 0;
+            fill: none; stroke: rgba(255, 255, 255, .16);
+            stroke-width: 2; stroke-linecap: square;
         }
+        .art-frame { left: 5vw;  width: 420px; }
+        .art-crane { right: 6vw; width: 330px; }
 
-        .auth-shell { position: relative; width: 100%; max-width: 408px; }
+        /* Below this the card is most of the window and the drawings only
+           crowd it. */
+        @media (max-width: 1080px) { .site-art { display: none; } }
+
+        .auth-shell { position: relative; z-index: 1; width: 100%; max-width: 408px; }
 
         .auth-card {
             padding: 32px 32px 28px;
             background: #fff;
             border-radius: 12px;
-            box-shadow: 0 1px 2px rgba(16, 24, 40, .05),
-                        0 12px 32px rgba(13, 42, 79, .16);
+            box-shadow: 0 1px 2px rgba(5, 20, 40, .30),
+                        0 24px 56px rgba(5, 20, 40, .38);
         }
 
         /* Brand block */
@@ -188,8 +199,6 @@
         .login-footer a { color: var(--blue); text-decoration: none; font-weight: 500; }
         .login-footer a:hover { text-decoration: underline; }
 
-        .auth-foot { margin-top: 18px; text-align: center; font-size: 12px; color: #98a2b3; }
-
         @media (max-width: 420px) {
             body { padding: 28px 14px; }
             .auth-card { padding: 26px 20px 22px; }
@@ -202,7 +211,32 @@
     @stack('styles')
 </head>
 <body>
-    <div class="auth-band" aria-hidden="true"></div>
+    <div class="site-art" aria-hidden="true">
+        {{-- Frame under construction: four columns, five slabs, starter bars
+             left standing for the next pour. --}}
+        <svg class="art-frame" viewBox="0 0 420 320">
+            <path d="M40 320V60M150 320V60M260 320V60M370 320V60"/>
+            <path d="M40 320h330M40 260h330M40 200h330M40 140h330M40 80h330"/>
+            <path d="M40 260l110-60M150 200L40 140"/>
+            <path d="M34 60V38M46 60V38M144 60V38M156 60V38M254 60V38M266 60V38M364 60V38M376 60V38"/>
+        </svg>
+
+        {{-- Tower crane: mast, A-frame, jib and counter-jib on their tie bars. --}}
+        <svg class="art-crane" viewBox="0 0 330 470">
+            <path d="M150 470V90M180 470V90"/>
+            <path d="M150 470h30M150 407h30M150 344h30M150 281h30M150 218h30M150 155h30M150 90h30"/>
+            <path d="M150 470l30-63L150 344l30-63L150 218l30-63L150 90"/>
+            <path d="M150 90l15-34 15 34"/>
+            <path d="M165 56l145 34M165 56 70 90"/>
+            <path d="M180 90h130M180 120h118l12-30"/>
+            <path d="M180 120 210 90M210 120 240 90M240 120 270 90M270 120 298 92"/>
+            <path d="M150 90H70M150 120H84"/>
+            <path d="M58 86h26v38H58z"/>
+            <path d="M150 120h30v26h-30z"/>
+            <path d="M266 112h16v10h-16z"/>
+            <path d="M274 122v168M266 290h16v13h-16z"/>
+        </svg>
+    </div>
 
     <main class="auth-shell">
         <div class="auth-card">
@@ -228,8 +262,6 @@
 
             @yield('form')
         </div>
-
-        <p class="auth-foot">&copy; {{ date('Y') }} Jeyanco Construction &middot; Authorized personnel only</p>
     </main>
 
     @yield('after')
