@@ -55,7 +55,7 @@
         /* One elevation across the foot of the page: everything stands on
            the same ground line, and the card covers the middle of it. */
         .site-art svg {
-            position: absolute; left: 0; bottom: 22px;
+            position: absolute; left: 0; bottom: 0;
             width: 100%; height: auto;
             fill: none; stroke: rgba(255, 255, 255, .16);
             stroke-width: 2; stroke-linecap: square;
@@ -279,40 +279,63 @@
 </head>
 <body>
     <div class="site-art" aria-hidden="true">
-        {{-- A site elevation, all of it on one ground line: two frames going
-             up, the plant working between them, and the crane serving the
-             right-hand frame. The card covers the middle of the run, which is
-             why nothing tall is put there. --}}
-        <svg class="art-scene" viewBox="0 0 1440 420">
+        {{-- A site elevation, all of it on one ground line: a tower finished,
+             two frames going up, and the plant working between them. The card
+             covers the middle of the run, which is why nothing tall is drawn
+             there. --}}
+        <svg class="art-scene" viewBox="0 0 1440 412">
             <path d="M0 410h1440"/>
 
-            {{-- Left frame. Ground floor poured, the rest arrives a storey at
-                 a time, starter bars left standing for the next pour. --}}
-            <path d="M40 410V355M140 410V355M240 410V355M340 410V355"/>
-            <path d="M40 410h300M40 355h300"/>
+            {{-- Tower already standing: thirteen floors, parapet and mast. --}}
+            <path d="M20 410V70M140 410V70M20 70h120"/>
+            <path d="M14 62h132v8H14z"/>
+            <path d="M80 62V34M74 44h12"/>
+            <path d="M60 410V70M100 410V70"/>
+            <path d="M20 386h120M20 362h120M20 338h120M20 314h120M20 290h120M20 266h120M20 242h120M20 218h120M20 194h120M20 170h120M20 146h120M20 122h120M20 98h120"/>
+            <path d="M66 410v-26h28v26"/>
+
+            {{-- Frame going up. Ground floor poured, the rest arrives a storey
+                 at a time, starter bars left standing for the next pour. --}}
+            <path d="M180 410V355M275 410V355M370 410V355M465 410V355"/>
+            <path d="M180 410h285M180 355h285"/>
             <g class="f1">
-                <path d="M40 355V300M140 355V300M240 355V300M340 355V300"/>
-                <path d="M40 300h300M140 355 40 300"/>
+                <path d="M180 355V300M275 355V300M370 355V300M465 355V300"/>
+                <path d="M180 300h285M275 355 180 300"/>
             </g>
             <g class="f2">
-                <path d="M40 300V245M140 300V245M240 300V245M340 300V245"/>
-                <path d="M40 245h300M40 300 140 245"/>
+                <path d="M180 300V245M275 300V245M370 300V245M465 300V245"/>
+                <path d="M180 245h285M180 300 275 245"/>
             </g>
             <g class="f3">
-                <path d="M40 245V190M140 245V190M240 245V190M340 245V190"/>
-                <path d="M40 190h300"/>
+                <path d="M180 245V190M275 245V190M370 245V190M465 245V190"/>
+                <path d="M180 190h285"/>
             </g>
             <g class="f4">
-                <path d="M34 190V170M46 190V170M134 190V170M146 190V170M234 190V170M246 190V170M334 190V170M346 190V170"/>
+                <path d="M174 190V170M186 190V170M269 190V170M281 190V170M364 190V170M376 190V170M459 190V170M471 190V170"/>
             </g>
-            <g class="worker w-hammer" transform="translate(85 355)">
+            <g class="worker w-hammer" transform="translate(225 355)">
+                <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
                 <circle cx="0" cy="-26" r="4.5"/>
                 <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
                 <path class="arm" d="M0-18 8-21M6-24 11-19"/>
             </g>
 
+            {{-- Ground hand carrying a plank across. --}}
+            <g class="worker" transform="translate(515 410)">
+                <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
+                <circle cx="0" cy="-26" r="4.5"/>
+                <path d="M0-21v12M0-9-6 0M0-9 6 0"/>
+                <path d="M0-18-8-22M0-18 8-22M-14-22h28"/>
+            </g>
+
+            {{-- Blocks on a pallet. --}}
+            <g transform="translate(545 410)">
+                <path d="M0-6h46v6H0z"/>
+                <path d="M4-24h16v18H4zM26-24h16v18H26z"/>
+            </g>
+
             {{-- Excavator, boom working. --}}
-            <g transform="translate(380 410)">
+            <g transform="translate(610 410)">
                 <path d="M2-18h72l-6 18H8z"/>
                 <circle cx="16" cy="-9" r="4"/><circle cx="38" cy="-9" r="4"/><circle cx="60" cy="-9" r="4"/>
                 <path d="M16-44h32v26H16z"/>
@@ -324,33 +347,22 @@
                 </g>
             </g>
 
-            {{-- Ground hand carrying a plank across. --}}
-            <g class="worker" transform="translate(520 410)">
-                <circle cx="0" cy="-26" r="4.5"/>
-                <path d="M0-21v12M0-9-6 0M0-9 6 0"/>
-                <path d="M0-18-8-22M0-18 8-22M-14-22h28"/>
-            </g>
-
-            {{-- Blocks on a pallet, and pipe stacked three high. --}}
-            <g transform="translate(556 410)">
-                <path d="M0-6h46v6H0z"/>
-                <path d="M4-24h16v18H4zM26-24h16v18H26z"/>
-            </g>
-            <g transform="translate(790 410)">
-                <circle cx="10" cy="-10" r="10"/><circle cx="30" cy="-10" r="10"/><circle cx="50" cy="-10" r="10"/>
-                <circle cx="20" cy="-27" r="10"/><circle cx="40" cy="-27" r="10"/>
-            </g>
-
-            {{-- Tipper, middle of the run and mostly behind the card. --}}
-            <g transform="translate(650 410)">
+            {{-- Tipper. --}}
+            <g transform="translate(750 410)">
                 <circle cx="20" cy="-11" r="11"/><circle cx="76" cy="-11" r="11"/>
                 <path d="M4-22h92"/>
                 <path d="M4-56h54v34H4z"/>
                 <path d="M62-44h22l10 16v6H62z"/>
             </g>
 
+            {{-- Pipe stacked three high. --}}
+            <g transform="translate(862 410)">
+                <circle cx="10" cy="-10" r="10"/><circle cx="30" cy="-10" r="10"/><circle cx="50" cy="-10" r="10"/>
+                <circle cx="20" cy="-27" r="10"/><circle cx="40" cy="-27" r="10"/>
+            </g>
+
             {{-- Mixer, drum turning. --}}
-            <g transform="translate(880 410)">
+            <g transform="translate(940 410)">
                 <circle cx="20" cy="-11" r="11"/><circle cx="76" cy="-11" r="11"/>
                 <path d="M4-22h94"/>
                 <path d="M4-48h24l8 16v10H4z"/>
@@ -364,7 +376,7 @@
                 <path d="M84-32 96-22 86-18z"/>
             </g>
 
-            {{-- Right frame, a storey behind the left one. --}}
+            {{-- Second frame, a storey behind the first. --}}
             <path d="M1060 410V355M1150 410V355M1240 410V355"/>
             <path d="M1060 410h180M1060 355h180"/>
             <g class="f2">
@@ -379,6 +391,7 @@
                 <path d="M1054 245V225M1066 245V225M1144 245V225M1156 245V225M1234 245V225M1246 245V225"/>
             </g>
             <g class="worker w-signal" transform="translate(1100 355)">
+                <path d="M-8.5-29h17M-6-29a6 6 0 0 1 12 0"/>
                 <circle cx="0" cy="-26" r="4.5"/>
                 <path d="M0-21v12M0-9-6 0M0-9 6 0M0-18-7-13"/>
                 <path class="arm" d="M0-18 7-27"/>
