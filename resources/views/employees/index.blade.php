@@ -258,6 +258,12 @@
                                             data-vale="{{ $emp->vale ?? 0 }}">
                                         <i class="fas fa-coins"></i> {{ __('Set Vale') }}
                                     </button>
+                                    {{-- The number on the badge, not the row id: it is what
+                                         gets read down the phone to payroll. --}}
+                                    <button type="button" class="emp-more-item js-copy-id"
+                                            data-empid="{{ str_pad($emp->id, 4, '0', STR_PAD_LEFT) }}">
+                                        <i class="fas fa-hashtag"></i> {{ __('Copy ID') }}
+                                    </button>
                                     <button type="button" class="emp-more-item emp-more-delete js-emp-delete"
                                             data-id="{{ $emp->id }}"
                                             data-name="{{ $emp->name }}">
@@ -954,34 +960,51 @@
             : (r.bottom + 6) + 'px';
     }
 
+    // position:fixed is only viewport-relative while no ancestor has a
+    // transform, a filter or a will-change on it. Any one of those turns the
+    // ancestor into the containing block, and the menu is then positioned
+    // inside a card it is also clipped by -- which is a card away from where
+    // the JS put it, and usually off screen. Moving it to <body> the first
+    // time it opens takes it out of reach of all three, for good.
+    let openMenu = null;
+    let openBtn  = null;
+
+    function menuFor(btn) {
+        if (btn._menu) return btn._menu;
+        const menu = btn.nextElementSibling;
+        if (!menu || !menu.classList.contains('emp-more-menu')) return null;
+        btn._menu = menu;
+        document.body.appendChild(menu);
+        return menu;
+    }
+
     function closeMenus() {
-        document.querySelectorAll('.emp-more-menu.open').forEach(m => {
-            m.classList.remove('open');
-            m.previousElementSibling?.classList.remove('active');
-        });
+        if (openMenu) openMenu.classList.remove('open');
+        if (openBtn)  openBtn.classList.remove('active');
+        openMenu = openBtn = null;
     }
 
     document.addEventListener('click', function (e) {
+        // A click on an item is the item's business; it closes the menu itself.
+        if (e.target.closest('.emp-more-menu')) return;
+
         const btn = e.target.closest('.emp-more-btn');
+        const wasOpen = btn && btn._menu === openMenu && openMenu !== null;
 
-        document.querySelectorAll('.emp-more-menu.open').forEach(m => {
-            if (!btn || m !== btn.nextElementSibling) {
-                m.classList.remove('open');
-                m.previousElementSibling?.classList.remove('active');
-            }
-        });
+        closeMenus();
+        if (!btn || wasOpen) return;
 
-        if (btn) {
-            e.stopPropagation();
-            const menu    = btn.nextElementSibling;
-            const opening = !menu.classList.contains('open');
+        e.stopPropagation();
+        const menu = menuFor(btn);
+        if (!menu) return;
 
-            menu.classList.toggle('open', opening);
-            btn.classList.toggle('active', opening);
+        menu.classList.add('open');
+        btn.classList.add('active');
+        openMenu = menu;
+        openBtn  = btn;
 
-            // Measured after it is shown, or the width and height are both zero.
-            if (opening) placeMenu(btn, menu);
-        }
+        // Measured after it is shown, or the width and height are both zero.
+        placeMenu(btn, menu);
     });
 
     // A fixed menu does not travel with the row it belongs to, so it closes
@@ -1015,7 +1038,8 @@
             if (show) visible++;
         });
 
-        document.getElementById('noMatch').style.display = (rows.length > 0 && visible === 0) ? 'block' : 'none';
+        const noMatch = document.getElementById('noMatch');
+        if (noMatch) noMatch.style.display = (rows.length > 0 && visible === 0) ? 'block' : 'none';
 
         // Ang bilang sa ibaba ay dapat sumasalamin sa NAKIKITA, hindi sa
         // kabuuan — kung hindi, nagsisinungaling ito habang naghahanap ka.
@@ -1086,9 +1110,9 @@
         });
     })();
 
-    document.getElementById('siteFilter').addEventListener('change', applyFilter);
-    document.getElementById('shiftFilter').addEventListener('change', applyFilter);
-    document.getElementById('empSearch').addEventListener('input', applyFilter);
+    document.getElementById('siteFilter')?.addEventListener('change', applyFilter);
+    document.getElementById('shiftFilter')?.addEventListener('change', applyFilter);
+    document.getElementById('empSearch')?.addEventListener('input', applyFilter);
 
     // Walang maramihang pagbura sa pahinang ito. Inalis ang "Delete All" noon
     // dahil isang pagkakamali lang ang layo nito sa pagbura ng buong workforce,
@@ -1116,6 +1140,23 @@
         setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }, 3000);
     }
 
+    // ── Copy ID ──────────────────────────────────────────────────────────────
+    // clipboard.writeText needs a secure context, which a site served over
+    // plain http is not, so it is missing rather than merely failing there.
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.js-copy-id');
+        if (!btn) return;
+        const id = btn.dataset.empid || '';
+        closeMenus();
+        if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText(id)
+                .then(() => flashToast('Copied #' + id))
+                .catch(() => flashToast('Could not copy. The ID is #' + id, 'error'));
+        } else {
+            flashToast('Copying needs https. The ID is #' + id, 'error');
+        }
+    });
+
     // ── Set Vale (manual per-employee balance) ───────────────────────────────
     const valeModalEl = document.getElementById('empValeModal');
     let   valeModal   = null;
@@ -1134,7 +1175,7 @@
         const m = getValeModal(); if (m) m.show();
         setTimeout(() => document.getElementById('valeInput').focus(), 250);
     });
-    document.getElementById('valeSaveBtn').addEventListener('click', async function () {
+    document.getElementById('valeSaveBtn')?.addEventListener('click', async function () {
         const amount = parseFloat(document.getElementById('valeInput').value);
         if (isNaN(amount) || amount < 0) { flashToast('Enter a valid amount.', 'error'); return; }
         this.disabled = true;
