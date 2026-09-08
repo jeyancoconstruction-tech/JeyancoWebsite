@@ -523,11 +523,11 @@
                  the crane in the markup because SVG paints in order, and the
                  crane has to cross it rather than the other way round. --}}
             <g class="far">
-                <path d="M1334 558V200M1436 558V200M1334 200h102"/>
-                <path d="M1328 192h114v8h-114z"/>
-                <path d="M1360 192v-14h22v14"/>
-                <path d="M1368 558V200M1402 558V200"/>
-                <path d="M1334 534h102M1334 510h102M1334 486h102M1334 462h102M1334 438h102M1334 414h102M1334 390h102M1334 366h102M1334 342h102M1334 318h102M1334 294h102M1334 270h102M1334 246h102M1334 222h102"/>
+                <path d="M1334 558V108M1436 558V108M1334 108h102"/>
+                <path d="M1328 100h114v8h-114z"/>
+                <path d="M1360 100v-14h22v14"/>
+                <path d="M1368 558V108M1402 558V108"/>
+                <path d="M1334 534h102M1334 510h102M1334 486h102M1334 462h102M1334 438h102M1334 414h102M1334 390h102M1334 366h102M1334 342h102M1334 318h102M1334 294h102M1334 270h102M1334 246h102M1334 222h102M1334 198h102M1334 174h102M1334 150h102"/>
             </g>
 
             {{-- Tower crane, jib out over the right frame. --}}
