@@ -5,8 +5,11 @@
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
-    .pr-page { padding: 20px 28px 48px; }
-    @media (max-width: 768px) { .pr-page { padding: 16px; } }
+    /* No side padding here: the shell's .container-fluid already insets the
+       page, and adding another 28px on top of it was leaving the section
+       floating in the middle of the window. */
+    .pr-page { padding: 20px 0 48px; }
+    @media (max-width: 768px) { .pr-page { padding: 16px 0; } }
 
     .pr-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin: 0; letter-spacing: -0.3px; }
     .pr-header p  { color: var(--text-secondary); font-size: 0.9rem; margin: 2px 0 0; }

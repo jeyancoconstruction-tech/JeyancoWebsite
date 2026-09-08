@@ -10,8 +10,11 @@
     /* One shell for all four, so nothing moves when you change tab. They used
        to bring their own: the accounts page had no page padding and a smaller
        heading than the settings ones, so the nav and the title both jumped. */
-    .hub-page { padding: 20px 28px 48px; }
-    @media (max-width: 768px) { .hub-page { padding: 16px; } }
+    /* No side padding here: the shell's .container-fluid already insets the
+       page, and adding another 28px on top of it was leaving the section
+       floating in the middle of the window. */
+    .hub-page { padding: 20px 0 48px; }
+    @media (max-width: 768px) { .hub-page { padding: 16px 0; } }
 
     .hub-head { margin-bottom: 16px; }
     .hub-head h1 {

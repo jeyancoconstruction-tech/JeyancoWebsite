@@ -88,7 +88,7 @@ body, .table, .rm-table, .stat-value, .total-amount-display,
    32px override in enterprise.css while light used 20px — the content sat at a
    different height per theme.) Same specificity, loaded later, so it wins. */
 html[data-bs-theme="dark"] .main-content .container-fluid.py-4,
-html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 18px 26px 28px !important; }
+html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 18px 20px 28px !important; }
 @media (max-width: 991px) {
     html[data-bs-theme="dark"] .main-content .container-fluid.py-4,
     html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 14px 14px 22px !important; }

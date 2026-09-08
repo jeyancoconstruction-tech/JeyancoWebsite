@@ -185,15 +185,13 @@ html[data-bs-theme="light"], html[data-bs-theme="dark"] {
 .emp-card-name { font-size: .92rem !important; }
 .emp-row { padding: 5px 0 !important; font-size: 12px !important; }
 
-/* The page gutter itself. */
-.main-content .container-fluid.py-4 { padding: 14px 20px 20px !important; }
-@media (max-width: 991px) {
-    .main-content .container-fluid.py-4 { padding: 12px 12px 16px !important; }
-}
+/* The page gutter is set in design-tokens.css, on a theme-scoped selector
+   that outranks anything written here however late this file loads. The
+   rules that used to sit at this spot had no effect at all -- proved by
+   changing the value there and watching the gutter move. */
 
 /* On a short laptop, tighter still. */
 @media (max-height: 700px) {
-    .main-content .container-fluid.py-4 { padding: 11px 16px 16px !important; }
     .rm-title, .site-title, .mod-title, .page-title,
     .attendance-title, .dir-title, .an-title, .ai-header-title,
     .pr-header h1 { font-size: 1.08rem !important; }
