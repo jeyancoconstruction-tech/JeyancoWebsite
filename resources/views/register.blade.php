@@ -755,7 +755,7 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
         photoIcon.style.display = ''; photoClr.style.display = 'none';
         setPhotoLabel(false);
     }
-    document.getElementById('empPhotoPick').addEventListener('click', () => photoEl.click());
+    document.getElementById('empPhotoPick')?.addEventListener('click', () => photoEl.click());
     photoClr.addEventListener('click', clearPhoto);
     photoEl.addEventListener('change', function (e) {
         const f = e.target.files[0]; if (!f) return;

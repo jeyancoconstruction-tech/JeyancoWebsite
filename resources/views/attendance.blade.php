@@ -318,7 +318,7 @@
         }
 
         // Click row (anywhere except the checkbox cell) to toggle in mark mode
-        document.getElementById('historyTable').addEventListener('click', function (e) {
+        document.getElementById('historyTable')?.addEventListener('click', function (e) {
             if (!document.body.classList.contains('att-mark-mode')) return;
             const td = e.target.closest('td');
             if (!td || td.classList.contains('att-check-col')) return;

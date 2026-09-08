@@ -91,9 +91,12 @@
                     <tr class="{{ $account->is_active ? '' : 'is-off' }}">
                         <td>
                             <div class="acct-person">
-                                <img class="acct-avatar"
-                                     src="https://ui-avatars.com/api/?name={{ urlencode($account->name) }}&background={{ $account->isAdmin() ? '6366f1' : '0ea5e9' }}&color=fff&bold=true"
-                                     alt="">
+                                {{-- Drawn, not fetched: one request per row went to
+                                     ui-avatars.com for a picture of a letter, and
+                                     took each account's name with it. --}}
+                                <div class="acct-avatar {{ $account->isAdmin() ? 'is-admin' : 'is-staff' }}" aria-hidden="true">
+                                    {{ mb_strtoupper(mb_substr($account->name, 0, 1)) }}
+                                </div>
                                 <div class="acct-person-text">
                                     <span class="acct-name">
                                         {{ $account->name }}
@@ -257,7 +260,13 @@
 .ta-right { text-align: right; }
 
 .acct-person { display: flex; align-items: center; gap: 11px; }
-.acct-avatar { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
+.acct-avatar {
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #fff;
+}
+.acct-avatar.is-admin { background: #4338ca; }
+.acct-avatar.is-staff { background: #0e7490; }
 .acct-person-text { display: flex; flex-direction: column; min-width: 0; }
 .acct-name { font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 7px; }
 /* A long address truncates rather than widening the column past the window. */

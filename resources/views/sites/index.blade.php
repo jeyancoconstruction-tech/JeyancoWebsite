@@ -291,8 +291,8 @@
     };
 
     // ── Add new site ─────────────────────────────────────────────────────────
-    document.getElementById('addSiteBtn').addEventListener('click', addSite);
-    document.getElementById('newSiteInput').addEventListener('keydown', e => {
+    document.getElementById('addSiteBtn')?.addEventListener('click', addSite);
+    document.getElementById('newSiteInput')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); addSite(); }
     });
 

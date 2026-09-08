@@ -1,0 +1,461 @@
+<!--
+  Source of Jeyanco-System-Guide.pdf. Edit here, then regenerate:
+
+    chrome --headless=new --no-pdf-header-footer            --print-to-pdf=Jeyanco-System-Guide.pdf docs/system-guide.html
+
+  Kept as HTML rather than as the PDF alone so it can be corrected when the
+  system changes. A PDF nobody can edit goes stale and then gets ignored.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jeyanco Construction — System Guide</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 16mm; }
+
+  :root {
+    --navy: #123566; --navy-dark: #0d2a4f; --blue: #1668dc;
+    --ink: #101828; --text: #344054; --muted: #667085; --line: #d0d5dd;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+    font-size: 10.5pt; line-height: 1.55; color: var(--text);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  h1, h2, h3 { color: var(--ink); margin: 0; }
+
+  /* Cover */
+  .cover { height: 245mm; display: flex; flex-direction: column; justify-content: center; }
+  .cover .rule { width: 62px; height: 4px; background: var(--blue); margin-bottom: 22px; }
+  .cover h1 { font-size: 30pt; line-height: 1.1; letter-spacing: -0.5px; }
+  .cover .sub { margin-top: 10px; font-size: 13pt; color: var(--muted); }
+  .cover .meta { margin-top: 34px; font-size: 9.5pt; color: var(--muted); }
+  .cover .meta b { color: var(--text); font-weight: 600; }
+  .cover .note {
+    margin-top: 26px; padding: 14px 16px; border-left: 3px solid var(--blue);
+    background: #f2f6fc; font-size: 10pt;
+  }
+
+  .break { break-before: page; }
+
+  /* Section */
+  .sec { break-inside: avoid-page; margin-bottom: 20px; }
+  .sec-head {
+    display: flex; align-items: baseline; gap: 10px;
+    border-bottom: 2px solid var(--navy); padding-bottom: 5px; margin-bottom: 10px;
+  }
+  .sec-num {
+    font-size: 9pt; font-weight: 700; color: #fff; background: var(--navy);
+    padding: 2px 7px; border-radius: 3px;
+  }
+  .sec-head h2 { font-size: 14pt; }
+  .sec-head .where { margin-left: auto; font-size: 8.5pt; color: var(--muted); font-family: Consolas, monospace; }
+
+  .lbl {
+    font-size: 8pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin: 9px 0 3px;
+  }
+  ul { margin: 0; padding-left: 17px; }
+  li { margin-bottom: 3px; }
+  .why {
+    margin-top: 9px; padding: 9px 12px; background: #f7f9fc;
+    border: 1px solid var(--line); border-radius: 5px; font-size: 10pt;
+  }
+  .why b { color: var(--navy); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 9.5pt; }
+  th, td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #f2f4f7; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+
+  h2.part {
+    font-size: 16pt; margin: 0 0 4px; color: var(--navy);
+  }
+  .part-sub { color: var(--muted); margin-bottom: 16px; font-size: 10.5pt; }
+
+  .flow { counter-reset: step; margin-top: 8px; }
+  .flow li { margin-bottom: 7px; }
+  code { font-family: Consolas, monospace; font-size: 9pt; background: #f2f4f7; padding: 1px 4px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="rule"></div>
+  <h1>Jeyanco Construction<br>System Guide</h1>
+  <p class="sub">What every section is for, what is on it, and why the company needs it.</p>
+  <p class="meta">
+    <b>Covers</b> the payroll and workforce system at jeyancowebsite-production.up.railway.app<br>
+    <b>Prepared</b> 8 September 2026
+  </p>
+  <div class="note">
+    <b>Paano basahin ito.</b> Ingles ang bawat pindutan at pamagat sa screen, kaya Ingles din ang
+    paglalarawan dito — para tugma sa nakikita mo. Ang <b>Bakit kailangan</b> sa dulo ng bawat
+    section ay nasa Tagalog: iyon ang bahaging tungkol sa kompanya, hindi sa software.
+  </div>
+</section>
+
+<section class="break">
+  <h2 class="part">Part 1 — The shell</h2>
+  <p class="part-sub">The frame around every page. Learn this once and every section behaves the same way.</p>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">1.1</span><h2>The rail on the left</h2></div>
+    <p>Every section of the system is one item on the navy rail. It is grouped: the daily work at the
+      top, people below it, then pay, then the system's own settings at the bottom. The item you are
+      on is the one filled in blue.</p>
+    <div class="why"><b>Bakit kailangan:</b> Isang lugar lang ang pasukan sa lahat. Walang hahanaping
+      link at walang matatandaang address — nasa rail ang lahat, laging nasa parehong pwesto.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">1.2</span><h2>The top bar</h2></div>
+    <div class="lbl">What is on it</div>
+    <ul>
+      <li><b>Search data</b> — searches records across the system.</li>
+      <li><b>?</b> — opens a short guide to the section you are on: what it is for, what the main
+        buttons do, and the one thing people get wrong. It is the short version of this document.</li>
+      <li><b>Sun / moon</b> — light or dark screen. This is your own choice and is remembered in your
+        browser; it beats the company default.</li>
+      <li><b>Bell</b> — notifications.</li>
+      <li><b>Your name and role</b> — the letter beside it is drawn by the system, so it is there
+        even with no connection.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Ang <b>?</b> ang tulong na hindi kailangang hanapin.
+      Bagong tao sa opisina? Hindi mo na kailangang tabihan — nasa page mismo ang paliwanag.</div>
+  </div>
+</section>
+
+<section class="break">
+  <h2 class="part">Part 2 — Daily work</h2>
+  <p class="part-sub">What somebody opens on an ordinary day.</p>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">2.1</span><h2>Dashboard</h2><span class="where">/dashboard</span></div>
+    <div class="lbl">What is on it</div>
+    <ul>
+      <li>Tiles for today: Active Workers, Present Today, Still Timed In, This Week Payout,
+        Outstanding Vale.</li>
+      <li>Four shortcuts: Register Worker, Payroll Run, Attendance, Payroll Records.</li>
+    </ul>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li>Nothing is entered here. Every figure is read from another section.</li>
+      <li>A number that looks wrong is corrected where it was recorded, not here.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Sagot sa tanong na "kumusta ngayon?" nang hindi
+      binubuksan ang lima-limang page. Ilan ang pumasok, sino ang naka-time in pa, magkano na ang
+      gastos ngayong linggo — isang tingin lang.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">2.2</span><h2>Attendance</h2><span class="where">/attendance</span></div>
+    <div class="lbl">What is on it</div>
+    <ul>
+      <li><b>Today's Attendance</b> — the current day's time in and time out.</li>
+      <li><b>History</b> — the days before it.</li>
+      <li><b>Mark for Deletion</b>, then <b>Delete Selected</b> or <b>Delete All</b>.</li>
+    </ul>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li>Mark for Deletion turns on the checkboxes. Delete Selected removes only what you ticked.</li>
+      <li>Attendance is what payroll counts. Correct it <b>before</b> a payroll run, not after.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Ito ang pinagmumulan ng sahod. Bawat oras na mali dito
+      ay maling bayad sa dulo — at mas mahirap ayusin kapag naibigay na ang pera.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">2.3</span><h2>Site Attendance</h2><span class="where">/site-attendance</span></div>
+    <div class="lbl">What is on it</div>
+    <ul>
+      <li>Attendance taken at a site rather than the office, listed a day at a time.</li>
+      <li>Counts above the list: records for the day, how many are still timed in, overtime hours.</li>
+      <li><b>Apply</b> narrows by the filters; <b>Today</b> snaps back to the current day.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Hindi lahat ng manggagawa ay dumadaan sa opisina.
+      Kung nasa site sila kinukuha ang oras, dapat may sariling talaan yun na tugma pa rin sa payroll.</div>
+  </div>
+</section>
+
+<section class="break">
+  <h2 class="part">Part 3 — People</h2>
+  <p class="part-sub">Who works for the company, and what the company owes them.</p>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">3.1</span><h2>Employee Directory</h2><span class="where">/employees</span></div>
+    <div class="lbl">What is on it</div>
+    <ul>
+      <li>Every employee, as a table or as cards — the two icons on the right of the toolbar switch
+        between them, and your choice is remembered.</li>
+      <li>Tabs: <b>All Employees</b>, <b>Regular</b>, <b>Contractual</b>.</li>
+      <li>Per row: site, labor type, shift, rate, vale balance, fingerprint count.</li>
+    </ul>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li><b>Add Employee</b> creates the record. <b>Export</b> downloads the list as you are looking
+        at it, filters included.</li>
+      <li><b>View Details</b> opens the full record. Editing starts there on purpose — you see the
+        whole record before you change part of it.</li>
+      <li>The <b>three-dot</b> menu on each row: <b>Set Vale</b> (adjust the balance by hand),
+        <b>Copy ID</b> (the badge number, for reading to payroll), <b>Delete</b>.</li>
+      <li>The <b>Shift</b> dropdown saves as soon as you change it — a tick appears beside it.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Dito nakasalalay ang lahat. Ang rate, ang site, ang uri
+      ng trabaho — ito ang binabasa ng payroll. Isang maling rate dito ay maling sahod para sa
+      bawat panahon hanggang may makapansin.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">3.2</span><h2>Leave and Overtime</h2><span class="where">/leave-overtime</span></div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li><b>File Leave</b> and <b>File Overtime</b> record a request. It stays <b>pending</b> until
+        somebody acts on it.</li>
+      <li><b>Approve</b> or <b>Reject</b> decides it, and payroll reads that decision.</li>
+      <li><b>Apply</b> filters the two lists; <b>Reset</b> clears the filters.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Ang overtime at leave ay pera. Kapag pasalita lang,
+      walang matitirang patunay kung sino ang nag-apruba. Dito, may pangalan at may petsa.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">3.3</span><h2>Loans and Advances (Vale)</h2><span class="where">/loans</span></div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li><b>New Loan / Advance</b> records what was handed over. The balance starts at the full amount.</li>
+      <li>Payroll collects against it each period, so the balance falls on its own.</li>
+      <li><b>Record payment</b> is for anything paid back outside a payroll run.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Karaniwan ang vale sa konstruksyon. Kapag nasa papel o
+      nasa isip lang, may nakakalimutan — at ang nakakalimutan ay palaging kompanya ang lugi.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">3.4</span><h2>Sites</h2><span class="where">/sites</span></div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li><b>Add Site</b> creates one. The name is what shows everywhere a site is chosen.</li>
+      <li>Removing a site reassigns its employees automatically — nobody is left without one.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Nagbabago ang proyekto. Kailangang malaman kung sino ang
+      nasaan, at hindi dapat mawalan ng site ang tao kapag natapos ang isang proyekto.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">3.5</span><h2>Project Assignment</h2><span class="where">/project-assignments</span></div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li><b>New Assignment</b> puts an employee on a project for a period.</li>
+      <li><b>End</b> closes an assignment without deleting it, so the roster keeps its history.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Para masagot ang "sino ang nasa proyektong ito noong
+      Agosto?" — kahit tapos na ang proyekto at ibang site na ang tao ngayon.</div>
+  </div>
+</section>
+
+<section class="break">
+  <h2 class="part">Part 4 — Pay</h2>
+  <p class="part-sub">The order matters here. Each step feeds the next one.</p>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">4.1</span><h2>Payroll Processing</h2><span class="where">/payroll-processing</span></div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li><b>New Payroll Run</b> picks the period. <b>Create &amp; Calculate</b> works the figures out
+        straight away.</li>
+      <li>Nothing is paid until you finalise, so <b>Review</b> is where you check first.</li>
+      <li><b>Approving</b> a run is what makes its payslips appear in Payslips.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Ito ang pagitan ng "kinuwenta" at "binayaran". Ang
+      hakbang na ito ang nagbibigay ng pagkakataong mahuli ang mali bago pa lumabas ang pera.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">4.2</span><h2>Payroll Records</h2><span class="where">/payroll-records</span></div>
+    <div class="lbl">What is on it</div>
+    <ul>
+      <li>A breakdown of pay for the period chosen above the table.</li>
+      <li>Summary bar: Net Payroll, Gross Pay, Deductions, Overtime, Holiday Pay, Rest Day Pay,
+        Bonus, Employees, Hours / Days.</li>
+    </ul>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li><b>Weekly (Mon–Sun)</b> and <b>Daily</b> change how the period is grouped.</li>
+      <li><b>Preview &amp; Download</b> opens the printable copy; <b>Print</b> or <b>Save as PDF</b>
+        from there.</li>
+      <li>"No records for this period" means exactly that — pick another week, or the run has not
+        been made yet.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Ito ang isasagot sa BIR, sa auditor, at sa manggagawang
+      nagtatanong kung bakit ganoon ang sahod niya noong nakaraang linggo.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">4.3</span><h2>Payslips</h2><span class="where">/payslips</span></div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li>Payslips appear here once their payroll run has been <b>approved</b> in Payroll Processing.</li>
+      <li><b>View</b> opens one. <b>Print All</b> prints the whole filtered list in a single pass.</li>
+      <li>A missing payslip means its run has not been approved yet.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Karapatan ng manggagawa ang payslip. At kapag may
+      tanong sa kaltas, ang papel ang sumasagot — hindi ang alaala.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">4.4</span><h2>Payroll Reports</h2><span class="where">/payroll-reports</span></div>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li>Pick the report and the period, then <b>Apply</b>. <b>Print</b> produces the copy to hand
+        over or file. <b>Reset</b> returns to the default period.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Ang buod na hinihingi ng may-ari at ng gobyerno —
+      hindi ang bawat linya, kundi ang kabuuan.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">4.5</span><h2>Payroll Settings</h2><span class="where">/settings</span></div>
+    <div class="lbl">What is on it</div>
+    <ul>
+      <li>Tabs: <b>Multipliers and Deductions</b>, <b>Attendance</b>, <b>Labor Types</b>,
+        <b>Holidays</b>, <b>Bonus &amp; Vale</b>.</li>
+    </ul>
+    <div class="lbl">How it works</div>
+    <ul>
+      <li><b>Save changes</b> applies from the next payroll run. <b>A period already paid is not
+        rewritten</b> — rates are kept as history, not overwritten.</li>
+      <li><b>Add Labor Type</b> creates a new rate that employees can then be put on.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Dito nakasulat ang patakaran ng kompanya sa sahod —
+      holiday pay, rest day, kaltas. Kapag nagbago ang batas o ang patakaran, isang lugar lang ang
+      babaguhin, hindi bawat kuwenta.</div>
+  </div>
+</section>
+
+<section class="break">
+  <h2 class="part">Part 5 — Oversight</h2>
+  <p class="part-sub">Reading, checking, and answering for what happened.</p>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">5.1</span><h2>Analytics and Insights</h2><span class="where">/analytics</span></div>
+    <ul>
+      <li>The charts read the same records as the rest of the system. Nothing is entered here.</li>
+      <li>Figures follow the period and filters chosen on the page.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> May mga bagay na hindi mo makikita sa isang linggo pero
+      halata sa tatlong buwan — tumataas na absent, lumalaking overtime, sitwasyon kada site.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">5.2</span><h2>Jeyanco AI</h2><span class="where">/ai-assistant</span></div>
+    <ul>
+      <li>Ask in plain language about payroll, attendance and the workforce.</li>
+      <li><b>Prompts</b> holds ready-made questions. <b>New Chat</b> clears the thread.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Hindi lahat ay marunong maghanap sa report. Ang tanong
+      na "sino ang pinakamaraming overtime nitong buwan?" ay dapat masagot nang hindi natututo ng
+      bagong screen.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">5.3</span><h2>Device Monitoring</h2><span class="where">/device-monitoring</span></div>
+    <ul>
+      <li>The devices that report in, and when each was last heard from. Nothing is edited here.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Kung tumigil ang fingerprint scanner sa isang site,
+      hindi ka dapat makaalam nito sa araw ng payroll. Dito mo makikita agad.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">5.4</span><h2>Audit Logs</h2><span class="where">/audit-logs</span></div>
+    <ul>
+      <li>A record of what changed, who changed it, and when.</li>
+      <li>Entries cannot be edited. That is the point of a log.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Kapag may nagbago sa rate o may nabura sa attendance,
+      may sagot sa "sino at kailan". Proteksyon ito sa kompanya at sa empleyado nang sabay.</div>
+  </div>
+</section>
+
+<section class="break">
+  <h2 class="part">Part 6 — System Settings</h2>
+  <p class="part-sub">Four tabs down the left of one page. Admin work, not daily work.</p>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">6.1</span><h2>Company</h2><span class="where">/system-settings</span></div>
+    <ul>
+      <li>Name, tagline, address and logo. These appear on payslips, exports, the sidebar and the
+        sign-in page.</li>
+      <li><b>Save</b> writes at once, and the rest of the system follows on the next page load.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Ang pangalan sa payslip ay dokumento. Kapag nagbago ang
+      address o logo ng kompanya, isang beses lang binabago — hindi sa bawat template.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">6.2</span><h2>Accounts &amp; roles</h2><span class="where">/accounts</span></div>
+    <ul>
+      <li><b>Create Account</b> makes a login and gives it a role.</li>
+      <li>On each row: the pencil edits, the person icon deactivates <b>without deleting</b>, the bin
+        removes the account for good.</li>
+      <li>Your own row has only the pencil — you cannot deactivate or delete the account you are
+        signed in with.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Kapag umalis ang isang tao, i-deactivate — huwag burahin.
+      Mananatili ang kasaysayan ng ginawa niya, pero hindi na siya makakapasok.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">6.3</span><h2>Appearance</h2><span class="where">/system-settings/appearance</span></div>
+    <ul>
+      <li><b>Default theme</b> — what a screen opens on the first time it is used. Anyone who uses the
+        top-bar toggle keeps their own choice, and that beats this one.</li>
+      <li><b>Language</b> — English or Tagalog for the system's own labels.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Ang bagong telepono, bagong browser, o kiosk sa site ay
+      bubukas sa pinili ng kompanya — hindi sa random.</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">6.4</span><h2>Security</h2><span class="where">/system-settings/security</span></div>
+    <ul>
+      <li>Session timeout, minimum password length, maximum login attempts, lockout length.</li>
+      <li>These are enforced by the system — the login page and the account forms both read them.</li>
+    </ul>
+    <div class="why"><b>Bakit kailangan:</b> Sahod at personal na datos ang laman nito. Ang naiwang
+      bukas na screen sa site office ay panganib, at ang session timeout ang sumasara niyan.</div>
+  </div>
+</section>
+
+<section class="break">
+  <h2 class="part">Part 7 — One full pay cycle</h2>
+  <p class="part-sub">The order the sections are meant to be used in. Skipping a step is where most mistakes come from.</p>
+
+  <table>
+    <thead><tr><th style="width:6%">#</th><th style="width:26%">Section</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Employees</td><td>Everyone who will be paid exists, with the right rate, site and labor type.</td></tr>
+      <tr><td>2</td><td>Attendance / Site Attendance</td><td>Hours are in for the whole period, and corrected while they can still be corrected.</td></tr>
+      <tr><td>3</td><td>Leave &amp; Overtime</td><td>Every request for the period is approved or rejected. Nothing left pending.</td></tr>
+      <tr><td>4</td><td>Loans &amp; Advances</td><td>Any vale handed out during the period is recorded, so payroll can collect against it.</td></tr>
+      <tr><td>5</td><td>Payroll Settings</td><td>Checked, not changed — unless a rule genuinely changed. Changes apply to the next run.</td></tr>
+      <tr><td>6</td><td>Payroll Processing</td><td>New Payroll Run → Create &amp; Calculate → Review → approve.</td></tr>
+      <tr><td>7</td><td>Payslips</td><td>Payslips appear. Print all, hand out.</td></tr>
+      <tr><td>8</td><td>Payroll Records / Reports</td><td>File the period's breakdown and the summary.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="why" style="margin-top:16px">
+    <b>Ang isang tuntunin na nagpapaliwanag ng marami:</b> ang mga bagay na naitala na ay hindi
+    binabago nang paatras. Ang pagpapalit ng rate ngayon ay hindi nagbabago ng sahod na binayaran na
+    noong nakaraang buwan, at ang audit log ay hindi mabubura. Ito ang dahilan kung bakit
+    <b>bago</b> mag-approve ang oras ng pag-check, hindi pagkatapos.
+  </div>
+</section>
+
+</body>
+</html>

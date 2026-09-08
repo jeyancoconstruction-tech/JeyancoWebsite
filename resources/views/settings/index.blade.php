@@ -1218,16 +1218,16 @@
                     if (sel) sel.value = calMonth;
                 }
 
-                document.getElementById('hcal-prev').addEventListener('click', () => navMonth(-1));
-                document.getElementById('hcal-next').addEventListener('click', () => navMonth(1));
+                document.getElementById('hcal-prev')?.addEventListener('click', () => navMonth(-1));
+                document.getElementById('hcal-next')?.addEventListener('click', () => navMonth(1));
 
-                document.getElementById('hc-month-sel').addEventListener('change', function () {
+                document.getElementById('hc-month-sel')?.addEventListener('change', function () {
                     const dir = parseInt(this.value) > calMonth ? 'next' : 'prev';
                     calMonth  = parseInt(this.value);
                     renderCalendar(dir);
                 });
-                document.getElementById('hc-yr-dec').addEventListener('click', () => changeYear(-1));
-                document.getElementById('hc-yr-inc').addEventListener('click', () => changeYear(1));
+                document.getElementById('hc-yr-dec')?.addEventListener('click', () => changeYear(-1));
+                document.getElementById('hc-yr-inc')?.addEventListener('click', () => changeYear(1));
 
                 async function navMonth(delta) {
                     let m = calMonth + delta, y = calYear;
@@ -1268,13 +1268,13 @@
                 const listBody  = document.getElementById('hc-list-body');
                 let   listFilter = null; // 'active'|'disabled'|'regular'|'special'|'custom'|null
 
-                document.getElementById('hc-list-close').addEventListener('click', closeListPanel);
+                document.getElementById('hc-list-close')?.addEventListener('click', closeListPanel);
                 document.querySelector('.hc-stat-on') .addEventListener('click', () => toggleListPanel('active'));
-                document.querySelector('.hc-stat-off').addEventListener('click', () => toggleListPanel('disabled'));
+                document.querySelector('.hc-stat-off')?.addEventListener('click', () => toggleListPanel('disabled'));
 
                 // Legend items act as type filters for the list panel.
-                document.querySelector('.hc-leg-regular').addEventListener('click', () => toggleListPanel('regular'));
-                document.querySelector('.hc-leg-special').addEventListener('click', () => toggleListPanel('special'));
+                document.querySelector('.hc-leg-regular')?.addEventListener('click', () => toggleListPanel('regular'));
+                document.querySelector('.hc-leg-special')?.addEventListener('click', () => toggleListPanel('special'));
                 document.querySelector('.hc-leg-custom') .addEventListener('click', () => toggleListPanel('custom'));
                 document.querySelector('.hc-leg-off')    .addEventListener('click', () => toggleListPanel('disabled'));
 
@@ -1492,8 +1492,8 @@
                 }
 
                 // ── Bulk toggle ────────────────────────────────────────────────────
-                document.getElementById('hcal-enable-all').addEventListener('click', () => doBulk('enable'));
-                document.getElementById('hcal-disable-all').addEventListener('click', () => {
+                document.getElementById('hcal-enable-all')?.addEventListener('click', () => doBulk('enable'));
+                document.getElementById('hcal-disable-all')?.addEventListener('click', () => {
                     if (confirm(`Disable all ${calYear} holidays? You can re-enable them anytime.`)) doBulk('disable');
                 });
 

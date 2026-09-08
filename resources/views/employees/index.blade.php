@@ -133,14 +133,18 @@
                         {{-- Employee (avatar + name + ID) --}}
                         <td>
                             <div class="emp-cell">
+                                @php $initial = mb_strtoupper(mb_substr($emp->name, 0, 1)); @endphp
                                 @if($emp->photo)
+                                    {{-- A photo that will not load is a broken icon with the
+                                         name spilling out of it. The letter is rendered behind
+                                         it and takes over the moment the file fails. --}}
                                     <img src="{{ url('storage/' . $emp->photo) }}"
                                          alt="{{ $emp->name }}"
-                                         class="emp-avatar-img">
+                                         class="emp-avatar-img"
+                                         onerror="this.hidden = true; this.nextElementSibling.hidden = false;">
+                                    <div class="emp-avatar-initials" hidden>{{ $initial }}</div>
                                 @else
-                                    <div class="emp-avatar-initials emp-av-{{ substr(strtolower($emp->name), 0, 1) }}">
-                                        {{ strtoupper(substr($emp->name, 0, 1)) }}
-                                    </div>
+                                    <div class="emp-avatar-initials">{{ $initial }}</div>
                                 @endif
                                 <div class="emp-info">
                                     <span class="emp-name">{{ $emp->name }}</span>
@@ -626,6 +630,8 @@
     object-fit: cover; border: 1px solid var(--border);
     flex-shrink: 0;
 }
+/* display:flex below would otherwise beat the hidden attribute. */
+.emp-avatar-img[hidden], .emp-avatar-initials[hidden] { display: none !important; }
 .emp-avatar-initials {
     width: 36px; height: 36px; border-radius: 50%;
     font-size: 13px; font-weight: 600;

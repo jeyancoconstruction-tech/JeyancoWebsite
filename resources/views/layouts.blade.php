@@ -312,8 +312,12 @@
 
             <div class="dropdown">
                 <div class="profile-capsule" data-bs-toggle="dropdown">
-                    <div class="avatar-box">
-                        <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=1668DC&color=fff&bold=true" alt="User">
+                    {{-- The initial is rendered here rather than fetched as a
+                         picture of a letter from ui-avatars.com. That request
+                         went out on every page load, and any refresh where it
+                         was slow, blocked or offline left the profile blank. --}}
+                    <div class="avatar-box avatar-letter" aria-hidden="true">
+                        {{ mb_strtoupper(mb_substr(auth()->user()->name ?? 'A', 0, 1)) }}
                     </div>
                     <div class="profile-info d-none d-md-block">
                         <span class="u-name">{{ auth()->user()->name ?? 'ADMIN123' }}</span>
@@ -733,6 +737,14 @@
 
 {{-- ── Notification Bell — CSS ─────────────────────────────────────────────── --}}
 <style>
+        /* Initials avatar, drawn instead of downloaded. */
+        .avatar-letter {
+            display: flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; flex: none;
+            background: var(--brand); color: #fff;
+            font-size: 14px; font-weight: 700; line-height: 1;
+        }
+
 /* Wrapper — position context for dropdown */
 .notif-wrapper {
     position: relative;
