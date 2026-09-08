@@ -304,6 +304,19 @@
         <svg class="art-scene" viewBox="0 0 1440 560">
             <path d="M0 558h1440"/>
 
+            {{-- A taller block standing behind the tower. Its floors are drawn
+                 only down to 190 -- the height the frame in front of it reaches.
+                 Below that it is two walls and nothing else, because a full face
+                 of floor lines crossing the tower and the frame turns all three
+                 into mush. What a skyline actually does: you draw the part you
+                 can see. --}}
+            <g class="far">
+                <path d="M152 558V34M292 558V34M152 34h140"/>
+                <path d="M146 26h152v8h-152z"/>
+                <path d="M222 34V200"/>
+                <path d="M152 60h140M152 86h140M152 112h140M152 138h140M152 164h140M152 190h140"/>
+            </g>
+
             {{-- Tower already standing. Drawn the way an elevation is: a podium
                  wider than the shaft it carries, a setback crown, floors read
                  as a slab edge with its spandrel under it, and a curtain wall
