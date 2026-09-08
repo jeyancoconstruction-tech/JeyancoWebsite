@@ -21,16 +21,20 @@
    theme is all it takes, because the rail's rules already read them — the one
    exception is .sidebar's own background, which was a hardcoded navy gradient
    and is pointed at the tokens below. */
+/* The rail is navy in light mode again, and it is the sign-in page's navy:
+   #123566 into #0D2A4F, the same ramp as the card's ground there. A white
+   rail on a near-white page left the app looking unrelated to the page every
+   user sees first. */
 html[data-bs-theme="light"] {
-    --sidebar-bg:          #ffffff;
-    --sidebar-bg-2:        #fbfcfe;
-    --sidebar-text:        #55657c;
-    --sidebar-text-strong: #0f1e33;
-    --sidebar-section:     #97a3b4;
-    --sidebar-hover:       #f0f4fa;
+    --sidebar-bg:          #123566;
+    --sidebar-bg-2:        #0d2a4f;
+    --sidebar-text:        #b5c6dc;
+    --sidebar-text-strong: #ffffff;
+    --sidebar-section:     #7c93b5;
+    --sidebar-hover:       rgba(255, 255, 255, 0.08);
     --sidebar-active:      var(--brand);
-    --sidebar-border:      #e4e9f0;
-    --sidebar-edge:        #e4e9f0;
+    --sidebar-border:      rgba(255, 255, 255, 0.10);
+    --sidebar-edge:        rgba(255, 255, 255, 0.08);
 }
 html[data-bs-theme="dark"] {
     --sidebar-bg:          #0e1826;
@@ -54,8 +58,6 @@ html[data-bs-theme="dark"] {
 .brand-text  { color: var(--sidebar-text-strong) !important;
                -webkit-text-fill-color: var(--sidebar-text-strong) !important; }
 
-/* The mark carried a drop shadow tuned for navy behind it. On white it reads
-   as smudge, so it goes; the disc has plenty of contrast on either ground. */
 .brand-icon { filter: none !important; }
 
 .menu-section { color: var(--sidebar-section) !important; }
@@ -70,7 +72,7 @@ html[data-bs-theme="dark"] {
 .nav-menu .nav-link.active {
     background: var(--brand) !important;
     color: #fff !important;
-    box-shadow: 0 1px 3px rgba(23, 105, 224, 0.30) !important;
+    box-shadow: 0 1px 3px rgba(22, 104, 220, 0.35) !important;
 }
 .nav-menu .nav-link.active svg,
 .nav-menu .nav-link.active i[data-lucide] { color: #fff !important; }
@@ -80,8 +82,8 @@ html[data-bs-theme="dark"] {
     .menu-section::after { border-top-color: var(--sidebar-border) !important; }
 }
 
-.sidebar-top::-webkit-scrollbar-thumb { background: var(--border-md) !important; }
-.sidebar-top { scrollbar-color: var(--border-md) transparent !important; }
+.sidebar-top::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.20) !important; }
+.sidebar-top { scrollbar-color: rgba(255, 255, 255, 0.20) transparent !important; }
 
 /* The mobile overlay dims the page, not the rail. */
 .sidebar-overlay { background: rgba(15, 23, 42, 0.42); }
@@ -98,7 +100,7 @@ html[data-bs-theme="dark"] {
    A dialog header is not the rail. It gets its own token, navy in both themes,
    which is what it was before the rail started moving. */
 html[data-bs-theme="light"], html[data-bs-theme="dark"] {
-    --modal-head:      #071a33;
+    --modal-head:      #123566;
     --modal-head-text: #ffffff;
     --modal-head-sub:  #a9c0da;
 }

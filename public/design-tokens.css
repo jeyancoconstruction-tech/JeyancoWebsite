@@ -2,7 +2,7 @@
    JEYANCO CONSTRUCTION · DESIGN TOKENS + UI SYSTEM
    -----------------------------------------------------------------------------
    Loaded LAST, so this file owns the final visual language: a deep navy rail,
-   one corporate blue (#1769E0), white cards on a light grey page, 8–12px radii
+   the sign-in page's blue (#1668DC) and greys, white cards on a light grey page, 8–12px radii
    and shadows you feel rather than see.
 
    Visual layer ONLY — no markup, scripts, Blade/JS directives, IDs, routes,
@@ -13,16 +13,16 @@
 
 /* ── 1 · TOKENS ─────────────────────────────────────────────────────────── */
 html[data-bs-theme="light"] {
-    --bg: #F4F6FA;            --bg-body: #F4F6FA;
+    --bg: #F2F4F7;            --bg-body: #F2F4F7;
     --surface: #FFFFFF;       --bg-surface: #FFFFFF;   --bg-elevated: #FFFFFF;
-    --bg-subtle: #F0F3F8;
-    --border: #E4E9F0;        --border-md: #D2DAE6;
-    --text-primary: #0F1E33;  --text-secondary: #5B6A80;  --text-muted: #8A96A8;
-    --brand: #1769E0;         --brand-strong: #1257BC;    --brand-subtle: #EAF1FD;
-    --primary: #1769E0;       --primary-mid: #1257BC;     --primary-light: #1769E0;
-    --primary-soft: #EAF1FD;  --accent: #1769E0;
-    --success: #12874A;       --danger: #D0342C;          --warning: #B7791F;
-    --success-soft: #E7F5ED;  --danger-soft: #FCECEB;     --warning-soft: #FDF4E3;
+    --bg-subtle: #F8F9FB;
+    --border: #E4E7EC;        --border-md: #D0D5DD;
+    --text-primary: #101828;  --text-secondary: #344054;  --text-muted: #667085;
+    --brand: #1668DC;         --brand-strong: #1257BC;    --brand-subtle: #EAF2FD;
+    --primary: #1668DC;       --primary-mid: #1257BC;     --primary-light: #1668DC;
+    --primary-soft: #EAF2FD;  --accent: #1668DC;
+    --success: #027A48;       --danger: #B42318;          --warning: #B54708;
+    --success-soft: #ECFDF3;  --danger-soft: #FEF3F2;     --warning-soft: #FFFAEB;
     --violet: #6D5BD0;        --violet-soft: #EEEBFA;
 }
 html[data-bs-theme="dark"] {
@@ -42,14 +42,14 @@ html[data-bs-theme="dark"] {
 /* The rail is navy in BOTH themes — it is the brand's anchor, not a surface
    that follows the page. Its own text tokens travel with it. */
 html[data-bs-theme="light"], html[data-bs-theme="dark"] {
-    --sidebar-bg: #071A33;
-    --sidebar-bg-deep: #05142A;
-    --sidebar-text: #A9BAD0;
+    --sidebar-bg: #123566;
+    --sidebar-bg-deep: #0D2A4F;
+    --sidebar-text: #B5C6DC;
     --sidebar-text-strong: #FFFFFF;
-    --sidebar-section: #62789A;
-    --sidebar-hover: rgba(255, 255, 255, 0.07);
-    --sidebar-active: rgba(23, 105, 224, 0.20);
-    --sidebar-accent: #3B8BF0;
+    --sidebar-section: #7C93B5;
+    --sidebar-hover: rgba(255, 255, 255, 0.08);
+    --sidebar-active: rgba(22, 104, 220, 0.26);
+    --sidebar-accent: #4A90F0;
     --sidebar-border: rgba(255, 255, 255, 0.07);
 }
 
@@ -132,7 +132,7 @@ html[data-bs-theme="light"] .main-content .container-fluid.py-4 { padding: 18px 
    90KB download on every page. A shallow vertical gradient gives the rail its
    depth instead. */
 .sidebar {
-    background: linear-gradient(180deg, #0a2244 0%, #071a33 58%, #051325 100%) !important;
+    background: linear-gradient(180deg, #143a70 0%, #0d2a4f 58%, #071a33 100%) !important;
     border-right: none !important;
     box-shadow: 1px 0 0 rgba(15, 30, 51, 0.06);
 }
