@@ -259,6 +259,36 @@
     });
 </script>
 
+<script>
+// ── Labor type → Rate Per Hour ──────────────────────────────────────────────
+// This lived inside the New Site script, which is why removing that button
+// took the rate auto-fill with it: one <script> was doing two unrelated jobs.
+// It has its own now, so the next thing removed from this page cannot take it
+// along as well.
+//
+// Position is filled separately, in _employment_type_toggle.blade.php, off the
+// same change event. Two listeners on one select is fine; one listener doing
+// two jobs was not.
+(function () {
+    const ltSelector = document.getElementById('labor_type_selector');
+    const rateInput  = document.getElementById('rate_per_hour');
+    if (!ltSelector || !rateInput) return;
+
+    ltSelector.addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        // data-daily is the labor type's daily rate; the hour is the standard
+        // eight, not the span of the shift — see the note on paid hours.
+        rateInput.value = opt && opt.value
+            ? ((parseFloat(opt.dataset.daily) || 0) / 8).toFixed(2)
+            : '';
+    });
+
+    // A failed validation brings the chosen labor type back in the select;
+    // without this the rate beside it would come back empty.
+    if (ltSelector.value) ltSelector.dispatchEvent(new Event('change'));
+})();
+</script>
+
 @include('employees._employment_type_toggle')
 
 @endsection
