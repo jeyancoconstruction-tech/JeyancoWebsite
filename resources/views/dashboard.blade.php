@@ -591,16 +591,34 @@
             }
         });
 
+        // The site picked on the kiosk, ringed on the map — which pin the kiosk
+        // is filing attendance against is visible at a glance, GPS or not.
+        let setCircle = null, setCircleFor = null;
+        function showSetSite(siteId, radius) {
+            if (siteId === setCircleFor) return;
+            if (setCircle) { map.removeLayer(setCircle); setCircle = null; }
+            setCircleFor = siteId;
+            const m = siteMarkers[siteId];
+            if (!m) return;
+            setCircle = L.circle(m.getLatLng(), {
+                radius: radius || 150, color: '#2f81f7', weight: 2, fillOpacity: 0.08,
+            }).addTo(map);
+        }
+
         async function refreshLive() {
             try {
                 const res = await fetch(`/api/location/latest?kiosk_id=${KIOSK_ID}`);
                 const d = await res.json();
+                // What the operator picked on the kiosk comes first; the GPS
+                // guess is the second opinion.
+                const setTo = d.set_site || d.active_site || '—';
+                showSetSite(d.set_site_id, d.geofence_radius_m);
                 if (d.lat && d.lng) {
                     const pos = [d.lat, d.lng];
                     const where = d.detected_site || 'Out of range';
-                    if (liveMarker) liveMarker.setLatLng(pos).setPopupContent(`Live kiosk position &middot; ${where}`);
-                    else liveMarker = L.marker(pos, { icon: liveIcon }).addTo(map)
-                                       .bindPopup(`Live kiosk position &middot; ${where}`);
+                    const pop = `Kiosk set to <b>${setTo}</b> &middot; GPS: ${where}`;
+                    if (liveMarker) liveMarker.setLatLng(pos).setPopupContent(pop);
+                    else liveMarker = L.marker(pos, { icon: liveIcon }).addTo(map).bindPopup(pop);
 
                     // Unang fix: iangat ang tanaw para makita mo talaga.
                     if (!liveCentred) {
@@ -617,21 +635,21 @@
                     if (d.site_match === false) {
                         statusEl.innerHTML =
                             `<i class="fas fa-triangle-exclamation text-danger" style="font-size:9px;"></i> ` +
-                            `GPS: ${where} &middot; set to ${d.active_site || '—'}`;
+                            `Set to ${setTo} &middot; GPS says ${where}`;
                     } else if (d.alert === 'outside_geofence') {
                         statusEl.innerHTML =
                             `<i class="fas fa-circle text-danger" style="font-size:8px;"></i> ` +
-                            `Outside the site &middot; ${Math.round(d.distance_m || 0)}m &middot; ${t}`;
+                            `Set to ${setTo} &middot; outside the site &middot; ${Math.round(d.distance_m || 0)}m &middot; ${t}`;
                     } else {
                         statusEl.innerHTML =
                             `<i class="fas fa-circle text-success" style="font-size:8px;"></i> ` +
-                            `Live &middot; ${where} &middot; ${t}`;
+                            `Set to ${setTo} &middot; GPS: ${where} &middot; ${t}`;
                     }
                 } else if (d.status === 'no_fix') {
                     // Buhay ang kiosk, walang satellite lock. Ibang-iba ito sa
                     // katahimikan, na ibig sabihin nawawala ang kiosk.
                     statusEl.innerHTML =
-                        `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Powered on, no GPS signal`;
+                        `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Set to ${setTo} &middot; powered on, no GPS signal`;
                 } else {
                     statusEl.innerHTML = `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Waiting for GPS`;
                 }

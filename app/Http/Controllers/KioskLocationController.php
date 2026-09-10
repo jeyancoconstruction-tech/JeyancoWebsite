@@ -214,7 +214,14 @@ class KioskLocationController extends Controller
 
         $state = $this->computeState($kioskId, $rec);
 
+        // The site picked on the kiosk, straight from the database — known even
+        // with no GPS, and the first thing the map should say.
+        $kiosk = Kiosk::with('site')->where('code', $kioskId)->first()
+            ?? Kiosk::with('site')->orderBy('id')->first();
+
         return [
+            'set_site_id'       => $kiosk?->site_id,
+            'set_site'          => $kiosk?->site?->name,
             'kiosk_id'          => $kioskId,
             'lat'               => $rec['lat'],
             'lng'               => $rec['lng'],

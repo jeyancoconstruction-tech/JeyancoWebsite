@@ -9,6 +9,8 @@ use App\Models\LoanDeduction;
 use App\Models\OvertimeRequest;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunItem;
+use App\Models\SystemSetting;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -46,7 +48,7 @@ class PayrollRunService
         $computed = $this->payroll->computeForRange($from, $to);
         $byEmployee = collect($computed['employees'] ?? [])->keyBy('employee_id');
 
-        $overtime = $this->approvedOvertime($from, $to);
+        $overtime = $this->approvedOvertime($from, $to, $computed['days'] ?? []);
         $leave    = $this->approvedLeave($from, $to);
         $loans    = $this->collectibleLoans($to);
 
@@ -270,15 +272,49 @@ class PayrollRunService
         return $collected;
     }
 
-    /** Approved overtime in the range, summed per employee. */
-    private function approvedOvertime(string $from, string $to)
+    /**
+     * Approved overtime in the range, summed per employee — less what the
+     * attendance already paid as overtime on the same day.
+     *
+     * Once overtime is counted from the kiosk (the time after the shift ends),
+     * a claim for that same evening would pay it twice: the engine's overtime
+     * and the claim were simply added. On a day that has both, the larger of
+     * the two is paid now, not the sum. Days before the new count are left as
+     * they were computed, so no settled period moves.
+     */
+    private function approvedOvertime(string $from, string $to, array $days = [])
     {
+        $rulesFrom = SystemSetting::current()->schedule_rules_from;
+        $rulesFrom = $rulesFrom ? Carbon::parse($rulesFrom)->toDateString() : null;
+
+        $kioskOt = [];
+        foreach ($days as $day) {
+            $date = Carbon::parse($day['date'])->toDateString();
+            foreach ($day['details'] ?? [] as $d) {
+                $key           = $d['employee_id'] . '|' . $date;
+                $kioskOt[$key] = ($kioskOt[$key] ?? 0.0) + (float) ($d['ot_hours'] ?? 0);
+            }
+        }
+
         return OvertimeRequest::approved()
             ->inRange($from, $to)
-            ->selectRaw('employee_id, SUM(hours) as hours, SUM(amount) as amount')
-            ->groupBy('employee_id')
             ->get()
-            ->keyBy('employee_id');
+            ->groupBy('employee_id')
+            ->map(function ($claims, $empId) use ($kioskOt, $rulesFrom) {
+                $hours = $amount = 0.0;
+
+                foreach ($claims as $c) {
+                    $date    = $c->date->toDateString();
+                    $already = ($rulesFrom && $date >= $rulesFrom) ? ($kioskOt[$empId . '|' . $date] ?? 0.0) : 0.0;
+                    $payable = max(0.0, (float) $c->hours - $already);
+                    $share   = (float) $c->hours > 0 ? $payable / (float) $c->hours : 0.0;
+
+                    $hours  += $payable;
+                    $amount += (float) $c->amount * $share;
+                }
+
+                return (object) ['hours' => round($hours, 2), 'amount' => round($amount, 2)];
+            });
     }
 
     /** Approved leave touching the range, grouped per employee. */

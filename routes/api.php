@@ -39,6 +39,10 @@ Route::get('/kiosk/active-fingerprints', [KioskController::class, 'activeFingerp
 //    its switcher is built from this list — adding a site on the web is enough.
 Route::get('/kiosk/sites',              [KioskController::class, 'getSites']);
 
+// ✅ The site the operator just picked on the kiosk, reported straight away so
+//    the dashboard map and Device Monitoring know it without waiting for a scan.
+Route::post('/kiosk/active-site',       [KioskController::class, 'setActiveSite']);
+
 // ✅ Ang listahan ng manggagawa na ipinapakita ng kiosk, at kung sino ang
 //    wala pang fingerprint. Ang admin ang naglalagay ng detalye sa web; ang
 //    kiosk ay daliri na lang ang kinukuha.

@@ -11,6 +11,8 @@ use App\Models\Kiosk;
 use App\Models\Site;
 use App\Models\Shift;
 use App\Models\SystemSetting;
+use App\Models\AuditLog;
+use App\Support\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -80,6 +82,60 @@ class KioskController extends Controller
             ])->values(),
             'count'   => $sites->count(),
             'radius'  => (int) config('kiosk.geofence_radius'),
+        ]);
+    }
+
+    /**
+     * The site the operator just picked on the kiosk.
+     *
+     * The web used to learn about a move only on the next scan or GPS
+     * heartbeat, so the map and Device Monitoring could still say Site A for a
+     * kiosk already standing at Site B. The kiosk now reports the pick as it
+     * is made, and shows whether the web took it.
+     */
+    public function setActiveSite(Request $request)
+    {
+        $request->validate([
+            'kiosk_id'   => 'nullable',
+            'kiosk_code' => 'nullable|string',
+            'site_id'    => 'nullable',
+            'site'       => 'nullable|string',
+        ]);
+
+        $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
+        $want  = trim((string) ($request->input('site_id') ?? $request->input('site') ?? ''));
+
+        $site = null;
+        if ($want !== '') {
+            $site = ctype_digit($want) ? Site::find((int) $want) : null;
+            $site ??= Site::all()->first(
+                fn ($s) => \Illuminate\Support\Str::slug($s->name) === \Illuminate\Support\Str::slug($want)
+            );
+        }
+
+        if (! $kiosk || ! $site) {
+            return response()->json([
+                'success' => false,
+                'message' => $kiosk ? "Unknown site '{$want}'." : 'Unknown kiosk.',
+            ], 404);
+        }
+
+        $previous = $kiosk->site;
+        $kiosk->forceFill(['site_id' => $site->id])->save();
+
+        if (! $previous || $previous->id !== $site->id) {
+            AuditLog::record('kiosk', 'updated',
+                "Kiosk {$kiosk->code} set to {$site->name}" . ($previous ? " (was {$previous->name})" : ''), $kiosk);
+        }
+
+        return response()->json([
+            'success' => true,
+            'kiosk'   => $kiosk->code,
+            'site'    => [
+                'id'   => $site->id,
+                'name' => $site->name,
+                'slug' => \Illuminate\Support\Str::slug($site->name),
+            ],
         ]);
     }
 
@@ -488,74 +544,181 @@ class KioskController extends Controller
             return response()->json($gate);
         }
 
-        $employeeId = $request->employee_id;
-        $type       = $request->type;
+        $employee = Employee::with('shift')->findOrFail($request->employee_id);
+        $now      = Carbon::now()->setTimezone('Asia/Manila');
 
-        $now     = Carbon::now()->setTimezone('Asia/Manila');
-        $today   = $now->format('Y-m-d');
-        $session = $now->hour < 12 ? 'AM' : 'PM';   // morning vs afternoon session
+        return response()->json($this->recordClock($employee, $request->type, $site, $kiosk, $now));
+    }
 
-        // One row per employee PER SESSION per day, so AM and PM are independent
-        // (morning in/out + afternoon in/out). No empty placeholder rows.
-        $attendance = Attendance::where('employee_id', $employeeId)
-            ->where('date', $today)
-            ->where('session', $session)
-            ->first();
+    /**
+     * Record a TIME IN or TIME OUT for one worker, by the rules of their shift.
+     *
+     * The one place the kiosk writes attendance from — /attendance and /clock
+     * both land here, so the two can never disagree:
+     *
+     *   • TIME IN is open only around the worker's own shift: a day-shift worker
+     *     cannot clock in at night. TIME OUT is always accepted, so the rule can
+     *     never keep somebody "on site".
+     *   • TIME IN after a TIME OUT opens a new stretch. It used to reuse the
+     *     session's row and overwrite the time-in already recorded, which is how
+     *     a worker coming back from a mistaken time-out erased their own morning.
+     *   • TIME IN while a stretch from an earlier session is still open closes
+     *     that one at its session's end, marked AUTO for the office to review.
+     *     A worker who forgot to clock out at lunch used to be refused all
+     *     afternoon ("Already timed in for the PM session").
+     */
+    private function recordClock(Employee $employee, string $type, ?Site $site, ?Kiosk $kiosk, Carbon $now): array
+    {
+        $shift = Shift::forEmployee($employee);
+        $sched = $shift && $shift->hasSchedule() ? $shift->schedule() : null;
+        $who   = $this->kioskEmployeePayload($employee);
 
-        if ($type === 'time_in') {
-            if ($open = Attendance::openRow($employeeId, $now)) {
-                $attendance = $open;
+        Attendance::closeStale($employee->id, $now);
+        $open = Attendance::openRow($employee->id, $now);
+
+        // ── TIME OUT ─────────────────────────────────────────────────────────
+        if ($type === 'time_out') {
+            if (! $open) {
+                return [
+                    'success'  => false,
+                    'code'     => 'no_open',
+                    'employee' => $who,
+                    'message'  => 'No open time in to close. If you forgot to time in, ask the office.',
+                ];
             }
 
-            if ($attendance && $attendance->time_in && !$attendance->time_out) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Already timed in for the {$session} session."
-                ]);
-            }
-            if (!$attendance) {
-                $attendance = new Attendance([
-                    'employee_id' => $employeeId,
-                    'site_id'     => $site?->id,
-                    'kiosk_id'    => $kiosk?->id,
-                    'date'        => $today,
-                    'session'     => $session,
-                ]);
-            }
-            $attendance->time_in = $now;
-        } else { // time_out
-            // The day this worker has open, wherever the clock happens to be.
-            $attendance = Attendance::openRow($employeeId, $now);
+            $open->time_out = $now;
+            $open->save();
 
-            if (!$attendance || !$attendance->time_in) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Cannot time out before timing in for the {$session} session."
-                ]);
+            $payload = [
+                'success'       => true,
+                'type'          => 'time_out',
+                'session'       => $open->session,
+                'session_label' => $shift?->sessionLabel($open->session) ?? "{$open->session} SESSION",
+                'employee'      => $who,
+                'message'       => 'Time-out recorded.',
+                'attendance'    => $this->attendancePayload($open),
+            ];
+
+            if ($sched) {
+                $in    = WorkSchedule::moment($open->time_in, (string) $open->date);
+                $day   = WorkSchedule::shiftDayFor($sched, $in);
+                $split = WorkSchedule::split($sched, $in, $now->copy(), $day);
+
+                if ($split['ot'] > 0) {
+                    $payload['ot_hours'] = round($split['ot'], 2);
+                    $payload['ot_from']  = WorkSchedule::label(WorkSchedule::sessionEnd($sched, 'PM', $day));
+                    $payload['ot_to']    = WorkSchedule::label($now);
+                }
             }
-            if ($attendance->time_out) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Already timed out for the {$session} session."
-                ]);
-            }
-            $attendance->time_out = $now;
+
+            return $payload;
         }
 
-        $attendance->save();
+        // ── TIME IN ──────────────────────────────────────────────────────────
+        if ($sched && ! WorkSchedule::acceptsTimeInAt($sched, $now)) {
+            [$opens, $closes] = $shift->timeInWindowLabels($now);
 
-        return response()->json([
-            'success'    => true,
-            'session'    => $session,
-            'attendance' => [
-                'id'          => $attendance->id,
-                'employee_id' => $attendance->employee_id,
-                'date'        => $attendance->date,
-                'session'     => $session,
-                'time_in'     => $attendance->time_in  ? Carbon::parse($attendance->time_in)->format('H:i:s')  : null,
-                'time_out'    => $attendance->time_out ? Carbon::parse($attendance->time_out)->format('H:i:s') : null,
-            ]
+            return [
+                'success'  => false,
+                'code'     => 'wrong_shift',
+                'employee' => $who,
+                'shift'    => $shift->name,
+                'opens'    => $opens,
+                'closes'   => $closes,
+                'message'  => "{$employee->name} is on the {$shift->name} shift. TIME IN is open {$opens}–{$closes}.",
+            ];
+        }
+
+        $session    = $sched ? WorkSchedule::sessionAt($sched, $now) : ($now->hour < 12 ? 'AM' : 'PM');
+        $shiftDay   = $sched ? WorkSchedule::shiftDayFor($sched, $now) : $now->toDateString();
+        $autoClosed = null;
+
+        if ($open) {
+            $openIn      = WorkSchedule::moment($open->time_in, (string) $open->date);
+            $openSession = in_array($open->session, ['AM', 'PM'], true) ? $open->session : null;
+            $sameStretch = ! $sched
+                || (WorkSchedule::shiftDayFor($sched, $openIn) === $shiftDay && $openSession === $session);
+
+            if ($sameStretch) {
+                return [
+                    'success'  => false,
+                    'code'     => 'already_in',
+                    'employee' => $who,
+                    'since'    => WorkSchedule::label($openIn),
+                    'message'  => 'Already timed in since ' . WorkSchedule::label($openIn) . '. To leave, press TIME OUT.',
+                ];
+            }
+
+            $openDay = WorkSchedule::shiftDayFor($sched, $openIn);
+            $end     = WorkSchedule::sessionEnd($sched, $openSession ?? WorkSchedule::sessionAt($sched, $openIn), $openDay);
+            $closeAt = $end->lessThan($now) ? $end : $now->copy();
+
+            $open->autoClose($closeAt, 'Timed in for the next session without timing out');
+            $autoClosed = ['session' => $open->session, 'at' => WorkSchedule::label($closeAt)];
+        }
+
+        // Back after a time-out in this same session: a second stretch, and the
+        // minutes between the two are not counted.
+        $previous = Attendance::where('employee_id', $employee->id)
+            ->where('date', $shiftDay)
+            ->where('session', $session)
+            ->whereNotNull('time_out')
+            ->orderByDesc('time_out')
+            ->first();
+
+        $row = Attendance::create([
+            'employee_id' => $employee->id,
+            'shift_id'    => $shift?->id,
+            'site_id'     => $site?->id,
+            'kiosk_id'    => $kiosk?->id,
+            'date'        => $shiftDay,
+            'session'     => $session,
+            'time_in'     => $now,
         ]);
+
+        $payload = [
+            'success'       => true,
+            'type'          => 'time_in',
+            'session'       => $session,
+            'session_label' => $shift?->sessionLabel($session) ?? "{$session} SESSION",
+            'employee'      => $who,
+            'message'       => 'Time-in recorded.',
+            'attendance'    => $this->attendancePayload($row),
+        ];
+
+        if ($previous) {
+            $payload['again']    = true;
+            $payload['gap_from'] = WorkSchedule::label(WorkSchedule::moment($previous->time_out, (string) $previous->date));
+            $payload['gap_to']   = WorkSchedule::label($now);
+        }
+
+        if ($autoClosed) {
+            $payload['auto_closed'] = $autoClosed;
+        }
+
+        if ($sched) {
+            $starts = WorkSchedule::sessionStart($sched, $session, $shiftDay);
+            if ($now->lessThan($starts)) {
+                $payload['paid_from'] = WorkSchedule::label($starts);
+            }
+        }
+
+        return $payload;
+    }
+
+    /** One attendance row as the kiosk shows it. */
+    private function attendancePayload(Attendance $row): array
+    {
+        return [
+            'id'          => $row->id,
+            'employee_id' => $row->employee_id,
+            'date'        => $row->date,
+            'session'     => $row->session,
+            'time_in'     => $row->time_in  ? Carbon::parse($row->time_in)->format('H:i:s')  : null,
+            'time_out'    => $row->time_out ? Carbon::parse($row->time_out)->format('H:i:s') : null,
+            'close_type'  => $row->close_type,
+        ];
     }
 
     /**
@@ -729,76 +892,14 @@ class KioskController extends Controller
             $employee->forceFill(['kiosk_id' => $kiosk->id])->save();
         }
 
-        // ── Record attendance (mirrors AttendanceController AM/PM session logic) ──
-        $now     = Carbon::now()->setTimezone('Asia/Manila');
-        $today   = $now->format('Y-m-d');
-        $session = $now->hour < 12 ? 'AM' : 'PM';
+        // Same rules as /attendance — the shift window, a fresh stretch after a
+        // time-out, AUTO-closing a forgotten session — from the one method.
+        $now    = Carbon::now()->setTimezone('Asia/Manila');
+        $result = $this->recordClock($employee->loadMissing('shift'), $request->type, $site, $kiosk, $now);
 
-        $attendance = Attendance::where('employee_id', $employee->id)
-            ->where('date', $today)
-            ->where('session', $session)
-            ->first();
-
-        if ($request->type === 'time_in') {
-            if ($open = Attendance::openRow($employee->id, $now)) {
-                $attendance = $open;
-            }
-
-            if ($attendance && $attendance->time_in && !$attendance->time_out) {
-                return response()->json([
-                    'success'  => false,
-                    'message'  => "Already timed in for the {$session} session.",
-                    'employee' => $this->kioskEmployeePayload($employee),
-                ]);
-            }
-            if (!$attendance) {
-                $attendance = new Attendance([
-                    'employee_id' => $employee->id,
-                    'site_id'     => $site?->id,
-                    'kiosk_id'    => $kiosk?->id,
-                    'date'        => $today,
-                    'session'     => $session,
-                ]);
-            }
-            $attendance->time_in = $now;
-        } else { // time_out
-            $attendance = Attendance::openRow($employee->id, $now);
-
-            if (!$attendance || !$attendance->time_in) {
-                return response()->json([
-                    'success'  => false,
-                    'message'  => "Cannot time out before timing in ({$session} session).",
-                    'employee' => $this->kioskEmployeePayload($employee),
-                ]);
-            }
-            if ($attendance->time_out) {
-                return response()->json([
-                    'success'  => false,
-                    'message'  => "Already timed out for the {$session} session.",
-                    'employee' => $this->kioskEmployeePayload($employee),
-                ]);
-            }
-            $attendance->time_out = $now;
-        }
-
-        $attendance->save();
-
-        $verb = $request->type === 'time_in' ? 'Time-in' : 'Time-out';
-
-        return response()->json([
-            'success'    => true,
-            'message'    => ($isNew ? 'New fingerprint detected — pending registration. ' : '')
-                            . "{$verb} recorded for the {$session} session.",
-            'is_new'     => $isNew,
-            'pending'    => $employee->isPending(),
-            'employee'   => $this->kioskEmployeePayload($employee),
-            'attendance' => [
-                'id'       => $attendance->id,
-                'date'     => $attendance->date,
-                'session'  => $attendance->session,
-                'time_in'  => $attendance->time_in  ? Carbon::parse($attendance->time_in)->format('H:i:s')  : null,
-                'time_out' => $attendance->time_out ? Carbon::parse($attendance->time_out)->format('H:i:s') : null,
-            ],
+        return response()->json($result + [
+            'is_new'  => $isNew,
+            'pending' => $employee->isPending(),
         ]);
     }
 
@@ -863,33 +964,31 @@ class KioskController extends Controller
             $employee->forceFill(['kiosk_id' => $kiosk->id])->save();
         }
 
-        // Decide the next action for the CURRENT session (AM/PM) — WITHOUT writing
-        // anything here; the kiosk's /attendance call performs the actual write.
-        $now     = Carbon::now()->setTimezone('Asia/Manila');
-        $today   = $now->format('Y-m-d');
-        $session = $now->hour < 12 ? 'AM' : 'PM';
+        // Suggest the next action — WITHOUT writing anything; /attendance does
+        // the write. An open stretch suggests TIME OUT, none suggests TIME IN.
+        //
+        // This used to answer "already completed the AM session" once a session
+        // had an in and an out, and a worker back from a mistaken time-out was
+        // turned away. The kiosk's buttons now say what the worker means; the
+        // suggestion is only what an older kiosk without buttons acts on.
+        $now = Carbon::now()->setTimezone('Asia/Manila');
+        Attendance::closeStale($employee->id, $now);
 
-        $attendance = Attendance::where('employee_id', $employee->id)
-            ->where('date', $today)
-            ->where('session', $session)
-            ->first();
-
-        if (!$attendance || !$attendance->time_in) {
-            $type = 'time_in';
-        } elseif (!$attendance->time_out) {
-            $type = 'time_out';
-        } else {
-            return response()->json([
-                'success'  => false,
-                'message'  => $employee->name . " already completed the {$session} session.",
-                'employee' => $this->kioskEmployeePayload($employee),
-            ]);
-        }
+        $open    = Attendance::openRow($employee->id, $now);
+        $shift   = Shift::forEmployee($employee);
+        $sched   = $shift && $shift->hasSchedule() ? $shift->schedule() : null;
+        $session = $open?->session
+            ?? ($sched ? WorkSchedule::sessionAt($sched, $now) : ($now->hour < 12 ? 'AM' : 'PM'));
 
         return response()->json([
             'success'  => true,
-            'type'     => $type,
+            'type'     => $open ? 'time_out' : 'time_in',
             'session'  => $session,
+            'session_label' => $shift?->sessionLabel($session) ?? "{$session} SESSION",
+            'open'     => $open ? [
+                'session' => $open->session,
+                'since'   => WorkSchedule::label(WorkSchedule::moment($open->time_in, (string) $open->date)),
+            ] : null,
             'message'  => $isNew ? 'New fingerprint detected — pending registration.' : 'Fingerprint recognized.',
             'is_new'   => $isNew,
             'pending'  => $employee->isPending(),
@@ -927,14 +1026,27 @@ class KioskController extends Controller
         // foreman's board went blank on exactly the crew still working. Rows
         // left open from yesterday are pulled in as well, within the same
         // window a shift can still be running.
-        $rows = Attendance::with(['employee', 'shift'])
+        // A day nobody closed, closed now at the end of its session — so the
+        // board stops showing somebody "working" hours after they went home.
+        Attendance::closeStale(null, $now);
+
+        // From this date the board counts hours the way payroll does: inside
+        // the shift's sessions, with overtime after it ends.
+        $rulesFrom = $sysDay->schedule_rules_from
+            ? Carbon::parse($sysDay->schedule_rules_from)->toDateString()
+            : null;
+
+        $yesterday = $now->copy()->subDay()->toDateString();
+
+        $rows = Attendance::with(['employee.shift', 'shift'])
             ->whereNotNull('time_in')
-            ->where(function ($q) use ($today, $now) {
-                $q->where('date', $today)
+            ->where(function ($q) use ($today, $yesterday, $now) {
+                $q->whereIn('date', [$today, $yesterday])
                   ->orWhere(fn ($o) => $o->whereNull('time_out')
                                          ->where('time_in', '>=', $now->copy()->subHours(18)));
             })
             ->when($site, fn ($q) => $q->where('site_id', $site->id))
+            ->orderBy('time_in')
             ->get()
             ->groupBy('employee_id');
 
@@ -943,8 +1055,65 @@ class KioskController extends Controller
             $emp = $recs->first()->employee;
             if (!$emp) continue;
 
-            $am = $recs->firstWhere('session', 'AM');
-            $pm = $recs->firstWhere('session', 'PM');
+            $shift = Shift::forEmployee($emp);
+            $sched = $shift && $shift->hasSchedule() ? $shift->schedule() : null;
+
+            // Which rows are "today" for this worker: their current shift day —
+            // a night crew's 3 AM still belongs to last evening's shift — plus
+            // anything still open. Without a schedule, today's date as before.
+            $shiftDay = $sched ? WorkSchedule::shiftDayFor($sched, $now) : $today;
+            $recs = $recs->filter(function ($r) use ($sched, $shiftDay, $today, $now) {
+                if (! $r->time_out) {
+                    return WorkSchedule::moment($r->time_in, (string) $r->date)
+                        ->greaterThanOrEqualTo($now->copy()->subHours(18));
+                }
+                return (string) $r->date === ($sched ? $shiftDay : $today);
+            })->values();
+
+            if ($recs->isEmpty()) continue;
+
+            $scheduled = $sched && $rulesFrom && $shiftDay >= $rulesFrom;
+
+            $amRows = $recs->where('session', 'AM')->values();
+            $pmRows = $recs->where('session', 'PM')->values();
+            $am     = $amRows->first();
+            $pm     = $pmRows->first();
+            $amLast = $amRows->last();
+            $pmLast = $pmRows->last();
+
+            if ($scheduled) {
+                $regular = $ot = 0.0;
+                $working = false;
+                $lastIn  = null;
+
+                foreach ($recs as $r) {
+                    $in = WorkSchedule::moment($r->time_in, (string) $r->date);
+                    if ($r->time_out) {
+                        [, $out] = WorkSchedule::stretch($r->time_in, $r->time_out, (string) $r->date);
+                    } else {
+                        $working = true;
+                        $lastIn  = $r->time_in;
+                        $out     = $now->copy();
+                    }
+                    if ($out->lessThan($in)) {
+                        $out = $in->copy();
+                    }
+
+                    $split    = WorkSchedule::split($sched, $in, $out, (string) $r->date);
+                    $regular += $split['regular'];
+                    $ot      += $split['ot'];
+                }
+
+                $records[] = $this->boardRow($emp, $empId, $shift, $am, $pm, $amLast, $pmLast, $amRows, $pmRows, $recs, [
+                    'total_hours'    => round($regular, 2),
+                    'overtime_hours' => round($ot, 2),
+                    'ot_running'     => $working && $ot > 0,
+                    'working'        => $working,
+                    'since'          => $working ? $this->fmt12($lastIn) : null,
+                    'scheduled'      => true,
+                ]);
+                continue;
+            }
 
             // A session still running counts up to now. It used to count as
             // nothing, so a worker who clocked in at 7am and was still on site
@@ -977,23 +1146,13 @@ class KioskController extends Controller
             // one is a number to record, the other is a decision to make.
             $otRunning = $working && $overtime > 0;
 
-            $records[] = [
-                'employee_id'    => $empId,
-                'name'           => $emp->name,
-                'position'       => $emp->position ?: 'Worker',
-                'pending'        => $emp->isPending(),
-                'shift'          => $this->shiftPayload($emp),
-                'am_in'          => $this->fmt12($am?->time_in),
-                'am_out'         => $this->fmt12($am?->time_out),
-                'pm_in'          => $this->fmt12($pm?->time_in),
-                'pm_out'         => $this->fmt12($pm?->time_out),
+            $records[] = $this->boardRow($emp, $empId, $shift, $am, $pm, $amLast, $pmLast, $amRows, $pmRows, $recs, [
                 'total_hours'    => $totalHours,
                 'overtime_hours' => $overtime,
                 'ot_running'     => $otRunning,
                 'working'        => $working,
                 'since'          => $working ? $this->fmt12($lastIn) : null,
-                'status'         => $working ? 'working' : 'done',
-            ];
+            ]);
         }
 
         // Currently-working first, then by name.
@@ -1054,6 +1213,42 @@ class KioskController extends Controller
             'employees'       => $employees->map(fn ($e) => $this->kioskEmployeePayload($e))->values(),
             'count'           => $employees->count(),
         ]);
+    }
+
+    /**
+     * One worker's line on the board.
+     *
+     * AM/PM in is the first stretch's time in and AM/PM out the last stretch's
+     * time out. A second stretch in the same session shows as a count, and an
+     * AUTO close is flagged, so the foreman can tell a time nobody clocked from
+     * one somebody did. Every stretch is listed for the detail view.
+     */
+    private function boardRow(Employee $emp, $empId, ?Shift $shift, $am, $pm, $amLast, $pmLast, $amRows, $pmRows, $recs, array $totals): array
+    {
+        return [
+            'employee_id'  => $empId,
+            'name'         => $emp->name,
+            'position'     => $emp->position ?: 'Worker',
+            'pending'      => $emp->isPending(),
+            'shift'        => $this->shiftPayload($emp),
+            'night'        => (bool) $shift?->crosses_midnight,
+            'am_in'        => $this->fmt12($am?->time_in),
+            'am_out'       => $this->fmt12($amLast?->time_out),
+            'pm_in'        => $this->fmt12($pm?->time_in),
+            'pm_out'       => $this->fmt12($pmLast?->time_out),
+            'am_count'     => $amRows->count(),
+            'pm_count'     => $pmRows->count(),
+            'am_out_auto'  => $amLast?->close_type === 'auto',
+            'pm_out_auto'  => $pmLast?->close_type === 'auto',
+            'needs_review' => $recs->contains(fn ($r) => (bool) $r->needs_review),
+            'entries'      => $recs->map(fn ($r) => [
+                'session' => $r->session,
+                'in'      => $this->fmt12($r->time_in),
+                'out'     => $this->fmt12($r->time_out),
+                'auto'    => $r->close_type === 'auto',
+            ])->values()->all(),
+            'status'       => $totals['working'] ? 'working' : 'done',
+        ] + $totals + ['scheduled' => false];
     }
 
     /** Format a stored timestamp as a 12-hour clock string (or null). */

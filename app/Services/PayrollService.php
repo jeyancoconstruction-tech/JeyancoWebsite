@@ -10,6 +10,7 @@ use App\Models\Bonus;
 use App\Models\Shift;
 use App\Models\ValeAdvance;
 use App\Models\SystemSetting;
+use App\Support\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -225,6 +226,10 @@ class PayrollService
     {
         $cfg = $this->config();
 
+        // A day nobody closed is closed at the end of its session before it is
+        // paid — at a guessed time, flagged for review, never with overtime.
+        Attendance::closeStale(null, Carbon::now('Asia/Manila'));
+
         $query = Attendance::with(['employee', 'shift']);
         if ($from && $to) {
             $query->whereBetween('date', [$from, $to]);
@@ -234,6 +239,14 @@ class PayrollService
             $query->where('date', '<=', $to);
         }
         $records = $query->get();
+
+        // Lateness is measured once per session — on the first time in. A
+        // worker back from a mistaken time-out is not late for the second one.
+        $cfg['firstInSession'] = $records->filter(fn ($r) => $r->time_in)
+            ->groupBy(fn ($r) => $r->employee_id . '|' . Carbon::parse($r->date)->toDateString() . '|' . $r->session)
+            ->map(fn ($g) => $g->sortBy(fn ($r) => (string) $r->time_in)->first()->id)
+            ->flip()
+            ->all();
 
         // The one-off grants that land anywhere in this range, loaded once. A
         // query per employee per week would be thousands for a month of a full
@@ -338,6 +351,46 @@ class PayrollService
             ? $this->nightHours(Carbon::parse($rec->time_in), $hours)
             : [0.0, 0.0];
         $night_hours = round($nightRegularHours + $nightOtHours, 2);
+
+        // ── Counting by the shift's sessions ─────────────────────────────────
+        // From the office's chosen date, a day worked under a shift with a
+        // schedule is counted by the clock rather than by its length: the part
+        // inside the two sessions is regular, the part after the shift ends is
+        // overtime, and arriving early or working through the break is neither.
+        //
+        // Overtime used to be "past the standard in one record". A crew that
+        // clocks the morning and the afternoon as two records never had one
+        // that long, so ten hours on site paid ten hours at the plain rate.
+        // Per record is still right here: the bands are fixed on the clock, so
+        // a day's records add up without counting any minute twice.
+        $schedShift = $cfg['shifts'][$rec->shift_id] ?? null;
+        $rulesFrom  = $day?->schedule_rules_from ? Carbon::parse($day->schedule_rules_from)->toDateString() : null;
+        $scheduled  = $rulesFrom && $dateStr >= $rulesFrom && WorkSchedule::has($schedShift)
+                      && $rec->time_in && $rec->time_out;
+
+        if ($scheduled) {
+            [$in, $out] = WorkSchedule::stretch($rec->time_in, $rec->time_out, $dateStr);
+            $split      = WorkSchedule::split($schedShift, $in, $out, $dateStr);
+
+            // What the daily rate buys is the two sessions, so that is the divisor.
+            $paidStandard  = max(1.0, WorkSchedule::paidHours($schedShift));
+            $regular_hours = round($split['regular'], 2);
+
+            // With auto-overtime off, the hours after the shift wait for an
+            // approved overtime request instead of being paid here.
+            $ot_hours = $autoOt ? round($split['ot'], 2) : 0.0;
+            $hours    = round($regular_hours + $ot_hours, 2);
+
+            $nightRegularHours = $nightOtHours = 0.0;
+            foreach ($split['segments'] as [$from, $to, $isOt]) {
+                if ($isOt && ! $autoOt) {
+                    continue;
+                }
+                $n = WorkSchedule::nightHoursIn($from, $to);
+                $isOt ? $nightOtHours += $n : $nightRegularHours += $n;
+            }
+            $night_hours = round($nightRegularHours + $nightOtHours, 2);
+        }
 
         // Hourly rate comes from the CONFIGURED labor-type daily rate (÷ 8),
         // which is the source of truth. We fall back to the stored
@@ -481,11 +534,28 @@ class PayrollService
         // office setting it was computed under — so nothing already paid moves.
         $shift = $cfg['shifts'][$rec->shift_id] ?? null;
 
-        $startsAt = $shift['starts_at'] ?? (string) ($day->expected_time_in ?? '08:00:00');
+        // Days before the new count keep the start they were late against; the
+        // shift's start moved when its sessions were written down.
+        $startsAt = ($shift['legacy_starts_at'] ?? null)
+            ?: ($shift['starts_at'] ?? (string) ($day->expected_time_in ?? '08:00:00'));
         $grace    = $shift['grace']     ?? (int) ($day->grace_period_minutes ?? 15);
         $crosses  = $shift['crosses']   ?? (($day->shift ?? 'day') === 'night');
 
-        if ($rec->time_in && ($shift || $day)) {
+        if ($scheduled) {
+            // Late against the start of the session this stretch opened — 8:00
+            // for the morning, 1:00 for the afternoon — and only on the first
+            // time in. The afternoon used to be measured from 8:00, so every
+            // afternoon record read five hours late.
+            $isFirst = ! isset($cfg['firstInSession']) || isset($cfg['firstInSession'][$rec->id]);
+            $sess    = in_array($rec->session, ['AM', 'PM'], true) ? $rec->session : WorkSchedule::sessionAt($schedShift, $in);
+            $starts  = WorkSchedule::sessionStart($schedShift, $sess, $dateStr);
+
+            if ($isFirst
+                && $in->greaterThan($starts->copy()->addMinutes($grace))
+                && $in->lessThan(WorkSchedule::sessionEnd($schedShift, $sess, $dateStr))) {
+                $lateMinutes = (int) round(abs($starts->diffInMinutes($in)));
+            }
+        } elseif ($rec->time_in && ($shift || $day)) {
             $in       = Carbon::parse($rec->time_in);
             $expected = Carbon::parse($rec->date)->setTimeFromTimeString($startsAt);
             $allowed  = $expected->copy()->addMinutes($grace);

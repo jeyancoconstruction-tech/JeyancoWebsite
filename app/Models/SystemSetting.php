@@ -35,6 +35,8 @@ class SystemSetting extends Model
         'default_theme',
         'locale',
         'shift',
+        // Payroll counts hours by the shift's sessions from this date on.
+        'schedule_rules_from',
     ];
 
     /**
