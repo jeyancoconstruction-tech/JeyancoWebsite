@@ -44,17 +44,27 @@
         </div>
     </div>
 
+    {{-- Which tab opens, decided here rather than after paint. ?tab=pending is
+         where saving a worker lands; with nothing asked for, Active leads,
+         unless there is nobody active and somebody pending — a fresh system
+         should not open on an empty table. --}}
+    @php
+        $openTab = in_array(request('tab'), ['active', 'pending', 'removed'], true)
+            ? request('tab')
+            : (($active->count() === 0 && $pending->count() > 0) ? 'pending' : 'active');
+    @endphp
+
     {{-- ── Stat chips (also switch tabs) ───────────────────────────────────── --}}
     <div class="rm-stats">
-        <button class="rm-stat rm-stat-active active" data-tab="active">
+        <button class="rm-stat rm-stat-active {{ $openTab === 'active' ? 'active' : '' }}" data-tab="active">
             <span class="rm-stat-num">{{ $active->count() }}</span>
             <span class="rm-stat-lbl"><i class="fas fa-user-check"></i> {{ __('Active') }}</span>
         </button>
-        <button class="rm-stat rm-stat-pending" data-tab="pending">
+        <button class="rm-stat rm-stat-pending {{ $openTab === 'pending' ? 'active' : '' }}" data-tab="pending">
             <span class="rm-stat-num">{{ $pending->count() }}</span>
             <span class="rm-stat-lbl"><i class="fas fa-fingerprint"></i> {{ __('Pending from kiosk') }}</span>
         </button>
-        <button class="rm-stat rm-stat-removed" data-tab="removed">
+        <button class="rm-stat rm-stat-removed {{ $openTab === 'removed' ? 'active' : '' }}" data-tab="removed">
             <span class="rm-stat-num">{{ $removed->count() }}</span>
             <span class="rm-stat-lbl"><i class="fas fa-trash-can-arrow-up"></i> {{ __('Removed') }}</span>
         </button>
@@ -62,9 +72,9 @@
 
     {{-- ── Tabs ────────────────────────────────────────────────────────────── --}}
     <div class="rm-tabs">
-        <button class="rm-tab active" data-tab="active">{{ __('Active') }} <span class="rm-tab-count">{{ $active->count() }}</span></button>
-        <button class="rm-tab" data-tab="pending">{{ __('Pending') }} <span class="rm-tab-count">{{ $pending->count() }}</span></button>
-        <button class="rm-tab" data-tab="removed">{{ __('Removed') }} <span class="rm-tab-count">{{ $removed->count() }}</span></button>
+        <button class="rm-tab {{ $openTab === 'active' ? 'active' : '' }}" data-tab="active">{{ __('Active') }} <span class="rm-tab-count">{{ $active->count() }}</span></button>
+        <button class="rm-tab {{ $openTab === 'pending' ? 'active' : '' }}" data-tab="pending">{{ __('Pending') }} <span class="rm-tab-count">{{ $pending->count() }}</span></button>
+        <button class="rm-tab {{ $openTab === 'removed' ? 'active' : '' }}" data-tab="removed">{{ __('Removed') }} <span class="rm-tab-count">{{ $removed->count() }}</span></button>
     </div>
 
     {{-- ═══ ACTIVE ═════════════════════════════════════════════════════════ --}}
@@ -72,7 +82,7 @@
          who is already on the payroll. Pending is the exception queue, and the
          stat chip plus the sidebar badge already announce it when it is not
          empty — so it sits second rather than in front of the common case. --}}
-    <div class="rm-pane active" data-pane="active">
+    <div class="rm-pane {{ $openTab === 'active' ? 'active' : '' }}" data-pane="active">
         <div class="rm-card">
             {{-- Bulk removal is destructive, so it is something you opt into.
                  Until "Select" is pressed the checkbox column stays hidden —
@@ -133,7 +143,7 @@
     </div>
 
     {{-- ═══ PENDING ════════════════════════════════════════════════════════ --}}
-    <div class="rm-pane" data-pane="pending">
+    <div class="rm-pane {{ $openTab === 'pending' ? 'active' : '' }}" data-pane="pending">
         <div class="rm-card">
             {{-- The text lives in one <span>: .rm-card-note is a flex row, so
                  loose text nodes each become their own flex item and the
@@ -172,7 +182,7 @@
     </div>
 
     {{-- ═══ REMOVED ════════════════════════════════════════════════════════ --}}
-    <div class="rm-pane" data-pane="removed">
+    <div class="rm-pane {{ $openTab === 'removed' ? 'active' : '' }}" data-pane="removed">
         <div class="rm-card">
             <div class="rm-card-note">
                 <i class="fas fa-circle-info"></i>
@@ -678,12 +688,12 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
         try { history.replaceState(null, '', '#' + name); } catch (e) {}
     }
     document.querySelectorAll('.rm-tab, .rm-stat').forEach(el => el.addEventListener('click', () => switchTab(el.dataset.tab)));
-    // Open the tab from the URL hash, defaulting to whichever has items.
-    // The markup opens on Active; fall back to Pending only on a fresh system
-    // where nobody is active yet, so the page never opens on an empty table.
+    // The open tab is already decided in the markup — see $openTab above — so
+    // there is nothing to correct here on load. The hash is still honoured for
+    // links saved before ?tab= existed; without JavaScript those now open on
+    // Active instead of moving, which is the same page either way.
     const hash = (location.hash || '').replace('#', '');
     if (['pending','active','removed'].includes(hash)) switchTab(hash);
-    else if ({{ $active->count() }} === 0 && {{ $pending->count() }} > 0) switchTab('pending');
 
     // ── Kebab menus ──────────────────────────────────────────────────────────
     // Fixed, so placed by hand: under the button, right edges aligned, flipped

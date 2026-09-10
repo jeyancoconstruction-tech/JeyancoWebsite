@@ -218,11 +218,13 @@ class EmployeeController extends Controller
         );
 
         // Back to where the Register Employee button was pressed, on the tab
-        // the new worker just landed in.
+        // the new worker just landed in. A query parameter rather than a
+        // fragment: a fragment never reaches the server, so the page had to
+        // render on Active and let JavaScript move it afterwards.
         return $employee->isPending()
-            ? redirect()->to(route('employees.register') . '#pending')
+            ? redirect()->route('employees.register', ['tab' => 'pending'])
                 ->with('success', $employee->name . ' is registered. They will become active once their fingerprint is enrolled at the kiosk.')
-            : redirect()->to(route('employees.register') . '#active')
+            : redirect()->route('employees.register', ['tab' => 'active'])
                 ->with('success', $employee->name . ' has been registered and activated.');
     }
 

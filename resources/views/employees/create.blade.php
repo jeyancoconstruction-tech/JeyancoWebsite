@@ -214,16 +214,12 @@
 
                         {{-- No fingerprint field: the kiosk reads the finger and
                              assigns the slot, and that enrolment is what makes
-                             the worker active. --}}
-                        <div class="col-12">
-                            <p class="ep-note">
-                                <i class="fas fa-fingerprint"></i>
-                                This worker is saved as <strong>{{ __('Pending') }}</strong>. Enrol their fingerprint at the
-                                kiosk to activate them — they appear on the kiosk's list of workers needing a
-                                finger, and become active across Attendance, Payroll and the Dashboard the
-                                moment it is scanned.
-                            </p>
-                        </div>
+                             the worker active.
+
+                             The paragraph that used to say so is gone. Saving
+                             now lands on the Pending tab with the new worker in
+                             it, which shows the same thing instead of
+                             explaining it in advance. --}}
                     </div>
                 </div>
 
