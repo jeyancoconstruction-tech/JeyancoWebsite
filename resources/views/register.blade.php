@@ -272,8 +272,14 @@
                 </div>
             @endif
 
-            <section class="emp-group">
-                <h3 class="emp-group-head">{{ __('Worker') }}</h3>
+            <section class="ep-section emp-section">
+                <header class="ep-section-head">
+                    <span class="ep-section-icon" aria-hidden="true"><i class="fas fa-user"></i></span>
+                    <div>
+                        <h3 class="ep-section-title">{{ __('Worker') }}</h3>
+                        <p class="ep-section-sub">{{ __('Who this record is for.') }}</p>
+                    </div>
+                </header>
                 <div class="emp-field">
                     <label class="ep-label" for="empName">{{ __('Full Name') }} <span class="ep-req" aria-hidden="true">*</span></label>
                     <input type="text" name="name" id="empName"
@@ -289,8 +295,14 @@
                 </div>
             </section>
 
-            <section class="emp-group">
-                <h3 class="emp-group-head">{{ __('Employment & Pay') }}</h3>
+            <section class="ep-section emp-section">
+                <header class="ep-section-head">
+                    <span class="ep-section-icon" aria-hidden="true"><i class="fas fa-helmet-safety"></i></span>
+                    <div>
+                        <h3 class="ep-section-title">{{ __('Employment & Pay') }}</h3>
+                        <p class="ep-section-sub">{{ __('What the worker is paid and where they are assigned.') }}</p>
+                    </div>
+                </header>
                 <div class="emp-grid">
                     <div class="emp-field">
                         <label class="ep-label" for="empLabor">{{ __('Labor Type') }} <span class="ep-req" aria-hidden="true">*</span></label>
@@ -353,8 +365,14 @@
                 </div>
             </section>
 
-            <section class="emp-group">
-                <h3 class="emp-group-head">{{ __('Kiosk & Photo') }}</h3>
+            <section class="ep-section emp-section">
+                <header class="ep-section-head">
+                    <span class="ep-section-icon" aria-hidden="true"><i class="fas fa-fingerprint"></i></span>
+                    <div>
+                        <h3 class="ep-section-title">{{ __('Kiosk & Photo') }}</h3>
+                        <p class="ep-section-sub">{{ __('The kiosk slot their finger is stored in, and the photo shown beside their name.') }}</p>
+                    </div>
+                </header>
 
                 <div class="emp-field">
                     <label class="ep-label" for="empFp">
@@ -417,6 +435,9 @@
 
 {{-- The Register Employee page's own chrome — .ep-label, .ep-hint, .ep-req,
      .ep-optional, .ep-mono. Included rather than copied, so the modal and the
+{{-- In the head, not the body. A stylesheet the parser only reaches near
+     the end of the page paints everything above it unstyled first. --}}
+@push('styles')
      full form cannot drift apart. --}}
 @include('employees._profile_styles')
 @include('employees._modal_styles')
@@ -640,6 +661,7 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
 [data-bs-theme="dark"] .rm-empty-title { color:#9fb0c7; }
 
 </style>
+@endpush
 
 {{-- ── Script ──────────────────────────────────────────────────────────────── --}}
 <script>

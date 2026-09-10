@@ -60,17 +60,22 @@
     background: var(--bg-surface, #fff);
 }
 
-/* Groups carry the same eyebrow rule .ep-subhead uses on the full form, so a
-   modal and a page read as the same document. The first has no rule above it. */
-.emp-group + .emp-group { margin-top: 18px; }
-.emp-group-head {
-    font-size: .74rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: .04em;
-    color: var(--text-muted, #8a96a8);
-    margin: 0 0 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border, #e4e9f0);
+/* The three groups are the Register Employee page's own section cards — same
+   icon tile, same title, same sub-line — so a modal and a page read as one
+   document. Two things change for the modal: the card sits on the modal's own
+   surface, so it takes the subtle fill rather than surface on surface, and the
+   padding is tighter than a full-width page can afford. Nothing about the
+   fields inside is asserted here; .form-control keeps what design-tokens.css
+   gives it. */
+.emp-section {
+    background: var(--bg-subtle, #f7f8fa);
+    padding: 15px 16px;
+    margin-bottom: 0;
 }
+.emp-section + .emp-section { margin-top: 14px; }
+.emp-section .ep-section-head  { margin-bottom: 14px; padding-bottom: 10px; }
+.emp-section .ep-section-icon  { width: 30px; height: 30px; font-size: 13px; }
+.emp-section .ep-section-title { font-size: .92rem; }
 
 .emp-field { display: flex; flex-direction: column; min-width: 0; }
 .emp-field + .emp-field { margin-top: 14px; }
