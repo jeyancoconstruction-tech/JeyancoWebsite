@@ -114,6 +114,14 @@
 }
 .ep-photo-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 
+/* A photo refused before the form is submitted — wrong type, or over the
+   2 MB the server would reject it for anyway. */
+.ep-photo-err {
+    display: block; margin: 6px 0 0;
+    font-size: .78rem; line-height: 1.35;
+    color: var(--danger, #b3403a);
+}
+
 /* ── Camera modal ─────────────────────────────────────────────────────── */
 /* Deliberately dark in both themes — a viewfinder reads better against black. */
 .ep-cam { border: none; border-radius: var(--radius-lg, 6px); overflow: hidden; }
