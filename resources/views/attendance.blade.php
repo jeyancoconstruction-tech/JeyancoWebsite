@@ -55,10 +55,28 @@
 }
 .att-pick i { font-size:.85rem; color:var(--text-muted,#667085); }
 .att-pick select {
-    height:34px; border:none; background:none; box-shadow:none; outline:none;
-    padding-right:4px; font-size:.86rem; color:var(--text-primary,#101828); cursor:pointer;
+    height:34px; border:none; background-color:transparent; box-shadow:none;
+    padding-right:4px; font-size:.86rem; font-weight:500;
+    color:var(--text-primary,#101828); cursor:pointer;
 }
-.att-pick:focus-within { border-color:var(--brand,#1668dc); }
+.att-pick select:focus { outline:none; }
+
+/* The open list is drawn by the browser, and setting any background on the
+   select is enough for Chrome to stop theming it — so the popup came back
+   white while the option text stayed near-white from color-scheme: dark.
+   Light grey on white, which is how "All sites" arrived unreadable. Both
+   colours are stated here so the list follows the theme either way. */
+.att-pick select option {
+    background-color:var(--bg-elevated,#fff);
+    color:var(--text-primary,#101828);
+}
+
+/* The ring belongs on the pill. Left to itself the browser drew it tight
+   around the select alone, with the map pin stranded outside it. */
+.att-pick:focus-within {
+    border-color:var(--brand,#1668dc);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--brand,#1668dc) 20%, transparent);
+}
 
 /* Shift: a segmented control built from radios, so the choice is submitted
    with the form and works without JavaScript. */
