@@ -319,6 +319,23 @@ class KioskScheduleTest extends TestCase
 
     // ── The site ────────────────────────────────────────────────────────────
 
+    /** The kiosk can only switch between sites the web has. */
+    public function test_sites_b_and_c_come_back_when_missing(): void
+    {
+        Site::whereIn('name', ['Site B', 'Site C'])->delete();
+
+        $migration = require database_path('migrations/2026_09_11_100000_ensure_sites_a_b_c_exist.php');
+        $migration->up();
+        $migration->up();   // running it twice adds nothing twice
+
+        $names = collect($this->getJson('/api/kiosk/sites')->assertOk()->json('sites'))->pluck('name');
+
+        $this->assertTrue($names->contains('Site A'));
+        $this->assertTrue($names->contains('Site B'));
+        $this->assertTrue($names->contains('Site C'));
+        $this->assertSame(1, Site::where('name', 'Site B')->count());
+    }
+
     public function test_the_kiosk_reports_the_site_it_was_set_to(): void
     {
         $site = Site::create(['name' => 'Site Zeta']);
