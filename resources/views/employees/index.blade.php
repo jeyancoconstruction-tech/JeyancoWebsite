@@ -46,12 +46,13 @@
                 <button type="button" class="dir-tab active" data-scope="all">
                     All Employees <span class="dir-tab-count" id="countAll">{{ $stats['total'] }}</span>
                 </button>
-                <button type="button" class="dir-tab" data-scope="regular"
-                        title="{{ __('Paid by the hour and included in payroll') }}">
+                {{-- No title= on these two. The browser's own tooltip appears
+                     on hover, in its own style, in the middle of the toolbar,
+                     and neither tab needs explaining to be clicked. --}}
+                <button type="button" class="dir-tab" data-scope="regular">
                     Regular <span class="dir-tab-count">{{ $stats['regular'] }}</span>
                 </button>
-                <button type="button" class="dir-tab" data-scope="contractual"
-                        title="{{ __('Paid against a contract — attendance is tracked, but they are not part of payroll') }}">
+                <button type="button" class="dir-tab" data-scope="contractual">
                     Contractual <span class="dir-tab-count">{{ $stats['contractual'] }}</span>
                 </button>
             </div>
