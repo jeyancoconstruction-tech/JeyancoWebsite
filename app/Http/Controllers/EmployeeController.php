@@ -392,9 +392,12 @@ class EmployeeController extends Controller
      * birthday there would stall an enrolment that has nothing to do with one.
      * So the same rule set is strict or lenient depending on who is posting.
      *
-     * Government IDs are the standing exception, alongside the photo: a new
-     * hire is often still waiting to be issued an SSS or Pag-IBIG number, and
-     * registration must not be blocked on a number nobody can supply yet.
+     * Four things stay optional no matter who is posting, because requiring
+     * them blocks a registration over something nobody can produce on the day:
+     * the photo, the Government ID numbers — a new hire is often still waiting
+     * to be issued an SSS or Pag-IBIG number — the blood type, and the email,
+     * which most site workers simply do not have. Both columns are already
+     * nullable on `employees`, so this is a validation rule and nothing more.
      *
      * Religion and the repeatable education / work history / skills / notes
      * lists stay optional whoever is posting — they have no inputs on the form,
@@ -413,11 +416,11 @@ class EmployeeController extends Controller
             'civil_status' => [$need, Rule::in(Employee::CIVIL_STATUSES)],
             'nationality'  => "$need|string|max:60",
             'religion'     => 'nullable|string|max:60',
-            'blood_type'   => "$need|string|max:5",
+            'blood_type'   => 'nullable|string|max:5',   // see the note above
 
             // Contact
             'phone'                      => "$need|string|max:30",
-            'email'                      => "$need|email|max:150",
+            'email'                      => 'nullable|email|max:150',   // see the note above
             'emergency_contact_name'     => "$need|string|max:150",
             'emergency_contact_relation' => "$need|string|max:60",
             'emergency_contact_phone'    => "$need|string|max:30",

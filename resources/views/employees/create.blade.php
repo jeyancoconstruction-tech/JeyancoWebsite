@@ -10,7 +10,7 @@
         <div>
             <h2 class="page-title mb-1">{{ __('Register Employee') }}</h2>
             <p class="text-muted mb-0" style="font-size:.875rem;">
-                Every field marked * is required. Only the photo and the Government ID numbers may be left blank.
+                Every field marked * is required. The photo, the Government ID numbers, the blood type and the email may be left blank.
             </p>
         </div>
         <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
@@ -260,7 +260,7 @@
                 @include('employees._profile_fields')
 
                 <div class="ep-actions">
-                    <p class="ep-actions-note">{{ __('Every field marked') }} <span class="ep-req">*</span> {{ __('is required. Only the photo and the Government ID numbers may be left blank.') }}</p>
+                    <p class="ep-actions-note">{{ __('Every field marked') }} <span class="ep-req">*</span> {{ __('is required. The photo, the Government ID numbers, the blood type and the email may be left blank.') }}</p>
                     <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">{{ __('Cancel') }}</a>
                     <button type="submit" class="btn btn-primary fw-bold px-4">
                         <i class="fas fa-user-plus me-2"></i>{{ __('Register Employee') }}

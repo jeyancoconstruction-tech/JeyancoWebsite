@@ -34,7 +34,7 @@
         <span class="ep-section-icon"><i class="fas fa-user"></i></span>
         <div>
             <h3 class="ep-section-title">{{ __('Personal Information') }}</h3>
-            <p class="ep-section-sub">{{ __('Basic details about the worker. Everything here is required.') }}</p>
+            <p class="ep-section-sub">{{ __('Basic details about the worker. Blood type is optional.') }}</p>
         </div>
     </header>
 
@@ -74,11 +74,12 @@
             @error('civil_status')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4 col-lg-1">
-            <label class="ep-label" for="blood_type">{{ __('Blood') }} <span class="ep-req">*</span></label>
-            <input type="text" id="blood_type" name="blood_type" required
+            <label class="ep-label" for="blood_type">{{ __('Blood') }}</label>
+            <input type="text" id="blood_type" name="blood_type"
                    class="form-control @error('blood_type') is-invalid @enderror"
                    value="{{ $val('blood_type') }}" placeholder="O+" maxlength="5">
             @error('blood_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            <span class="ep-hint">{{ __('Optional.') }}</span>
         </div>
         <div class="col-md-6 col-lg-3">
             <label class="ep-label" for="nationality">{{ __('Nationality') }} <span class="ep-req">*</span></label>
@@ -109,11 +110,12 @@
             @error('phone')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6 col-lg-4">
-            <label class="ep-label" for="email">{{ __('Email Address') }} <span class="ep-req">*</span></label>
-            <input type="email" id="email" name="email" required
+            <label class="ep-label" for="email">{{ __('Email Address') }}</label>
+            <input type="email" id="email" name="email"
                    class="form-control @error('email') is-invalid @enderror"
                    value="{{ $val('email') }}" placeholder="name@example.com">
             @error('email')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            <span class="ep-hint">{{ __('Optional — many workers have no email.') }}</span>
         </div>
     </div>
 
