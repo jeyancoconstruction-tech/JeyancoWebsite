@@ -7,28 +7,34 @@ use App\Models\LaborType;
 use App\Models\Site;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Camera and Gallery on the Register Employee form.
+ * There is no photo upload any more.
  *
- * The regression worth guarding is an ordering one, and it is invisible in the
- * markup: the picker's script used to sit inline in the middle of the body,
- * where `bootstrap` does not exist yet — the bundle loads near the end of
- * layouts.blade.php. `new bootstrap.Modal(...)` threw on the first line of the
- * IIFE, so no listener was ever attached and both buttons did nothing at all.
- * The page looked completely correct while being completely dead.
+ * The field worked — camera, gallery, preview, a 2 MB check — and it still
+ * lost every picture put through it. Railway serves this app from a container
+ * whose filesystem is replaced on each deploy, and there is no volume behind
+ * storage/app/public, so an uploaded photo was certain to disappear; it only
+ * needed a deploy to do it. A volume is the one real fix and was declined on
+ * cost, so the field went instead. A control that silently loses what you give
+ * it is worse than not having the control.
+ *
+ * What stays: the `photo` column, the three rows that still carry a path, and
+ * the server-side handling. Nothing has to be rebuilt if a volume is ever
+ * attached — the forms just stop offering it today.
  */
 class ProfilePhotoPickerTest extends TestCase
 {
     use RefreshDatabase;
 
+    private ?User $admin = null;
+
     private function admin(): User
     {
-        return User::create([
+        return $this->admin ??= User::create([
             'name'      => 'Admin',
             'username'  => 'admin.photo',
             'password'  => Hash::make('secret123'),
@@ -42,166 +48,124 @@ class ProfilePhotoPickerTest extends TestCase
         return LaborType::firstOrCreate(['name' => 'Mason'], ['daily_rate' => 800, 'ot_rate' => 125]);
     }
 
-    private function site(): Site
+    private function employee(?string $photo = null): Employee
     {
-        return Site::firstOrCreate(['name' => 'Site A']);
-    }
-
-    /** A complete profile, so only the photo is under test. */
-    private function profile(array $overrides = []): array
-    {
-        return array_merge([
-            'profile_form'  => 1,
-            'first_name'    => 'Juan',
-            'middle_name'   => 'Santos',
-            'last_name'     => 'Dela Cruz',
-            'labor_type_id' => $this->laborType()->id,
-            'rate_per_hour' => 100,
-            'site_id'       => $this->site()->id,
-            'job_title'     => 'Mason',
-            'date_hired'    => '2026-09-10',
-            'employment_type' => Employee::EMPLOYMENT_DAILY,
-            'birth_date'    => '1995-03-04',
-            'birth_place'   => 'Naga City',
-            'gender'        => 'Male',
-            'civil_status'  => 'Single',
-            'nationality'   => 'Filipino',
-            'phone'         => '09170001111',
-            'emergency_contact_name'     => 'Maria Dela Cruz',
-            'emergency_contact_relation' => 'Spouse',
-            'emergency_contact_phone'    => '09182223333',
-            'address_province' => 'Camarines Sur',
-            'address_city'     => 'City of Naga',
-            'address_barangay' => 'Abella',
-            'address_street'   => '123 Rizal St.',
-            'address_postal'   => '4400',
-        ], $overrides);
-    }
-
-    public function test_the_picker_script_runs_after_bootstrap_is_loaded(): void
-    {
-        $html = $this->actingAs($this->admin())
-            ->get(route('employees.create'))
-            ->assertOk()
-            ->getContent();
-
-        $bootstrap = strpos($html, 'bootstrap.bundle.min.js');
-        $picker    = strpos($html, "getElementById('openCameraBtn')");
-
-        $this->assertNotFalse($bootstrap, 'the Bootstrap bundle should be on the page');
-        $this->assertNotFalse($picker, 'the picker script should be on the page');
-        $this->assertGreaterThan(
-            $bootstrap,
-            $picker,
-            'the picker script must come after Bootstrap, or new bootstrap.Modal() throws and both buttons go dead'
-        );
-    }
-
-    public function test_the_photo_input_is_optional_and_inside_the_multipart_form(): void
-    {
-        $html = $this->actingAs($this->admin())
-            ->get(route('employees.create'))
-            ->assertOk()
-            ->getContent();
-
-        $formAt  = strpos($html, 'enctype="multipart/form-data"');
-        $inputAt = strpos($html, 'id="galleryInput"');
-        $closeAt = $formAt + strpos(substr($html, $formAt), '</form>');
-
-        $this->assertNotFalse($formAt, 'the form must be multipart or the file is dropped silently');
-        $this->assertGreaterThan($formAt, $inputAt);
-        $this->assertLessThan($closeAt, $inputAt, 'the file input must be inside the form to be posted');
-
-        // Optional: no `required`, and the accept list matches the server rule.
-        $this->assertDoesNotMatchRegularExpression('/id="galleryInput"[^>]*\brequired\b/', $html);
-        $this->assertStringContainsString('accept="image/jpeg,image/png"', $html);
-    }
-
-    /** The client cap and the message under the box both read the server's. */
-    public function test_the_two_megabyte_cap_is_stated_and_enforced_on_the_client(): void
-    {
-        $html = $this->actingAs($this->admin())
-            ->get(route('employees.create'))
-            ->assertOk()
-            ->getContent();
-
-        $this->assertStringContainsString('max 2 MB', $html);
-        $this->assertStringContainsString('MAX_BYTES = 2 * 1024 * 1024', $html);
-        $this->assertStringContainsString("TYPES     = ['image/jpeg', 'image/png']", $html);
-    }
-
-    public function test_a_worker_registers_without_a_photo(): void
-    {
-        $this->actingAs($this->admin())
-             ->post(route('employees.store'), $this->profile())
-             ->assertSessionHasNoErrors();
-
-        $this->assertNull(Employee::firstOrFail()->photo);
-    }
-
-    public function test_a_photo_is_stored_when_one_is_chosen(): void
-    {
-        Storage::fake('public');
-
-        $this->actingAs($this->admin())
-             ->post(route('employees.store'), $this->profile([
-                 // create(), not image(): image() draws a real bitmap and needs
-                 // the GD extension, which is not enabled everywhere this suite
-                 // runs. The rule under test is mimes/max, not the pixels.
-                 'photo' => UploadedFile::fake()->create('worker.jpg', 120, 'image/jpeg'),
-             ]))
-             ->assertSessionHasNoErrors();
-
-        $photo = Employee::firstOrFail()->photo;
-
-        $this->assertNotNull($photo);
-        Storage::disk('public')->assertExists($photo);
-    }
-
-    /** The server still refuses what the client-side check is there to catch first. */
-    public function test_an_oversized_photo_is_refused(): void
-    {
-        Storage::fake('public');
-
-        $this->actingAs($this->admin())
-             ->post(route('employees.store'), $this->profile([
-                 'photo' => UploadedFile::fake()->create('huge.jpg', 3000, 'image/jpeg'),
-             ]))
-             ->assertSessionHasErrors('photo');
-
-        $this->assertSame(0, Employee::count());
-    }
-
-    public function test_a_file_that_is_not_an_image_is_refused(): void
-    {
-        Storage::fake('public');
-
-        $this->actingAs($this->admin())
-             ->post(route('employees.store'), $this->profile([
-                 'photo' => UploadedFile::fake()->create('resume.pdf', 40, 'application/pdf'),
-             ]))
-             ->assertSessionHasErrors('photo');
-
-        $this->assertSame(0, Employee::count());
-    }
-
-    /** Edit shows the photo already on file, so Retake/Change replaces rather than starts blank. */
-    public function test_edit_shows_the_photo_already_on_file(): void
-    {
-        Storage::fake('public');
-
-        $employee = Employee::create([
+        return Employee::create([
             'name'          => 'Juan Dela Cruz',
             'position'      => 'Mason',
             'labor_type_id' => $this->laborType()->id,
             'rate_per_hour' => 100,
             'status'        => Employee::STATUS_ACTIVE,
-            'photo'         => 'employees/existing.jpg',
+            'photo'         => $photo,
         ]);
+    }
 
+    public function test_register_employee_no_longer_offers_a_photo(): void
+    {
+        $html = $this->actingAs($this->admin())
+            ->get(route('employees.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('name="photo"', $html);
+        $this->assertStringNotContainsString('id="openCameraBtn"', $html);
+        $this->assertStringNotContainsString('id="galleryInput"', $html);
+        $this->assertStringNotContainsString('Profile Photo', $html);
+    }
+
+    public function test_edit_employee_no_longer_offers_a_photo(): void
+    {
+        $html = $this->actingAs($this->admin())
+            ->get(route('employees.edit', $this->employee()->id))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('name="photo"', $html);
+        $this->assertStringNotContainsString('id="galleryInput"', $html);
+    }
+
+    /** The quick-edit and kiosk-complete modal carried its own picker. */
+    public function test_the_register_and_manage_modal_no_longer_offers_a_photo(): void
+    {
+        $html = $this->actingAs($this->admin())
+            ->get(route('employees.register'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('name="photo"', $html);
+        $this->assertStringNotContainsString('id="empPhoto"', $html);
+
+        // Leaving the handlers behind would have been worse than useless:
+        // addEventListener on an element that is gone throws, and the throw
+        // takes the whole modal script down with it.
+        $this->assertStringNotContainsString('photoClr.addEventListener', $html);
+        $this->assertStringNotContainsString('clearPhoto()', $html);
+    }
+
+    public function test_the_picker_partial_and_its_styles_are_gone(): void
+    {
+        $this->assertFileDoesNotExist(resource_path('views/employees/_photo_picker.blade.php'));
+
+        $styles = File::get(resource_path('views/employees/_profile_styles.blade.php'));
+        $this->assertStringNotContainsString('.ep-photo {', $styles);
+        $this->assertStringNotContainsString('.ep-cam {', $styles);
+    }
+
+    public function test_registration_still_works_without_the_field(): void
+    {
         $this->actingAs($this->admin())
-             ->get(route('employees.edit', $employee->id))
-             ->assertOk()
-             ->assertSee('employees/existing.jpg', false);
+             ->post(route('employees.store'), [
+                 'profile_form'  => 1,
+                 'first_name'    => 'Juan',
+                 'middle_name'   => 'Santos',
+                 'last_name'     => 'Dela Cruz',
+                 'labor_type_id' => $this->laborType()->id,
+                 'rate_per_hour' => 100,
+                 'site_id'       => Site::firstOrCreate(['name' => 'Site A'])->id,
+                 'job_title'     => 'Mason',
+                 'date_hired'    => '2026-09-10',
+                 'employment_type' => Employee::EMPLOYMENT_DAILY,
+                 'birth_date'    => '1995-03-04',
+                 'birth_place'   => 'Naga City',
+                 'gender'        => 'Male',
+                 'civil_status'  => 'Single',
+                 'nationality'   => 'Filipino',
+                 'phone'         => '09170001111',
+                 'emergency_contact_name'     => 'Maria Dela Cruz',
+                 'emergency_contact_relation' => 'Spouse',
+                 'emergency_contact_phone'    => '09182223333',
+                 'address_province' => 'Camarines Sur',
+                 'address_city'     => 'City of Naga',
+                 'address_barangay' => 'Abella',
+                 'address_street'   => '123 Rizal St.',
+                 'address_postal'   => '4400',
+             ])
+             ->assertSessionHasNoErrors();
+
+        $this->assertNull(Employee::firstOrFail()->photo);
+    }
+
+    /**
+     * Three rows still hold a path whose file a deploy wiped. Every place that
+     * draws an avatar has to survive that — a broken image with the name
+     * spilling out of it is the failure mode this guards.
+     */
+    public function test_a_row_with_a_dead_photo_path_still_falls_back(): void
+    {
+        $employee = $this->employee('employees/gone-with-a-deploy.jpg');
+
+        foreach ([
+            route('employees.index'),
+            route('employees.register'),
+            route('employees.show', $employee->id),
+        ] as $url) {
+            $html = $this->actingAs($this->admin())->get($url)->assertOk()->getContent();
+
+            $this->assertStringContainsString(
+                'onerror=',
+                $html,
+                "an avatar on {$url} should fall back when the file is missing"
+            );
+        }
     }
 }

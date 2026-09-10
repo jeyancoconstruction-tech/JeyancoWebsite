@@ -248,13 +248,7 @@
                             <span class="ep-hint">{{ __('Cannot be changed here.') }}</span>
                         </div>
 
-                        {{-- Photo — camera or gallery, see _photo_picker --}}
-                        <div class="col-md-6 col-lg-3">
-                            <label class="ep-label">{{ __('Profile Photo') }}</label>
-                            @include('employees._photo_picker', [
-                                'currentPhoto' => $employee->photo ? asset('storage/' . $employee->photo) : null,
-                            ])
-                        </div>
+                        {{-- No photo field — see the note in create.blade.php. --}}
 
                         {{-- Current labor type info card --}}
                         @if($employee->laborType)

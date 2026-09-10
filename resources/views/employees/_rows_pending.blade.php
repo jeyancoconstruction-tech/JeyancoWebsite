@@ -25,7 +25,6 @@
         // admin has nothing to complete — the kiosk does the next step.
         $awaitingFingerprint = empty($e->fingerprint_id);
 
-        $photoUrl = $e->photo ? asset('storage/' . $e->photo) : '';
     @endphp
     <tr>
         {{-- Also rendered by the 5-second live refresh, so a row that arrives
@@ -84,8 +83,7 @@
                         data-labor="{{ $e->labor_type_id }}"
                         data-rate="{{ $e->rate_per_hour }}"
                         data-site="{{ $e->site_id }}"
-                        data-fp="{{ $e->fingerprint_id }}"
-                        data-photo="{{ $photoUrl }}">
+                        data-fp="{{ $e->fingerprint_id }}">
                     <i class="fas fa-check"></i> {{ __('Confirm') }}
                 </button>
             @else
@@ -98,8 +96,7 @@
                         data-labor="{{ $e->labor_type_id }}"
                         data-rate="{{ $e->rate_per_hour }}"
                         data-site="{{ $e->site_id }}"
-                        data-fp="{{ $e->fingerprint_id }}"
-                        data-photo="{{ $photoUrl }}">
+                        data-fp="{{ $e->fingerprint_id }}">
                     <i class="fas fa-user-pen"></i> {{ __('Complete') }}
                 </button>
             @endif

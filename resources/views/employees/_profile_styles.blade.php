@@ -97,44 +97,8 @@
 }
 /* A blank answer says so, rather than leaving a box the eye has to interpret. */
 .ep-value.is-empty { color: var(--text-muted, #8a929b); }
-
-/* ── Photo picker ─────────────────────────────────────────────────────── */
-.ep-photo {
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
-    padding: 14px;
-    border: 1px dashed var(--border-md, #d3d8dd);
-    border-radius: var(--radius-md, 6px);
-    background: var(--bg-subtle, #f1f3f5);
-}
-.ep-photo-empty { color: var(--text-muted, #8a929b); line-height: 1; }
-.ep-photo-empty i { font-size: 2.6rem; }
-.ep-photo-img {
-    width: 74px; height: 74px; object-fit: cover; border-radius: 50%;
-    border: 2px solid var(--border, #e3e6e9);
-}
-.ep-photo-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-
-/* A photo refused before the form is submitted — wrong type, or over the
-   2 MB the server would reject it for anyway. */
-.ep-photo-err {
-    display: block; margin: 6px 0 0;
-    font-size: .78rem; line-height: 1.35;
-    color: var(--danger, #b3403a);
-}
-
-/* ── Camera modal ─────────────────────────────────────────────────────── */
-/* Deliberately dark in both themes — a viewfinder reads better against black. */
-.ep-cam { border: none; border-radius: var(--radius-lg, 6px); overflow: hidden; }
-.ep-cam-head { background: var(--brand, #1e5c9b); color: #fff; border: none; padding: 12px 18px; }
-.ep-cam-body { background: #000; position: relative; }
-.ep-cam-video { width: 100%; display: block; max-height: 380px; object-fit: cover; }
-.ep-cam-error {
-    display: none; flex-direction: column; align-items: center; gap: 8px;
-    padding: 40px 24px; text-align: center; color: #f87171;
-}
-.ep-cam-error i { font-size: 2.4rem; }
-.ep-cam-error small { color: #94a3b8; }
-.ep-cam-foot { border: none; background: #0f172a; justify-content: center; gap: 10px; padding: 12px 18px; }
+/* The photo picker CSS was here — .ep-photo*, .ep-cam*. Both the picker
+   and its camera modal are gone with the field itself. */
 
 /* ── Inline note ──────────────────────────────────────────────────────── */
 .ep-note {

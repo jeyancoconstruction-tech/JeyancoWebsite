@@ -10,7 +10,7 @@
         <div>
             <h2 class="page-title mb-1">{{ __('Register Employee') }}</h2>
             <p class="text-muted mb-0" style="font-size:.875rem;">
-                Every field marked * is required. The photo, the Government ID numbers, the blood type and the email may be left blank.
+                Every field marked * is required. The Government ID numbers, the blood type and the email may be left blank.
             </p>
         </div>
         <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
@@ -236,11 +236,13 @@
                             </div>
                         </div>
 
-                        {{-- Photo — camera or gallery, see _photo_picker --}}
-                        <div class="col-md-6 col-lg-3">
-                            <label class="ep-label">{{ __('Profile Photo') }} <span class="ep-optional">{{ __('(optional)') }}</span></label>
-                            @include('employees._photo_picker')
-                        </div>
+                        {{-- No photo field. Railway wipes the container's
+                             filesystem on every deploy and there is no volume
+                             behind storage/app/public, so an uploaded photo
+                             was certain to vanish — it only needed a deploy to
+                             do it. A field that silently loses what you put in
+                             it is worse than not having the field. Workers
+                             show their initial instead. --}}
 
                         {{-- No fingerprint field: the kiosk reads the finger and
                              assigns the slot, and that enrolment is what makes
@@ -260,7 +262,7 @@
                 @include('employees._profile_fields')
 
                 <div class="ep-actions">
-                    <p class="ep-actions-note">{{ __('Every field marked') }} <span class="ep-req">*</span> {{ __('is required. The photo, the Government ID numbers, the blood type and the email may be left blank.') }}</p>
+                    <p class="ep-actions-note">{{ __('Every field marked') }} <span class="ep-req">*</span> {{ __('is required. The Government ID numbers, the blood type and the email may be left blank.') }}</p>
                     <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">{{ __('Cancel') }}</a>
                     <button type="submit" class="btn btn-primary fw-bold px-4">
                         <i class="fas fa-user-plus me-2"></i>{{ __('Register Employee') }}

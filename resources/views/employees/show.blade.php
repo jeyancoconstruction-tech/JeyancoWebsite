@@ -144,8 +144,17 @@
                     <div class="col-md-6 col-lg-3">
                         <span class="ep-label">{{ __('Profile Photo') }}</span>
                         <div class="epv-photo">
+                            {{-- Three rows still carry a path whose file was
+                                 wiped by a deploy. Without the onerror this
+                                 shows a broken image and the alt text spilling
+                                 out of the tile. --}}
                             @if($employee->photo)
-                                <img src="{{ url('storage/' . $employee->photo) }}" alt="{{ $employee->name }}">
+                                <img src="{{ url('storage/' . $employee->photo) }}" alt="{{ $employee->name }}"
+                                     onerror="this.hidden = true; this.nextElementSibling.hidden = false;">
+                                <div class="epv-photo-none" hidden>
+                                    <i class="fas fa-user"></i>
+                                    <span>{{ __('No photo') }}</span>
+                                </div>
                             @else
                                 <div class="epv-photo-none">
                                     <i class="fas fa-user"></i>

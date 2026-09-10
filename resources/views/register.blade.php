@@ -393,8 +393,8 @@
                 <header class="ep-section-head">
                     <span class="ep-section-icon" aria-hidden="true"><i class="fas fa-fingerprint"></i></span>
                     <div>
-                        <h3 class="ep-section-title">{{ __('Kiosk & Photo') }}</h3>
-                        <p class="ep-section-sub">{{ __('The kiosk slot their finger is stored in, and the photo shown beside their name.') }}</p>
+                        <h3 class="ep-section-title">{{ __('Kiosk') }}</h3>
+                        <p class="ep-section-sub">{{ __('The slot their finger is stored in on the kiosk.') }}</p>
                     </div>
                 </header>
 
@@ -417,31 +417,9 @@
                     @enderror
                 </div>
 
-                <div class="emp-field">
-                    <label class="ep-label" id="empPhotoLabel">{{ __('Photo') }} <span class="ep-optional">{{ __('(optional)') }}</span></label>
-                    <div class="emp-photo" role="group" aria-labelledby="empPhotoLabel">
-                        <div class="emp-photo-box" id="empPhotoBox">
-                            <i class="fas fa-user" id="empPhotoIcon" aria-hidden="true"></i>
-                            <img id="empPhotoPreview" src="" alt="{{ __('Selected photo') }}" style="display:none;">
-                        </div>
-                        <div class="emp-photo-side">
-                            <div class="emp-photo-actions">
-                                <button type="button" class="emp-btn-ghost" id="empPhotoPick">
-                                    <i class="fas fa-images" aria-hidden="true"></i>
-                                    <span id="empPhotoPickLabel">{{ __('Choose') }}</span>
-                                </button>
-                                <button type="button" class="emp-btn-ghost emp-btn-ghost-danger" id="empPhotoClear" style="display:none;">
-                                    <i class="fas fa-trash-can" aria-hidden="true"></i> <span>{{ __('Remove') }}</span>
-                                </button>
-                                <input type="file" name="photo" id="empPhoto" accept="image/jpg,image/jpeg,image/png" hidden>
-                            </div>
-                            <span class="ep-hint">{{ __('JPG or PNG. Shown beside the worker\'s name across the app.') }}</span>
-                        </div>
-                    </div>
-                    @error('photo')
-                        <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
-                    @enderror
-                </div>
+                {{-- No photo field — see the note in employees/create.blade.php.
+                     The section keeps its name because the fingerprint slot
+                     above is still the other half of it. --}}
             </section>
         </div>
 
@@ -770,10 +748,6 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
     const rateView  = document.getElementById('empRateView');
     const siteEl    = document.getElementById('empSite');
     const fpEl      = document.getElementById('empFp');
-    const photoEl   = document.getElementById('empPhoto');
-    const photoIcon = document.getElementById('empPhotoIcon');
-    const photoPrev = document.getElementById('empPhotoPreview');
-    const photoClr  = document.getElementById('empPhotoClear');
 
     let bsModal = null;
     function getModal() {
@@ -793,39 +767,17 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
     }
     laborEl.addEventListener('change', updateRate);
 
-    // The pick button says what it will actually do: there is nothing to
-    // replace until a photo is on screen.
-    const photoPickLbl = document.getElementById('empPhotoPickLabel');
-    function setPhotoLabel(has) {
-        if (photoPickLbl) photoPickLbl.textContent = has ? 'Replace' : 'Choose';
-    }
-
-    function clearPhoto() {
-        photoEl.value = ''; photoPrev.src = ''; photoPrev.style.display = 'none';
-        photoIcon.style.display = ''; photoClr.style.display = 'none';
-        setPhotoLabel(false);
-    }
-    document.getElementById('empPhotoPick')?.addEventListener('click', () => photoEl.click());
-    photoClr.addEventListener('click', clearPhoto);
-    photoEl.addEventListener('change', function (e) {
-        const f = e.target.files[0]; if (!f) return;
-        const r = new FileReader();
-        r.onload = ev => { photoPrev.src = ev.target.result; photoPrev.style.display = 'block'; photoIcon.style.display = 'none'; photoClr.style.display = ''; setPhotoLabel(true); };
-        r.readAsDataURL(f);
-    });
+    // The photo picker was here. It is gone with the field itself — see the
+    // note in employees/create.blade.php. Leaving the handlers behind would
+    // have been worse than useless: binding a listener to an element that no
+    // longer exists throws, and the throw would take the whole modal script
+    // down with it, exactly as a missing Bootstrap once did to the other
+    // picker.
 
     const modeField = document.getElementById('empFormModeField');
     const idField   = document.getElementById('empFormIdField');
 
     function openModal(mode, d) {
-        clearPhoto();
-        // Show an existing photo (e.g. captured at the kiosk) so the admin can
-        // see it and replace it if needed.
-        if (d.photo) {
-            photoPrev.src = d.photo; photoPrev.style.display = 'block';
-            photoIcon.style.display = 'none'; photoClr.style.display = '';
-            setPhotoLabel(true);
-        }
         modeField.value = mode;
         idField.value   = d.id || '';
         // The row carries the parts already split by Employee::splitName(), so
@@ -872,9 +824,6 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
             id: btn.dataset.id, labor: btn.dataset.labor,
             first: btn.dataset.first, middle: btn.dataset.middle, last: btn.dataset.last,
             rate: btn.dataset.rate, site: btn.dataset.site, fp: btn.dataset.fp,
-            // openModal() has always handled d.photo; it was simply never
-            // passed, so no row could show the picture it already had.
-            photo: btn.dataset.photo,
         });
     });
     // "Register Employee" is a link to the full form now — no modal to open.
