@@ -260,11 +260,10 @@
 
             <noscript><button type="submit" class="att-ghost-btn">{{ __('Apply') }}</button></noscript>
 
-            @if($siteId || $shiftId)
-                <a href="{{ route('attendance', ['tab' => request('tab')]) }}" class="att-ghost-btn">
-                    <i class="fas fa-xmark"></i>{{ __('Clear') }}
-                </a>
-            @endif
+            {{-- No Clear button. Both controls already carry their own way
+                 back — All sites and All shifts — so a third control that
+                 only appears once a filter is on was a button that came and
+                 went for no reason the reader could see. --}}
         </form>
 
         <div class="att-controls-right" id="attHistoryActions" @if($openTab !== 'history') hidden @endif>
