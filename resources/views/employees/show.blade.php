@@ -1,460 +1,339 @@
 @extends('layouts')
 @section('page_title', $employee->name)
 
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/employee-list.css') }}">
+@endpush
+
 @section('content')
-<div class="prof-page">
+{{-- View Details is laid out like Register Employee on purpose: the same
+     container, the same section cards, the same labels in the same order and
+     the same column widths. Reading a record and filling one in should not
+     feel like two different pages. What the form has as inputs, this has as
+     answers — see _profile_view.blade.php — plus the two things a form has no
+     reason to carry: this cutoff's payroll, and the recent scans. --}}
+<div class="employee-container">
 
-    {{-- ── Back + actions ────────────────────────────────────────────────────
-         Sariling klase ang pahinang ito. Humihiram ito dati ng .dir-header at
-         .dir-btn-primary sa index.blade.php, na nasa loob ng <style> nito at
-         hindi naman umaabot dito. --}}
-    <a href="{{ route('employees.index') }}" class="prof-back">
-        <i class="fas fa-arrow-left"></i> {{ __('Employee Directory') }}
-    </a>
-
-    <div class="prof-head">
-        <div class="prof-head-main">
-            <h1 class="prof-title">{{ $employee->name }}</h1>
-            <div class="prof-meta">
-                <span class="prof-id">#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }}</span>
-                <span class="prof-sep"></span>
-                <span>{{ $employee->position ?: ($employee->laborType->name ?? 'Worker') }}</span>
-                <span class="prof-sep"></span>
-                {{-- Ang dalawang bagay na nagbabago ng pakikitungo sa tao:
-                     paano siya binabayaran, at nakakapasok ba siya. --}}
-                <span class="prof-tag {{ $employee->isContractual() ? 'is-contract' : '' }}">
-                    {{ $employee->employment_label }}
-                </span>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h2 class="page-title mb-1">{{ $employee->name }}</h2>
+            <p class="text-muted mb-0" style="font-size:.875rem;">
+                <span class="ep-mono">#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }}</span>
+                · {{ $employee->position ?: ($employee->laborType->name ?? __('Worker')) }}
+                · {{ $employee->employment_label }}
                 @unless($employee->fingerprint_id)
-                    <span class="prof-tag is-warn">
-                        <i class="fas fa-hourglass-half"></i> {{ __('Walang daliri') }}
-                    </span>
+                    · <span class="ep-warn"><i class="fas fa-hourglass-half"></i> {{ __('No fingerprint yet') }}</span>
                 @endunless
-            </div>
+            </p>
         </div>
-
-        <a href="{{ route('employees.edit', $employee->id) }}" class="prof-edit">
-            <i class="fas fa-pen"></i> {{ __('Edit') }}
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary shadow-sm px-4">
+                <i class="fas fa-arrow-left me-2"></i>{{ __('Employee Directory') }}
+            </a>
+            <a href="{{ route('employees.edit', $employee->id) }}" class="btn btn-primary shadow-sm px-4">
+                <i class="fas fa-pen me-2"></i>{{ __('Edit') }}
+            </a>
+        </div>
     </div>
 
-    <div class="prof-grid">
+    <div class="row">
+        <div class="col-12">
 
-        {{-- ── Left: who they are ──────────────────────────────────────────── --}}
-        <div class="prof-col">
+            {{-- ════════════════════ EMPLOYMENT & PAY ════════════════════
+                 Mirrors the first section of Register Employee, field for
+                 field. The photo sits where the picker sits there. --}}
+            <section class="ep-section">
+                <header class="ep-section-head">
+                    <span class="ep-section-icon"><i class="fas fa-helmet-safety"></i></span>
+                    <div>
+                        <h3 class="ep-section-title">{{ __('Employment & Pay') }}</h3>
+                        <p class="ep-section-sub">{{ __('What the worker is paid and where they are assigned.') }}</p>
+                    </div>
+                </header>
 
-        <div class="prof-card">
-            <div class="prof-id-block">
-                @if($employee->photo)
-                    <img src="{{ url('storage/' . $employee->photo) }}"
-                         alt="{{ $employee->name }}" class="prof-photo">
-                @else
-                    <div class="prof-initials">{{ strtoupper(substr($employee->name, 0, 1)) }}</div>
-                @endif
-                <div>
-                    <div class="prof-name">{{ $employee->name }}</div>
-                    <div class="prof-role">{{ $employee->position ?: ($employee->laborType->name ?? 'Worker') }}</div>
-                </div>
-            </div>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('First Name') }}</span>
+                        <span class="ep-value {{ $employee->first_name ? '' : 'is-empty' }}">{{ $employee->first_name ?: __('Not recorded') }}</span>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Middle Name') }}</span>
+                        <span class="ep-value {{ $employee->middle_name ? '' : 'is-empty' }}">{{ $employee->middle_name ?: __('Not recorded') }}</span>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Last Name') }}</span>
+                        <span class="ep-value {{ $employee->last_name ? '' : 'is-empty' }}">{{ $employee->last_name ?: __('Not recorded') }}</span>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Employee Type') }}</span>
+                        <span class="ep-value">{{ $employee->employment_label }}</span>
+                    </div>
 
-            <dl class="prof-facts">
-                <div class="prof-fact">
-                    <dt>{{ __('Site') }}</dt>
-                    <dd>
-                        @if($employee->site)
-                            <span class="prof-tag"><i class="fas fa-map-marker-alt"></i> {{ $employee->site->name }}</span>
-                        @else
-                            <span class="prof-dash">{{ __('Hindi pa naka-assign') }}</span>
-                        @endif
-                    </dd>
-                </div>
-                <div class="prof-fact">
-                    <dt>{{ __('Labor type') }}</dt>
-                    <dd>
-                        @if($employee->laborType)
-                            <span class="prof-tag"><i class="fas fa-briefcase"></i> {{ $employee->laborType->name }}</span>
-                        @else
-                            <span class="prof-dash">—</span>
-                        @endif
-                    </dd>
-                </div>
-                <div class="prof-fact">
-                    <dt>{{ __('Shift') }}</dt>
-                    <dd>
-                        @if($employee->shift)
-                            <span class="prof-tag">
-                                <i class="fas {{ $employee->shift->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>
-                                {{ $employee->shift->name }}
-                                — {{ \Carbon\Carbon::parse($employee->shift->starts_at)->format('g:i A') }}
-                            </span>
-                        @else
-                            {{-- Hindi gitling: ang walang tatak ay bumabagsak sa
-                                 office default sa payroll, at iyon ay dapat
-                                 nakikita imbes na mukhang blangkong hanay. --}}
-                            <span class="prof-tag">{{ __('Unassigned') }}</span>
-                        @endif
-                    </dd>
-                </div>
-                {{-- Nasa header na ang Employment; hindi na inuulit dito. --}}
-                @if($employee->isContractual())
-                <div class="prof-fact">
-                    <dt>{{ __('Contract amount') }}</dt>
-                    {{-- Kabuuan para sa buong proyekto, hindi kada araw — iyon
-                         ang hinihingi ng form ("Total for the whole project").
-                         Ang dating "kada araw" dito ay nagsasabi ng ibang halaga
-                         nang tahimik. --}}
-                    <dd class="prof-money">
-                        ₱{{ number_format($employee->contract_rate ?? 0, 2) }}
-                        <small>{{ __('buong proyekto') }}</small>
-                    </dd>
-                </div>
-                @else
-                <div class="prof-fact">
-                    <dt>{{ __('Rate / hour') }}</dt>
-                    <dd class="prof-money">₱{{ number_format($employee->rate_per_hour, 2) }}</dd>
-                </div>
-                @endif
-                <div class="prof-fact">
-                    <dt>{{ __('Vale balance') }}</dt>
-                    <dd class="prof-money {{ ($employee->vale ?? 0) > 0 ? 'warn' : '' }}">
-                        ₱{{ number_format($employee->vale ?? 0, 2) }}
-                    </dd>
-                </div>
-                <div class="prof-fact">
-                    <dt>{{ __('Fingerprint') }}</dt>
-                    <dd>
-                        @if($employee->fingerprint_id)
-                            <span class="prof-tag mono"><i class="fas fa-fingerprint"></i> Enrolled #{{ $employee->fingerprint_id }}</span>
-                        @else
-                            <span class="prof-tag is-warn"><i class="fas fa-hourglass-half"></i> {{ __('Wala pang daliri') }}</span>
-                        @endif
-                    </dd>
-                </div>
-            </dl>
-        </div>
-
-        {{-- ── Sino siya sa labas ng trabaho ────────────────────────────────
-             Ang tinatanong lang ng opisina — hindi ang buong form. Ang walang
-             laman ay hindi ipinapakita: mas mabuti ang maikling listahan kaysa
-             hanay ng mga gitling na walang sinasabi. --}}
-        @php
-            $personal = array_filter([
-                'Gender'       => $employee->gender,
-                'Age'          => $employee->birth_date?->age,
-                'Birthplace'   => $employee->birth_place,
-                'Address'      => implode(', ', array_filter([
-                                      $employee->address_city,
-                                      $employee->address_province,
-                                  ])),
-                'Civil status' => $employee->civil_status,
-                'Contact'      => $employee->phone,
-            ], fn ($v) => $v !== null && $v !== '');
-        @endphp
-
-        <div class="prof-card">
-            <div class="prof-card-head"><span>{{ __('Personal na impormasyon') }}</span></div>
-
-            @if(count($personal))
-                <dl class="prof-facts">
-                    @foreach($personal as $label => $value)
-                        <div class="prof-fact">
-                            <dt>{{ $label }}</dt>
-                            <dd class="prof-val">{{ $value }}</dd>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Labor Type') }}</span>
+                        <span class="ep-value {{ $employee->laborType ? '' : 'is-empty' }}">{{ $employee->laborType->name ?? '—' }}</span>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Shift') }}</span>
+                        {{-- Not a dash: an untagged worker falls back to the
+                             office default in payroll, and that is worth seeing
+                             rather than reading as a blank. --}}
+                        <span class="ep-value">
+                            @if($employee->shift)
+                                <i class="fas {{ $employee->shift->crosses_midnight ? 'fa-moon' : 'fa-sun' }} me-1"></i>
+                                {{ $employee->shift->name }} — {{ \Carbon\Carbon::parse($employee->shift->starts_at)->format('g:i A') }}
+                            @else
+                                {{ __('Unassigned — office default applies') }}
+                            @endif
+                        </span>
+                    </div>
+                    @if($employee->isContractual())
+                        <div class="col-md-6 col-lg-3">
+                            <span class="ep-label">{{ __('Contract Amount') }}</span>
+                            <span class="ep-value ep-mono">₱{{ number_format($employee->contract_rate ?? 0, 2) }}
+                                <span class="ep-aside">{{ __('whole project') }}</span></span>
                         </div>
-                    @endforeach
-                </dl>
-            @else
-                <p class="prof-none">
-                    Wala pang naitatalang personal na detalye. Idadagdag ito sa <strong>{{ __('Edit') }}</strong>.
-                </p>
-            @endif
-        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <span class="ep-label">{{ __('End of Contract') }}</span>
+                            <span class="ep-value {{ $employee->end_of_contract ? '' : 'is-empty' }}">
+                                {{ $employee->end_of_contract?->format('M d, Y') ?: __('Not recorded') }}
+                            </span>
+                        </div>
+                    @else
+                        <div class="col-md-6 col-lg-3">
+                            <span class="ep-label">{{ __('Rate Per Hour') }}</span>
+                            <span class="ep-value ep-mono">₱{{ number_format($employee->rate_per_hour, 2) }}</span>
+                        </div>
+                    @endif
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Position / Job Title') }}</span>
+                        {{-- The form posts job_title; the controller also derives
+                             `position` from the labor type. job_title is what was
+                             typed, so it leads, and position covers the records
+                             saved before that field existed. --}}
+                        @php $jobTitle = $employee->job_title ?: $employee->position; @endphp
+                        <span class="ep-value {{ $jobTitle ? '' : 'is-empty' }}">{{ $jobTitle ?: __('Not recorded') }}</span>
+                    </div>
 
-        </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Date Hired') }}</span>
+                        <span class="ep-value {{ $employee->date_hired ? '' : 'is-empty' }}">{{ $employee->date_hired?->format('M d, Y') ?: __('Not recorded') }}</span>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Site Assignment') }}</span>
+                        <span class="ep-value {{ $employee->site ? '' : 'is-empty' }}">
+                            @if($employee->site)<i class="fas fa-map-marker-alt me-1"></i>@endif
+                            {{ $employee->site->name ?? __('Not assigned') }}
+                        </span>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Vale Balance') }}</span>
+                        <span class="ep-value ep-mono {{ ($employee->vale ?? 0) > 0 ? 'is-warn' : '' }}">₱{{ number_format($employee->vale ?? 0, 2) }}</span>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Fingerprint') }}</span>
+                        <span class="ep-value {{ $employee->fingerprint_id ? 'ep-mono' : 'is-warn' }}">
+                            @if($employee->fingerprint_id)
+                                <i class="fas fa-fingerprint me-1"></i>{{ __('Enrolled') }} #{{ $employee->fingerprint_id }}
+                            @else
+                                <i class="fas fa-hourglass-half me-1"></i>{{ __('Not enrolled yet') }}
+                            @endif
+                        </span>
+                    </div>
 
-        {{-- ── Right: this week, then recent scans ─────────────────────────── --}}
-        <div class="prof-col">
-
-            <div class="prof-card">
-                <div class="prof-card-head">
-                    <span>{{ __('Payroll ngayong cutoff') }}</span>
-                    <span class="prof-period">{{ $period }}</span>
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Profile Photo') }}</span>
+                        <div class="epv-photo">
+                            @if($employee->photo)
+                                <img src="{{ url('storage/' . $employee->photo) }}" alt="{{ $employee->name }}">
+                            @else
+                                <div class="epv-photo-none">
+                                    <i class="fas fa-user"></i>
+                                    <span>{{ __('No photo') }}</span>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
                 </div>
+            </section>
 
-                @php
-                    $num = fn ($k) => (float) ($totals[$k] ?? 0);
-                @endphp
+            {{-- The four personnel sections, laid out exactly as the form does. --}}
+            @include('employees._profile_view', ['employee' => $employee])
 
-                <div class="prof-pay">
-                    <div class="prof-pay-cell">
-                        <span class="prof-pay-k">{{ __('Araw na pumasok') }}</span>
-                        <span class="prof-pay-v">{{ (int) ($totals['workdays'] ?? 0) }}</span>
+            {{-- ════════════════════ PAYROLL THIS CUTOFF ════════════════════ --}}
+            <section class="ep-section">
+                <header class="ep-section-head">
+                    <span class="ep-section-icon"><i class="fas fa-money-check-dollar"></i></span>
+                    <div>
+                        <h3 class="ep-section-title">{{ __('Payroll This Cutoff') }}</h3>
+                        <p class="ep-section-sub">{{ $period }}</p>
                     </div>
-                    <div class="prof-pay-cell">
-                        <span class="prof-pay-k">{{ __('Oras') }}</span>
-                        <span class="prof-pay-v">{{ number_format($num('hours'), 2) }}</span>
+                </header>
+
+                @php $num = fn ($k) => (float) ($totals[$k] ?? 0); @endphp
+
+                <div class="ep-pay">
+                    <div class="ep-pay-cell">
+                        <span class="ep-label">{{ __('Days Worked') }}</span>
+                        <span class="ep-pay-v">{{ (int) ($totals['workdays'] ?? 0) }}</span>
                     </div>
-                    <div class="prof-pay-cell">
-                        <span class="prof-pay-k">{{ __('Overtime') }}</span>
-                        <span class="prof-pay-v {{ $num('overtime') > 0 ? 'ot' : '' }}">₱{{ number_format($num('overtime'), 2) }}</span>
+                    <div class="ep-pay-cell">
+                        <span class="ep-label">{{ __('Hours') }}</span>
+                        <span class="ep-pay-v">{{ number_format($num('hours'), 2) }}</span>
                     </div>
-                    <div class="prof-pay-cell">
-                        <span class="prof-pay-k">{{ __('Gross') }}</span>
-                        <span class="prof-pay-v">₱{{ number_format($num('gross'), 2) }}</span>
+                    <div class="ep-pay-cell">
+                        <span class="ep-label">{{ __('Overtime') }}</span>
+                        <span class="ep-pay-v {{ $num('overtime') > 0 ? 'is-ot' : '' }}">₱{{ number_format($num('overtime'), 2) }}</span>
                     </div>
-                    <div class="prof-pay-cell">
-                        <span class="prof-pay-k">{{ __('Deductions') }}</span>
-                        <span class="prof-pay-v {{ $num('totalDeductions') > 0 ? 'minus' : '' }}">₱{{ number_format($num('totalDeductions'), 2) }}</span>
+                    <div class="ep-pay-cell">
+                        <span class="ep-label">{{ __('Gross') }}</span>
+                        <span class="ep-pay-v">₱{{ number_format($num('gross'), 2) }}</span>
                     </div>
-                    <div class="prof-pay-cell net">
-                        <span class="prof-pay-k">{{ __('Net') }}</span>
-                        <span class="prof-pay-v">₱{{ number_format($num('net'), 2) }}</span>
+                    <div class="ep-pay-cell">
+                        <span class="ep-label">{{ __('Deductions') }}</span>
+                        <span class="ep-pay-v {{ $num('totalDeductions') > 0 ? 'is-minus' : '' }}">₱{{ number_format($num('totalDeductions'), 2) }}</span>
+                    </div>
+                    <div class="ep-pay-cell is-net">
+                        <span class="ep-label">{{ __('Net') }}</span>
+                        <span class="ep-pay-v">₱{{ number_format($num('net'), 2) }}</span>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="prof-card">
-                <div class="prof-card-head"><span>{{ __('Huling mga pasok') }}</span></div>
+            {{-- ════════════════════ RECENT ATTENDANCE ════════════════════ --}}
+            <section class="ep-section">
+                <header class="ep-section-head">
+                    <span class="ep-section-icon"><i class="fas fa-clock"></i></span>
+                    <div>
+                        <h3 class="ep-section-title">{{ __('Recent Attendance') }}</h3>
+                        <p class="ep-section-sub">{{ __('The latest scans recorded at the kiosk.') }}</p>
+                    </div>
+                </header>
 
                 @if($attendance->isEmpty())
-                    <p class="prof-none">{{ __('Wala pang naitalang attendance.') }}</p>
+                    <p class="ep-none">{{ __('No attendance recorded yet.') }}</p>
                 @else
-                <div class="table-responsive">
-                    <table class="prof-table">
-                        <thead>
-                            <tr><th>{{ __('Petsa') }}</th><th>{{ __('Session') }}</th><th>{{ __('Time in') }}</th><th>{{ __('Time out') }}</th></tr>
-                        </thead>
-                        <tbody>
-                        @foreach($attendance as $a)
-                            <tr>
-                                <td>{{ \Carbon\Carbon::parse($a->date)->format('M d, Y') }}</td>
-                                <td><span class="prof-tag">{{ $a->session }}</span></td>
-                                <td>{{ $a->time_in ? \Carbon\Carbon::parse($a->time_in)->format('g:i A') : '—' }}</td>
-                                <td>
-                                    @if($a->time_out)
-                                        {{ \Carbon\Carbon::parse($a->time_out)->format('g:i A') }}
-                                    @else
-                                        <span class="prof-tag is-live">{{ __('Nasa loob pa') }}</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                    <div class="table-responsive">
+                        <table class="ep-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ __('Date') }}</th>
+                                    <th>{{ __('Session') }}</th>
+                                    <th>{{ __('Time In') }}</th>
+                                    <th>{{ __('Time Out') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($attendance as $a)
+                                <tr>
+                                    <td>{{ \Carbon\Carbon::parse($a->date)->format('M d, Y') }}</td>
+                                    <td>{{ $a->session ?? '—' }}</td>
+                                    <td class="ep-mono">{{ $a->time_in ? \Carbon\Carbon::parse($a->time_in)->format('g:i A') : '—' }}</td>
+                                    {{-- An open row is not a missing time — it is
+                                         someone who has not clocked out yet, and
+                                         a dash would hide that. --}}
+                                    <td class="{{ $a->time_out ? 'ep-mono' : '' }}">
+                                        @if($a->time_out)
+                                            {{ \Carbon\Carbon::parse($a->time_out)->format('g:i A') }}
+                                        @else
+                                            <span class="ep-live">{{ __('Still clocked in') }}</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 @endif
-            </div>
+            </section>
 
         </div>
     </div>
 </div>
-
-<style>
-/* =============================================================================
-   EMPLOYEE PROFILE
-   -----------------------------------------------------------------------------
-   Sarili ng pahinang ito ang lahat ng klase rito. Humihiram ito dati ng
-   .dir-header, .dir-btn-primary, .emp-card at .emp-table sa index.blade.php —
-   nasa loob iyon ng <style> ng ibang pahina at hindi umaabot dito, kaya walang
-   anyo ang header, ang Edit at ang talahanayan.
-
-   Tokens lang ang kulay: --surface, --text-primary, --border at kapatid nito,
-   na muling binibigyang-halaga sa ilalim ng html[data-bs-theme]. Kaya sumusunod
-   ito sa light at dark nang walang hiwalay na panuntunan. (Ang dating code ay
-   tumatawag ng --text, --surface-2, --surface-3, --border-soft at --text-dim,
-   na wala sa alinmang stylesheet — kaya laging ang madilim na fallback ang
-   ginagamit, at nabubura ang pahina sa light mode.)
-
-   Sumusunod sa sistema ng app: 6px radius, patag na ibabaw, isang brand blue.
-   ========================================================================== */
-
-.prof-page { width: 100%; max-width: none; margin: 0; }
-
-/* --- Balik sa listahan --------------------------------------------------- */
-.prof-back {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-size: 0.8rem; font-weight: 600; text-decoration: none;
-    color: var(--text-muted); transition: var(--transition);
-}
-.prof-back:hover { color: var(--brand); }
-.prof-back i { font-size: 0.72rem; }
-
-/* --- Pamagat + Edit ------------------------------------------------------ */
-.prof-head {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 20px; flex-wrap: wrap;
-    margin: 12px 0 20px;
-    padding-bottom: 18px; border-bottom: 1px solid var(--border);
-}
-.prof-head-main { min-width: 0; }
-.prof-title {
-    margin: 0; font-size: 1.6rem; font-weight: 700;
-    letter-spacing: -0.01em; color: var(--text-primary);
-}
-.prof-meta {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    margin-top: 9px; font-size: 0.82rem; color: var(--text-secondary);
-}
-.prof-id {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    color: var(--text-muted);
-}
-/* Tuldok na naghihiwalay - mas tahimik kaysa tunay na bantas. */
-.prof-sep {
-    width: 3px; height: 3px; border-radius: 50%;
-    background: var(--border-md); flex-shrink: 0;
-}
-
-.prof-edit {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 9px 16px; border-radius: var(--radius-sm);
-    font-size: 0.83rem; font-weight: 600; text-decoration: none;
-    white-space: nowrap; cursor: pointer;
-    background: var(--brand); border: 1px solid var(--brand);
-    color: #fff; transition: var(--transition);
-}
-.prof-edit:hover { background: var(--brand-strong); border-color: var(--brand-strong); color: #fff; }
-.prof-edit:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-
-/* --- Tatak ---------------------------------------------------------------
-   Isang hugis para sa lahat ng maliit na pananda sa pahina, kaya hindi
-   nagmumukhang iba't ibang bagay ang magkakatulad na impormasyon. */
-.prof-tag {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 3px 9px; border-radius: var(--radius-sm);
-    font-size: 0.72rem; font-weight: 600; white-space: nowrap;
-    color: var(--text-secondary);
-    background: transparent; border: 1px solid var(--border);
-}
-.prof-tag i { font-size: 0.62rem; color: var(--text-muted); }
-.prof-tag.mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-weight: 500;
-}
-.prof-tag.is-contract {
-    color: var(--brand); border-color: var(--brand); background: var(--brand-subtle);
-}
-.prof-tag.is-contract i { color: var(--brand); }
-.prof-tag.is-warn   { color: var(--warning); border-color: var(--warning); }
-.prof-tag.is-warn i { color: var(--warning); }
-.prof-tag.is-live   { color: var(--success); border-color: var(--success); }
-
-.prof-dash { color: var(--text-muted); font-size: 0.82rem; }
-
-/* --- Layout -------------------------------------------------------------- */
-.prof-grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; align-items: start; }
-.prof-col  { display: flex; flex-direction: column; gap: 16px; }
-
-.prof-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-sm);
-    padding: 18px;
-}
-
-/* --- Pagkakakilanlan ----------------------------------------------------- */
-.prof-id-block {
-    display: flex; align-items: center; gap: 14px;
-    padding-bottom: 16px; margin-bottom: 4px;
-    border-bottom: 1px solid var(--border);
-}
-.prof-photo, .prof-initials {
-    width: 54px; height: 54px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
-}
-.prof-initials {
-    display: flex; align-items: center; justify-content: center;
-    background: var(--brand-subtle); color: var(--brand);
-    font-size: 1.35rem; font-weight: 700;
-}
-.prof-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
-.prof-role { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; }
-
-/* --- Listahan ng datos --------------------------------------------------- */
-.prof-facts { margin: 0; padding: 0; }
-.prof-fact {
-    display: flex; align-items: center; justify-content: space-between; gap: 14px;
-    padding: 11px 0; border-bottom: 1px solid var(--border);
-}
-.prof-fact:last-child { border-bottom: none; padding-bottom: 0; }
-.prof-fact dt {
-    margin: 0; font-size: 0.76rem; font-weight: 500;
-    color: var(--text-muted); flex-shrink: 0;
-}
-.prof-fact dd { margin: 0; text-align: right; min-width: 0; }
-.prof-val   { font-size: 0.83rem; color: var(--text-primary); }
-.prof-money {
-    font-size: 0.9rem; font-weight: 700; color: var(--text-primary);
-    font-variant-numeric: tabular-nums;
-}
-.prof-money.warn { color: var(--warning); }
-.prof-money small {
-    display: block; margin-top: 2px;
-    font-size: 0.64rem; font-weight: 500; color: var(--text-muted);
-}
-
-/* --- Ulo ng card --------------------------------------------------------- */
-.prof-card-head {
-    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--text-muted);
-    padding-bottom: 13px; margin-bottom: 15px;
-    border-bottom: 1px solid var(--border);
-}
-.prof-period {
-    font-size: 0.7rem; letter-spacing: 0; text-transform: none;
-    color: var(--brand); font-weight: 600; white-space: nowrap;
-}
-
-/* --- Buod ng payroll ----------------------------------------------------- */
-.prof-pay { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
-.prof-pay-cell {
-    display: flex; flex-direction: column; gap: 6px;
-    background: var(--bg-subtle); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 12px 13px;
-}
-.prof-pay-k { font-size: 0.68rem; font-weight: 500; color: var(--text-muted); }
-.prof-pay-v {
-    font-size: 1.02rem; font-weight: 700; color: var(--text-primary);
-    font-variant-numeric: tabular-nums;
-}
-.prof-pay-v.ot    { color: var(--warning); }
-.prof-pay-v.minus { color: var(--danger); }
-/* Ang Net ang sagot sa tanong ng pahina, kaya isang guhit ang naghihiwalay
-   dito - hindi buong kahon na kulay, na kumakain ng pansin sa katabi. */
-.prof-pay-cell.net {
-    border-left: 3px solid var(--success);
-    background: var(--surface);
-}
-.prof-pay-cell.net .prof-pay-v { color: var(--success); }
-
-/* --- Talahanayan ng pasok ------------------------------------------------ */
-.prof-table { width: 100%; margin: 0; border-collapse: collapse; }
-.prof-table thead th {
-    padding: 0 0 9px; text-align: left;
-    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--text-muted); border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-}
-.prof-table tbody td {
-    padding: 11px 0; font-size: 0.82rem; color: var(--text-primary);
-    border-bottom: 1px solid var(--border);
-}
-.prof-table tbody tr:last-child td { border-bottom: none; padding-bottom: 0; }
-.prof-table tbody td + td { padding-left: 14px; }
-.prof-table thead th + th { padding-left: 14px; }
-
-.prof-none { margin: 0; padding: 6px 0; font-size: 0.83rem; color: var(--text-muted); }
-
-/* --- Responsive ---------------------------------------------------------- */
-@media (max-width: 1100px) {
-    .prof-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 620px) {
-    .prof-pay { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .prof-head { gap: 14px; }
-    .prof-edit { width: 100%; justify-content: center; }
-    .prof-title { font-size: 1.35rem; }
-}
-</style>
 @endsection
+
+{{-- The section chrome the form uses, shared so the two pages cannot drift. --}}
+@push('styles')
+    @include('employees._profile_styles')
+@endpush
+
+@push('styles')
+<style>
+/* ── View-Details-only additions ───────────────────────────────────────────
+   Everything else on this page is the form's own chrome from
+   _profile_styles.blade.php. These are the few things a form has no use for:
+   a payroll strip, an attendance table and a photo tile. Colours are theme
+   tokens, so there is no dark-mode twin of this block. */
+.ep-aside { color: var(--text-muted, #8a929b); font-size: .8em; margin-left: 4px; }
+.ep-warn  { color: var(--warning, #b54708); font-weight: 600; }
+.ep-value.is-warn { color: var(--warning, #b54708); font-weight: 600; }
+
+/* Photo sits in the grid where the picker sits on the form, so the section
+   keeps the same shape whether it is being filled in or read. */
+.epv-photo {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 120px; padding: 8px;
+    border: 1px solid var(--border, #e3e6e9);
+    border-radius: var(--radius-md, 6px);
+    background: var(--bg-subtle, #f7f8fa);
+}
+.epv-photo img { max-height: 104px; border-radius: var(--radius-md, 6px); object-fit: cover; }
+.epv-photo-none {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: var(--text-muted, #8a929b); font-size: .78rem;
+}
+.epv-photo-none i { font-size: 1.6rem; opacity: .45; }
+
+/* ── Payroll strip ─────────────────────────────────────────────────────── */
+.ep-pay { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.ep-pay-cell {
+    padding: 12px 14px;
+    border: 1px solid var(--border, #e3e6e9);
+    border-radius: var(--radius-md, 6px);
+    background: var(--bg-subtle, #f7f8fa);
+}
+.ep-pay-v {
+    display: block; margin-top: 2px;
+    font-size: 1rem; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary, #1b2430);
+}
+.ep-pay-v.is-ot    { color: var(--brand, #1668dc); }
+.ep-pay-v.is-minus { color: var(--danger, #b3403a); }
+.ep-pay-cell.is-net {
+    background: var(--brand-subtle, #eaf2fd);
+    border-color: transparent;
+}
+.ep-pay-cell.is-net .ep-pay-v { color: var(--brand, #1668dc); }
+
+/* ── Attendance table ──────────────────────────────────────────────────── */
+.ep-table { width: 100%; margin: 0; border-collapse: collapse; }
+.ep-table thead th {
+    padding: 0 0 9px; text-align: left; white-space: nowrap;
+    font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-muted, #8a929b);
+    border-bottom: 1px solid var(--border, #e3e6e9);
+}
+.ep-table tbody td {
+    padding: 11px 0; font-size: .84rem;
+    color: var(--text-primary, #1b2430);
+    border-bottom: 1px solid var(--border, #e3e6e9);
+}
+.ep-table tbody tr:last-child td { border-bottom: none; padding-bottom: 0; }
+.ep-table thead th + th,
+.ep-table tbody td + td { padding-left: 16px; }
+
+.ep-live {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: .74rem; font-weight: 600;
+    color: var(--success, #027a48);
+    background: var(--success-soft, #ecfdf3);
+    border: 1px solid transparent;
+}
+
+.ep-none { margin: 0; font-size: .85rem; color: var(--text-muted, #8a929b); }
+
+@media (max-width: 1100px) { .ep-pay { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 620px)  { .ep-pay { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+@endpush

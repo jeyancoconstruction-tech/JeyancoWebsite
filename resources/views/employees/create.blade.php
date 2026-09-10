@@ -271,7 +271,11 @@
     </div>
 </div>
 
-@include('employees._profile_styles')
+{{-- In the head, not the body: a stylesheet the parser only reaches near
+     the end of the page paints the sections unstyled first. --}}
+@push('styles')
+    @include('employees._profile_styles')
+@endpush
 
 <script src="{{ asset('js/site-location-picker.js') }}"></script>
 <script src="{{ asset('js/address-picker.js') }}"></script>

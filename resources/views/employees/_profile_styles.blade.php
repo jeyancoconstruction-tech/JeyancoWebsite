@@ -78,6 +78,26 @@
 .ep-optional { font-weight: 400; text-transform: none; letter-spacing: 0;
                color: var(--text-muted, #8a929b); }
 
+/* ── Read-only field ──────────────────────────────────────────────────────
+   View Details renders the same sections, the same labels and the same grid
+   as Register Employee, with the stored answer where the input would be. It
+   is deliberately shaped like a .form-control so the two pages read as one
+   layout, and deliberately not one: no focus ring, no caret, nothing that
+   suggests it can be typed into. Editing has its own page. */
+.ep-value {
+    display: block;
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid var(--border, #e3e6e9);
+    border-radius: var(--radius-md, 6px);
+    background: var(--bg-subtle, #f7f8fa);
+    color: var(--text-primary, #1b2430);
+    font-size: .9rem; line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+/* A blank answer says so, rather than leaving a box the eye has to interpret. */
+.ep-value.is-empty { color: var(--text-muted, #8a929b); }
+
 /* ── Photo picker ─────────────────────────────────────────────────────── */
 .ep-photo {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
