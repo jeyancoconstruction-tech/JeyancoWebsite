@@ -850,6 +850,7 @@
                 </div>
             </div>
 
+@push('styles')
             {{-- Calendar CSS --}}
             <style>
             /* ── Info banner ────────────────────────────────────────────── */
@@ -1116,9 +1117,12 @@
 
             @keyframes hcalFlash { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:none; } }
             </style>
+@endpush
 
             {{-- Flatpickr (date picker for Add Custom Holiday modal) --}}
+@push('styles')
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+@endpush
             <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
             {{-- Calendar JavaScript --}}
@@ -1901,6 +1905,7 @@
     </div>
 </div>
 
+@push('styles')
 <style>
 /* ── Shift definitions ─────────────────────────────────────────────────────
    Two cards side by side: the start and the grace belong to the shift, not to
@@ -2427,6 +2432,7 @@
 [data-bs-theme="dark"] .lt-dropdown .dropdown-item.text-danger { color:#f87171 !important; }
 [data-bs-theme="dark"] .lt-dropdown .dropdown-divider { border-color:#283449; }
 </style>
+@endpush
 
 <script>
 // Initialize tabs based on URL parameters and hash
