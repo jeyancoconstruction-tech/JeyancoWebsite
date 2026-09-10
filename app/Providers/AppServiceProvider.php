@@ -20,10 +20,72 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * Make sure public/storage points at storage/app/public.
+     *
+     * Laravel creates this link from composer's post-autoload-dump. Railway
+     * never runs it: the build log says
+     *
+     *     composer install --optimize-autoloader --no-scripts --no-interaction
+     *
+     * so no composer script has ever executed in production, and public/storage
+     * has never existed there — which is why no uploaded photo was reachable
+     * over the web, on any deploy, since the day photos were added. Doing it in
+     * composer.json cannot fix that; it has to happen at runtime.
+     *
+     * Costs one stat per worker process. FrankenPHP keeps workers alive, so in
+     * practice this runs once after a deploy and then never again.
+     *
+     * It does NOT make photos survive a deploy: /app/storage is on the
+     * container's overlay filesystem, so the files themselves are still wiped
+     * every time. That needs a Railway volume mounted at
+     * /app/storage/app/public — mounting at /app/storage instead would shadow
+     * storage/framework/{cache,sessions,views} and take the app down.
+     */
+    private function ensureStorageLink(): void
+    {
+        static $checked = false;
+
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        $link = public_path('storage');
+
+        // is_link as well as file_exists: file_exists() is false for a symlink
+        // whose target is missing, and symlink() would then fail on the link
+        // that is already sitting there.
+        if (is_link($link) || file_exists($link)) {
+            return;
+        }
+
+        try {
+            $target = storage_path('app/public');
+
+            if (! is_dir($target)) {
+                mkdir($target, 0755, true);
+            }
+
+            // Silenced deliberately. symlink() raises a warning rather than
+            // throwing when it cannot link — on Windows without developer mode
+            // it is "Permission denied" every time — and an unsilenced warning
+            // here would be written on the first request of every worker, in a
+            // situation the catch below cannot even see.
+            @symlink($target, $link);
+        } catch (Throwable) {
+            // A read-only image, or no permission on public/. Photos 404,
+            // which is the situation this is trying to improve — not a reason
+            // to take every request down with it.
+        }
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
     {
+        $this->ensureStorageLink();
+
         // In production (Railway) the public connection is always HTTPS, so
         // generate https:// links and form actions to avoid "not secure"
         // browser warnings on form submits.
