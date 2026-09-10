@@ -144,9 +144,17 @@
 
                         <div class="col-md-6 col-lg-3">
                             <label class="ep-label" for="date_hired">{{ __('Date Hired') }} <span class="ep-req">*</span></label>
-                            <input type="date" id="date_hired" name="date_hired" required value="{{ old('date_hired') }}"
+                            {{-- A worker is nearly always registered on the day they
+                                 start, so today is the right answer often enough to be
+                                 the default. It stays a plain date input — changing it
+                                 costs the same as filling it in did. now() is Manila
+                                 time (config/app.php), so this is the office's today,
+                                 not the server's UTC one. --}}
+                            <input type="date" id="date_hired" name="date_hired" required
+                                   value="{{ old('date_hired', now()->toDateString()) }}"
                                    class="form-control @error('date_hired') is-invalid @enderror">
                             @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <span class="ep-hint">{{ __('Today by default — change it if they started earlier.') }}</span>
                         </div>
 
                         {{-- ── Contractual only ── --}}
