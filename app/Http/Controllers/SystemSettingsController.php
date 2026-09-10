@@ -95,7 +95,9 @@ class SystemSettingsController extends Controller
     {
         $data = $request->validate([
             'default_theme' => ['required', 'in:dark,light'],
-            'locale'        => ['required', 'in:en,tl'],
+            // No 'locale' rule: the Language picker is gone and the form does
+            // not post one. Requiring it here would fail every save of this
+            // page over a field it no longer has.
         ]);
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);

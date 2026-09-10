@@ -47,11 +47,11 @@
                     All Employees <span class="dir-tab-count" id="countAll">{{ $stats['total'] }}</span>
                 </button>
                 <button type="button" class="dir-tab" data-scope="regular"
-                        title="{{ __('Oras-oras ang bayad at kasama sa payroll') }}">
+                        title="{{ __('Paid by the hour and included in payroll') }}">
                     Regular <span class="dir-tab-count">{{ $stats['regular'] }}</span>
                 </button>
                 <button type="button" class="dir-tab" data-scope="contractual"
-                        title="{{ __('Bayad ayon sa kontrata — attendance lang ang sinusubaybayan, hindi kasama sa payroll') }}">
+                        title="{{ __('Paid against a contract — attendance is tracked, but they are not part of payroll') }}">
                     Contractual <span class="dir-tab-count">{{ $stats['contractual'] }}</span>
                 </button>
             </div>
@@ -239,7 +239,7 @@
                                  hulaan, at ang pagbubukas ng buong rekord ay
                                  hindi dapat pahulaan. --}}
                             <a href="{{ route('employees.show', $emp->id) }}"
-                               class="emp-view-btn" title="Buksan ang rekord ni {{ $emp->name }}">
+                               class="emp-view-btn" title="{{ __('Open the record of :name', ['name' => $emp->name]) }}">
                                 View Details
                             </a>
                             <div class="emp-more-wrap">
@@ -320,8 +320,8 @@
             </div>
             <div class="modal-body p-3">
                 <p class="emp-modal-sub" style="color:var(--text-muted);">
-                    Mapupunta siya sa <strong>{{ __('Removed') }}</strong> sa Register &amp; Manage at
-                    maibabalik mula roon. Mananatili ang attendance at payroll niya.
+                    They move to <strong>{{ __('Removed') }}</strong> in Register &amp; Manage and
+                    can be restored from there. Their attendance and payroll are kept.
                 </p>
                 <form id="empDeleteForm" method="POST" class="d-flex justify-content-end gap-2 mt-3">
                     @csrf

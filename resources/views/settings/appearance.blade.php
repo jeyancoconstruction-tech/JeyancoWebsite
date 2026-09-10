@@ -50,13 +50,11 @@
                             <option value="light" @selected(old('default_theme', $system->default_theme) === 'light')>{{ __('Light') }}</option>
                         </select>
                     </div>
-                    <div class="sy-field">
-                        <label for="locale">{{ __('Language') }}</label>
-                        <select class="sy-input" id="locale" name="locale" required>
-                            <option value="en" @selected(old('locale', $system->locale) === 'en')>{{ __('English') }}</option>
-                            <option value="tl" @selected(old('locale', $system->locale) === 'tl')>{{ __('Tagalog') }}</option>
-                        </select>
-                    </div>
+                    {{-- The Language picker was here. Its Tagalog option turned
+                         every __() string in the app over to lang/tl.json, which
+                         is the one switch that could put the whole UI back into
+                         Tagalog. The system is English only now, so a picker
+                         with one option in it would only be furniture. --}}
                 </div>
 
                 <p class="sy-hint">
@@ -77,11 +75,11 @@
             </div>
             <div class="sy-card-body">
                 <p class="sy-hint" style="margin-top:0;">
-                    There is no translation layer in the app — the English and the Tagalog on screen are both
-                    written into the templates, so a language switch would have nothing to switch to. Amounts
-                    are formatted as pesos to two decimals wherever they are printed, with the symbol written
-                    in place rather than read from anywhere.
-                    Both are real work rather than a control, so neither is offered here as one.
+                    The system is English only. There was a language switch here once, backed by a file of
+                    translations; both are gone, and every screen is now written in English in the template
+                    itself. Amounts are formatted as pesos to two decimals wherever they are printed, with
+                    the symbol written in place rather than read from anywhere.
+                    Both are decisions rather than controls, so neither is offered here as one.
                 </p>
             </div>
         </div>

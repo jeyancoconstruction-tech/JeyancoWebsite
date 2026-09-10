@@ -175,7 +175,7 @@
                     <div class="map-ctl">
                         <input id="siteSearch" class="map-input" type="text" placeholder="{{ __('Search a place…') }}">
                         <button id="siteSearchBtn" class="map-btn secondary" type="button" title="{{ __('Search') }}"><i class="fas fa-search"></i></button>
-                        <select id="siteSelect" class="map-select" title="{{ __('Piliin ang site na itatakda') }}"></select>
+                        <select id="siteSelect" class="map-select" title="{{ __('Choose the site to place') }}"></select>
                         <button id="siteSaveBtn" class="map-btn primary" type="button" title="{{ __('Save location') }}"><i class="fas fa-map-pin"></i> {{ __('Save') }}</button>
                     </div>
                     <div id="siteMapHint" class="map-hint">{{ __('Search or click the map, then Save.') }}</div>
@@ -482,9 +482,9 @@
                     if (bounds.length === 1) map.setView(bounds[0], 16);
                     else if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40] });
                 }
-                setHint('Pumili ng site, i-click ang mapa, tapos Save.');
+                setHint('Choose a site, click the map, then Save.');
             } catch (e) {
-                setHint('Hindi ma-load ang listahan ng sites.', '#ef4444');
+                setHint('Could not load the list of sites.', '#ef4444');
             }
         }
 
@@ -497,10 +497,10 @@
                 placingMarker.on('dragend', ev => {
                     const p = ev.target.getLatLng();
                     placing = { lat: p.lat, lng: p.lng };
-                    setHint(`Pin para sa "${selectedName()}": ${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)} — pindutin ang Save.`, '#22c55e');
+                    setHint(`Pin for "${selectedName()}": ${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)} — press Save.`, '#22c55e');
                 });
             }
-            setHint(`Pin para sa "${selectedName()}": ${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)} — pindutin ang Save.`, '#22c55e');
+            setHint(`Pin for "${selectedName()}": ${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)} — press Save.`, '#22c55e');
         }
         map.on('click', e => placePin(e.latlng));
 
@@ -508,17 +508,17 @@
         async function doSearch() {
             const q = searchInput.value.trim();
             if (!q) return;
-            setHint('Naghahanap ng lugar…');
+            setHint('Searching for a place…');
             try {
                 const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q=${encodeURIComponent(q)}`;
                 const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
                 const arr = await res.json();
-                if (!arr.length) { setHint('Walang nahanap na lugar. Subukan ang ibang pangalan.', '#ef4444'); return; }
+                if (!arr.length) { setHint('No place found. Try a different name.', '#ef4444'); return; }
                 const lat = parseFloat(arr[0].lat), lng = parseFloat(arr[0].lon);
                 map.setView([lat, lng], 16);
                 placePin(L.latLng(lat, lng));   // auto-drop pin at the result
             } catch (e) {
-                setHint('Hindi gumana ang search. Subukan ulit.', '#ef4444');
+                setHint('The search did not work. Try again.', '#ef4444');
             }
         }
         searchBtn.addEventListener('click', doSearch);
@@ -527,10 +527,10 @@
         // ---- save the pin as the selected site's location ----
         saveBtn.addEventListener('click', async () => {
             const id = siteSelect.value;
-            if (!id) { setHint('Walang piniling site.', '#ef4444'); return; }
-            if (!placing) { setHint('Mag-click muna sa map o mag-search para maglagay ng pin.', '#ef4444'); return; }
+            if (!id) { setHint('No site is selected.', '#ef4444'); return; }
+            if (!placing) { setHint('Click the map, or search for a place, to drop a pin first.', '#ef4444'); return; }
             const site = sitesById[id];
-            saveBtn.disabled = true; setHint('Sine-save ang lokasyon…');
+            saveBtn.disabled = true; setHint('Saving the location…');
             try {
                 const res = await fetch(`/sites/${id}`, {
                     method: 'PUT',
@@ -547,9 +547,9 @@
                 if (placingMarker) { map.removeLayer(placingMarker); placingMarker = null; }
                 placing = null;
                 await loadSites(false);
-                setHint(`✅ Na-save ang lokasyon ng "${site.name}".`, '#22c55e');
+                setHint(`Saved the location of "${site.name}".`, '#22c55e');
             } catch (e) {
-                setHint('Hindi na-save: ' + e.message, '#ef4444');
+                setHint('Could not save: ' + e.message, '#ef4444');
             } finally {
                 saveBtn.disabled = false;
             }
@@ -583,7 +583,7 @@
         }
 
         statusEl.style.cursor = 'pointer';
-        statusEl.title = 'I-click para hanapin ang kiosk sa mapa';
+        statusEl.title = 'Click to find the kiosk on the map';
         statusEl.addEventListener('click', () => {
             if (liveMarker) {
                 revealKiosk(liveMarker.getLatLng(), true);
@@ -617,11 +617,11 @@
                     if (d.site_match === false) {
                         statusEl.innerHTML =
                             `<i class="fas fa-triangle-exclamation text-danger" style="font-size:9px;"></i> ` +
-                            `GPS: ${where} &middot; naka-set sa ${d.active_site || '—'}`;
+                            `GPS: ${where} &middot; set to ${d.active_site || '—'}`;
                     } else if (d.alert === 'outside_geofence') {
                         statusEl.innerHTML =
                             `<i class="fas fa-circle text-danger" style="font-size:8px;"></i> ` +
-                            `Wala sa site &middot; ${Math.round(d.distance_m || 0)}m &middot; ${t}`;
+                            `Outside the site &middot; ${Math.round(d.distance_m || 0)}m &middot; ${t}`;
                     } else {
                         statusEl.innerHTML =
                             `<i class="fas fa-circle text-success" style="font-size:8px;"></i> ` +
@@ -631,7 +631,7 @@
                     // Buhay ang kiosk, walang satellite lock. Ibang-iba ito sa
                     // katahimikan, na ibig sabihin nawawala ang kiosk.
                     statusEl.innerHTML =
-                        `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Naka-on, walang GPS signal`;
+                        `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Powered on, no GPS signal`;
                 } else {
                     statusEl.innerHTML = `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Waiting for GPS`;
                 }

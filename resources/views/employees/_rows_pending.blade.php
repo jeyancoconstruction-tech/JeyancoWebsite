@@ -41,8 +41,8 @@
                 </span>
             @endif
             @if($missingRate)
-                <span class="rm-needs-rate" title="Ang position na '{{ $e->position }}' ay walang katugmang labor type, kaya walang rate. Itakda ito sa Complete.">
-                    <i class="fas fa-triangle-exclamation"></i> {{ __('walang rate') }}
+                <span class="rm-needs-rate" title="{{ __('The position \':position\' has no matching labor type, so there is no rate. Set one in Complete.', ['position' => $e->position]) }}">
+                    <i class="fas fa-triangle-exclamation"></i> {{ __('no rate') }}
                 </span>
             @endif
         </td>

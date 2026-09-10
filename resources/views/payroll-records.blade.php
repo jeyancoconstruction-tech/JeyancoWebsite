@@ -627,7 +627,7 @@
         // — a labour type's rate is per worker, not per period.
         const daily = Number(d.dailyRate) || 0;
         set('rcBasis', money(daily) + '/day · ' + money(daily / PAID_HOURS) + '/hr · '
-                     + s.workdays + ' day' + (s.workdays === 1 ? '' : 's') + ' pasok'
+                     + s.workdays + ' day' + (s.workdays === 1 ? '' : 's') + ' worked'
                      + (s.late > 0 ? ' · ' + s.late + 'm late' : ''));
 
         // Each line names what produced it, because "why is this 250" is the

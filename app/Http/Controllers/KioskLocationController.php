@@ -307,21 +307,21 @@ class KioskLocationController extends Controller
         // Presence transitions.
         if ($prev['presence'] === 'online' && $now['presence'] === 'offline') {
             $this->alertAdmins('kiosk_offline', "Kiosk offline: {$label}",
-                "Walang heartbeat mula sa {$label} nang lampas " . config('kiosk.offline_after') . "s. Baka na-unplug o nawalan ng power/internet.");
+                "No heartbeat from {$label} for over " . config('kiosk.offline_after') . "s. It may be unplugged, or have lost power or internet.");
         } elseif ($prev['presence'] === 'offline' && $now['presence'] === 'online') {
-            $this->alertAdmins('kiosk_online', "Kiosk online ulit: {$label}",
-                "Bumalik na online ang {$label}.");
+            $this->alertAdmins('kiosk_online', "Kiosk back online: {$label}",
+                "{$label} is online again.");
         }
 
         // Geofence transitions (only meaningful once we have a home + a fix).
         if ($now['geofence'] !== 'unknown') {
             if (in_array($prev['geofence'], ['inside', 'unknown'], true) && $now['geofence'] === 'outside') {
                 $d = $now['distance'] !== null ? number_format($now['distance']) . 'm' : '?';
-                $this->alertAdmins('kiosk_geofence', "Kiosk lumayo sa lugar: {$label}",
-                    "Ang {$label} ay {$d} mula sa naitakdang lokasyon (limit " . config('kiosk.geofence_radius') . "m). Posibleng ninakaw/inilipat.");
+                $this->alertAdmins('kiosk_geofence', "Kiosk left its location: {$label}",
+                    "{$label} is {$d} from its set location (limit " . config('kiosk.geofence_radius') . "m). It may have been moved or taken.");
             } elseif ($prev['geofence'] === 'outside' && $now['geofence'] === 'inside') {
-                $this->alertAdmins('kiosk_geofence_ok', "Kiosk bumalik sa lugar: {$label}",
-                    "Nasa loob na ulit ng geofence ang {$label}.");
+                $this->alertAdmins('kiosk_geofence_ok', "Kiosk back at its location: {$label}",
+                    "{$label} is inside the geofence again.");
             }
         }
 

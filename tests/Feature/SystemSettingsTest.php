@@ -382,53 +382,68 @@ class SystemSettingsTest extends TestCase
      * The switch has to reach the strings, not just the row. A setting that
      * saves 'tl' and leaves the screen in English is a preference nobody sees.
      */
-    public function test_the_locale_switches_the_navigation(): void
+    /**
+     * The system is English only.
+     *
+     * These three tests used to assert the opposite: that setting the locale
+     * to 'tl' turned the navigation, the pages and the settings screens over
+     * to Tagalog, out of lang/tl.json. The Language picker has been removed
+     * and that file deleted, so what is pinned now is that nothing can put the
+     * UI back into Tagalog — not the setting, not a hand-made POST, and not a
+     * translation file reappearing.
+     */
+    public function test_the_navigation_is_english(): void
     {
         $this->actingAs($this->admin())
              ->get(route('system-settings.appearance'))
              ->assertOk()
              ->assertSee('Payroll Records')
              ->assertDontSee('Talaan ng Sahod');
+    }
 
+    public function test_a_stored_tagalog_locale_no_longer_changes_anything(): void
+    {
+        // The column still exists and is still writable; nothing reads it.
         SystemSetting::create(SystemSetting::DEFAULTS)->update(['locale' => 'tl']);
         SystemSetting::forget();
 
         $this->actingAs($this->admin())
              ->get(route('system-settings.appearance'))
              ->assertOk()
-             ->assertSee('Talaan ng Sahod')
-             ->assertSee('Seguridad')
-             ->assertSee('Hitsura');
-    }
-
-    public function test_an_unknown_locale_is_refused(): void
-    {
-        $this->actingAs($this->admin())
-             ->put(route('system-settings.appearance.update'), ['default_theme' => 'dark', 'locale' => 'fr'])
-             ->assertSessionHasErrors('locale');
-    }
-
-    /**
-     * Not just the nav. The pages themselves have to change, or the switch is
-     * a label on a menu with English underneath it.
-     */
-    public function test_the_locale_reaches_the_pages_themselves(): void
-    {
-        SystemSetting::create(SystemSetting::DEFAULTS)->update(['locale' => 'tl']);
-        SystemSetting::forget();
+             ->assertSee('Payroll Records')
+             ->assertDontSee('Talaan ng Sahod')
+             ->assertDontSee('Seguridad')
+             ->assertDontSee('Hitsura');
 
         $this->actingAs($this->admin())
              ->get(route('accounts.index'))
              ->assertOk()
-             ->assertSee('Pamamahala ng Account')
-             ->assertSee('Tungkulin')
-             ->assertDontSee('Account Management');
+             ->assertSee('Account Management')
+             ->assertDontSee('Pamamahala ng Account');
 
         $this->actingAs($this->admin())
              ->get(route('settings.index'))
              ->assertOk()
-             ->assertSee('Mga Multiplier at Kaltas')
-             ->assertSee('Uri ng Trabaho')
-             ->assertSee('Mga Piyesta Opisyal');
+             ->assertSee('Multipliers and Deductions')
+             ->assertDontSee('Mga Multiplier at Kaltas');
+    }
+
+    /** The picker is gone, so saving Appearance must not ask for one. */
+    public function test_appearance_saves_without_a_language_field(): void
+    {
+        $this->actingAs($this->admin())
+             ->put(route('system-settings.appearance.update'), ['default_theme' => 'light'])
+             ->assertSessionHasNoErrors();
+
+        SystemSetting::forget();
+        $this->assertSame('light', SystemSetting::current()->default_theme);
+    }
+
+    public function test_the_tagalog_translation_file_is_gone(): void
+    {
+        $this->assertFileDoesNotExist(
+            base_path('lang/tl.json'),
+            'lang/tl.json is what turned every __() string Tagalog; it must not come back'
+        );
     }
 }

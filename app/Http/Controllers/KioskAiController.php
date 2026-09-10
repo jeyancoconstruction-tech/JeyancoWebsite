@@ -18,15 +18,15 @@ use Illuminate\Validation\Rule;
  * payroll, attendance, and overtime.
  *
  * The kiosk must never crash on our account: every failure path returns HTTP
- * 200 with a friendly Taglish message instead of an error status.
+ * 200 with a friendly message instead of an error status.
  */
 class KioskAiController extends Controller
 {
     private const ENDPOINT = 'https://api.anthropic.com/v1/messages';
     private const MODEL    = 'claude-haiku-4-5-20251001';
 
-    private const FALLBACK = 'Pasensya na, hindi ko ma-check ang payroll mo ngayon. '
-        . 'Pakisubukan ulit mamaya, o tanungin ang admin.';
+    private const FALLBACK = 'Sorry, I cannot check your payroll right now. '
+        . 'Please try again later, or ask the admin.';
 
     /**
      * GET /api/employees/by-finger/{fingerId}
@@ -407,24 +407,24 @@ class KioskAiController extends Controller
         );
 
         return <<<PROMPT
-        Ikaw ang payroll assistant ng Jeyanco Construction, nakalagay sa kiosk sa construction site.
+        You are the payroll assistant for Jeyanco Construction, running on the kiosk at the construction site.
 
-        PAANO SUMAGOT
-        - Sumagot sa Taglish. Maikli at diretso — parang kausap mo ang manggagawa sa site.
-        - Piso (₱) ang gamit, laging 2 decimal places. Halimbawa: ₱3,000.00
-        - Kapag may kinukuwenta, ipakita ang breakdown.
-          Halimbawa: "5 days × ₱600.00 = ₱3,000.00 + OT 4 hrs × ₱93.75 = ₱375.00"
+        HOW TO ANSWER
+        - Answer in English. Short and direct — you are talking to a worker on site.
+        - Use pesos (₱), always to 2 decimal places. For example: ₱3,000.00
+        - When something is being computed, show the breakdown.
+          For example: "5 days × ₱600.00 = ₱3,000.00 + OT 4 hrs × ₱93.75 = ₱375.00"
 
-        HANGGANAN
-        - Ang payroll, attendance, at overtime NG EMPLOYEE NA ITO LANG ang sasagutin mo.
-        - Kung tungkol sa ibang tao ang tanong, o ibang topic (balita, panahon, kahit ano pa),
-          magpaumanhin nang maikli at ibalik ang usapan sa payroll o attendance niya.
+        LIMITS
+        - Answer only about the payroll, attendance and overtime of THIS EMPLOYEE.
+        - If the question is about someone else, or another topic (news, weather, anything else),
+          apologise briefly and bring the conversation back to their payroll or attendance.
 
         DATA
-        - Gamitin LANG ang data sa JSON sa ibaba. HUWAG MAG-IMBENTO ng kahit anong numero.
-        - Kung walang data para sa tinatanong, sabihing wala pang naitalang record at i-refer siya sa admin.
-        - Ang attendance ay naka-record kada session (AM o PM), kaya isang araw ay pwedeng may dalawang record.
-        - Ang "last_payslips" ay kada linggo (Lunes hanggang Linggo).
+        - Use ONLY the data in the JSON below. DO NOT INVENT any number.
+        - If there is no data for what was asked, say nothing has been recorded yet and refer them to the admin.
+        - Attendance is recorded per session (AM or PM), so one day can have two records.
+        - "last_payslips" is weekly (Monday to Sunday).
 
         EMPLOYEE PAYROLL CONTEXT (JSON):
         {$json}

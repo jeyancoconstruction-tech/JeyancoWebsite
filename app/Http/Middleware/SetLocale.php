@@ -2,12 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\SystemSetting;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 /**
  * The language the system speaks, set per request.
@@ -21,16 +18,12 @@ class SetLocale
 {
     public function handle(Request $request, Closure $next): Response
     {
-        try {
-            // The table does not exist on a fresh checkout until migrate runs,
-            // and a failure here would stop the app booting far enough to run
-            // the migration that would fix it.
-            if (Schema::hasTable('system_settings')) {
-                app()->setLocale(SystemSetting::current()->locale ?: 'en');
-            }
-        } catch (Throwable) {
-            // No database yet. English is what the templates are written in.
-        }
+        // English, always. The system_settings.locale column is still there
+        // and still writable, but nothing reads it any more: the app is
+        // English only, and a stored 'tl' must not be able to change that.
+        // The hook stays for the day a second language is actually wanted —
+        // it just does not take its answer from the database today.
+        app()->setLocale('en');
 
         return $next($request);
     }

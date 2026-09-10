@@ -55,8 +55,8 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',       // Para sa Full Name o Nickname
-        'username',   // Ito ang ginamit nating identity sa registration
-        'password',   // Ang Access Key mo
+        'username',   // The identity used at registration
+        'password',   // The Access Key
         'email',
         'role',
         'is_active',

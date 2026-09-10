@@ -85,14 +85,14 @@
     <div class="toolbar">
         <div>
             <div class="t-title">Payslips — {{ $periodLabel }}</div>
-            <div class="t-sub">{{ count($slips) }} employee(s) &middot; A4 &middot; gupitin sa may putol-putol na linya (&#9986;)</div>
+            <div class="t-sub">{{ count($slips) }} employee(s) &middot; A4 &middot; cut along the dashed line (&#9986;)</div>
         </div>
         <div style="display:flex;gap:8px;">
             <a href="javascript:history.back()" class="btn btn-back">{{ __('← Back') }}</a>
             <button class="btn btn-print" onclick="window.print()">{{ __('🖨 Print A4') }}</button>
         </div>
     </div>
-    <div class="hint">{{ __('Tip: sa print dialog piliin ang') }} <b>A4</b> {{ __('at i-off ang "Headers and footers" para malinis ang gupit.') }}</div>
+    <div class="hint">{{ __('Tip: choose') }} <b>A4</b> {{ __('in the print dialog and turn off "Headers and footers" for a clean cut.') }}</div>
 
     <div class="sheet">
         <div class="slips">
@@ -134,7 +134,7 @@
                             <div class="ln"><span class="k">{{ __('PhilHealth') }}</span><span class="v">&#8369;{{ number_format($s['ded']['philhealth'], 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('PAG-IBIG') }}</span><span class="v">&#8369;{{ number_format($s['ded']['pagibig'], 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('Withholding Tax') }}</span><span class="v">&#8369;{{ number_format($s['ded']['tax'], 2) }}</span></div>
-                            <div class="ln"><span class="k">{{ __('Vale/Utang') }}</span><span class="v">&#8369;{{ number_format($s['ded']['vale'], 2) }}</span></div>
+                            <div class="ln"><span class="k">{{ __('Vale / Advance') }}</span><span class="v">&#8369;{{ number_format($s['ded']['vale'], 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('Other') }}</span><span class="v">&#8369;{{ number_format($s['ded']['other'], 2) }}</span></div>
                             <div class="ln sum"><span class="k">{{ __('Total') }}</span><span class="v">&#8369;{{ number_format($s['totalDeductions'], 2) }}</span></div>
                         </div>
@@ -151,7 +151,7 @@
                     </div>
                 </div>
             @empty
-                <div class="empty">{{ __('Walang employee record para sa period na ito.') }}</div>
+                <div class="empty">{{ __('No employee records for this period.') }}</div>
             @endforelse
         </div>
     </div>

@@ -125,7 +125,7 @@ class KioskController extends Controller
             return [
                 'success' => false,
                 'code'    => 'no_gps',
-                'message' => 'Naka-off o walang GPS ang kiosk — hindi matatanggap ang attendance. I-on ang lokasyon at subukan ulit.',
+                'message' => 'The kiosk is off or has no GPS fix, so attendance cannot be accepted. Turn location on and try again.',
             ];
         }
 
@@ -136,8 +136,8 @@ class KioskController extends Controller
             return [
                 'success'    => false,
                 'code'       => 'outside_location',
-                'message'    => 'Nasa labas ng authorized na lugar (' . number_format($distance)
-                                . 'm, limit ' . $radius . 'm) — hindi matatanggap ang attendance.',
+                'message'    => 'Outside the authorised location (' . number_format($distance)
+                                . 'm, limit ' . $radius . 'm), so attendance cannot be accepted.',
                 'distance_m' => round($distance, 1),
             ];
         }
@@ -718,9 +718,9 @@ class KioskController extends Controller
             return response()->json([
                 'success'   => false,
                 'not_found' => true,
-                'message'   => 'Hindi pa nakarehistro ang daliring ito. '
-                             . 'Idagdag muna ang manggagawa sa web, tapos kunin '
-                             . 'ang daliri sa kiosk.',
+                'message'   => 'This fingerprint is not registered yet. '
+                             . 'Add the worker on the web first, then enrol '
+                             . 'their finger at the kiosk.',
             ]);
         }
 
@@ -853,9 +853,9 @@ class KioskController extends Controller
             return response()->json([
                 'success'   => false,
                 'not_found' => true,
-                'message'   => 'Hindi pa nakarehistro ang daliring ito. '
-                             . 'Idagdag muna ang manggagawa sa web, tapos kunin '
-                             . 'ang daliri sa kiosk.',
+                'message'   => 'This fingerprint is not registered yet. '
+                             . 'Add the worker on the web first, then enrol '
+                             . 'their finger at the kiosk.',
             ]);
         }
 

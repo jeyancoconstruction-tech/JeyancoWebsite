@@ -46,7 +46,7 @@ class PayslipController extends Controller
             fputcsv($out, ['PhilHealth', $p['ded']['philhealth']]);
             fputcsv($out, ['PAG-IBIG', $p['ded']['pagibig']]);
             fputcsv($out, ['Withholding Tax', $p['ded']['tax']]);
-            fputcsv($out, ['Vale / Utang', $p['ded']['vale']]);
+            fputcsv($out, ['Vale / Advance', $p['ded']['vale']]);
             fputcsv($out, ['Other', $p['ded']['other']]);
             fputcsv($out, ['Total Deductions', $p['totalDeductions']]);
             fputcsv($out, []);
