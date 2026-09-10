@@ -89,7 +89,10 @@
                         <td>
                             @if($a->status === 'active')
                                 <form method="POST" action="{{ route('assignments.end', $a) }}" class="mod-row-actions"
-                                      onsubmit="return confirm('{{ __('Close this assignment?') }}')">
+                                      data-confirm="{{ __('The worker stays on record; only this assignment is closed.') }}"
+                                      data-confirm-title="{{ __('Close this assignment?') }}"
+                                      data-confirm-label="{{ __('Close') }}"
+                                      data-confirm-tone="warning">
                                     @csrf @method('PATCH')
                                     <input type="hidden" name="status" value="completed">
                                     <button class="mod-btn sm" type="submit"><i class="fas fa-flag-checkered"></i> {{ __('End') }}</button>

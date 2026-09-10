@@ -89,6 +89,8 @@
          density. Loaded last so both win their ties. --}}
     <link rel="stylesheet" href="{{ $cssv('density.css') }}">
 
+    @include('_notify_styles')
+
     @stack('styles')
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -97,6 +99,12 @@
 </head>
 
 <body class="bg-light">
+
+{{-- One notification system for every page: toasts for what a Create,
+     Update or Delete did, and a styled dialog in place of the browser's
+     confirm(). Included here, above the content, so window.Notify exists
+     before any page script reaches for it. See _notify.blade.php. --}}
+@include('_notify')
 
 <!-- SIDEBAR OVERLAY (mobile) -->
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
@@ -984,7 +992,13 @@
 
     // ── Delete all ─────────────────────────────────────────────────────────
     deleteAllBtn.addEventListener('click', async function () {
-        if (!confirm('Delete all notifications? This cannot be undone.')) return;
+        const ok = await Notify.confirm({
+            title:        'Delete all notifications?',
+            message:      'The list is cleared for good. This cannot be undone.',
+            confirmLabel: 'Delete all',
+            tone:         'danger',
+        });
+        if (!ok) return;
         await fetch('/notifications/delete-all', {
             method: 'DELETE',
             headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }

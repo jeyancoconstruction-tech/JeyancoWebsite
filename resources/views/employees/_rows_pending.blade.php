@@ -104,7 +104,10 @@
                 </button>
             @endif
             <form action="{{ route('employees.destroy', $e->id) }}" method="POST" style="display:inline;"
-                  onsubmit="return confirm('Cancel and remove {{ addslashes($e->name) }}? It can still be restored from the Removed tab.')">
+                  data-confirm="{{ __('This cancels the registration of :name. It can still be restored from the Removed tab.', ['name' => $e->name]) }}"
+                  data-confirm-title="{{ __('Cancel this registration?') }}"
+                  data-confirm-label="{{ __('Cancel registration') }}"
+                  data-confirm-tone="warning">
                 @csrf @method('DELETE')
                 <button type="submit" class="rm-btn-reject"><i class="fas fa-xmark"></i> {{ __('Cancel') }}</button>
             </form>

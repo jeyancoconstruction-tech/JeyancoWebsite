@@ -1,16 +1,12 @@
-{{-- The session messages every module controller sets, in the app's colours. --}}
-@if(session('success'))
-    <div class="mod-alert ok" role="status">
-        <i class="fas fa-circle-check"></i>
-        <div>{{ session('success') }}</div>
-    </div>
-@endif
-@if(session('error'))
-    <div class="mod-alert err" role="alert">
-        <i class="fas fa-circle-exclamation"></i>
-        <div>{{ session('error') }}</div>
-    </div>
-@endif
+{{-- Validation only.
+
+     session('success') and session('error') used to be echoed here as well.
+     They are toasts now — see _notify.blade.php — so printing them here too
+     would say the same thing twice, in two shapes, in two places. This file
+     is included by ten module pages, so the ten are fixed together.
+
+     The error list stays: it belongs beside the form it is about, and a
+     toast is the wrong shape for eight validation messages at once. --}}
 @if($errors->any())
     <div class="mod-alert err" role="alert">
         <i class="fas fa-circle-exclamation"></i>

@@ -18,11 +18,7 @@
     @include('settings._hub')
     <div>
 
-    @if(session('success'))
-        <div class="alert alert-success d-flex align-items-center gap-2" role="alert">
-            <i class="fas fa-circle-check"></i> {{ session('success') }}
-        </div>
-    @endif
+    {{-- session('success') is a toast now. --}}
 
     @if($errors->any())
         <div class="alert alert-danger" role="alert">

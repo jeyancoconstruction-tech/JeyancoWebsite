@@ -31,7 +31,10 @@
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="dropdown-item text-danger"
-                                onclick="return confirm('Delete this labor type? Employees using it will be affected.')">
+                                data-confirm="{{ __('Employees on this labor type will be affected.') }}"
+                                data-confirm-title="{{ __('Delete this labor type?') }}"
+                                data-confirm-label="{{ __('Delete') }}"
+                                data-confirm-tone="danger">
                             <i class="fas fa-trash me-2"></i>{{ __('Delete') }}
                         </button>
                     </form>

@@ -163,10 +163,6 @@
 [data-bs-theme="dark"] .site-loading     { color: #6b7d96; }
 [data-bs-theme="dark"] .site-empty       { color: #475569; }
 
-@keyframes siteToastIn {
-    from { opacity: 0; transform: translateX(14px); }
-    to   { opacity: 1; transform: none; }
-}
 </style>
 
 {{-- ── Script ───────────────────────────────────────────────────────────────── --}}
@@ -274,9 +270,15 @@
 
     // ── Delete ───────────────────────────────────────────────────────────────
     window.deleteSite = async function (id, name, count) {
-        let msg = `Delete "${name}"?`;
-        if (count > 0) msg += `\n\n${count} employee${count !== 1 ? 's' : ''} will become unassigned.`;
-        if (!confirm(msg)) return;
+        const ok = await Notify.confirm({
+            title:        `Delete "${name}"?`,
+            message:      count > 0
+                ? `${count} employee${count !== 1 ? 's' : ''} will become unassigned.`
+                : 'The site is removed from the list.',
+            confirmLabel: 'Delete',
+            tone:         'danger',
+        });
+        if (!ok) return;
         const row = document.getElementById(`site-row-${id}`);
         if (row) row.style.opacity = '0.4';
         try {
@@ -329,22 +331,11 @@
     }
 
     // ── Toast ────────────────────────────────────────────────────────────────
+    // Was a copy of the same function in employees/index.blade.php, both with
+    // light-mode hexes that were unreadable in dark mode. Same name, same two
+    // arguments, so every caller below is unchanged.
     function flashToast(msg, type) {
-        let wrap = document.getElementById('site-toast-wrap');
-        if (!wrap) {
-            wrap = document.createElement('div');
-            wrap.id = 'site-toast-wrap';
-            wrap.style.cssText = 'position:fixed;top:76px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px;min-width:240px;max-width:340px;';
-            document.body.appendChild(wrap);
-        }
-        const pal = type === 'error'
-            ? { bg:'#fee2e2', bd:'#fecaca', tx:'#991b1b', ic:'times-circle' }
-            : { bg:'#dcfce7', bd:'#bbf7d0', tx:'#166534', ic:'check-circle' };
-        const el = document.createElement('div');
-        el.style.cssText = `background:${pal.bg};border:1px solid ${pal.bd};color:${pal.tx};padding:10px 14px;border-radius:9px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);animation:siteToastIn .2s ease;`;
-        el.innerHTML = `<i class="fas fa-${pal.ic}"></i> ${msg}`;
-        wrap.appendChild(el);
-        setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }, 3000);
+        (type === 'error' ? Notify.error : Notify.success)(msg);
     }
 
     function escHtml(s) {

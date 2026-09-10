@@ -26,12 +26,7 @@
         </div>
     @endif
 
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong><i class="fas fa-check-circle me-2"></i>{{ __('Success!') }}</strong> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
+    {{-- session('success') is a toast now. --}}
 
     {{-- Which tab opens. The forms redirect back here, and landing on the first
          one after saving the fourth reads as the save having been lost. --}}
@@ -1035,7 +1030,6 @@
             [data-bs-theme="dark"] .hc-ctx-title { color: #93c5fd; }
             [data-bs-theme="dark"] .hc-ctx-meta  { color: #64748b; }
 
-            @keyframes hcalFlash { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:none; } }
             </style>
 @endpush
 
@@ -1346,7 +1340,14 @@
                 ctxEdit.addEventListener('click', () => { const s = ctxState; hideCtx(); if (s) openEdit(s.holiday); });
                 ctxDel.addEventListener('click', async () => {
                     const s = ctxState; hideCtx();
-                    if (!s || !confirm(`Remove "${s.holiday.title}"? The holiday premium will no longer apply.`)) return;
+                    if (!s) return;
+                    const ok = await Notify.confirm({
+                        title:        `Remove "${s.holiday.title}"?`,
+                        message:      'The holiday premium will no longer apply on that date.',
+                        confirmLabel: 'Remove',
+                        tone:         'danger',
+                    });
+                    if (!ok) return;
                     await doDelete(s.date, s.cell, s.holiday);
                 });
 
@@ -1417,8 +1418,14 @@
 
                 // ── Bulk toggle ────────────────────────────────────────────────────
                 document.getElementById('hcal-enable-all')?.addEventListener('click', () => doBulk('enable'));
-                document.getElementById('hcal-disable-all')?.addEventListener('click', () => {
-                    if (confirm(`Disable all ${calYear} holidays? You can re-enable them anytime.`)) doBulk('disable');
+                document.getElementById('hcal-disable-all')?.addEventListener('click', async () => {
+                    const ok = await Notify.confirm({
+                        title:        `Disable all ${calYear} holidays?`,
+                        message:      'You can re-enable them at any time.',
+                        confirmLabel: 'Disable all',
+                        tone:         'warning',
+                    });
+                    if (ok) doBulk('disable');
                 });
 
                 async function doBulk(action) {
@@ -1445,24 +1452,13 @@
                 }
 
                 // ── Flash toast ────────────────────────────────────────────────────
+                // The holiday calendar's own flash bar, now the shared toast.
+                // Its three tones map straight across; 'warn' is this file's
+                // spelling of the notifier's 'warning'.
                 function flash(msg, type) {
-                    let c = document.getElementById('hcal-flash-wrap');
-                    if (!c) {
-                        c = document.createElement('div');
-                        c.id = 'hcal-flash-wrap';
-                        c.style.cssText = 'position:fixed;top:76px;right:20px;z-index:9997;display:flex;flex-direction:column;gap:6px;min-width:260px;max-width:360px;';
-                        document.body.appendChild(c);
-                    }
-                    const pal = {
-                        success:{ bg:'#dcfce7',bd:'#bbf7d0',tx:'#166534',ic:'check-circle' },
-                        warn:   { bg:'#fef3c7',bd:'#fde68a',tx:'#92400e',ic:'exclamation-triangle' },
-                        error:  { bg:'#fee2e2',bd:'#fecaca',tx:'#991b1b',ic:'times-circle' },
-                    }[type] || { bg:'#f0fdf4',bd:'#bbf7d0',tx:'#166534',ic:'check-circle' };
-                    const el = document.createElement('div');
-                    el.style.cssText = `background:${pal.bg};border:1px solid ${pal.bd};color:${pal.tx};padding:10px 14px;border-radius:9px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,0.1);animation:hcalFlash .22s ease;`;
-                    el.innerHTML = `<i class="fas fa-${pal.ic}"></i> ${msg}`;
-                    c.appendChild(el);
-                    setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }, 2800);
+                    const tone = type === 'warn' ? 'warning'
+                               : (['success', 'error'].includes(type) ? type : 'success');
+                    Notify[tone](msg);
                 }
 
                 // ── Add modal: Flatpickr (MM-DD-YYYY display) + PH holiday auto-fill ──
@@ -2233,10 +2229,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     nameInput.closest('.mb-3').appendChild(msg);
                 }
             } else {
-                alert(data.message || 'Could not add labor type. Please try again.');
+                Notify.error(data.message || 'Could not add labor type. Please try again.');
             }
         } catch {
-            alert('Network error — please try again.');
+            Notify.error('Network error — please try again.');
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = origHtml;

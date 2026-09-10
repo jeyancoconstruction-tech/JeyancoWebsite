@@ -9,9 +9,7 @@
 <div class="rm-page">
 
     {{-- ── Flash / errors ──────────────────────────────────────────────────── --}}
-    @if(session('success'))
-    <div class="rm-alert rm-alert-ok"><i class="fas fa-check-circle"></i><span>{{ session('success') }}</span></div>
-    @endif
+    {{-- session('success') is a toast now. --}}
     @if($errors->any())
     <div class="rm-alert rm-alert-err">
         <i class="fas fa-exclamation-circle"></i>
@@ -473,7 +471,6 @@
 .rm-page { max-width: none; width: 100%; margin: 0; }
 
 .rm-alert { display:flex; gap:10px; align-items:flex-start; padding:12px 16px; border-radius:10px; font-size:13.5px; margin-bottom:18px; border-left:4px solid transparent; }
-.rm-alert-ok  { background:#f0fdf4; color:#166534; border-left-color:#16a34a; }
 .rm-alert-err { background:#fef2f2; color:#991b1b; border-left-color:#dc2626; }
 
 .rm-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
@@ -917,23 +914,10 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
                 badge.style.display = c.pending > 0 ? '' : 'none';
             }
         }
-        function toast(msg) {
-            let t = document.getElementById('rmToast');
-            if (!t) {
-                t = document.createElement('div');
-                t.id = 'rmToast';
-                t.style.cssText = 'position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(10px);' +
-                    'z-index:9999;background:#2563eb;color:#fff;padding:12px 20px;border-radius:12px;font-weight:600;' +
-                    'font-size:13.5px;box-shadow:0 12px 34px rgba(0,0,0,.4);display:flex;align-items:center;gap:10px;' +
-                    'opacity:0;transition:opacity .25s ease,transform .25s ease;';
-                document.body.appendChild(t);
-            }
-            t.innerHTML = '<i class="fas fa-fingerprint"></i> ' + msg;
-            requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
-            clearTimeout(t._hide);
-            t._hide = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(10px)'; }, 4500);
-        }
-        window.rmToast = toast;
+        // Was its own bottom-centre bar in a hardcoded blue, built with
+        // innerHTML. Same name and same call signature; the shared notifier
+        // does the drawing, and escapes the message.
+        function toast(msg) { Notify.info(msg); }
 
         async function poll() {
             try {
@@ -1060,14 +1044,21 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
         const one  = ids.length === 1;
         const many = ids.length + (one ? ' record' : ' records');
 
-        const question = kind === 'purge'
-            ? 'Permanently delete ' + many + '?\n\n'
-              + 'This cannot be undone. Their attendance history and photos go too.'
-            : kind === 'restore'
-                ? 'Restore ' + many + '?'
-                : 'Remove ' + many + '?\n\nThey move to the Removed tab and can be restored from there.';
+        const ASK = {
+            purge:   { title: 'Permanently delete ' + many + '?',
+                       message: 'This cannot be undone. Their attendance history and photos go too.',
+                       confirmLabel: 'Delete permanently', tone: 'danger' },
+            restore: { title: 'Restore ' + many + '?',
+                       message: 'They move back to the list they came from.',
+                       confirmLabel: 'Restore', tone: 'brand' },
+        };
+        const ask = ASK[kind] || {
+            title: 'Remove ' + many + '?',
+            message: 'They move to the Removed tab and can be restored from there.',
+            confirmLabel: 'Remove', tone: 'warning',
+        };
 
-        if (!confirm(question)) return;
+        if (!await Notify.confirm(ask)) return;
 
         const { url, method } = ENDPOINTS[kind];
         const label = btn.innerHTML;
@@ -1088,13 +1079,13 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
 
             if (res.ok && data.success) {
                 const done = data.deleted ?? data.restored ?? ids.length;
-                if (window.rmToast) window.rmToast(done + (done === 1 ? ' record' : ' records') + ' updated');
+                Notify.success(done + (done === 1 ? ' record' : ' records') + ' updated');
                 setTimeout(() => location.reload(), 700);
                 return;
             }
-            alert(data.message || 'Could not complete that action.');
+            Notify.error(data.message || 'Could not complete that action.');
         } catch (err) {
-            alert('Network error — please try again.');
+            Notify.error('Network error — please try again.');
         }
 
         // Hand the buttons back to sync() rather than blanket-enabling them —

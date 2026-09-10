@@ -5,12 +5,7 @@
 <div class="emp-page">
 
     {{-- ── Flash ──────────────────────────────────────────────────────────── --}}
-    @if(session('success'))
-    <div class="emp-flash">
-        <i class="fas fa-check-circle"></i>
-        {{ session('success') }}
-    </div>
-    @endif
+    {{-- session('success') is a toast now. --}}
 
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
     <div class="dir-header">
@@ -517,14 +512,6 @@
 /* ── Page shell ──────────────────────────────────────────────────────────── */
 .emp-page { max-width: none; width: 100%; margin: 0; }
 
-/* ── Flash ───────────────────────────────────────────────────────────────── */
-.emp-flash {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--success);
-    color: var(--text-primary); padding: 11px 16px; border-radius: 6px;
-    font-size: 13.5px; font-weight: 500; margin-bottom: 16px;
-}
-.emp-flash i { color: var(--success); }
 
 /* ── Page header ─────────────────────────────────────────────────────────── */
 .emp-header {
@@ -932,10 +919,6 @@
 
 /* Dark mode is handled by the theme-aware design tokens used above. */
 
-@keyframes empToastIn {
-    from { opacity: 0; transform: translateX(14px); }
-    to   { opacity: 1; transform: none; }
-}
 </style>
 
 @include('employees._modal_styles')
@@ -1128,22 +1111,9 @@
     // gamit pa rin ito ng Register & Manage para sa Removed nito.
 
     // ── Toast ────────────────────────────────────────────────────────────────
+    // See the note on the identical function in sites/index.blade.php.
     function flashToast(msg, type) {
-        let wrap = document.getElementById('emp-toast-wrap');
-        if (!wrap) {
-            wrap = document.createElement('div');
-            wrap.id = 'emp-toast-wrap';
-            wrap.style.cssText = 'position:fixed;top:76px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px;min-width:240px;max-width:340px;';
-            document.body.appendChild(wrap);
-        }
-        const pal = type === 'error'
-            ? { bg:'#fee2e2', bd:'#fecaca', tx:'#991b1b', ic:'times-circle' }
-            : { bg:'#dcfce7', bd:'#bbf7d0', tx:'#166534', ic:'check-circle' };
-        const el = document.createElement('div');
-        el.style.cssText = `background:${pal.bg};border:1px solid ${pal.bd};color:${pal.tx};padding:10px 14px;border-radius:9px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);animation:empToastIn .2s ease;`;
-        el.innerHTML = `<i class="fas fa-${pal.ic}"></i> ${msg}`;
-        wrap.appendChild(el);
-        setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 320); }, 3000);
+        (type === 'error' ? Notify.error : Notify.success)(msg);
     }
 
     // ── Copy ID ──────────────────────────────────────────────────────────────

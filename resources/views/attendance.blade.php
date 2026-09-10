@@ -338,25 +338,42 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert(successMsg.replace('{n}', data.deleted));
+                    // Parked, not shown: location.reload() is about to take
+                    // this page away, and with it the toast.
+                    Notify.afterReload('success', successMsg.replace('{n}', data.deleted));
                     location.reload();
                 } else {
-                    alert(data.message || 'Something went wrong.');
+                    Notify.error(data.message || 'Something went wrong.');
                 }
             } catch (err) {
-                alert('Request failed: ' + err.message);
+                Notify.error('Request failed: ' + err.message);
             }
         }
 
-        delSelBtn.addEventListener('click', function () {
+        delSelBtn.addEventListener('click', async function () {
             const ids = getChecked().map(c => c.value);
-            if (!ids.length) return;
-            if (!confirm(`Delete ${ids.length} selected record(s)? This cannot be undone.`)) return;
+            // Nothing ticked used to be a silent no-op, which reads as a
+            // broken button rather than as an empty selection.
+            if (!ids.length) { Notify.warning('Tick the records you want to delete first.'); return; }
+
+            const ok = await Notify.confirm({
+                title:        'Delete selected records?',
+                message:      `${ids.length} attendance record(s) will be deleted. This cannot be undone.`,
+                confirmLabel: 'Delete',
+                tone:         'danger',
+            });
+            if (!ok) return;
             doDelete('{{ route("attendance.history.bulk-delete") }}', { ids }, 'Deleted {n} record(s).');
         });
 
-        delAllBtn.addEventListener('click', function () {
-            if (!confirm('Delete ALL history records? This cannot be undone.')) return;
+        delAllBtn.addEventListener('click', async function () {
+            const ok = await Notify.confirm({
+                title:        'Delete ALL history?',
+                message:      'Every attendance record in the history is deleted. This cannot be undone.',
+                confirmLabel: 'Delete everything',
+                tone:         'danger',
+            });
+            if (!ok) return;
             doDelete('{{ route("attendance.history.delete-all") }}', null, 'Deleted {n} record(s).');
         });
     })();

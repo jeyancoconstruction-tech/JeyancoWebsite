@@ -27,7 +27,10 @@
 
             @if($run->status === 'calculated')
                 <form method="POST" action="{{ route('payroll-processing.approve', $run) }}"
-                      onsubmit="return confirm('{{ __('Approve this run? Figures can still be reopened afterwards.') }}')">
+                      data-confirm="{{ __('Figures can still be reopened later.') }}"
+                      data-confirm-title="{{ __('Approve this run?') }}"
+                      data-confirm-label="{{ __('Approve') }}"
+                      data-confirm-tone="brand">
                     @csrf
                     <button class="mod-btn ok" type="submit"><i class="fas fa-check"></i> {{ __('Approve') }}</button>
                 </form>

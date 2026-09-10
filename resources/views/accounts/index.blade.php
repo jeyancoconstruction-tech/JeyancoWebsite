@@ -19,12 +19,7 @@
     <div>
 
     {{-- ── Flash messages ──────────────────────────────────────────────────── --}}
-    @if(session('success'))
-        <div class="acct-flash ok"><i class="fas fa-check-circle"></i> {{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="acct-flash bad"><i class="fas fa-exclamation-circle"></i> {{ session('error') }}</div>
-    @endif
+    {{-- session('success') and session('error') are toasts now. --}}
 
     {{-- ── Stat strip ──────────────────────────────────────────────────────── --}}
     <div class="acct-stats">
@@ -138,7 +133,10 @@
                                     </form>
 
                                     <form method="POST" action="{{ route('accounts.destroy', $account) }}" class="d-inline"
-                                          onsubmit="return confirm('Delete {{ addslashes($account->name) }}\'s account? This cannot be undone.');">
+                                          data-confirm="{{ __('This removes the account of :name. It cannot be undone.', ['name' => $account->name]) }}"
+                                          data-confirm-title="{{ __('Delete account?') }}"
+                                          data-confirm-label="{{ __('Delete') }}"
+                                          data-confirm-tone="danger">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="acct-icon-btn del" title="{{ __('Delete account') }}">
                                             <i class="fas fa-trash"></i>
@@ -180,14 +178,6 @@
     padding: 3px 10px; border-radius: 20px;
 }
 
-/* Flash */
-.acct-flash {
-    display: flex; align-items: center; gap: 9px;
-    font-size: 13.5px; font-weight: 500;
-    padding: 11px 15px; border-radius: 10px; margin-bottom: 16px;
-}
-.acct-flash.ok  { background: #dcfce7; border: 1px solid #bbf7d0; color: #166534; }
-.acct-flash.bad { background: #fee2e2; border: 1px solid #fecaca; color: #991b1b; }
 
 /* Stats */
 .acct-stats { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -332,8 +322,6 @@
 [data-bs-theme="dark"] .acct-icon-btn:hover { background: #283449; }
 [data-bs-theme="dark"] .acct-empty       { color: #475569; }
 [data-bs-theme="dark"] .acct-pager       { border-top-color: #1e2637; }
-[data-bs-theme="dark"] .acct-flash.ok    { background: #052e16; border-color: #166534; color: #86efac; }
-[data-bs-theme="dark"] .acct-flash.bad   { background: #450a0a; border-color: #991b1b; color: #fca5a5; }
 
 @media (max-width: 720px) {
     .acct-search input { width: 100%; }
