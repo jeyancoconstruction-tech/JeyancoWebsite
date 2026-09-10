@@ -1,13 +1,18 @@
 <div class="rm-person">
     <div class="rm-avatar">
+        @php $initial = strtoupper(substr($e->name ?: 'U', 0, 1)); @endphp
         @if($e->photo)
-            {{-- If the file is missing the row still has its path, so the
-                 image fails and used to leave a broken icon and the alt text.
-                 Hide it and let the initial underneath show through. --}}
+            {{-- A row keeps its photo path after the file itself is gone —
+                 Railway wipes storage on every deploy — and hiding the broken
+                 image on its own left an empty circle with no initial in it.
+                 The letter is rendered alongside, hidden, and takes over the
+                 moment the file fails. Same shape the Employee Directory uses. --}}
             <img src="{{ url('storage/' . $e->photo) }}" alt="{{ $e->name }}"
-                 loading="lazy" onerror="this.style.display='none'">
+                 loading="lazy"
+                 onerror="this.hidden = true; this.nextElementSibling.hidden = false;">
+            <span hidden>{{ $initial }}</span>
         @else
-            {{ strtoupper(substr($e->name ?: 'U', 0, 1)) }}
+            {{ $initial }}
         @endif
     </div>
     <div class="rm-person-info">
