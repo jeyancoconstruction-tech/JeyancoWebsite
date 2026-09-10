@@ -4,53 +4,98 @@
 
 @push('styles')
 <style>
-/* ── Global filter bar ─────────────────────────────────────────────────── */
-.att-filters {
-    display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap;
-    padding:13px 16px; margin-bottom:16px;
-    background:var(--bg-surface,#fff); border:1px solid var(--border,#e4e7ec);
-    border-radius:10px;
+/* ── Stat cards ───────────────────────────────────────────────────────────
+   An accent edge carries the meaning — brand, green, amber — instead of a
+   filled panel, so three of them side by side read as one row rather than as
+   three competing blocks. Tokens throughout: one block, both themes. */
+.att-stats {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+    gap:12px; margin-bottom:20px;
 }
-.att-filters-label {
-    display:inline-flex; align-items:center; gap:7px; padding-bottom:8px;
-    font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
-    color:var(--text-muted,#667085);
+.att-stat {
+    padding:15px 18px;
+    background:var(--bg-subtle,#f8f9fb);
+    border-left:3px solid var(--border-md,#d0d5dd);
+    border-radius:0 12px 12px 0;
 }
-.att-filters-label i { font-size:.8rem; color:var(--brand,#1668dc); }
-.att-filter { display:flex; flex-direction:column; gap:4px; min-width:0; }
-.att-filter label {
-    font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase;
+.att-stat-head {
+    display:flex; align-items:center; gap:8px; margin-bottom:9px;
+    font-size:.72rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
     color:var(--text-secondary,#344054);
 }
-.att-filter-input {
-    min-width:180px; height:36px; padding:0 30px 0 11px;
-    font-size:.86rem; color:var(--text-primary,#101828);
-    background:var(--bg-elevated,#fff); border:1px solid var(--border-md,#d0d5dd);
-    border-radius:8px; cursor:pointer;
-    appearance:none;
-    background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23667085'%3E%3Cpath d='M4.5 6.5 8 10l3.5-3.5z'/%3E%3C/svg%3E");
-    background-repeat:no-repeat; background-position:right 9px center; background-size:15px;
+.att-stat-head i { font-size:1rem; }
+.att-stat-value {
+    font-size:1.75rem; font-weight:600; line-height:1;
+    color:var(--text-primary,#101828); font-variant-numeric:tabular-nums;
 }
-.att-filter-input:focus {
-    outline:none; border-color:var(--brand,#1668dc);
-    box-shadow:0 0 0 3px color-mix(in srgb, var(--brand,#1668dc) 18%, transparent);
+.att-stat-sub { margin-top:5px; font-size:.75rem; color:var(--text-muted,#667085); }
+.att-stat-brand   { border-left-color:var(--brand,#1668dc); }
+.att-stat-success { border-left-color:var(--success,#027a48); }
+.att-stat-warning { border-left-color:var(--warning,#b54708); }
+.att-stat-brand   .att-stat-head i { color:var(--brand,#1668dc); }
+.att-stat-success .att-stat-head i { color:var(--success,#027a48); }
+.att-stat-warning .att-stat-head i { color:var(--warning,#b54708); }
+
+/* ── Control row ──────────────────────────────────────────────────────── */
+.att-controls {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; flex-wrap:wrap; margin-bottom:14px;
 }
-.att-filter-apply, .att-filter-clear {
-    height:36px; padding:0 15px; border-radius:8px; cursor:pointer;
-    display:inline-flex; align-items:center; gap:6px;
-    font-size:.82rem; font-weight:600; text-decoration:none;
-    background:var(--bg-subtle,#f8f9fb); border:1px solid var(--border-md,#d0d5dd);
-    color:var(--text-secondary,#344054);
+.att-controls-left, .att-controls-right {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0;
 }
-.att-filter-apply:hover, .att-filter-clear:hover {
+.att-controls-right[hidden] { display:none; }
+
+/* Site: a soft pill with the select sitting inside it, borderless, so the
+   pill is the control rather than a label next to one. */
+.att-pick {
+    display:flex; align-items:center; gap:8px; height:36px;
+    padding:0 6px 0 12px; border-radius:9px;
+    background:var(--bg-subtle,#f8f9fb); border:1px solid var(--border,#e4e7ec);
+}
+.att-pick i { font-size:.85rem; color:var(--text-muted,#667085); }
+.att-pick select {
+    height:34px; border:none; background:none; box-shadow:none; outline:none;
+    padding-right:4px; font-size:.86rem; color:var(--text-primary,#101828); cursor:pointer;
+}
+.att-pick:focus-within { border-color:var(--brand,#1668dc); }
+
+/* Shift: a segmented control built from radios, so the choice is submitted
+   with the form and works without JavaScript. */
+.att-seg {
+    display:inline-flex; align-items:center; gap:2px; padding:3px;
+    border-radius:9px; background:var(--bg-subtle,#f8f9fb);
+    border:1px solid var(--border,#e4e7ec);
+}
+.att-seg input { position:absolute; opacity:0; pointer-events:none; }
+.att-seg label {
+    display:inline-flex; align-items:center; gap:6px; margin:0;
+    padding:6px 14px; border-radius:6px; cursor:pointer;
+    font-size:.82rem; color:var(--text-secondary,#344054);
+    transition:background .13s, color .13s;
+}
+.att-seg label i { font-size:.85rem; }
+.att-seg label:hover { color:var(--text-primary,#101828); }
+.att-seg input:checked + label {
     background:var(--bg-elevated,#fff); color:var(--text-primary,#101828);
+    font-weight:600; box-shadow:0 1px 2px rgba(16,24,40,.08);
 }
-.att-filter-note {
-    padding-bottom:9px; font-size:.78rem; color:var(--text-muted,#667085);
+.att-seg input:focus-visible + label { outline:2px solid var(--brand,#1668dc); outline-offset:1px; }
+
+.att-ghost-btn {
+    display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px;
+    border-radius:9px; cursor:pointer; text-decoration:none;
+    font-size:.82rem; font-weight:600;
+    background:var(--bg-subtle,#f8f9fb); border:1px solid var(--border,#e4e7ec);
+    color:var(--text-secondary,#344054);
 }
+.att-ghost-btn:hover { background:var(--bg-elevated,#fff); color:var(--text-primary,#101828); }
+
 @media (max-width:620px) {
-    .att-filters { gap:10px; }
-    .att-filter, .att-filter-input { width:100%; min-width:0; }
+    .att-controls-left, .att-controls-right { width:100%; }
+    .att-pick, .att-seg { width:100%; }
+    .att-pick select { flex:1; }
+    .att-seg label { flex:1; justify-content:center; }
 }
 
 .att-site { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600;
@@ -66,7 +111,6 @@
     [data-bs-theme="dark"] .att-tabs .nav-link.active { color: #93c5fd; border-bottom-color: #93c5fd; }
 
     /* History toolbar */
-    .att-hist-toolbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
     .att-mark-btn   { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-size:12.5px; font-weight:700; border-radius:7px; padding:5px 12px; cursor:pointer; transition:background .15s; }
     .att-mark-btn:hover   { background:#e2e8f0; }
     .att-cancel-btn { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-size:12.5px; font-weight:700; border-radius:7px; padding:5px 12px; cursor:pointer; }
@@ -109,68 +153,34 @@
         <span class="text-muted small"><i class="fas fa-calendar-day me-1"></i>{{ now()->format('l, m/d/Y') }}</span>
     </div>
 
-    {{-- ── Global filters ──────────────────────────────────────────────────
-         Above the cards on purpose: they govern the whole page, not one tab.
-         Site and Shift are applied in the controller to both tables and all
-         three counts, so the cards always describe the rows underneath them.
-
-         A GET form rather than JavaScript row-hiding: History is paginated
-         fifteen at a time, so hiding rows in the browser would filter the
-         page you can see and quietly ignore the rest. --}}
-    <form method="GET" action="{{ route('attendance') }}" class="att-filters" id="attFilters">
-        <span class="att-filters-label"><i class="fas fa-filter"></i>{{ __('Filters') }}</span>
-
-        <div class="att-filter">
-            <label for="attSite">{{ __('Site') }}</label>
-            <select name="site" id="attSite" class="att-filter-input">
-                <option value="">{{ __('All Sites') }}</option>
-                @foreach($sites as $s)
-                    <option value="{{ $s->id }}" @selected($siteId === $s->id)>{{ $s->name }}</option>
-                @endforeach
-            </select>
+    {{-- STAT CARDS — an accent edge and an icon rather than a plain box, and
+         a short line under each number saying what it counts. They follow the
+         filters below: the numbers and the rows always describe the same set
+         of records. --}}
+    <div class="att-stats">
+        <div class="att-stat att-stat-brand">
+            <div class="att-stat-head">
+                <i class="fas fa-user-check"></i>
+                <span>{{ __('Present today') }}</span>
+            </div>
+            <div class="att-stat-value">{{ $presentToday }}</div>
+            <div class="att-stat-sub">{{ __('Clocked in today') }}</div>
         </div>
-
-        <div class="att-filter">
-            <label for="attShift">{{ __('Shift') }}</label>
-            <select name="shift" id="attShift" class="att-filter-input">
-                <option value="">{{ __('All Shifts') }}</option>
-                @foreach($shifts as $sh)
-                    <option value="{{ $sh->id }}" @selected($shiftId === $sh->id)>{{ $sh->name }}</option>
-                @endforeach
-            </select>
+        <div class="att-stat att-stat-success">
+            <div class="att-stat-head">
+                <i class="fas fa-clock"></i>
+                <span>{{ __('Currently clocked in') }}</span>
+            </div>
+            <div class="att-stat-value">{{ $clockedIn }}</div>
+            <div class="att-stat-sub">{{ __('On-site, no time-out') }}</div>
         </div>
-
-        {{-- The tab rides along so changing a filter while reading History
-             does not drop you back on Today's Attendance. --}}
-        <input type="hidden" name="tab" id="attTabField" value="{{ request('tab') === 'history' ? 'history' : 'today' }}">
-
-        {{-- Submits on change; this is for anyone without JavaScript. --}}
-        <noscript><button type="submit" class="att-filter-apply">{{ __('Apply') }}</button></noscript>
-
-        @if($siteId || $shiftId)
-            <a href="{{ route('attendance', ['tab' => request('tab')]) }}" class="att-filter-clear">
-                <i class="fas fa-xmark"></i>{{ __('Clear') }}
-            </a>
-            <span class="att-filter-note">{{ __('Showing a filtered view — the counts below follow it.') }}</span>
-        @endif
-    </form>
-
-    <!-- STAT CARDS -->
-    <div class="analytics-row">
-        <div class="analytics-card">
-            <h5>{{ __('Present Today') }}</h5>
-            <div class="value">{{ $presentToday }}</div>
-            <small class="text-muted">{{ __('Employees clocked in today') }}</small>
-        </div>
-        <div class="analytics-card">
-            <h5>{{ __('Currently Clocked In') }}</h5>
-            <div class="value">{{ $clockedIn }}</div>
-            <small class="text-muted">{{ __('Still on-site (no time-out yet)') }}</small>
-        </div>
-        <div class="analytics-card flagged">
-            <h5>{{ __('Invalid Attendance') }}</h5>
-            <div class="value">{{ $invalidCount }}</div>
-            <small class="text-muted">{{ __('Missed sign-out on previous days') }}</small>
+        <div class="att-stat att-stat-warning">
+            <div class="att-stat-head">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span>{{ __('Invalid attendance') }}</span>
+            </div>
+            <div class="att-stat-value">{{ $invalidCount }}</div>
+            <div class="att-stat-sub">{{ __('Missed sign-out') }}</div>
         </div>
     </div>
 
@@ -190,6 +200,70 @@
             </button>
         </li>
     </ul>
+
+    {{-- ── Control row ─────────────────────────────────────────────────────
+         Site and Shift filter the whole page — both tabs and all three cards
+         above — even though the row sits under the tabs.
+
+         A GET form rather than JavaScript row-hiding: History is paginated
+         fifteen at a time, so hiding rows in the browser would filter the
+         page you can see and quietly ignore the rest of the result.
+
+         The history actions share the row and are hidden while Today's
+         Attendance is open, because there is nothing on that tab to delete. --}}
+    <div class="att-controls">
+        <form method="GET" action="{{ route('attendance') }}" class="att-controls-left" id="attFilters">
+            <div class="att-pick">
+                <i class="fas fa-location-dot"></i>
+                <select name="site" id="attSite" aria-label="{{ __('Filter by site') }}">
+                    <option value="">{{ __('All sites') }}</option>
+                    @foreach($sites as $s)
+                        <option value="{{ $s->id }}" @selected($siteId === $s->id)>{{ $s->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Radios, not buttons: the choice survives without JavaScript,
+                 and the browser gives it keyboard handling for free. --}}
+            <div class="att-seg" role="group" aria-label="{{ __('Filter by shift') }}">
+                <input type="radio" name="shift" id="attShiftAll" value="" @checked(! $shiftId)>
+                <label for="attShiftAll">{{ __('All shifts') }}</label>
+                @foreach($shifts as $sh)
+                    <input type="radio" name="shift" id="attShift{{ $sh->id }}" value="{{ $sh->id }}" @checked($shiftId === $sh->id)>
+                    <label for="attShift{{ $sh->id }}">
+                        <i class="fas {{ $sh->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>{{ $sh->name }}
+                    </label>
+                @endforeach
+            </div>
+
+            {{-- The tab rides along, so changing a filter while reading
+                 History does not drop you back on Today's Attendance. --}}
+            <input type="hidden" name="tab" id="attTabField" value="{{ request('tab') === 'history' ? 'history' : 'today' }}">
+
+            <noscript><button type="submit" class="att-ghost-btn">{{ __('Apply') }}</button></noscript>
+
+            @if($siteId || $shiftId)
+                <a href="{{ route('attendance', ['tab' => request('tab')]) }}" class="att-ghost-btn">
+                    <i class="fas fa-xmark"></i>{{ __('Clear') }}
+                </a>
+            @endif
+        </form>
+
+        <div class="att-controls-right" id="attHistoryActions" @if($openTab !== 'history') hidden @endif>
+            <button id="markModeBtn" type="button" class="att-mark-btn">
+                <i class="fas fa-check-square me-1"></i>{{ __('Mark for Deletion') }}
+            </button>
+            <button id="deleteSelectedBtn" type="button" class="att-del-sel-btn" style="display:none;" disabled>
+                <i class="fas fa-trash me-1"></i>{{ __('Delete Selected (') }}<span id="selCount">0</span>)
+            </button>
+            <button id="cancelMarkBtn" type="button" class="att-cancel-btn" style="display:none;">
+                {{ __('Cancel') }}
+            </button>
+            <button id="deleteAllBtn" type="button" class="att-del-all-btn">
+                <i class="fas fa-trash-alt me-1"></i>{{ __('Delete all') }}
+            </button>
+        </div>
+    </div>
 
     <div class="tab-content">
 
@@ -254,23 +328,9 @@
         <!-- ===== HISTORY ===== -->
         <div class="tab-pane fade {{ $openTab === 'history' ? 'show active' : '' }}" id="att-history" role="tabpanel">
 
-            {{-- Toolbar --}}
-            <div class="att-hist-toolbar">
-                <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <button id="markModeBtn" type="button" class="att-mark-btn">
-                        <i class="fas fa-check-square me-1"></i>{{ __('Mark for Deletion') }}
-                    </button>
-                    <button id="deleteSelectedBtn" type="button" class="att-del-sel-btn" style="display:none;" disabled>
-                        <i class="fas fa-trash me-1"></i>{{ __('Delete Selected (') }}<span id="selCount">0</span>)
-                    </button>
-                    <button id="cancelMarkBtn" type="button" class="att-cancel-btn" style="display:none;">
-                        Cancel
-                    </button>
-                </div>
-                <button id="deleteAllBtn" type="button" class="att-del-all-btn">
-                    <i class="fas fa-trash-alt me-1"></i>{{ __('Delete All') }}
-                </button>
-            </div>
+            {{-- The toolbar moved up into the control row it shares with the
+                 filters; the ids are unchanged, so the script below still
+                 finds every button. --}}
 
             <div class="table-card">
                 <div class="table-responsive">
@@ -355,19 +415,24 @@
 
     const tabField = document.getElementById('attTabField');
 
-    // Changing either dropdown reloads the page with it applied. The noscript
-    // Apply button covers the case where this never runs.
-    form.querySelectorAll('select').forEach(sel => {
-        sel.addEventListener('change', () => form.submit());
+    // Site is a select, Shift is a group of radios; either one reloads with
+    // the choice applied. The noscript Apply button covers the case where
+    // this never runs at all.
+    form.querySelectorAll('select, input[type="radio"]').forEach(el => {
+        el.addEventListener('change', () => form.submit());
     });
 
     // Keep the hidden field and the address bar in step with the open tab, so
     // changing a filter while reading History comes back to History — and so
-    // does a refresh.
+    // does a refresh. The delete controls share the row with the filters and
+    // only mean anything on History, so they come and go with it.
+    const historyActions = document.getElementById('attHistoryActions');
+
     document.querySelectorAll('.att-tabs [data-tab]').forEach(btn => {
         btn.addEventListener('shown.bs.tab', () => {
             const tab = btn.dataset.tab;
             if (tabField) tabField.value = tab;
+            if (historyActions) historyActions.hidden = (tab !== 'history');
 
             const url = new URL(window.location);
             if (tab === 'history') url.searchParams.set('tab', 'history');

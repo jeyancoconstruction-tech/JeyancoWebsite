@@ -104,8 +104,8 @@ class AttendanceGlobalFiltersTest extends TestCase
         $this->actingAs($this->admin())
              ->get(route('attendance'))
              ->assertOk()
-             ->assertSee('All Sites')
-             ->assertSee('All Shifts')
+             ->assertSee('All sites')      // the site dropdown
+             ->assertSee('All shifts')     // the first segment of the shift control
              ->assertSee('Site A')
              ->assertSee('Site B')
              ->assertSee('Day')
