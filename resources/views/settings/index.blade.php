@@ -506,7 +506,7 @@
             <div class="row g-4">
 
                 {{-- Add New Labor Type --}}
-                <div class="col-lg-4">
+                <div class="col-lg-4 lt-add-sticky">
                     <div class="ps-card">
                         <div class="ps-card-header">
                             <i class="fas fa-plus-circle"></i>
@@ -548,84 +548,13 @@
                         <div class="ps-card-header">
                             <i class="fas fa-list-ul"></i>
                             <div>
-                                <h6>{{ __('Labor Types') }}</h6>
+                                <h6>{{ __('Labor Types') }}<span class="lt-count" id="lt-count">{{ $laborTypes->count() }}</span></h6>
                                 <p>{{ __('Hourly = Daily ÷ 8  ·  OT uses the multiplier from Payroll Settings.') }}</p>
                             </div>
                         </div>
                         <div class="ps-card-body p-0" id="lt-list-container">
                             @forelse($laborTypes as $type)
-                            <div class="lt-row">
-                                <div class="lt-info">
-                                    <span class="lt-name">{{ $type->name }}</span>
-                                    <div class="lt-rates">
-                                        <span class="lt-rate-pill">{{ __('Daily ') }}<strong>{{ $type->getFormattedDailyRate() }}</strong></span>
-                                        <span class="lt-rate-pill">{{ __('Hourly ') }}<strong>{{ $type->getFormattedHourlyRate() }}</strong></span>
-                                        <span class="lt-rate-pill">{{ __('OT ') }}<strong>{{ $type->getFormattedOTRate() }}</strong></span>
-                                    </div>
-                                </div>
-                                <div class="lt-actions">
-                                    <div class="dropdown">
-                                        <button class="lt-menu-btn" type="button"
-                                                data-bs-toggle="dropdown" aria-expanded="false">⋮</button>
-                                        <ul class="dropdown-menu dropdown-menu-end lt-dropdown">
-                                            <li>
-                                                <button class="dropdown-item" type="button"
-                                                        data-bs-toggle="modal" data-bs-target="#editModal{{ $type->id }}">
-                                                    <i class="fas fa-edit me-2"></i>{{ __('Edit') }}
-                                                </button>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <form method="POST" action="{{ route('labor-types.delete', $type->id) }}">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="dropdown-item text-danger"
-                                                            onclick="return confirm('Delete this labor type? Employees using it will be affected.')">
-                                                        <i class="fas fa-trash me-2"></i>{{ __('Delete') }}
-                                                    </button>
-                                                </form>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Edit Modal --}}
-                            <div class="modal fade" id="editModal{{ $type->id }}" tabindex="-1">
-                                <div class="modal-dialog">
-                                    <div class="modal-content border-0" style="border-radius:12px; box-shadow:0 20px 40px rgba(0,0,0,.1);">
-                                        <div class="modal-header" style="background:linear-gradient(135deg,#1e3a8a,#1e40af); color:#fff; border:none; border-radius:12px 12px 0 0;">
-                                            <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>{{ __('Edit Labor Type') }}</h5>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <form method="POST" action="{{ route('labor-types.update', $type->id) }}">
-                                            @csrf
-                                            @method('PUT')
-                                            <div class="modal-body p-4">
-                                                <div class="mb-3">
-                                                    <label class="ps-label">{{ __('Name') }}</label>
-                                                    <input type="text" class="form-control ps-input" name="name"
-                                                           value="{{ $type->name }}" required>
-                                                </div>
-                                                <div class="mb-1">
-                                                    <label class="ps-label">{{ __('Daily Rate (₱)') }}</label>
-                                                    <div class="input-group">
-                                                        <span class="input-group-text ps-ig-text">₱</span>
-                                                        <input type="number" step="0.01" class="form-control ps-input"
-                                                               name="daily_rate" value="{{ $type->daily_rate }}" required>
-                                                    </div>
-                                                    <small class="text-muted d-block mt-1">{{ __('Hourly and OT rates update automatically.') }}</small>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer border-top p-3" style="background:#f8fafc; border-radius:0 0 12px 12px;">
-                                                <button type="button" class="btn btn-light fw-600" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                                                <button type="submit" class="btn ps-save-btn" style="padding:8px 20px;">{{ __('Update') }}</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-
+                            @include('settings._labor_type_row', ['type' => $type])
                             @empty
                             <div class="lt-empty">
                                 <i class="fas fa-inbox"></i>
@@ -2057,27 +1986,141 @@
 /* Action buttons */
 .ps-save-btn { background:linear-gradient(135deg,#1e3a8a,#1e40af); color:#fff !important; border:none; padding:11px 32px; border-radius:8px; font-weight:600; box-shadow:0 4px 12px rgba(30,58,138,.2); }
 .ps-save-btn:hover { background:linear-gradient(135deg,#1e40af,#2563eb); }
-.ps-add-btn { background:#16a34a; color:#fff !important; border:none; font-weight:600; border-radius:8px; }
-.ps-add-btn:hover { background:#15803d; }
-/* ── Labor Type rows (lt-*) ─────────────────────────────────────────────── */
-.lt-row { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid #e2e8f0; gap:12px; }
+/* ── Add Labor Type button ─────────────────────────────────────────────────
+   Was the only green control on a page whose every other action is brand
+   blue, so it read as belonging to a different app. */
+.ps-add-btn {
+    background: var(--brand); color:#fff !important; border:none;
+    font-weight:600; border-radius:8px; padding:11px 0;
+    transition: background .15s, box-shadow .15s, transform .04s;
+}
+.ps-add-btn:hover    { background: var(--brand-strong); box-shadow:0 4px 12px rgba(22,104,220,.22); }
+.ps-add-btn:active   { transform: translateY(1px); }
+.ps-add-btn:disabled { opacity:.62; }
+
+/* ── Labor types ───────────────────────────────────────────────────────────
+   One row per trade. The daily rate is the only figure anyone sets — hourly
+   and OT are arithmetic on it — so it carries the brand fill and the other
+   two sit back as derived. Colours come from the theme tokens, which is why
+   there is no [data-bs-theme="dark"] twin of this block to keep in step. */
+.lt-row {
+    display:flex; align-items:center; gap:16px;
+    padding:13px 20px;
+    border-bottom:1px solid var(--border);
+    transition: background .13s;
+}
 .lt-row:last-child { border-bottom:none; }
+.lt-row:hover      { background: var(--bg-subtle); }
 .lt-info { flex:1; min-width:0; }
-.lt-name { display:block; font-weight:700; color:#1e3a8a; font-size:.95rem; margin-bottom:5px; }
-.lt-rates { display:flex; gap:5px; flex-wrap:wrap; }
-.lt-rate-pill { font-size:.74rem; color:#475569; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:99px; padding:2px 10px; }
-.lt-rate-pill strong { color:#0f172a; font-weight:700; }
+.lt-name {
+    display:block; font-weight:600; font-size:.95rem;
+    color: var(--text-primary); margin-bottom:7px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.lt-rates { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.lt-rate {
+    display:inline-flex; align-items:baseline; gap:5px;
+    padding:3px 9px; border-radius:7px;
+    font-size:.72rem; letter-spacing:.02em; text-transform:uppercase;
+    color: var(--text-muted);
+    background: var(--bg-subtle); border:1px solid var(--border);
+}
+.lt-rate b {
+    font-size:.84rem; font-weight:600; letter-spacing:0; text-transform:none;
+    color: var(--text-secondary); font-variant-numeric:tabular-nums;
+}
+.lt-rate-primary   { background: var(--brand-subtle); border-color:transparent; color: var(--brand); }
+.lt-rate-primary b { color: var(--brand); font-size:.9rem; }
+
+.lt-count {
+    display:inline-block; margin-left:8px; vertical-align:middle;
+    padding:1px 8px; border-radius:999px;
+    font-size:.72rem; font-weight:600;
+    color: var(--text-muted);
+    background: var(--bg-subtle); border:1px solid var(--border);
+}
+
 .lt-actions { flex-shrink:0; }
-.lt-menu-btn { background:none; border:1px solid transparent; color:#94a3b8; font-size:20px; line-height:1; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; padding:0; transition:background .15s,color .15s,border-color .15s; }
-.lt-menu-btn:hover { background:#f1f5f9; color:#1e3a8a; border-color:#e2e8f0; }
-.lt-dropdown { min-width:140px; }
-.lt-dropdown .dropdown-item { font-size:.875rem; padding:7px 14px; }
+.lt-menu-btn {
+    background:none; border:1px solid transparent; color: var(--text-muted);
+    font-size:.9rem; line-height:1; width:32px; height:32px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:7px; cursor:pointer; padding:0;
+    transition: background .15s, color .15s, border-color .15s;
+}
+.lt-menu-btn:hover,
+.lt-menu-btn[aria-expanded="true"] {
+    background: var(--surface); color: var(--brand); border-color: var(--border-md);
+}
+.lt-dropdown {
+    min-width:152px; padding:5px; border-radius:9px;
+    background: var(--surface); border:1px solid var(--border);
+    box-shadow:0 8px 24px rgba(16,24,40,.16);
+}
+.lt-dropdown form { margin:0; }
+.lt-dropdown .dropdown-item {
+    font-size:.875rem; padding:7px 11px; border-radius:6px;
+    color: var(--text-secondary);
+}
+.lt-dropdown .dropdown-item:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .lt-dropdown .dropdown-item i { width:14px; }
-.lt-empty { padding:48px 24px; text-align:center; color:#94a3b8; }
-.lt-empty i { font-size:2rem; opacity:.4; display:block; margin-bottom:8px; }
+.lt-dropdown .dropdown-item.text-danger        { color: var(--danger) !important; }
+.lt-dropdown .dropdown-item.text-danger:hover  { background: var(--danger-soft); }
+.lt-dropdown .dropdown-divider { border-color: var(--border); margin:4px 0; }
+
+.lt-empty { padding:52px 24px; text-align:center; color: var(--text-muted); }
+.lt-empty i { font-size:1.9rem; opacity:.35; display:block; margin-bottom:10px; }
 .lt-empty p { margin:0; font-size:.9rem; }
 
-#lt-list-container { max-height:480px; overflow-y:auto; scroll-behavior:smooth; }
+/* A row added without a reload arrives at the top of a list the eye is not
+   watching, so it says where it went before settling. */
+@keyframes ltJustAdded { from { background: var(--brand-subtle); } to { background: transparent; } }
+.lt-row.lt-just-added { animation: ltJustAdded 1.6s ease-out; }
+
+/* The form is short and the list is long. Left to itself the form scrolls
+   away and the page carries a column of blank space beside the list. */
+@media (min-width: 992px) {
+    /* A stretched flex child is already as tall as the row, and a sticky
+       element with nowhere to travel never sticks — hence flex-start. */
+    .lt-add-sticky { position: sticky; align-self: flex-start; top: calc(var(--topbar-height, 68px) + 16px); }
+}
+#lt-list-container {
+    max-height: min(62vh, 640px);
+    overflow-y:auto; scroll-behavior:smooth; overscroll-behavior:contain;
+}
+#lt-list-container::-webkit-scrollbar       { width:11px; }
+#lt-list-container::-webkit-scrollbar-track { background:transparent; }
+#lt-list-container::-webkit-scrollbar-thumb {
+    background: var(--border-md); border-radius:99px;
+    border:3px solid var(--surface);
+}
+
+/* ── Edit Labor Type modal ─────────────────────────────────────────────────
+   The footer used to be a hardcoded #f8fafc, which in dark mode put a white
+   bar across the bottom of a dark dialog. Tokens instead, so it follows the
+   theme the rest of the page is already following. */
+.lt-modal {
+    border-radius:12px;
+    background: var(--surface);
+    box-shadow:0 24px 48px rgba(2,8,20,.28);
+}
+.lt-modal-head {
+    background: var(--brand); color:#fff;
+    border:none; border-radius:12px 12px 0 0; padding:14px 20px;
+}
+.lt-modal-head .modal-title { font-size:1rem; }
+.lt-modal-foot {
+    background: var(--bg-subtle);
+    border-top:1px solid var(--border);
+    border-radius:0 0 12px 12px; padding:14px 20px;
+}
+.lt-modal-cancel {
+    background: var(--surface); border:1px solid var(--border-md);
+    color: var(--text-secondary); font-weight:600;
+    border-radius:8px; padding:8px 18px;
+}
+.lt-modal-cancel:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.lt-modal-hint { display:block; margin-top:6px; font-size:.8rem; color: var(--text-muted); }
 
 /* Dark mode — global settings page */
 [data-bs-theme="dark"] .settings-wrapper { background: #1c2740; box-shadow: none; }
@@ -2107,16 +2150,6 @@
 [data-bs-theme="dark"] .ps-deduct-total { background:rgba(251,191,36,.08); border-color:rgba(251,191,36,.2); }
 [data-bs-theme="dark"] .ps-deduct-total-val { color:#fbbf24; }
 [data-bs-theme="dark"] .ps-badge { background:rgba(99,102,241,.15); border-color:rgba(99,102,241,.3); }
-[data-bs-theme="dark"] .lt-row { border-color:#283449; }
-[data-bs-theme="dark"] .lt-name { color:#93c5fd; }
-[data-bs-theme="dark"] .lt-rate-pill { background:#151d2e; border-color:#283449; color:#94a3b8; }
-[data-bs-theme="dark"] .lt-rate-pill strong { color:#e2e8f0; }
-[data-bs-theme="dark"] .lt-menu-btn:hover { background:#1c2740; color:#93c5fd; border-color:#283449; }
-[data-bs-theme="dark"] .lt-dropdown { background:#1c2740; border-color:#283449; }
-[data-bs-theme="dark"] .lt-dropdown .dropdown-item { color:#e8edf5; }
-[data-bs-theme="dark"] .lt-dropdown .dropdown-item:hover { background:#283449; color:#e8edf5; }
-[data-bs-theme="dark"] .lt-dropdown .dropdown-item.text-danger { color:#f87171 !important; }
-[data-bs-theme="dark"] .lt-dropdown .dropdown-divider { border-color:#283449; }
 </style>
 @endpush
 
@@ -2242,6 +2275,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Prepend new row + modal HTML
                 listEl.insertAdjacentHTML('afterbegin', data.html);
+
+                // The row lands at the top of a list nobody is looking at, so
+                // it flashes once to say where it went.
+                const addedRow = listEl.querySelector('.lt-row');
+                if (addedRow) addedRow.classList.add('lt-just-added');
+
+                // The header count is rendered server-side; without this it
+                // keeps reporting the number from before the add.
+                const countEl = document.getElementById('lt-count');
+                if (countEl) countEl.textContent = listEl.querySelectorAll('.lt-row').length;
 
                 // Init the new row's dropdown with fixed strategy
                 initLtDropdowns(listEl);
