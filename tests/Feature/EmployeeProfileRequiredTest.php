@@ -150,6 +150,55 @@ class EmployeeProfileRequiredTest extends TestCase
     }
 
     /**
+     * The cost of pointing Register & Manage's Edit button at the full form.
+     *
+     * The button used to open a five-field modal, so correcting a rate on a
+     * worker whose profile was never filled in took one save. It now opens
+     * Register Employee's own form, which posts profile_form — and that is the
+     * flag that makes the office's "fill everything in" rule apply. So the same
+     * correction on the same worker now asks for fifteen fields first.
+     *
+     * That is the intended trade: one screen per job, and a record that gets
+     * completed rather than staying half-empty forever. It is written down here
+     * because it is the kind of change that looks like a bug from the other
+     * side of the screen.
+     */
+    public function test_editing_an_incomplete_record_through_the_full_form_asks_for_the_profile(): void
+    {
+        $employee = Employee::create([
+            'name'          => 'Blank Profile',
+            'position'      => 'Mason',
+            'labor_type_id' => $this->laborType()->id,
+            'rate_per_hour' => 100,
+            'status'        => Employee::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($this->admin())
+             ->put(route('employees.update', $employee->id), [
+                 'profile_form'  => 1,
+                 'first_name'    => 'Blank',
+                 'middle_name'   => 'X',
+                 'last_name'     => 'Profile',
+                 'labor_type_id' => $this->laborType()->id,
+                 'rate_per_hour' => 125,
+                 'site_id'       => $this->site()->id,
+                 'job_title'     => 'Mason',
+                 'date_hired'    => '2026-09-10',
+             ])
+             ->assertSessionHasErrors([
+                 'birth_date', 'gender', 'phone',
+                 'emergency_contact_name', 'address_province',
+             ]);
+
+        // The two that are allowed to stay blank are not among them.
+        $this->assertArrayNotHasKey('blood_type', session('errors')->getBag('default')->messages());
+        $this->assertArrayNotHasKey('email', session('errors')->getBag('default')->messages());
+
+        // And the rate was not saved behind the rejection.
+        $this->assertSame(100.0, (float) $employee->refresh()->rate_per_hour);
+    }
+
+    /**
      * The regression this whole design exists to prevent: the quick-edit modal
      * posts no profile at all, and must still be able to correct a rate.
      */

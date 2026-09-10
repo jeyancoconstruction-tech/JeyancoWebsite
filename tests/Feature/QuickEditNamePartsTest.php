@@ -57,6 +57,23 @@ class QuickEditNamePartsTest extends TestCase
         ]);
     }
 
+    /**
+     * A kiosk detection the admin only has to Confirm: named, with a finger
+     * already read and a rate looked up. This is the one row that still opens
+     * the modal — Edit on an active worker goes to the full form now.
+     */
+    private function pendingToConfirm(string $name): Employee
+    {
+        return Employee::create([
+            'name'           => $name,
+            'position'       => 'Mason',
+            'labor_type_id'  => $this->laborType()->id,
+            'rate_per_hour'  => 100,
+            'fingerprint_id' => '42',
+            'status'         => Employee::STATUS_PENDING,
+        ]);
+    }
+
     /** The pay fields the modal always posts, whatever the name looks like. */
     private function payFields(): array
     {
@@ -164,7 +181,7 @@ class QuickEditNamePartsTest extends TestCase
      */
     public function test_a_row_offers_the_name_already_split(): void
     {
-        $this->worker('Juan Santos Cruz');
+        $this->pendingToConfirm('Juan Santos Cruz');
 
         $this->actingAs($this->admin())
              ->get(route('employees.register'))
@@ -172,6 +189,27 @@ class QuickEditNamePartsTest extends TestCase
              ->assertSee('data-first="Juan"', false)
              ->assertSee('data-middle="Santos"', false)
              ->assertSee('data-last="Cruz"', false);
+    }
+
+    /**
+     * Edit on an active worker is a link to the full Register Employee form,
+     * not the modal. Two screens for the same job meant a record could be
+     * corrected in a five-field dialog that never showed the twenty other
+     * fields on it.
+     */
+    public function test_edit_on_an_active_worker_opens_the_full_form(): void
+    {
+        $employee = $this->worker('Carmella Bio');
+
+        $html = $this->actingAs($this->admin())
+             ->get(route('employees.register'))
+             ->assertOk()
+             ->assertSee(route('employees.edit', $employee->id), false)
+             ->getContent();
+
+        // The modal survives for kiosk detections, so the check is that this
+        // row is not one of its triggers — not that the modal is gone.
+        $this->assertStringNotContainsString('data-mode="edit"', $html);
     }
 
     /**
@@ -183,7 +221,7 @@ class QuickEditNamePartsTest extends TestCase
      */
     public function test_a_compound_surname_lands_in_the_middle_box_for_the_admin_to_fix(): void
     {
-        $this->worker('Juan Santos Dela Cruz');
+        $this->pendingToConfirm('Juan Santos Dela Cruz');
 
         $this->actingAs($this->admin())
              ->get(route('employees.register'))

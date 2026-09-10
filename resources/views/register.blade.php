@@ -113,33 +113,15 @@
                             <td>@include('employees._fp', ['e' => $e])</td>
                             <td class="text-center"><span class="rm-pill">{{ $e->attendances_count }}</span></td>
                             <td class="rm-actions">
-                                {{-- data-photo is what openModal() reads to show the
-                                     worker's current picture. The pending rows have
-                                     always passed it; this button never did, so
-                                     editing an active worker opened on an empty photo
-                                     box however many photos they already had. --}}
-                                {{-- The modal edits the name in three boxes now, so
-                                     the row hands it over already in parts. A worker
-                                     registered before the parts were captured — the
-                                     kiosk still creates them with a bare name — is
-                                     split best-effort by the model rather than
-                                     dropping the whole name into First. --}}
-                                @php $np = $e->first_name
-                                        ? ['first_name' => $e->first_name, 'middle_name' => $e->middle_name, 'last_name' => $e->last_name]
-                                        : \App\Models\Employee::splitName($e->name); @endphp
-                                <button class="rm-btn-ghost js-emp-edit"
-                                        data-mode="edit"
-                                        data-id="{{ $e->id }}"
-                                        data-first="{{ $np['first_name'] }}"
-                                        data-middle="{{ $np['middle_name'] }}"
-                                        data-last="{{ $np['last_name'] }}"
-                                        data-labor="{{ $e->labor_type_id }}"
-                                        data-rate="{{ $e->rate_per_hour }}"
-                                        data-site="{{ $e->site_id }}"
-                                        data-fp="{{ $e->fingerprint_id }}"
-                                        data-photo="{{ $e->photo ? asset('storage/' . $e->photo) : '' }}">
+                                {{-- Edit opens the full Register Employee form,
+                                     not the quick modal. Two screens for the same
+                                     job meant a worker could be corrected in a
+                                     five-field dialog that never showed the
+                                     twenty other fields on their record. The
+                                     pending rows above already link here. --}}
+                                <a href="{{ route('employees.edit', $e->id) }}" class="rm-btn-ghost">
                                     <i class="fas fa-pen"></i> {{ __('Edit') }}
-                                </button>
+                                </a>
                                 @include('employees._menu', ['e' => $e, 'context' => 'active'])
                             </td>
                         </tr>
@@ -503,6 +485,9 @@
 .rm-btn-primary:hover { opacity:.93; transform:translateY(-1px); }
 /* Register Employee is an <a>, so keep it looking like the button it replaced. */
 a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decoration:none; color:#fff; }
+/* Edit is a link on both the active and the pending rows, and a link that
+   looks like a button should not carry an underline. */
+a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:none; }
 
 .rm-header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .rm-btn-danger { height:42px; padding:0 18px; font-size:14px; font-weight:700; color:#b91c1c; border:1px solid #fecaca; border-radius:9px;
