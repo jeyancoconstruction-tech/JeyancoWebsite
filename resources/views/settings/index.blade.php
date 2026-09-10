@@ -272,8 +272,6 @@
                                     <thead>
                                         <tr>
                                             <th>{{ __('Effective from') }}</th>
-                                            <th class="text-end">{{ __('Bonus') }}</th>
-                                            <th class="text-end">{{ __('Vale cap') }}</th>
                                             <th class="text-end">{{ __('OT') }}</th><th class="text-end">{{ __('Night') }}</th>
                                             <th class="text-end">{{ __('Rest day') }}</th>
                                             <th class="text-end">{{ __('SSS') }}</th><th class="text-end">{{ __('PH') }}</th>
@@ -295,8 +293,6 @@
                                                 @if($i === 0)<span class="pr-in-force">{{ __('in force') }}</span>@endif
                                                 @if($r->uses_defaults)<span class="pr-on-defaults">{{ __('defaults') }}</span>@endif
                                             </td>
-                                            <td class="text-end">{{ $rr['bonus'] ? '₱' . number_format($rr['bonus'], 2) : '—' }}</td>
-                                            <td class="text-end">{{ $rr['vale_ceiling_percent'] < 100 ? $rr['vale_ceiling_percent'] . '%' : '—' }}</td>
                                             <td class="text-end">{{ number_format($rr['ot_multiplier'], 2) }}</td>
                                             <td class="text-end">{{ number_format($rr['night_diff_multiplier'], 2) }}</td>
                                             <td class="text-end">{{ number_format($rr['rest_day_multiplier'], 2) }}</td>
