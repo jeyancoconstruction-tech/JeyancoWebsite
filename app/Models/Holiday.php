@@ -105,10 +105,19 @@ class Holiday extends Model
      */
     public static function relevantYears(): array
     {
+        // The year is taken in PHP rather than in SQL. YEAR() is MySQL's; it
+        // does not exist in SQLite, so this one line made every page that
+        // reads a holiday — attendance among them — impossible to cover with
+        // a test, and it failed with "no such function: YEAR" rather than
+        // anything that named the cause.
+        //
+        // Distinct dates, not rows: a date column has at most 366 values a
+        // year, so this is a small result whatever the size of the table.
         $years = Attendance::query()
-            ->selectRaw('DISTINCT YEAR(date) as y')
-            ->pluck('y')
-            ->map(fn ($y) => (int) $y)
+            ->select('date')
+            ->distinct()
+            ->pluck('date')
+            ->map(fn ($d) => (int) substr((string) $d, 0, 4))
             ->all();
 
         $years[] = (int) now()->year;

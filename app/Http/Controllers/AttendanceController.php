@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\Holiday;
+use App\Models\Shift;
+use App\Models\Site;
 use App\Notifications\AttendanceAlert;
 use Carbon\Carbon;
 
@@ -14,9 +16,35 @@ class AttendanceController extends Controller
     /**
      * Web: Display attendance page (admin panel)
      */
-    public function index()
+    public function index(Request $request)
     {
         $today = Carbon::today();
+
+        // ── Global filters ──────────────────────────────────────────────────
+        // Site and Shift are read once and applied to everything the page
+        // shows: both tables and all three cards. Anything less and the cards
+        // would be counting a different set of records from the one under
+        // them, which is worse than having no filter at all.
+        $sites  = Site::orderBy('name')->get();
+        $shifts = Shift::orderBy('id')->get();
+
+        // Checked against the lists rather than trusted. A stale bookmark
+        // pointing at a deleted site should show the unfiltered page, not an
+        // empty one with no way to tell why.
+        $siteId  = $request->query('site');
+        $shiftId = $request->query('shift');
+        $siteId  = $sites->contains('id', (int) $siteId)   ? (int) $siteId  : null;
+        $shiftId = $shifts->contains('id', (int) $shiftId) ? (int) $shiftId : null;
+
+        $filtered = function ($query) use ($siteId, $shiftId) {
+            // The attendance carries its own site and shift: one kiosk is
+            // moved between sites, and a worker's shift can change, so
+            // reading either off the employee would answer for today rather
+            // than for the day the record is about.
+            if ($siteId)  { $query->where('site_id', $siteId); }
+            if ($shiftId) { $query->where('shift_id', $shiftId); }
+            return $query;
+        };
 
         // CURRENT DAY VIEW — resets daily: only today's present employees
         // (a record exists only once an employee actually times in).
@@ -24,27 +52,33 @@ class AttendanceController extends Controller
         // between sites, so "which site" is a property of the attendance, not
         // of the worker — reading it off the employee would show wherever they
         // were first registered.
-        $todayAttendances = Attendance::with(['employee', 'site'])
-            ->whereDate('date', $today)
-            ->whereNotNull('time_in')
-            ->orderByDesc('time_in')
-            ->get();
+        $todayAttendances = $filtered(
+                Attendance::with(['employee', 'site'])
+                    ->whereDate('date', $today)
+                    ->whereNotNull('time_in')
+                    ->orderByDesc('time_in')
+            )->get();
 
         // HISTORY — all previous days (kept accessible, but out of the day view).
-        $historyAttendances = Attendance::with(['employee', 'site'])
-            ->whereDate('date', '<', $today)
-            ->orderBy('date', 'desc')
-            ->orderBy('session', 'asc')
-            ->paginate(15);
+        $historyAttendances = $filtered(
+                Attendance::with(['employee', 'site'])
+                    ->whereDate('date', '<', $today)
+                    ->orderBy('date', 'desc')
+                    ->orderBy('session', 'asc')
+            )->paginate(15)
+            // Without this, page 2 drops the filters and quietly shows
+            // everything again.
+            ->withQueryString();
 
         // Stats
         $presentToday = $todayAttendances->count();
         $clockedIn    = $todayAttendances->whereNull('time_out')->count(); // still on-site (no time-out yet)
         $weekStart    = Carbon::today()->startOfWeek(); // Monday — resets each week
-        $invalidCount = Attendance::whereBetween('date', [$weekStart, $today->copy()->subDay()])
-            ->whereNotNull('time_in')
-            ->whereNull('time_out')
-            ->count(); // missed sign-outs within the current week only
+        $invalidCount = $filtered(
+                Attendance::whereBetween('date', [$weekStart, $today->copy()->subDay()])
+                    ->whereNotNull('time_in')
+                    ->whereNull('time_out')
+            )->count(); // missed sign-outs within the current week only
 
         // Global holiday dates (overlay) — shown as a secondary tag.
         $holidayDates = Holiday::dateList();
@@ -52,10 +86,18 @@ class AttendanceController extends Controller
         // ── Notifications ──────────────────────────────────────────────────
         $user = auth()->user();
 
-        if ($invalidCount > 0) {
+        // Deliberately unfiltered: an alert is about the whole workforce, and
+        // firing it off a filtered count would mean "no invalid attendance"
+        // simply because Site B is selected.
+        $invalidAll = Attendance::whereBetween('date', [$weekStart, $today->copy()->subDay()])
+            ->whereNotNull('time_in')
+            ->whereNull('time_out')
+            ->count();
+
+        if ($invalidAll > 0) {
             AttendanceAlert::fireOnce($user, 'invalid_clock_in',
                 'Invalid Attendance Detected',
-                "{$invalidCount} employee" . ($invalidCount > 1 ? 's' : '') . " clocked in but never clocked out."
+                "{$invalidAll} employee" . ($invalidAll > 1 ? 's' : '') . " clocked in but never clocked out."
             );
         }
 
@@ -69,7 +111,8 @@ class AttendanceController extends Controller
 
         return view('attendance', compact(
             'todayAttendances', 'historyAttendances',
-            'presentToday', 'clockedIn', 'invalidCount', 'holidayDates'
+            'presentToday', 'clockedIn', 'invalidCount', 'holidayDates',
+            'sites', 'shifts', 'siteId', 'shiftId'
         ));
     }
 

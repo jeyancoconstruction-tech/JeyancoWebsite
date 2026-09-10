@@ -4,6 +4,55 @@
 
 @push('styles')
 <style>
+/* ── Global filter bar ─────────────────────────────────────────────────── */
+.att-filters {
+    display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap;
+    padding:13px 16px; margin-bottom:16px;
+    background:var(--bg-surface,#fff); border:1px solid var(--border,#e4e7ec);
+    border-radius:10px;
+}
+.att-filters-label {
+    display:inline-flex; align-items:center; gap:7px; padding-bottom:8px;
+    font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--text-muted,#667085);
+}
+.att-filters-label i { font-size:.8rem; color:var(--brand,#1668dc); }
+.att-filter { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.att-filter label {
+    font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase;
+    color:var(--text-secondary,#344054);
+}
+.att-filter-input {
+    min-width:180px; height:36px; padding:0 30px 0 11px;
+    font-size:.86rem; color:var(--text-primary,#101828);
+    background:var(--bg-elevated,#fff); border:1px solid var(--border-md,#d0d5dd);
+    border-radius:8px; cursor:pointer;
+    appearance:none;
+    background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23667085'%3E%3Cpath d='M4.5 6.5 8 10l3.5-3.5z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 9px center; background-size:15px;
+}
+.att-filter-input:focus {
+    outline:none; border-color:var(--brand,#1668dc);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--brand,#1668dc) 18%, transparent);
+}
+.att-filter-apply, .att-filter-clear {
+    height:36px; padding:0 15px; border-radius:8px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:.82rem; font-weight:600; text-decoration:none;
+    background:var(--bg-subtle,#f8f9fb); border:1px solid var(--border-md,#d0d5dd);
+    color:var(--text-secondary,#344054);
+}
+.att-filter-apply:hover, .att-filter-clear:hover {
+    background:var(--bg-elevated,#fff); color:var(--text-primary,#101828);
+}
+.att-filter-note {
+    padding-bottom:9px; font-size:.78rem; color:var(--text-muted,#667085);
+}
+@media (max-width:620px) {
+    .att-filters { gap:10px; }
+    .att-filter, .att-filter-input { width:100%; min-width:0; }
+}
+
 .att-site { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600;
     color:#0f766e; background:#f0fdfa; border:1px solid #ccfbf1; border-radius:8px; padding:2px 8px; white-space:nowrap; }
 .att-site i { font-size:10px; }
@@ -60,6 +109,52 @@
         <span class="text-muted small"><i class="fas fa-calendar-day me-1"></i>{{ now()->format('l, m/d/Y') }}</span>
     </div>
 
+    {{-- ── Global filters ──────────────────────────────────────────────────
+         Above the cards on purpose: they govern the whole page, not one tab.
+         Site and Shift are applied in the controller to both tables and all
+         three counts, so the cards always describe the rows underneath them.
+
+         A GET form rather than JavaScript row-hiding: History is paginated
+         fifteen at a time, so hiding rows in the browser would filter the
+         page you can see and quietly ignore the rest. --}}
+    <form method="GET" action="{{ route('attendance') }}" class="att-filters" id="attFilters">
+        <span class="att-filters-label"><i class="fas fa-filter"></i>{{ __('Filters') }}</span>
+
+        <div class="att-filter">
+            <label for="attSite">{{ __('Site') }}</label>
+            <select name="site" id="attSite" class="att-filter-input">
+                <option value="">{{ __('All Sites') }}</option>
+                @foreach($sites as $s)
+                    <option value="{{ $s->id }}" @selected($siteId === $s->id)>{{ $s->name }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="att-filter">
+            <label for="attShift">{{ __('Shift') }}</label>
+            <select name="shift" id="attShift" class="att-filter-input">
+                <option value="">{{ __('All Shifts') }}</option>
+                @foreach($shifts as $sh)
+                    <option value="{{ $sh->id }}" @selected($shiftId === $sh->id)>{{ $sh->name }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        {{-- The tab rides along so changing a filter while reading History
+             does not drop you back on Today's Attendance. --}}
+        <input type="hidden" name="tab" id="attTabField" value="{{ request('tab') === 'history' ? 'history' : 'today' }}">
+
+        {{-- Submits on change; this is for anyone without JavaScript. --}}
+        <noscript><button type="submit" class="att-filter-apply">{{ __('Apply') }}</button></noscript>
+
+        @if($siteId || $shiftId)
+            <a href="{{ route('attendance', ['tab' => request('tab')]) }}" class="att-filter-clear">
+                <i class="fas fa-xmark"></i>{{ __('Clear') }}
+            </a>
+            <span class="att-filter-note">{{ __('Showing a filtered view — the counts below follow it.') }}</span>
+        @endif
+    </form>
+
     <!-- STAT CARDS -->
     <div class="analytics-row">
         <div class="analytics-card">
@@ -80,14 +175,17 @@
     </div>
 
     <!-- TABS -->
+    @php $openTab = request('tab') === 'history' ? 'history' : 'today'; @endphp
     <ul class="nav nav-tabs att-tabs" role="tablist">
         <li class="nav-item">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#att-today" type="button">
+            <button class="nav-link {{ $openTab === 'today' ? 'active' : '' }}" data-bs-toggle="tab"
+                    data-bs-target="#att-today" type="button" data-tab="today">
                 <i class="fas fa-calendar-day me-1"></i> {{ __('Today\'s Attendance') }}
             </button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#att-history" type="button">
+            <button class="nav-link {{ $openTab === 'history' ? 'active' : '' }}" data-bs-toggle="tab"
+                    data-bs-target="#att-history" type="button" data-tab="history">
                 <i class="fas fa-clock-rotate-left me-1"></i> {{ __('History') }}
             </button>
         </li>
@@ -96,7 +194,7 @@
     <div class="tab-content">
 
         <!-- ===== TODAY ===== -->
-        <div class="tab-pane fade show active" id="att-today" role="tabpanel">
+        <div class="tab-pane fade {{ $openTab === 'today' ? 'show active' : '' }}" id="att-today" role="tabpanel">
             <div class="table-card">
                 <div class="table-responsive">
                 <table class="attendance-table w-100">
@@ -154,7 +252,7 @@
         </div>
 
         <!-- ===== HISTORY ===== -->
-        <div class="tab-pane fade" id="att-history" role="tabpanel">
+        <div class="tab-pane fade {{ $openTab === 'history' ? 'show active' : '' }}" id="att-history" role="tabpanel">
 
             {{-- Toolbar --}}
             <div class="att-hist-toolbar">
@@ -238,7 +336,10 @@
                 </div>
 
                 <div class="mt-3">
-                    {{ $historyAttendances->links() }}
+                    {{-- appends(): these links live in the History pane, so
+                         page 2 has to carry the tab as well as the filters or
+                         it lands on Today's Attendance. --}}
+                    {{ $historyAttendances->appends(['tab' => 'history'])->links() }}
                 </div>
             </div>
         </div>
@@ -247,6 +348,35 @@
 
 @push('scripts')
 <script>
+// ── Global filters ───────────────────────────────────────────────────────────
+(function () {
+    const form = document.getElementById('attFilters');
+    if (!form) return;
+
+    const tabField = document.getElementById('attTabField');
+
+    // Changing either dropdown reloads the page with it applied. The noscript
+    // Apply button covers the case where this never runs.
+    form.querySelectorAll('select').forEach(sel => {
+        sel.addEventListener('change', () => form.submit());
+    });
+
+    // Keep the hidden field and the address bar in step with the open tab, so
+    // changing a filter while reading History comes back to History — and so
+    // does a refresh.
+    document.querySelectorAll('.att-tabs [data-tab]').forEach(btn => {
+        btn.addEventListener('shown.bs.tab', () => {
+            const tab = btn.dataset.tab;
+            if (tabField) tabField.value = tab;
+
+            const url = new URL(window.location);
+            if (tab === 'history') url.searchParams.set('tab', 'history');
+            else                   url.searchParams.delete('tab');
+            history.replaceState(null, '', url);
+        });
+    });
+})();
+
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     (function () {
