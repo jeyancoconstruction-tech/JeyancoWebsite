@@ -1553,78 +1553,6 @@
     background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
 }
 
-
-/* ── Bonus grants ──────────────────────────────────────────────────────────
-   The picker is a wall of names, so it scrolls rather than pushing the Give
-   button off the screen; and a chosen name is filled, not just ticked, so the
-   selection reads at a glance. */
-/* ── Cash advances ─────────────────────────────────────────────────────────
-   Ginagamit nito ang mga hilera ng bonus, may dalawang dagdag lang: ang
-   kasunduan (magkano kada linggo) at kung nasaan na ito ngayon. */
-.va-preview {
-    display: flex; align-items: center; gap: 9px;
-    margin-bottom: 14px; padding: 9px 13px; border-radius: 6px;
-    font-size: .85rem;
-    color: var(--text-secondary);
-    background: var(--bg-subtle);
-    border: 1px solid var(--border);
-}
-.va-preview i { color: var(--brand); }
-.va-preview b { color: var(--text-primary); }
-
-.va-terms {
-    font-size: 12px; padding: 2px 9px; border-radius: 999px;
-    background: var(--bg-subtle); border: 1px solid var(--border);
-    color: var(--text-secondary); white-space: nowrap;
-}
-
-.va-progress {
-    font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
-    padding: 2px 10px; border-radius: 999px; white-space: nowrap;
-    color: var(--text-secondary);
-    background: var(--surface); border: 1px solid var(--border);
-}
-.va-progress.is-done {
-    color: var(--success, #16a34a);
-    border-color: color-mix(in srgb, var(--success, #16a34a) 40%, transparent);
-}
-
-.bg-picker {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 8px; max-height: 260px; overflow-y: auto;
-    padding: 12px; border: 1px solid var(--border); border-radius: 6px;
-    background: var(--bg-subtle);
-}
-.bg-pick {
-    display: flex; align-items: center; gap: 9px; margin: 0;
-    padding: 8px 10px; border-radius: 6px; cursor: pointer;
-    border: 1px solid transparent; background: var(--surface);
-}
-.bg-pick:hover { border-color: var(--border-md); }
-.bg-pick:has(input:checked) { border-color: var(--brand); background: var(--brand-subtle); }
-.bg-pick-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.bg-pick-role { margin-left: auto; font-size: 11px; color: var(--text-muted); }
-
-.bg-row {
-    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    padding: 11px 0; border-bottom: 1px solid var(--border);
-}
-.bg-row:last-child { border-bottom: 0; }
-.bg-row-main { display: flex; align-items: baseline; gap: 10px; flex: none; }
-.bg-amount { font-size: 15px; font-weight: 700; color: var(--brand); font-variant-numeric: tabular-nums; }
-.bg-when   { font-size: 12px; color: var(--text-secondary); }
-.bg-note   { font-size: 12px; font-style: italic; color: var(--text-muted); }
-.bg-row-who { flex: 1; min-width: 160px; font-size: 12.5px; color: var(--text-secondary); }
-.bg-all {
-    font-size: 11px; font-weight: 700; letter-spacing: .3px; padding: 2px 9px;
-    border-radius: 999px; background: var(--brand-subtle); color: var(--brand);
-}
-.bg-remove {
-    flex: none; border: 1px solid var(--border); background: transparent;
-    color: var(--danger); border-radius: 6px; padding: 5px 10px; cursor: pointer;
-}
-.bg-remove:hover { background: rgba(212,117,111,.12); }
-
 .settings-wrapper {
     background: white;
     border-radius: 0.5rem;
@@ -2372,44 +2300,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tax) tax.addEventListener('change', paintTax);
     chk.addEventListener('change', apply);
     apply();
-})();
-</script>
-
-<script>
-// Ang tanong na hindi kayang sagutin ng kabuuan: magkano ang mababawas kada
-// linggo. Dito ito sinasagot habang tina-type pa lang, dahil doon nakasalalay
-// kung kakayanin ba ito ng tao — hindi sa kung magkano ang hiniram.
-(function () {
-    const amount = document.getElementById('adv_amount');
-    const weeks  = document.getElementById('adv_weeks');
-    const box    = document.getElementById('advPreview');
-    const text   = document.getElementById('advPreviewText');
-
-    if (!amount || !weeks || !box || !text) return;
-
-    const peso = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    function draw() {
-        const total = parseFloat(amount.value);
-        const n     = parseInt(weeks.value, 10);
-
-        if (!(total > 0) || !(n > 0)) { box.hidden = true; return; }
-
-        // Ang huli ang may dala ng sukli, gaya ng sa payroll — kung hindi, may
-        // natitirang sentimo na habambuhay na utang.
-        const even = Math.round((total / n) * 100) / 100;
-        const last = Math.round((total - even * (n - 1)) * 100) / 100;
-
-        text.innerHTML = '<b>&#8369;' + peso.format(even) + '</b> a week for <b>' + n + '</b> '
-                       + (n === 1 ? 'week' : 'weeks')
-                       + (last !== even ? ', last one &#8369;' + peso.format(last) : '')
-                       + ' &mdash; &#8369;' + peso.format(total) + ' in all, per person.';
-        box.hidden = false;
-    }
-
-    amount.addEventListener('input', draw);
-    weeks.addEventListener('input', draw);
-    draw();
 })();
 </script>
 @endsection

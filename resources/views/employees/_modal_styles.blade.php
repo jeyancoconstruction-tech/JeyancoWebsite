@@ -82,6 +82,12 @@
 
 .emp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 14px; }
 .emp-grid .emp-field + .emp-field { margin-top: 0; }
+/* The name is three boxes, like Register Employee. At 620px the dialog has
+   room for them side by side; below that they stack rather than shrink to
+   something nobody can read a surname in. */
+.emp-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 560px) { .emp-grid, .emp-grid-3 { grid-template-columns: 1fr; }
+                            .emp-grid .emp-field + .emp-field { margin-top: 14px; } }
 
 /* ── Controls ─────────────────────────────────────────────────────────── */
 /* One height, one radius, one focus ring, matching the Register Employee page.

@@ -177,6 +177,26 @@ class EmployeeDirectorySplitTest extends TestCase
             ->assertSee(route('employees.edit', $employee->id), false);
     }
 
+    /**
+     * View Details is laid out like Register Employee — the same sections in
+     * the same order — so that everything the form collects has somewhere to
+     * be read. Before this, six personal fields were shown out of the twenty
+     * the form asks for, and the rest were entered and then invisible.
+     */
+    public function test_the_details_page_uses_the_same_sections_as_the_registration_form(): void
+    {
+        $employee = $this->regular('Ana Reyes');
+
+        $this->actingAs($this->admin())
+            ->get(route('employees.show', $employee->id))
+            ->assertOk()
+            ->assertSee('Employment & Pay')
+            ->assertSee('Personal Information')
+            ->assertSee('Contact Information')
+            ->assertSee('Address')
+            ->assertSee('Government IDs');
+    }
+
     public function test_the_details_page_shows_the_personal_facts_the_office_asks_for(): void
     {
         $employee = $this->regular('Ana Reyes');
@@ -187,31 +207,45 @@ class EmployeeDirectorySplitTest extends TestCase
             'address_city'     => 'Pili',
             'address_province' => 'Camarines Sur',
             'civil_status'     => 'Single',
+            'email'            => 'ana@example.com',
+            'sss_number'       => '00-1234567-8',
         ]);
 
         $this->actingAs($this->admin())
             ->get(route('employees.show', $employee->id))
             ->assertOk()
-            ->assertSee('Personal na impormasyon')
+            ->assertSee('Personal Information')
             ->assertSee('Female')
             ->assertSee('Naga City')
-            ->assertSee('Pili, Camarines Sur');
+            // City and province are their own fields here, as they are on the
+            // form, rather than one line reading "Pili, Camarines Sur".
+            ->assertSee('Pili')
+            ->assertSee('Camarines Sur')
+            // The two that used to be collected and never shown anywhere.
+            ->assertSee('ana@example.com')
+            ->assertSee('00-1234567-8');
     }
 
-    public function test_a_blank_personal_field_is_left_out_rather_than_drawn_as_a_dash(): void
+    /**
+     * The opposite of what this page used to do. Dropping empty rows kept the
+     * card short, but it also meant a field nobody had filled in looked
+     * exactly like a field that does not exist — and the page no longer
+     * matched the form it mirrors.
+     */
+    public function test_a_blank_field_says_it_is_blank_rather_than_disappearing(): void
     {
         $employee = $this->regular('Ana Reyes');
-        $employee->update(['gender' => 'Female']);
+        $employee->update(['gender' => 'Female', 'birth_place' => null]);
 
         $html = $this->actingAs($this->admin())
             ->get(route('employees.show', $employee->id))
             ->assertOk()
             ->getContent();
 
-        // A column of empty labels says nothing and buries the one fact that
-        // is on file, so only what is filled gets a row.
         $this->assertStringContainsString('Gender', $html);
-        $this->assertStringNotContainsString('Birthplace', $html);
+        $this->assertStringContainsString('Place of Birth', $html);
+        $this->assertStringContainsString('Not recorded', $html);
+        $this->assertStringContainsString('Not issued yet', $html);
     }
 
     public function test_a_contract_amount_is_labelled_as_the_project_total_not_a_daily_rate(): void
@@ -224,9 +258,10 @@ class EmployeeDirectorySplitTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('employees.show', $employee->id))
             ->assertOk()
-            ->assertSee('Contract amount')
-            ->assertSee('buong proyekto')
-            ->assertDontSee('kada araw');
+            ->assertSee('Contract Amount')
+            ->assertSee('whole project')
+            ->assertDontSee('kada araw')
+            ->assertDontSee('per day');
     }
 
     public function test_the_payroll_rule_behind_the_split_still_holds(): void

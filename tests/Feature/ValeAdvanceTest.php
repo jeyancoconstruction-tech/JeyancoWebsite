@@ -320,16 +320,30 @@ class ValeAdvanceTest extends TestCase
 
     // ── On screen ────────────────────────────────────────────────────────────
 
-    public function test_the_settings_page_lists_the_advance(): void
+    /**
+     * The Bonus & Vale tab was taken out of Payroll Settings on request, so
+     * there is no longer a screen that lists advances — this test used to
+     * assert that ?tab=bonus showed one. Everything behind it survives: the
+     * routes, the controller and the deduction, all covered above. What is
+     * pinned here is the removal itself, so a settings page quietly regrowing
+     * the tab, or an unknown tab silently rendering as one, is caught.
+     */
+    public function test_payroll_settings_no_longer_carries_a_bonus_and_vale_tab(): void
     {
         $emp = $this->worker('Nakikita');
         $this->advance(['amount' => 4000, 'weeks' => 4, 'note' => 'Hospital bill'], [$emp->id]);
 
+        // The advance is on file — only its old screen is gone.
+        $this->assertDatabaseHas('vale_advances', ['note' => 'Hospital bill']);
+
         $this->actingAs($this->admin())
              ->get(route('settings.index', ['tab' => 'bonus']))
              ->assertOk()
-             ->assertSee('Hospital bill')
-             ->assertSee('Nakikita')
-             ->assertSee('adv_weeks');
+             ->assertDontSee('Hospital bill')
+             ->assertDontSee('adv_weeks')
+             ->assertDontSee('Bonus & Vale')
+             // An unrecognised tab falls back to Multipliers and Deductions
+             // rather than activating a pane that no longer exists.
+             ->assertSee('Multipliers and Deductions');
     }
 }

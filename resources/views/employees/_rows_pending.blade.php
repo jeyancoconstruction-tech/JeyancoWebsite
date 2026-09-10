@@ -68,10 +68,19 @@
                     <i class="fas fa-pen"></i> {{ __('Edit') }}
                 </a>
             @elseif($hasDetails)
+                {{-- The kiosk creates these with a bare name, so the parts are
+                     split best-effort for the modal's three boxes. The admin
+                     sees the result in editable fields — nothing is written to
+                     the record on a guess. --}}
+                @php $np = $e->first_name
+                        ? ['first_name' => $e->first_name, 'middle_name' => $e->middle_name, 'last_name' => $e->last_name]
+                        : \App\Models\Employee::splitName($e->name); @endphp
                 <button class="rm-btn-accept js-emp-edit"
                         data-mode="confirm"
                         data-id="{{ $e->id }}"
-                        data-name="{{ $e->name }}"
+                        data-first="{{ $np['first_name'] }}"
+                        data-middle="{{ $np['middle_name'] }}"
+                        data-last="{{ $np['last_name'] }}"
                         data-labor="{{ $e->labor_type_id }}"
                         data-rate="{{ $e->rate_per_hour }}"
                         data-site="{{ $e->site_id }}"
@@ -83,7 +92,9 @@
                 <button class="rm-btn-complete js-emp-edit"
                         data-mode="complete"
                         data-id="{{ $e->id }}"
-                        data-name=""
+                        data-first=""
+                        data-middle=""
+                        data-last=""
                         data-labor="{{ $e->labor_type_id }}"
                         data-rate="{{ $e->rate_per_hour }}"
                         data-site="{{ $e->site_id }}"

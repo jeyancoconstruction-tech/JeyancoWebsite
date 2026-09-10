@@ -107,8 +107,8 @@ class EmployeeProfileRequiredTest extends TestCase
     {
         $required = [
             'middle_name', 'job_title', 'date_hired', 'site_id',
-            'birth_date', 'birth_place', 'gender', 'civil_status', 'blood_type', 'nationality',
-            'phone', 'email',
+            'birth_date', 'birth_place', 'gender', 'civil_status', 'nationality',
+            'phone',
             'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
             'address_province', 'address_city', 'address_barangay', 'address_street', 'address_postal',
         ];
@@ -122,8 +122,13 @@ class EmployeeProfileRequiredTest extends TestCase
         $this->assertSame(0, Employee::count(), 'no rejected submission should have been saved');
     }
 
-    /** The photo and the four ID numbers are the standing exception. */
-    public function test_the_photo_and_government_ids_stay_optional(): void
+    /**
+     * The standing exceptions: the photo, the four ID numbers, and — since a
+     * site worker often has neither — the blood type and the email. Requiring
+     * any of them stops a registration over something nobody can produce on
+     * the day.
+     */
+    public function test_the_optional_fields_stay_optional(): void
     {
         $this->actingAs($this->admin())
              ->post(route('employees.store'), $this->completeProfile([
@@ -131,6 +136,8 @@ class EmployeeProfileRequiredTest extends TestCase
                  'philhealth_number' => '',
                  'pagibig_number'    => '',
                  'tin_number'        => '',
+                 'blood_type'        => '',
+                 'email'             => '',
              ]))
              ->assertSessionHasNoErrors();
 
@@ -138,6 +145,8 @@ class EmployeeProfileRequiredTest extends TestCase
 
         $this->assertNull($employee->sss_number);
         $this->assertNull($employee->photo);
+        $this->assertNull($employee->blood_type);
+        $this->assertNull($employee->email);
     }
 
     /**

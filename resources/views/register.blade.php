@@ -118,10 +118,21 @@
                                      always passed it; this button never did, so
                                      editing an active worker opened on an empty photo
                                      box however many photos they already had. --}}
+                                {{-- The modal edits the name in three boxes now, so
+                                     the row hands it over already in parts. A worker
+                                     registered before the parts were captured — the
+                                     kiosk still creates them with a bare name — is
+                                     split best-effort by the model rather than
+                                     dropping the whole name into First. --}}
+                                @php $np = $e->first_name
+                                        ? ['first_name' => $e->first_name, 'middle_name' => $e->middle_name, 'last_name' => $e->last_name]
+                                        : \App\Models\Employee::splitName($e->name); @endphp
                                 <button class="rm-btn-ghost js-emp-edit"
                                         data-mode="edit"
                                         data-id="{{ $e->id }}"
-                                        data-name="{{ $e->name }}"
+                                        data-first="{{ $np['first_name'] }}"
+                                        data-middle="{{ $np['middle_name'] }}"
+                                        data-last="{{ $np['last_name'] }}"
                                         data-labor="{{ $e->labor_type_id }}"
                                         data-rate="{{ $e->rate_per_hour }}"
                                         data-site="{{ $e->site_id }}"
@@ -280,19 +291,52 @@
                         <p class="ep-section-sub">{{ __('Who this record is for.') }}</p>
                     </div>
                 </header>
-                <div class="emp-field">
-                    <label class="ep-label" for="empName">{{ __('Full Name') }} <span class="ep-req" aria-hidden="true">*</span></label>
-                    <input type="text" name="name" id="empName"
-                           class="form-control @error('name') is-invalid @enderror"
-                           placeholder="{{ __('e.g. Juan Santos Dela Cruz') }}"
-                           autocomplete="off" required aria-required="true"
-                           aria-describedby="empNameHint">
-                    @error('name')
-                        <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
-                    @else
-                        <span class="ep-hint" id="empNameHint">{{ __('First, middle and last name, as it should read on the payslip.') }}</span>
-                    @enderror
+                {{-- Three fields, the same three Register Employee asks for.
+                     The single Full Name box that used to be here wrote the
+                     `name` column straight, leaving first/middle/last as
+                     whatever they were — so a correction made here and the
+                     same correction made on the full form disagreed. The
+                     controller composes `name` from these, so both routes now
+                     end at the same value.
+
+                     Middle Name carries no asterisk: the full form requires it
+                     because it posts profile_form, and this modal does not. --}}
+                <div class="emp-grid emp-grid-3">
+                    <div class="emp-field">
+                        <label class="ep-label" for="empFirst">{{ __('First Name') }} <span class="ep-req" aria-hidden="true">*</span></label>
+                        <input type="text" name="first_name" id="empFirst"
+                               class="form-control @error('first_name') is-invalid @enderror"
+                               placeholder="{{ __('Juan') }}"
+                               autocomplete="off" required aria-required="true">
+                        @error('first_name')
+                            <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="emp-field">
+                        <label class="ep-label" for="empMiddle">{{ __('Middle Name') }}</label>
+                        <input type="text" name="middle_name" id="empMiddle"
+                               class="form-control @error('middle_name') is-invalid @enderror"
+                               placeholder="{{ __('Santos') }}" autocomplete="off">
+                        @error('middle_name')
+                            <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="emp-field">
+                        <label class="ep-label" for="empLast">{{ __('Last Name') }} <span class="ep-req" aria-hidden="true">*</span></label>
+                        <input type="text" name="last_name" id="empLast"
+                               class="form-control @error('last_name') is-invalid @enderror"
+                               placeholder="{{ __('Dela Cruz') }}"
+                               autocomplete="off" required aria-required="true">
+                        @error('last_name')
+                            <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
+                @error('name')
+                    <p class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $message }}</p>
+                @else
+                    <span class="ep-hint" id="empNameHint">{{ __('As it should read on the payslip.') }}</span>
+                @enderror
             </section>
 
             <section class="ep-section emp-section">
@@ -736,7 +780,9 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
     const titleEl   = document.getElementById('empFormTitle');
     const subEl     = document.getElementById('empFormSub');
     const submitLbl = document.querySelector('#empFormSubmit span');
-    const nameEl    = document.getElementById('empName');
+    const firstEl   = document.getElementById('empFirst');
+    const middleEl  = document.getElementById('empMiddle');
+    const lastEl    = document.getElementById('empLast');
     const laborEl   = document.getElementById('empLabor');
     const rateEl    = document.getElementById('empRate');
     const rateView  = document.getElementById('empRateView');
@@ -800,7 +846,12 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
         }
         modeField.value = mode;
         idField.value   = d.id || '';
-        nameEl.value = d.name || '';
+        // The row carries the parts already split by Employee::splitName(), so
+        // a worker created by the kiosk with only a bare name still opens with
+        // the three boxes filled in rather than one of them holding all of it.
+        firstEl.value  = d.first  || '';
+        middleEl.value = d.middle || '';
+        lastEl.value   = d.last   || '';
         siteEl.value = d.site || '';
         fpEl.value   = d.fp || (mode === 'add' ? nextFp : '');
         laborEl.value = d.labor || '';
@@ -828,7 +879,7 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
             submitLbl.textContent = 'Save Changes';
         }
         const m = getModal(); if (m) m.show();
-        setTimeout(() => nameEl.focus(), 250);
+        setTimeout(() => firstEl.focus(), 250);
     }
 
     // Delegated so pending rows swapped in by live polling stay clickable.
@@ -836,7 +887,8 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
         const btn = e.target.closest('.js-emp-edit');
         if (!btn) return;
         openModal(btn.dataset.mode, {
-            id: btn.dataset.id, name: btn.dataset.name, labor: btn.dataset.labor,
+            id: btn.dataset.id, labor: btn.dataset.labor,
+            first: btn.dataset.first, middle: btn.dataset.middle, last: btn.dataset.last,
             rate: btn.dataset.rate, site: btn.dataset.site, fp: btn.dataset.fp,
             // openModal() has always handled d.photo; it was simply never
             // passed, so no row could show the picture it already had.
@@ -851,9 +903,10 @@ a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decorati
     });
 
     // If validation failed server-side, reopen the form so errors aren't lost.
-    @if($errors->any() && old('name'))
+    @if($errors->any() && (old('first_name') || old('name')))
         openModal('{{ old('_form_mode', 'complete') }}', {
-            id: '{{ old('_form_id') }}', name: @json(old('name')),
+            id: '{{ old('_form_id') }}',
+            first: @json(old('first_name')), middle: @json(old('middle_name')), last: @json(old('last_name')),
             labor: '{{ old('labor_type_id') }}', site: '{{ old('site_id') }}', fp: '{{ old('fingerprint_id') }}'
         });
     @endif

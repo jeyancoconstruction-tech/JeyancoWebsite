@@ -641,7 +641,13 @@ class EmployeeController extends Controller
         $employee = Employee::findOrFail($id);
 
         $request->validate([
-            'name'           => 'required|string|max:255',
+            // The quick-edit modal posts the name in three parts, the same way
+            // Register Employee does. `name` stays accepted on its own so an
+            // older client — or anything else posting here — keeps working.
+            'name'           => 'required_without:first_name|nullable|string|max:255',
+            'first_name'     => 'required_without:name|nullable|string|max:100',
+            'middle_name'    => 'nullable|string|max:100',
+            'last_name'      => 'required_with:first_name|nullable|string|max:100',
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
             'employment_type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
@@ -651,7 +657,9 @@ class EmployeeController extends Controller
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ], [
-            'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
+            'fingerprint_id.unique'       => 'This Fingerprint ID is already registered.',
+            'first_name.required_without' => 'The first name is required.',
+            'last_name.required_with'     => 'The last name is required.',
         ]);
 
         $laborType = LaborType::findOrFail($request->labor_type_id);
@@ -666,8 +674,20 @@ class EmployeeController extends Controller
             ]);
         }
 
-        $data = [
-            'name'           => $request->name,
+        // Parts win when they are posted, so the name column and the three
+        // columns cannot disagree; a bare `name` is still taken as-is.
+        $named = $request->filled('first_name')
+            ? [
+                'first_name'  => trim($request->input('first_name')),
+                'middle_name' => trim((string) $request->input('middle_name')) ?: null,
+                'last_name'   => trim((string) $request->input('last_name')) ?: null,
+            ]
+            : [];
+        $named['name'] = $named
+            ? Employee::composeName($named['first_name'], $named['middle_name'], $named['last_name'])
+            : trim((string) $request->input('name'));
+
+        $data = $named + [
             'position'       => $laborType->name,
             'employment_type' => $request->input('employment_type', $employee->employment_type ?: Employee::EMPLOYMENT_DAILY),
             'contract_rate'  => $request->filled('contract_rate') ? (float) $request->contract_rate : $employee->contract_rate,
