@@ -41,7 +41,7 @@
 
             {{-- ════════════════════ EMPLOYMENT & PAY ════════════════════
                  Mirrors the first section of Register Employee, field for
-                 field. The photo sits where the picker sits there. --}}
+                 field. --}}
             <section class="ep-section">
                 <header class="ep-section-head">
                     <span class="ep-section-icon"><i class="fas fa-helmet-safety"></i></span>
@@ -141,28 +141,6 @@
                         </span>
                     </div>
 
-                    <div class="col-md-6 col-lg-3">
-                        <span class="ep-label">{{ __('Profile Photo') }}</span>
-                        <div class="epv-photo">
-                            {{-- Three rows still carry a path whose file was
-                                 wiped by a deploy. Without the onerror this
-                                 shows a broken image and the alt text spilling
-                                 out of the tile. --}}
-                            @if($employee->photo)
-                                <img src="{{ url('storage/' . $employee->photo) }}" alt="{{ $employee->name }}"
-                                     onerror="this.hidden = true; this.nextElementSibling.hidden = false;">
-                                <div class="epv-photo-none" hidden>
-                                    <i class="fas fa-user"></i>
-                                    <span>{{ __('No photo') }}</span>
-                                </div>
-                            @else
-                                <div class="epv-photo-none">
-                                    <i class="fas fa-user"></i>
-                                    <span>{{ __('No photo') }}</span>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
                 </div>
             </section>
 
@@ -277,21 +255,9 @@
 .ep-warn  { color: var(--warning, #b54708); font-weight: 600; }
 .ep-value.is-warn { color: var(--warning, #b54708); font-weight: 600; }
 
-/* Photo sits in the grid where the picker sits on the form, so the section
-   keeps the same shape whether it is being filled in or read. */
-.epv-photo {
-    display: flex; align-items: center; justify-content: center;
-    min-height: 120px; padding: 8px;
-    border: 1px solid var(--border, #e3e6e9);
-    border-radius: var(--radius-md, 6px);
-    background: var(--bg-subtle, #f7f8fa);
-}
-.epv-photo img { max-height: 104px; border-radius: var(--radius-md, 6px); object-fit: cover; }
-.epv-photo-none {
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
-    color: var(--text-muted, #8a929b); font-size: .78rem;
-}
-.epv-photo-none i { font-size: 1.6rem; opacity: .45; }
+/* The photo tile's CSS was here — .epv-photo*. The tile is gone: there was
+   no way to set a photo and nowhere for one to survive a deploy, so the tile
+   could only ever say it had none. */
 
 /* ── Payroll strip ─────────────────────────────────────────────────────── */
 .ep-pay { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }

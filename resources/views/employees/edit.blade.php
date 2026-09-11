@@ -24,9 +24,7 @@
 
     <div class="row">
         <div class="col-12">
-            {{-- enctype matters: without it the browser posts no file at all and
-                 a chosen photo is silently dropped. --}}
-            <form action="{{ route('employees.update', $employee->id) }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('employees.update', $employee->id) }}" method="POST">
                 @csrf
                 @method('PUT')
 
@@ -247,8 +245,6 @@
                             <input type="hidden" name="fingerprint_id" value="{{ $employee->fingerprint_id }}">
                             <span class="ep-hint">{{ __('Cannot be changed here.') }}</span>
                         </div>
-
-                        {{-- No photo field — see the note in create.blade.php. --}}
 
                         {{-- Current labor type info card --}}
                         @if($employee->laborType)

@@ -22,9 +22,13 @@ use Tests\TestCase;
  * cost, so the field went instead. A control that silently loses what you give
  * it is worse than not having the control.
  *
- * What stays: the `photo` column, the three rows that still carry a path, and
- * the server-side handling. Nothing has to be rebuilt if a volume is ever
- * attached — the forms just stop offering it today.
+ * The profile page stopped showing one too. A tile that could only ever read
+ * "No photo" — nothing could set a photo, and nothing could keep one — is a
+ * field's worth of space spent saying nothing.
+ *
+ * What stays: the `photo` column, the three rows that still carry a path, the
+ * avatars in the directory that draw them, and the server-side handling.
+ * Nothing has to be rebuilt if a volume is ever attached.
  */
 class ProfilePhotoPickerTest extends TestCase
 {
@@ -147,17 +151,16 @@ class ProfilePhotoPickerTest extends TestCase
 
     /**
      * Three rows still hold a path whose file a deploy wiped. Every place that
-     * draws an avatar has to survive that — a broken image with the name
+     * still draws an avatar has to survive that — a broken image with the name
      * spilling out of it is the failure mode this guards.
      */
     public function test_a_row_with_a_dead_photo_path_still_falls_back(): void
     {
-        $employee = $this->employee('employees/gone-with-a-deploy.jpg');
+        $this->employee('employees/gone-with-a-deploy.jpg');
 
         foreach ([
             route('employees.index'),
             route('employees.register'),
-            route('employees.show', $employee->id),
         ] as $url) {
             $html = $this->actingAs($this->admin())->get($url)->assertOk()->getContent();
 
@@ -167,5 +170,18 @@ class ProfilePhotoPickerTest extends TestCase
                 "an avatar on {$url} should fall back when the file is missing"
             );
         }
+    }
+
+    /** The profile page does not draw one at all, dead path or not. */
+    public function test_the_profile_page_no_longer_shows_a_photo(): void
+    {
+        $employee = $this->employee('employees/gone-with-a-deploy.jpg');
+
+        $this->actingAs($this->admin())
+             ->get(route('employees.show', $employee->id))
+             ->assertOk()
+             ->assertDontSee('Profile Photo')
+             ->assertDontSee('No photo')
+             ->assertDontSee($employee->photo, false);
     }
 }
