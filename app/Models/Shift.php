@@ -83,6 +83,68 @@ class Shift extends Model
             ->all();
     }
 
+    /**
+     * Lay a shift out from the two times the office actually knows: when the
+     * crew arrives and when they go home.
+     *
+     * The four session boundaries are derived, never typed. The break sits in
+     * the middle of the stretch, which is where it already was for both crews
+     * — Day 08:00–12:00 · 13:00–17:00, Night 20:00–00:00 · 01:00–05:00 — so
+     * this reproduces the schedule they are running rather than replacing it.
+     *
+     * An end at or before the start is the next morning; that is also the only
+     * thing that decides whether a shift crosses midnight, because it is the
+     * only thing that can.
+     *
+     * @return array<string, mixed> columns ready to write
+     */
+    public static function layOut(string $startsAt, string $endsAt, int $breakMinutes): array
+    {
+        [$start, $end] = self::boundsOf($startsAt, $endsAt);
+
+        $paid = $start->diffInMinutes($end) - $breakMinutes;
+        $half = intdiv(max(0, (int) $paid), 2);
+
+        $amEnds   = $start->copy()->addMinutes($half);
+        $pmStarts = $amEnds->copy()->addMinutes($breakMinutes);
+
+        return [
+            'starts_at'        => $start->format('H:i:s'),
+            'am_starts_at'     => $start->format('H:i:s'),
+            'am_ends_at'       => $amEnds->format('H:i:s'),
+            'pm_starts_at'     => $pmStarts->format('H:i:s'),
+            'pm_ends_at'       => $end->format('H:i:s'),
+            'crosses_midnight' => $end->day !== $start->day,
+        ];
+    }
+
+    /** How long a crew is on site, in minutes, break included. */
+    public static function spanMinutes(string $startsAt, string $endsAt): int
+    {
+        [$start, $end] = self::boundsOf($startsAt, $endsAt);
+
+        return (int) $start->diffInMinutes($end);
+    }
+
+    /** @return array{0: Carbon, 1: Carbon} */
+    private static function boundsOf(string $startsAt, string $endsAt): array
+    {
+        $start = Carbon::parse('2026-01-05 ' . $startsAt);
+        $end   = Carbon::parse('2026-01-05 ' . $endsAt);
+
+        if ($end->lessThanOrEqualTo($start)) {
+            $end->addDay();
+        }
+
+        return [$start, $end];
+    }
+
+    /** When the crew goes home — the end of the second session. */
+    public function endsAt(): ?string
+    {
+        return $this->pm_ends_at ? substr((string) $this->pm_ends_at, 0, 5) : null;
+    }
+
     /** This shift in the shape WorkSchedule and payroll read. */
     public function schedule(): array
     {

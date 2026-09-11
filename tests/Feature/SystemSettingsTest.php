@@ -279,7 +279,7 @@ class SystemSettingsTest extends TestCase
                  'week_starts_on'         => 0,
                  'payroll_cycle'          => 'daily',
                  'shifts'                 => [
-                     $day->id => ['starts_at' => '07:30', 'grace_period_minutes' => 10],
+                     $day->id => ['starts_at' => '07:30', 'ends_at' => '16:30', 'grace_period_minutes' => 10],
                  ],
              ])
              ->assertSessionHasNoErrors();
@@ -293,9 +293,18 @@ class SystemSettingsTest extends TestCase
         $this->assertSame('daily', $s->payroll_cycle);
         $this->assertFalse($s->auto_count_overtime, 'an unticked box is the off answer');
 
+        // The hours typed here are the hours that get run. The four session
+        // boundaries payroll and the kiosk read are laid out from them, with
+        // the break in the middle — before this the form wrote starts_at and
+        // nothing else, so the crew's day never actually moved.
         $day->refresh();
         $this->assertSame(10, $day->grace_period_minutes);
         $this->assertStringStartsWith('07:30', (string) $day->starts_at);
+        $this->assertStringStartsWith('07:30', (string) $day->am_starts_at);
+        $this->assertStringStartsWith('11:30', (string) $day->am_ends_at);
+        $this->assertStringStartsWith('12:30', (string) $day->pm_starts_at);
+        $this->assertStringStartsWith('16:30', (string) $day->pm_ends_at);
+        $this->assertFalse((bool) $day->crosses_midnight);
     }
 
     /** A day of no hours would divide the daily rate by nothing. */

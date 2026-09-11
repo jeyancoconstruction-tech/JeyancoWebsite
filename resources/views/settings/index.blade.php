@@ -329,7 +329,7 @@
                         <i class="fas fa-clock"></i>
                         <div>
                             <h6>{{ __('Work schedule') }}</h6>
-                            <p>{{ __('When a shift is meant to start, and what a day\'s rate buys') }}</p>
+                            <p>{{ __('The hours each shift works, and what a day\'s rate buys') }}</p>
                         </div>
                     </div>
                     <div class="ps-card-body">
@@ -348,14 +348,22 @@
                                         <span class="sh-count">{{ $sh->employees_count }} {{ __('workers') }}</span>
                                     </div>
                                     <div class="row g-2">
-                                        <div class="col-6">
+                                        <div class="col-6 col-md-4">
                                             <label class="ps-label" for="shift_start_{{ $sh->id }}">{{ __('Starts') }}</label>
                                             <input type="time" class="form-control ps-input"
                                                    id="shift_start_{{ $sh->id }}"
                                                    name="shifts[{{ $sh->id }}][starts_at]"
                                                    value="{{ old("shifts.{$sh->id}.starts_at", substr($sh->starts_at, 0, 5)) }}" required>
                                         </div>
-                                        <div class="col-6">
+                                        <div class="col-6 col-md-4">
+                                            <label class="ps-label" for="shift_end_{{ $sh->id }}">{{ __('Ends') }}</label>
+                                            <input type="time"
+                                                   class="form-control ps-input @error("shifts.{$sh->id}.ends_at") is-invalid @enderror"
+                                                   id="shift_end_{{ $sh->id }}"
+                                                   name="shifts[{{ $sh->id }}][ends_at]"
+                                                   value="{{ old("shifts.{$sh->id}.ends_at", $sh->endsAt()) }}" required>
+                                        </div>
+                                        <div class="col-6 col-md-4">
                                             <label class="ps-label" for="shift_grace_{{ $sh->id }}">{{ __('Grace (min)') }}</label>
                                             <input type="number" min="0" max="120" class="form-control ps-input"
                                                    id="shift_grace_{{ $sh->id }}"
@@ -363,6 +371,9 @@
                                                    value="{{ old("shifts.{$sh->id}.grace_period_minutes", $sh->grace_period_minutes) }}" required>
                                         </div>
                                     </div>
+                                    @error("shifts.{$sh->id}.ends_at")
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
                                     <small class="text-muted d-block mt-2">
                                         {{ $sh->crosses_midnight
                                             ? __('Crosses midnight into the next morning')
@@ -384,7 +395,7 @@
                                        class="form-control ps-input @error('standard_hours_per_day') is-invalid @enderror"
                                        id="standard_hours_per_day" name="standard_hours_per_day"
                                        value="{{ old('standard_hours_per_day', $system->standard_hours_per_day) }}" required>
-                                <small class="text-muted d-block mt-1">{{ __('Clock-in to clock-out, break included') }}</small>
+                                <small class="text-muted d-block mt-1">{{ __('Fallback for a shift with no hours set, and for days before the schedule took effect') }}</small>
                                 @error('standard_hours_per_day')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
                             <div>
@@ -402,18 +413,25 @@
                              its head to know what it just set. --}}
                         <div class="sh-sum">
                             @php
-                                $sumStd   = (float) old('standard_hours_per_day', $system->standard_hours_per_day);
-                                $sumBrk   = (int) old('unpaid_break_minutes', $system->unpaid_break_minutes);
-                                $sumPaid  = max(1, $sumStd - $sumBrk / 60);
+                                $sumBrk = (int) old('unpaid_break_minutes', $system->unpaid_break_minutes);
                             @endphp
                             @foreach($shifts as $sh)
+                                @php
+                                    // Each shift's own hours. This used to add
+                                    // the one global span to every start, which
+                                    // said the same thing whatever the shifts
+                                    // were actually set to.
+                                    $shStart = old("shifts.{$sh->id}.starts_at", substr((string) $sh->starts_at, 0, 5));
+                                    $shEnd   = old("shifts.{$sh->id}.ends_at", $sh->endsAt() ?: $shStart);
+                                    $shPaid  = max(0, \App\Models\Shift::spanMinutes($shStart, $shEnd) - $sumBrk) / 60;
+                                @endphp
                                 <div>
                                     <i class="fas {{ $sh->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>
                                     <b>{{ $sh->name }}</b>
-                                    <span>{{ \Carbon\Carbon::parse($sh->starts_at)->format('g:i a') }}</span>
+                                    <span>{{ \Carbon\Carbon::parse($shStart)->format('g:i a') }}</span>
                                     <em>{{ __('to') }}</em>
-                                    <span>{{ \Carbon\Carbon::parse($sh->starts_at)->addMinutes((int) round($sumStd * 60))->format('g:i a') }}</span>
-                                    <span class="sh-sum-paid">{{ rtrim(rtrim(number_format($sumPaid, 2), '0'), '.') }} {{ __('paid hours') }}</span>
+                                    <span>{{ \Carbon\Carbon::parse($shEnd)->format('g:i a') }}</span>
+                                    <span class="sh-sum-paid">{{ rtrim(rtrim(number_format($shPaid, 2), '0'), '.') }} {{ __('paid hours') }}</span>
                                 </div>
                             @endforeach
                         </div>
