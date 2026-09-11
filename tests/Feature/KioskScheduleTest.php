@@ -124,8 +124,15 @@ class KioskScheduleTest extends TestCase
         $this->at('2026-09-15 13:00:00');
         $this->clock($e, 'time_in');
 
+        // Out well past the end of the shift. The clock is always accepted —
+        // a rule about hours must never leave somebody recorded as on site.
         $this->at('2026-09-15 20:30:00');
-        $this->clock($e, 'time_out')->assertJson(['success' => true, 'ot_hours' => 3.5]);
+        $answer = $this->clock($e, 'time_out')->assertJson(['success' => true])->json();
+
+        // One in the afternoon to half past eight is seven and a half hours,
+        // short of the eight the day buys, so none of it is overtime — not
+        // even the part after the shift ended.
+        $this->assertArrayNotHasKey('ot_hours', $answer);
     }
 
     // ── Coming back ─────────────────────────────────────────────────────────
@@ -234,6 +241,34 @@ class KioskScheduleTest extends TestCase
 
     // ── Payroll ─────────────────────────────────────────────────────────────
 
+    /**
+     * One employee's day, computed the way payroll computes a range.
+     *
+     * A day's regular hours are bought once across its records, so a day
+     * that arrives as a morning and an afternoon cannot be checked a record
+     * at a time — computeRecord alone cannot know what the morning spent.
+     *
+     * @return array{regular: float, ot: float, basic: float}
+     */
+    private function dayTotals(Employee $e, string $date): array
+    {
+        $regular = $ot = $basic = 0.0;
+
+        foreach (app(PayrollService::class)->computeForRange($date, $date)['days'] as $d) {
+            foreach ($d['details'] as $r) {
+                if ((int) $r['employee_id'] !== (int) $e->id) {
+                    continue;
+                }
+
+                $ot      += (float) $r['ot_hours'];
+                $regular += (float) $r['hours'] - (float) $r['ot_hours'];
+                $basic   += (float) $r['basicPay'];
+            }
+        }
+
+        return ['regular' => round($regular, 2), 'ot' => round($ot, 2), 'basic' => round($basic, 2)];
+    }
+
     private function compute(Attendance $rec, array $extra = []): array
     {
         $m = new ReflectionMethod(PayrollService::class, 'computeRecord');
@@ -262,13 +297,39 @@ class KioskScheduleTest extends TestCase
 
     public function test_split_days_now_earn_overtime(): void
     {
-        $e  = $this->worker('Split Day');
-        $am = $this->compute($this->row($e, '2026-09-15', 'AM', '07:55:00', '12:00:00'));
-        $pm = $this->compute($this->row($e, '2026-09-15', 'PM', '13:00:00', '19:30:00'));
+        $e = $this->worker('Split Day');
+        $this->row($e, '2026-09-15', 'AM', '07:55:00', '12:00:00');
+        $this->row($e, '2026-09-15', 'PM', '13:00:00', '19:30:00');
 
-        $this->assertEqualsWithDelta(8.0, $am['regular_hours'] + $pm['regular_hours'], 0.01, 'early arrival is not counted');
-        $this->assertEqualsWithDelta(2.5, $am['ot_hours'] + $pm['ot_hours'], 0.01, 'after 5 PM is overtime');
-        $this->assertEqualsWithDelta(800.0, $am['basicPay'] + $pm['basicPay'], 0.01, 'eight hours is the daily rate');
+        $t = $this->dayTotals($e, '2026-09-15');
+
+        $this->assertEqualsWithDelta(8.0, $t['regular'], 0.01, 'early arrival is not counted');
+        $this->assertEqualsWithDelta(2.5, $t['ot'], 0.01, 'the hours past the eight the day buys');
+        $this->assertEqualsWithDelta(800.0, $t['basic'], 0.01, 'eight hours is the daily rate');
+    }
+
+    /**
+     * The same day, clocked without a break in the middle, has to come to the
+     * same money. It did not: the figure a day's rate buys was offered afresh
+     * to every record, so clocking out for lunch quietly turned three hours
+     * of overtime into three hours at the plain rate.
+     */
+    public function test_a_day_pays_the_same_whether_or_not_lunch_is_clocked(): void
+    {
+        $split  = $this->worker('Clocked Lunch');
+        $whole  = $this->worker('Straight Through');
+
+        $this->row($split, '2026-09-15', 'AM', '08:00:00', '12:00:00');
+        $this->row($split, '2026-09-15', 'PM', '13:00:00', '19:30:00');
+        $this->row($whole, '2026-09-15', 'AM', '08:00:00', '19:30:00');
+
+        $a = $this->dayTotals($split, '2026-09-15');
+        $b = $this->dayTotals($whole, '2026-09-15');
+
+        $this->assertEqualsWithDelta($b['regular'], $a['regular'], 0.01);
+        $this->assertEqualsWithDelta($b['ot'], $a['ot'], 0.01);
+        $this->assertEqualsWithDelta(8.0, $a['regular'], 0.01);
+        $this->assertEqualsWithDelta(2.5, $a['ot'], 0.01);
     }
 
     public function test_the_afternoon_is_late_against_one_not_eight(): void
@@ -300,11 +361,15 @@ class KioskScheduleTest extends TestCase
         $second = Attendance::create(['employee_id' => $e->id, 'shift_id' => $e->shift_id, 'date' => '2026-09-15',
             'session' => 'PM', 'time_in' => '2026-09-16 01:00:00', 'time_out' => '2026-09-16 05:30:00']);
 
+        $t = $this->dayTotals($e, '2026-09-15');
         $a = $this->compute($first);
         $b = $this->compute($second);
 
-        $this->assertEqualsWithDelta(8.0, $a['regular_hours'] + $b['regular_hours'], 0.01);
-        $this->assertEqualsWithDelta(0.5, $a['ot_hours'] + $b['ot_hours'], 0.01);
+        $this->assertEqualsWithDelta(8.0, $t['regular'], 0.01);
+        $this->assertEqualsWithDelta(0.5, $t['ot'], 0.01, 'the half hour past five in the morning');
+
+        // Night differential is per record and needs no running total, so the
+        // two stretches can be read on their own for it.
         $this->assertGreaterThan(0, $a['night_hours'] + $b['night_hours']);
     }
 

@@ -643,7 +643,11 @@ class KioskController extends Controller
             if ($sched) {
                 $in    = WorkSchedule::moment($open->time_in, (string) $open->date);
                 $day   = WorkSchedule::shiftDayFor($sched, $in);
-                $split = WorkSchedule::split($sched, $in, $now->copy(), $day);
+
+                // What the morning already took, so a worker back from lunch
+                // is not offered a second day's worth of regular hours.
+                $used  = Attendance::regularMinutesUsed($employee->id, $day, $sched, $open->id);
+                $split = WorkSchedule::split($sched, $in, $now->copy(), $day, $used);
 
                 if ($split['ot'] > 0) {
                     // Where the overtime began, which is no longer always the
@@ -1147,6 +1151,11 @@ class KioskController extends Controller
                 $working = false;
                 $lastIn  = null;
 
+                // The day's regular hours, spent once across its records
+                // rather than offered afresh to each. Keyed by workday: the
+                // rows here can span two of them.
+                $usedByDay = [];
+
                 foreach ($recs as $r) {
                     $in = WorkSchedule::moment($r->time_in, (string) $r->date);
                     if ($r->time_out) {
@@ -1160,7 +1169,12 @@ class KioskController extends Controller
                         $out = $in->copy();
                     }
 
-                    $split    = WorkSchedule::split($sched, $in, $out, (string) $r->date);
+                    $onDay    = (string) $r->date;
+                    $split    = WorkSchedule::split($sched, $in, $out, $onDay, $usedByDay[$onDay] ?? 0);
+
+                    $usedByDay[$onDay] = ($usedByDay[$onDay] ?? 0)
+                                       + (int) round($split['regular'] * 60);
+
                     $regular += $split['regular'];
                     $ot      += $split['ot'];
                 }

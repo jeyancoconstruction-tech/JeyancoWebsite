@@ -217,6 +217,49 @@ class ShiftRegularHoursTest extends TestCase
         $this->assertEqualsWithDelta(0.0, $paid['ot_hours'], 0.01);
     }
 
+    /**
+     * The rule cuts both ways, and this is the half that is easy to miss.
+     *
+     * Somebody who starts at half past one and leaves at nine has worked six
+     * and a half paid hours — short of the eight the day buys — so none of
+     * it is overtime, including the hour after the shift ended. Overtime
+     * used to be anything past the end of the shift, which paid a premium to
+     * a worker who had not put in a full day.
+     */
+    public function test_a_short_day_running_past_the_shift_is_still_not_overtime(): void
+    {
+        $this->save([$this->day()->id => [
+            'starts_at' => '08:00', 'ends_at' => '20:00', 'regular_hours' => 8,
+        ]])->assertSessionHasNoErrors();
+
+        $emp = $this->worker($this->day()->fresh());
+        $this->clock($emp, 'time_in', '2026-09-11 13:32:00');
+        $this->clock($emp, 'time_out', '2026-09-11 21:00:00');
+
+        $paid = $this->paidOn('2026-09-11');
+
+        $this->assertEqualsWithDelta(6.5, $paid['hours'], 0.01, 'half past two to nine — the break is not paid');
+        $this->assertEqualsWithDelta(0.0, $paid['ot_hours'], 0.01,
+            'six and a half hours is not a full day, so nothing in it is overtime');
+    }
+
+    /** And the hour past the shift is still paid — at the plain rate. */
+    public function test_that_hour_is_paid_as_ordinary_time(): void
+    {
+        $this->save([$this->day()->id => [
+            'starts_at' => '08:00', 'ends_at' => '20:00', 'regular_hours' => 8,
+        ]])->assertSessionHasNoErrors();
+
+        $emp = $this->worker($this->day()->fresh());
+        $this->clock($emp, 'time_in', '2026-09-11 13:32:00');
+        $this->clock($emp, 'time_out', '2026-09-11 21:00:00');
+
+        $paid = $this->paidOn('2026-09-11');
+
+        $this->assertEqualsWithDelta(6.5 * 100, $paid['basicPay'], 0.01);
+        $this->assertEqualsWithDelta(0.0, $paid['otPay'], 0.01);
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();

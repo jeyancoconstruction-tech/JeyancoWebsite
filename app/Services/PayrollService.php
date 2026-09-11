@@ -251,6 +251,41 @@ class PayrollService
             ->flip()
             ->all();
 
+        // A day's regular hours are bought once, not once per record.
+        //
+        // The bands are fixed on the clock, so the hours inside the sessions
+        // add up across a day's records without counting a minute twice. The
+        // figure a shift's rate buys does not work that way: applied afresh
+        // to each record, a crew that clocks out for lunch would collect
+        // eleven regular hours where the same day clocked unbroken collects
+        // eight and three of overtime. So the running total is worked out
+        // here, in time order, and handed to each record.
+        $cfg['regularUsedBefore'] = [];
+        $rulesFrom = $cfg['day']?->schedule_rules_from
+            ? Carbon::parse($cfg['day']->schedule_rules_from)->toDateString()
+            : null;
+
+        $byDay = $records->filter(fn ($r) => $r->time_in && $r->time_out)
+            ->groupBy(fn ($r) => $r->employee_id . '|' . Carbon::parse($r->date)->toDateString());
+
+        foreach ($byDay as $rows) {
+            $used = 0;
+
+            foreach ($rows->sortBy(fn ($r) => (string) $r->time_in) as $rec) {
+                $cfg['regularUsedBefore'][$rec->id] = $used;
+
+                $date  = Carbon::parse($rec->date)->toDateString();
+                $sched = $cfg['shifts'][$rec->shift_id] ?? null;
+
+                if (! $rulesFrom || $date < $rulesFrom || ! WorkSchedule::has($sched)) {
+                    continue;
+                }
+
+                [$in, $out] = WorkSchedule::stretch($rec->time_in, $rec->time_out, $date);
+                $used += (int) round(WorkSchedule::split($sched, $in, $out, $date, $used)['regular'] * 60);
+            }
+        }
+
         // The one-off grants that land anywhere in this range, loaded once. A
         // query per employee per week would be thousands for a month of a full
         // crew. The dates come from the records rather than the arguments,
@@ -364,8 +399,10 @@ class PayrollService
         // Overtime used to be "past the standard in one record". A crew that
         // clocks the morning and the afternoon as two records never had one
         // that long, so ten hours on site paid ten hours at the plain rate.
-        // Per record is still right here: the bands are fixed on the clock, so
-        // a day's records add up without counting any minute twice.
+        // Per record is still right for the bands, which are fixed on the
+        // clock and so add up across a day without counting any minute twice
+        // — but not for the figure the rate buys, which is why the day's
+        // running total is passed in.
         $schedShift = $cfg['shifts'][$rec->shift_id] ?? null;
         $rulesFrom  = $day?->schedule_rules_from ? Carbon::parse($day->schedule_rules_from)->toDateString() : null;
         $scheduled  = $rulesFrom && $dateStr >= $rulesFrom && WorkSchedule::has($schedShift)
@@ -373,7 +410,8 @@ class PayrollService
 
         if ($scheduled) {
             [$in, $out] = WorkSchedule::stretch($rec->time_in, $rec->time_out, $dateStr);
-            $split      = WorkSchedule::split($schedShift, $in, $out, $dateStr);
+            $split      = WorkSchedule::split($schedShift, $in, $out, $dateStr,
+                              (int) ($cfg['regularUsedBefore'][$rec->id] ?? 0));
 
             // What the daily rate buys is the two sessions, so that is the divisor.
             $paidStandard  = max(1.0, WorkSchedule::paidHours($schedShift));

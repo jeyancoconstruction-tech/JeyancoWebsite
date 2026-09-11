@@ -155,29 +155,65 @@ final class WorkSchedule
      * Split a stretch worked into what the day's rate pays for and the
      * overtime. Arriving early and the break count as neither.
      *
-     * Overtime is anything past the end of the shift, and — once a shift says
-     * how many of its hours the daily rate buys — anything past that figure
-     * as well. A crew on from eight in the morning to eight at night works
-     * eleven paid hours; if the day buys eight, the last three are overtime
-     * even though the shift has not ended. The changeover is counted in paid
-     * time, so the break does not bring it forward.
+     * Once a shift says how many of its hours the daily rate buys, that
+     * figure is what overtime means: the hours past it. A crew on from eight
+     * in the morning to eight at night works eleven paid hours; if the day
+     * buys eight, the last three are overtime even though the shift has not
+     * ended. The changeover is counted in paid time, so the break does not
+     * bring it forward.
+     *
+     * It cuts the other way too, and that is the part worth stating. Somebody
+     * who starts at half past one and leaves at nine has worked six and a
+     * half hours — under the eight the day buys — so none of it is overtime,
+     * including the hour after the shift ended. Paying a premium there would
+     * be paying overtime to a worker who had not worked a full day, which is
+     * neither what the setting says nor what the law asks for.
+     *
+     * A shift with no figure set keeps the older rule: regular until the
+     * shift ends, overtime after, because there is nothing else to measure
+     * against.
+     *
+     * $regularUsed is how many regular minutes earlier records of the same
+     * workday have already taken. PayrollService works it out for the whole
+     * range up front; a caller looking at one stretch on its own can leave
+     * it at zero.
      *
      * @return array{regular: float, ot: float, segments: list<array{0: Carbon, 1: Carbon, 2: bool}>}
      */
-    public static function split(array $s, Carbon $in, Carbon $out, string $shiftDay): array
+    public static function split(array $s, Carbon $in, Carbon $out, string $shiftDay, int $regularUsed = 0): array
     {
         $w       = self::windows($s, $shiftDay);
         $otStart = $w['PM'][1]->copy();
 
+        // Minutes of regular time still to be bought by the day's rate.
+        //
+        // Never more than the two sessions hold: a figure larger than the
+        // shift cannot be reached inside it, and letting the hours after the
+        // shift make up the difference would pay them at the plain rate
+        // instead of as the overtime they are.
+        $cap = self::regularMinutes($s);
+
+        if ($cap !== null) {
+            $cap = min($cap, (int) round(
+                (self::hours($w['AM'][0], $w['AM'][1]) + self::hours($w['PM'][0], $w['PM'][1])) * 60
+            ));
+        }
+
+        // What is left of it after earlier stretches of the same day. A day
+        // arrives as several records — a morning, an afternoon after lunch,
+        // a stretch begun again after a mistaken time-out — and its regular
+        // hours are bought once between them, not afresh for each.
+        $left = $cap === null ? null : max(0, $cap - $regularUsed);
+
         $bands = [
             [$w['AM'][0], $w['AM'][1], false],
             [$w['PM'][0], $w['PM'][1], false],
-            [$otStart, $otStart->copy()->addDay(), true],
+            // Past the end of the shift. With a figure to measure against
+            // this is paid time like any other until that figure runs out;
+            // without one there is nothing to compare it to, so it is
+            // overtime from its first minute, as it always was.
+            [$otStart, $otStart->copy()->addDay(), $cap === null],
         ];
-
-        // Minutes of regular time still to be bought by the day's rate.
-        $cap  = self::regularMinutes($s);
-        $left = $cap;
 
         $regular  = 0.0;
         $ot       = 0.0;

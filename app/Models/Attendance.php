@@ -377,6 +377,39 @@ class Attendance extends Model
         return Carbon::parse($this->date)->toDateString() === $current;
     }
 
+    /**
+     * Regular minutes this worker's other records of the same workday have
+     * already taken out of what the day's rate buys.
+     *
+     * A day arrives as several records — a morning, an afternoon after
+     * lunch, a stretch begun again after a mistaken time-out — and its
+     * regular hours are bought once between them. A stretch therefore has to
+     * know what the ones before it spent, or a crew that clocks out for
+     * lunch collects a day of regular hours twice over.
+     */
+    public static function regularMinutesUsed(int $employeeId, string $shiftDay, array $schedule, ?int $exceptId = null): int
+    {
+        $used = 0;
+
+        $rows = static::where('employee_id', $employeeId)
+            ->whereDate('date', $shiftDay)
+            ->whereNotNull('time_in')
+            ->whereNotNull('time_out')
+            ->when($exceptId, fn (Builder $q) => $q->whereKeyNot($exceptId))
+            ->orderBy('time_in')
+            ->get();
+
+        foreach ($rows as $row) {
+            [$in, $out] = \App\Support\WorkSchedule::stretch($row->time_in, $row->time_out, $shiftDay);
+
+            $used += (int) round(
+                \App\Support\WorkSchedule::split($schedule, $in, $out, $shiftDay, $used)['regular'] * 60
+            );
+        }
+
+        return $used;
+    }
+
     /** A day left open longer than this is a broken record, not a running shift. */
     private const OPEN_ROW_HOURS = 18;
 
