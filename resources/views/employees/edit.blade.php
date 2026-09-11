@@ -181,53 +181,20 @@
                         {{-- Site Assignment --}}
                         <div class="col-md-6 col-lg-6">
                             <label class="ep-label" for="site_select">{{ __('Site Assignment') }} <span class="ep-req">*</span></label>
-                            <div class="d-flex gap-2 align-items-start flex-wrap">
-                                <select name="site_id" id="site_select" required
-                                        class="form-select"
-                                        style="flex:1;min-width:160px;">
-                                    <option value="">{{ __('— Select a site —') }}</option>
-                                    @foreach($sites as $site)
-                                        <option value="{{ $site->id }}"
-                                                {{ $employee->site_id == $site->id ? 'selected' : '' }}>
-                                            {{ $site->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <button type="button" id="newSiteBtn" class="btn btn-primary">
-                                    <i class="fas fa-plus me-1"></i>{{ __('New Site') }}
-                                </button>
-                            </div>
-
-                            {{-- Inline new-site panel (Project Name + Google Maps location) --}}
-                            <div id="newSitePanel" style="display:none;background:var(--bg-subtle,#f8fafc);border:1px solid var(--border,#e2e8f0);" class="mt-2 p-3 rounded-2">
-                                <label class="form-label fw-semibold mb-1" style="font-size:13px;">{{ __('Project Name') }}</label>
-                                <input type="text" id="newSiteName" class="form-control form-control-sm mb-3"
-                                       placeholder="{{ __('e.g., Tower 2 — Riverside') }}" maxlength="100">
-
-                                <label class="form-label fw-semibold mb-1" style="font-size:13px;">
-                                    <i class="fas fa-map-marker-alt me-1" style="color:#16a34a;"></i>{{ __('Location') }}
-                                </label>
-                                <input type="text" id="newSiteLocationSearch" class="form-control form-control-sm mb-2"
-                                       placeholder="{{ __('Search an address, or drop a pin on the map') }}" autocomplete="off">
-                                <div id="newSiteMap" class="rounded-2 mb-2" style="height:220px;width:100%;background:var(--bg-body,#e5e7eb);"></div>
-                                <input type="hidden" id="newSiteLocation">
-                                <input type="hidden" id="newSiteLat">
-                                <input type="hidden" id="newSiteLng">
-
-                                <div class="d-flex gap-2">
-                                    <button type="button" id="saveSiteBtn"
-                                            class="btn btn-sm fw-semibold"
-                                            style="background:#16a34a;color:#fff;border:none;padding:6px 14px;border-radius:6px;white-space:nowrap;">
-                                        <i class="fas fa-save me-1"></i>{{ __('Save Site') }}
-                                    </button>
-                                    <button type="button" id="cancelSiteBtn"
-                                            class="btn btn-sm"
-                                            style="background:var(--bg-surface,#f1f5f9);color:var(--text-secondary,#475569);border:1px solid var(--border,#e2e8f0);padding:6px 12px;border-radius:6px;">
-                                        Cancel
-                                    </button>
-                                </div>
-                                <div id="newSiteError" class="text-danger mt-1" style="font-size:12px;display:none;"></div>
-                            </div>
+                            <select name="site_id" id="site_select" required class="form-select">
+                                <option value="">{{ __('— Select a site —') }}</option>
+                                @foreach($sites as $site)
+                                    <option value="{{ $site->id }}"
+                                            {{ $employee->site_id == $site->id ? 'selected' : '' }}>
+                                        {{ $site->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            {{-- No New Site button, as on Register Employee. A site is made
+                                 on the Sites page, which is the screen that owns them. The
+                                 panel that used to open here carried its own name field, its
+                                 own map and its own save, inside a form already asking for
+                                 twenty-five other things. --}}
                         </div>
 
                         {{-- Employee ID (read-only) --}}
@@ -284,7 +251,9 @@
     @include('employees._profile_styles')
 @endpush
 
-<script src="{{ asset('js/site-location-picker.js') }}"></script>
+{{-- site-location-picker.js is not loaded here any more: it existed for the
+     map inside the New Site panel, which is gone. The Sites page still
+     loads it, which is where a site is made. --}}
 <script src="{{ asset('js/address-picker.js') }}"></script>
 <script>
     // Province -> City / Municipality -> Barangay, from the PSGC tables in
@@ -299,30 +268,8 @@
 </script>
 <script>
 (function () {
-    const csrfToken  = '{{ csrf_token() }}';
-    const siteUrl    = '{{ route("sites.store") }}';
-    const siteSelect = document.getElementById('site_select');
-    const newSiteBtn = document.getElementById('newSiteBtn');
-    const panel      = document.getElementById('newSitePanel');
-    const nameInput  = document.getElementById('newSiteName');
-    const saveBtn    = document.getElementById('saveSiteBtn');
-    const cancelBtn  = document.getElementById('cancelSiteBtn');
-    const errEl      = document.getElementById('newSiteError');
-    const rateInput  = document.getElementById('rate_per_hour');
-    const ltSelect   = document.getElementById('labor_type_select');
-
-    // Google Maps location picker for the new-site panel.
-    const locField   = document.getElementById('newSiteLocation');
-    const latField   = document.getElementById('newSiteLat');
-    const lngField   = document.getElementById('newSiteLng');
-    const sitePicker = JeyancoSiteMap.init({
-        apiKey:       '{{ config('services.google_maps.key') }}',
-        searchInput:  document.getElementById('newSiteLocationSearch'),
-        mapEl:        document.getElementById('newSiteMap'),
-        addressField: locField,
-        latField:     latField,
-        lngField:     lngField,
-    });
+    const rateInput = document.getElementById('rate_per_hour');
+    const ltSelect  = document.getElementById('labor_type_select');
 
     // Labor type → auto-fill rate
     ltSelect.addEventListener('change', function () {
@@ -333,58 +280,6 @@
             rateInput.value = '';
         }
     });
-
-    // Toggle new-site panel
-    newSiteBtn.addEventListener('click', () => {
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        if (panel.style.display === 'block') {
-            nameInput.focus();
-            JeyancoSiteMap.refresh(sitePicker);
-        }
-    });
-    cancelBtn.addEventListener('click', () => {
-        panel.style.display = 'none';
-        nameInput.value = '';
-        errEl.style.display = 'none';
-    });
-
-    // Save new site via AJAX
-    saveBtn.addEventListener('click', async () => {
-        const name = nameInput.value.trim();
-        if (!name) { showErr('Please enter a site name.'); return; }
-        errEl.style.display = 'none';
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving…';
-
-        try {
-            const r = await fetch(siteUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                body: JSON.stringify({
-                    name,
-                    location:  locField.value || null,
-                    latitude:  latField.value || null,
-                    longitude: lngField.value || null,
-                }),
-            });
-            const data = await r.json();
-            if (data.success) {
-                const opt = new Option(data.site.name, data.site.id, true, true);
-                siteSelect.appendChild(opt);
-                siteSelect.value = data.site.id;
-                panel.style.display = 'none';
-                nameInput.value = '';
-                JeyancoSiteMap.reset(sitePicker);
-            } else {
-                showErr(data.errors?.name?.[0] || data.message || 'Could not create site.');
-            }
-        } catch { showErr('Network error — please try again.'); }
-        finally { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
-    });
-
-    nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveBtn.click(); } });
-
-    function showErr(msg) { errEl.textContent = msg; errEl.style.display = 'block'; }
 })();
 </script>
 
