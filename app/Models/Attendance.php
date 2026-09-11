@@ -82,14 +82,14 @@ class Attendance extends Model
     /**
      * Computed attendance status (no DB column — derived automatically):
      *   present – timed in AND out (complete record)
-     *   active  – timed in, not yet out, and the day is still being worked
-     *   invalid – timed in but never timed out and the day has ended
+     *   active  – timed in, not yet out, and the sign-out is not due yet
+     *   invalid – the shift is over and nobody clocked out
      *   absent  – no time-in recorded
      *
-     * "Still being worked" is the shift's question, not the calendar's. At one
-     * in the morning the night crew is four hours into a day dated yesterday:
-     * asking isToday() called that a missed sign-out and showed the whole crew
-     * as invalid while they were standing on site.
+     * A missed sign-out is a question about the shift, not about the date. It
+     * is answered by one clock: the end of the shift this day was worked
+     * under, plus an hour to walk off site. Before that the worker may still
+     * be finishing; after it, nobody is coming back to press the button.
      */
     public function getStatusAttribute(): string
     {
@@ -99,7 +99,47 @@ class Attendance extends Model
         if (!empty($this->time_out)) {
             return 'present';
         }
-        return $this->isOnCurrentWorkday() ? 'active' : 'invalid';
+        return $this->signOutOverdue() ? 'invalid' : 'active';
+    }
+
+    /** How long after the shift ends a sign-out is still expected. */
+    public const SIGN_OUT_GRACE_HOURS = 1;
+
+    /**
+     * When this row's sign-out stops being expected and starts being missing:
+     * the end of its shift's day, plus the grace above.
+     *
+     * Null when the shift it was worked under has no schedule on file — every
+     * row from before the working day was written down. Those keep the only
+     * rule they ever had.
+     */
+    public function signOutDueBy(): ?Carbon
+    {
+        $schedule = $this->shift?->schedule();
+
+        if (! \App\Support\WorkSchedule::has($schedule)) {
+            return null;
+        }
+
+        $day = Carbon::parse($this->date)->toDateString();
+
+        return \App\Support\WorkSchedule::windows($schedule, $day)['PM'][1]
+            ->addHours(self::SIGN_OUT_GRACE_HOURS);
+    }
+
+    /** Timed in, never timed out, and the shift is well over. */
+    public function signOutOverdue(?Carbon $now = null): bool
+    {
+        if (empty($this->time_in) || ! empty($this->time_out)) {
+            return false;
+        }
+
+        $now = $now ?? Carbon::now();
+        $due = $this->signOutDueBy();
+
+        return $due === null
+            ? ! Carbon::parse($this->date)->isSameDay($now)
+            : $now->greaterThan($due);
     }
 
     /**
@@ -253,6 +293,54 @@ class Attendance extends Model
             $group->orWhere(fn (Builder $q) => $q->whereNotNull('shift_id')
                 ->whereNotIn('shift_id', $known)
                 ->where('date', $operator, $days[0]));
+        });
+    }
+
+    /**
+     * The last workday each shift has whose sign-out deadline has passed —
+     * shift_id => 'Y-m-d'. Anything on or before it that is still open was
+     * never closed; anything after it may yet be.
+     */
+    private static function overdueThroughAt(Carbon $now): array
+    {
+        $yesterday = $now->copy()->subDay()->toDateString();
+        $through   = [0 => $yesterday];
+
+        foreach (Shift::lookup() as $id => $schedule) {
+            if (! \App\Support\WorkSchedule::has($schedule)) {
+                $through[$id] = $yesterday;
+                continue;
+            }
+
+            $day = \App\Support\WorkSchedule::shiftDayFor($schedule, $now);
+            $due = \App\Support\WorkSchedule::windows($schedule, $day)['PM'][1]
+                       ->addHours(self::SIGN_OUT_GRACE_HOURS);
+
+            $through[$id] = $now->greaterThan($due)
+                ? $day
+                : Carbon::parse($day)->subDay()->toDateString();
+        }
+
+        return $through;
+    }
+
+    /**
+     * Everything the office still has to resolve: a day left open past the
+     * end of its shift, and a day the system had to close because nobody did.
+     *
+     * The two are one queue. Counting only the open ones meant a missed
+     * sign-out stopped being reported the moment closeStale tidied it away,
+     * six hours later, and it went back to reading as an ordinary day.
+     */
+    public function scopeMissedSignOut(Builder $query, ?Carbon $now = null): Builder
+    {
+        $through = self::overdueThroughAt($now ?? Carbon::now());
+
+        return $query->where(function (Builder $group) use ($through) {
+            $group->where(function (Builder $open) use ($through) {
+                $open->whereNotNull('time_in')->whereNull('time_out');
+                self::matchWorkday($open, $through, '<=');
+            })->orWhere('needs_review', true);
         });
     }
 

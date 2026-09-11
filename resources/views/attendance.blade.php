@@ -148,6 +148,12 @@
     .att-nextday { display:inline-block; margin-left:5px; padding:1px 5px; border-radius:5px; background:#e0e7ff; color:#3730a3; font-size:10.5px; font-weight:700; vertical-align:middle; }
     [data-bs-theme="dark"] .att-nextday { background:#1e1b4b; color:#a5b4fc; }
 
+    /* A day the system had to close because nobody clocked out. The row
+       reads Present once it has a time-out, which is true and not the
+       whole truth — the time on it is a guess waiting to be confirmed. */
+    .badge-review { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
+    [data-bs-theme="dark"] .badge-review { background:#431407; color:#fdba74; border-color:#7c2d12; }
+
     /* Checkbox column — hidden until mark mode */
     .att-check-col { display:none; width:36px; text-align:center; }
     .att-check-col input[type=checkbox] { cursor:pointer; width:15px; height:15px; accent-color:#dc2626; }
@@ -335,6 +341,9 @@
                                 @if($isHoliday)
                                     <span class="badge-attendance badge-holiday ms-1" title="{{ __('Holiday (Settings)') }}"><i class="fas fa-star me-1"></i>{{ __('Holiday') }}</span>
                                 @endif
+                                @if($record->needs_review)
+                                    <span class="badge-attendance badge-review ms-1" title="{{ $record->close_reason ?: __('Closed by the system') }}"><i class="fas fa-triangle-exclamation me-1"></i>{{ __('Needs review') }}</span>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -412,6 +421,9 @@
                                 <span class="badge-attendance {{ $cls }}">{{ $label }}</span>
                                 @if($isHoliday)
                                     <span class="badge-attendance badge-holiday ms-1" title="{{ __('Holiday (Settings)') }}"><i class="fas fa-star me-1"></i>{{ __('Holiday') }}</span>
+                                @endif
+                                @if($record->needs_review)
+                                    <span class="badge-attendance badge-review ms-1" title="{{ $record->close_reason ?: __('Closed by the system') }}"><i class="fas fa-triangle-exclamation me-1"></i>{{ __('Needs review') }}</span>
                                 @endif
                             </td>
                         </tr>

@@ -94,15 +94,14 @@ class AttendanceController extends Controller
         $clockedIn    = $todayAttendances->whereNull('time_out')->unique('employee_id')->count();
         $weekStart    = Carbon::today()->startOfWeek(); // Monday — resets each week
 
-        // Missed sign-outs within the current week. A day still being worked
-        // is not one, so the running workday is excluded by the shift working
-        // it rather than by yesterday's date — which would have counted the
-        // whole night crew as invalid every night.
+        // Missed sign-outs within the current week, by the same rule the
+        // badges use: the shift is over, plus an hour, and nobody clocked
+        // out. Counting by date instead made a night crew invalid every
+        // night; counting only still-open rows made the ones the system had
+        // closed disappear from the card while the badge still flagged them.
         $invalidCount = $filtered(
                 Attendance::whereBetween('date', [$weekStart, $today])
-                    ->beforeWorkday($now)
-                    ->whereNotNull('time_in')
-                    ->whereNull('time_out')
+                    ->missedSignOut($now)
             )->count();
 
         // Global holiday dates (overlay) — shown as a secondary tag.
@@ -115,9 +114,7 @@ class AttendanceController extends Controller
         // firing it off a filtered count would mean "no invalid attendance"
         // simply because Site B is selected.
         $invalidAll = Attendance::whereBetween('date', [$weekStart, $today])
-            ->beforeWorkday($now)
-            ->whereNotNull('time_in')
-            ->whereNull('time_out')
+            ->missedSignOut($now)
             ->count();
 
         if ($invalidAll > 0) {
