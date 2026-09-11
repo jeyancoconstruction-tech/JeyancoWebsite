@@ -50,6 +50,23 @@ class PayslipReceiptTest extends TestCase
         $this->assertStringNotContainsString('rc-note', $html);
     }
 
+    /**
+     * The arithmetic strip is three label-and-figure pairs, and each pair
+     * has to stay together.
+     *
+     * It was six children of a three-column grid, so the grid laid them
+     * out across the rows rather than beside their own figures: the slip
+     * read "Gross · 932.50 · − Deductions" on one line and the remaining
+     * three cells on the next.
+     */
+    public function test_each_figure_stays_beside_its_own_label(): void
+    {
+        $html = $this->page();
+
+        $this->assertSame(3, substr_count($html, 'class="rc-math-item"'),
+            'one cell per pair, so a pair cannot be split across rows');
+    }
+
     /** Each line still names the multiplier behind it, which is the point. */
     public function test_every_line_still_says_what_produced_it(): void
     {

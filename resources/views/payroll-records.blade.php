@@ -63,6 +63,12 @@
     .emp-slip-emp .who  { font-weight: 700; color: var(--text-primary); font-size: 13px; }
     .emp-slip-emp .meta { color: var(--text-secondary); font-size: 11px; }
     .emp-slip-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    /* Earnings runs five lines and Deductions six, so the two totals landed a
+       row apart and the slip read as crooked. Each column fills its own
+       height and pushes its total to the floor, which puts Gross pay and
+       Total deductions on one line whatever either column holds. */
+    .emp-slip-cols > div { display: flex; flex-direction: column; }
+    .emp-slip-cols .ln.sum { margin-top: auto; }
     .emp-slip-cols h6 { margin: 0 0 5px; font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-secondary); font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
     .emp-slip .ln { display: flex; justify-content: space-between; font-size: 11.5px; padding: 2.5px 0; font-variant-numeric: tabular-nums; }
     .emp-slip .ln .k { color: var(--text-secondary); }
@@ -91,14 +97,20 @@
         background: var(--bg-subtle); border: 1px solid var(--border);
         font-size: 11.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums;
     }
+    /* Three label-and-figure pairs. They were six children of a three-column
+       grid, which laid them out across the rows rather than beside their own
+       figures — "Gross · 932.50 · − Deductions" on one line and the rest on
+       the next. Each pair is one cell now, so a pair cannot be split, and the
+       row stacks instead of scrambling when there is no width for three. */
     .rc-math {
-        display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px;
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px 14px;
         margin-top: 12px; padding: 9px 12px; border-radius: 6px;
         background: var(--bg-subtle); border: 1px solid var(--border);
         font-size: 11.5px; font-variant-numeric: tabular-nums;
     }
-    .rc-math span { color: var(--text-secondary); display: block; }
-    .rc-math b    { color: var(--text-primary); font-weight: 700; }
+    .rc-math-item { display: flex; justify-content: space-between; gap: 10px; min-width: 0; }
+    .rc-math span { color: var(--text-secondary); }
+    .rc-math b    { color: var(--text-primary); font-weight: 700; white-space: nowrap; }
     /* The rates table and its footnote were styled here, and both are gone.
        The receipt says what this worker was paid; the office-wide multipliers
        behind it live on Payroll Settings, and each line already names its
@@ -397,9 +409,9 @@
                                  the Gross line stop adding up. It belongs in
                                  the arithmetic that reaches net. --}}
                             <div class="rc-math">
-                                <span>{{ __('Gross') }}</span><b id="rcMGross">&mdash;</b>
-                                <span>{{ __('− Deductions') }}</span><b id="rcMDed">&mdash;</b>
-                                <span>{{ __('+ Bonus') }}</span><b id="rcMBonus">&mdash;</b>
+                                <div class="rc-math-item"><span>{{ __('Gross') }}</span><b id="rcMGross">&mdash;</b></div>
+                                <div class="rc-math-item"><span>{{ __('− Deductions') }}</span><b id="rcMDed">&mdash;</b></div>
+                                <div class="rc-math-item"><span>{{ __('+ Bonus') }}</span><b id="rcMBonus">&mdash;</b></div>
                             </div>
 
                             <div class="emp-slip-net">
