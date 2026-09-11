@@ -339,8 +339,24 @@
                              somebody to the night crew changes what they work
                              next, not how late they were last month. --}}
                         <label class="ps-label">{{ __('Shifts') }}</label>
+                        @php $sumBrk = (int) old('unpaid_break_minutes', $system->unpaid_break_minutes); @endphp
                         <div class="sh-pick mb-3">
                             @foreach($shifts as $sh)
+                                @php
+                                    $cardStart = old("shifts.{$sh->id}.starts_at", substr((string) $sh->starts_at, 0, 5));
+                                    $cardEnd   = old("shifts.{$sh->id}.ends_at", $sh->endsAt() ?: $cardStart);
+                                    $cardPaid  = max(0, \App\Models\Shift::spanMinutes($cardStart, $cardEnd) - $sumBrk) / 60;
+
+                                    // Shown clamped to what the shift actually
+                                    // holds. A stored figure can outgrow its
+                                    // shift — shorten the hours, or lengthen
+                                    // the break, and yesterday's number no
+                                    // longer fits — and offering it back would
+                                    // have the form refuse a save nobody had
+                                    // changed.
+                                    $cardReg = old("shifts.{$sh->id}.regular_hours", $sh->regularHours() ?? $cardPaid);
+                                    $cardReg = min((float) $cardReg, $cardPaid);
+                                @endphp
                                 <div class="sh-def">
                                     <div class="sh-def-head">
                                         <i class="fas {{ $sh->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>
@@ -353,7 +369,7 @@
                                             <input type="time" class="form-control ps-input"
                                                    id="shift_start_{{ $sh->id }}"
                                                    name="shifts[{{ $sh->id }}][starts_at]"
-                                                   value="{{ old("shifts.{$sh->id}.starts_at", substr($sh->starts_at, 0, 5)) }}" required>
+                                                   value="{{ $cardStart }}" required>
                                         </div>
                                         <div class="col-6 col-md-4">
                                             <label class="ps-label" for="shift_end_{{ $sh->id }}">{{ __('Ends') }}</label>
@@ -361,7 +377,7 @@
                                                    class="form-control ps-input @error("shifts.{$sh->id}.ends_at") is-invalid @enderror"
                                                    id="shift_end_{{ $sh->id }}"
                                                    name="shifts[{{ $sh->id }}][ends_at]"
-                                                   value="{{ old("shifts.{$sh->id}.ends_at", $sh->endsAt()) }}" required>
+                                                   value="{{ $cardEnd }}" required>
                                         </div>
                                         <div class="col-6 col-md-4">
                                             <label class="ps-label" for="shift_grace_{{ $sh->id }}">{{ __('Grace (min)') }}</label>
@@ -370,8 +386,19 @@
                                                    name="shifts[{{ $sh->id }}][grace_period_minutes]"
                                                    value="{{ old("shifts.{$sh->id}.grace_period_minutes", $sh->grace_period_minutes) }}" required>
                                         </div>
+                                        <div class="col-6 col-md-4">
+                                            <label class="ps-label" for="shift_regular_{{ $sh->id }}">{{ __('Regular (hrs)') }}</label>
+                                            <input type="number" step="0.25" min="0.25" max="24"
+                                                   class="form-control ps-input @error("shifts.{$sh->id}.regular_hours") is-invalid @enderror"
+                                                   id="shift_regular_{{ $sh->id }}"
+                                                   name="shifts[{{ $sh->id }}][regular_hours]"
+                                                   value="{{ rtrim(rtrim(number_format($cardReg, 2, '.', ''), '0'), '.') }}" required>
+                                        </div>
                                     </div>
                                     @error("shifts.{$sh->id}.ends_at")
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                    @error("shifts.{$sh->id}.regular_hours")
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                     <small class="text-muted d-block mt-2">
@@ -412,18 +439,23 @@
                         {{-- The office should not have to do this arithmetic in
                              its head to know what it just set. --}}
                         <div class="sh-sum">
-                            @php
-                                $sumBrk = (int) old('unpaid_break_minutes', $system->unpaid_break_minutes);
-                            @endphp
                             @foreach($shifts as $sh)
                                 @php
-                                    // Each shift's own hours. This used to add
-                                    // the one global span to every start, which
-                                    // said the same thing whatever the shifts
-                                    // were actually set to.
+                                    // Each shift's own hours, worked out the
+                                    // same way the card above did. This used
+                                    // to add the one global span to every
+                                    // start, which said the same thing
+                                    // whatever the shifts were set to.
                                     $shStart = old("shifts.{$sh->id}.starts_at", substr((string) $sh->starts_at, 0, 5));
                                     $shEnd   = old("shifts.{$sh->id}.ends_at", $sh->endsAt() ?: $shStart);
                                     $shPaid  = max(0, \App\Models\Shift::spanMinutes($shStart, $shEnd) - $sumBrk) / 60;
+
+                                    // What the day's rate buys, and what is
+                                    // therefore overtime before the shift has
+                                    // even ended.
+                                    $shReg = min((float) old("shifts.{$sh->id}.regular_hours", $sh->regularHours() ?? $shPaid), $shPaid);
+                                    $shOt  = max(0, $shPaid - $shReg);
+                                    $num   = fn ($h) => rtrim(rtrim(number_format($h, 2), '0'), '.');
                                 @endphp
                                 <div>
                                     <i class="fas {{ $sh->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>
@@ -431,13 +463,21 @@
                                     <span>{{ \Carbon\Carbon::parse($shStart)->format('g:i a') }}</span>
                                     <em>{{ __('to') }}</em>
                                     <span>{{ \Carbon\Carbon::parse($shEnd)->format('g:i a') }}</span>
-                                    <span class="sh-sum-paid">{{ rtrim(rtrim(number_format($shPaid, 2), '0'), '.') }} {{ __('paid hours') }}</span>
+                                    <span class="sh-sum-paid">
+                                        @if($shOt > 0)
+                                            {{ $num($shReg) }} {{ __('regular') }} + {{ $num($shOt) }} {{ __('OT') }}
+                                        @else
+                                            {{ $num($shPaid) }} {{ __('paid hours') }}
+                                        @endif
+                                    </span>
                                 </div>
                             @endforeach
                         </div>
                         <small class="text-muted d-block mt-3">
-                            The standard hours less the break are what a labour type's daily rate buys, so that is the
-                            divisor for the hourly rate and the line where overtime begins. A break is only taken off a
+                            <strong>{{ __('Regular (hrs)') }}</strong> is what a labour type's daily rate buys, so that is the
+                            divisor for the hourly rate and the line where overtime begins — a shift may run longer
+                            than its regular hours, and the rest of it is overtime without waiting for the shift to
+                            end. A break is only taken off a
                             stretch longer than five hours — a crew that clocks out for lunch has already left it out.
                             Lateness is <strong>{{ __('reported, not deducted') }}</strong> — a worker is already paid only for
                             the hours they worked, and docking on top would cut the same wage twice.

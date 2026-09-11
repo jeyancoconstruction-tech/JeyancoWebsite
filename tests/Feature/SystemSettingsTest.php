@@ -279,7 +279,7 @@ class SystemSettingsTest extends TestCase
                  'week_starts_on'         => 0,
                  'payroll_cycle'          => 'daily',
                  'shifts'                 => [
-                     $day->id => ['starts_at' => '07:30', 'ends_at' => '16:30', 'grace_period_minutes' => 10],
+                     $day->id => ['starts_at' => '07:30', 'ends_at' => '16:30', 'regular_hours' => 8, 'grace_period_minutes' => 10],
                  ],
              ])
              ->assertSessionHasNoErrors();

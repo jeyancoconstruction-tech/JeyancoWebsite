@@ -580,6 +580,7 @@ class SettingsController extends Controller
             'shifts'                             => ['array'],
             'shifts.*.starts_at'                 => ['required', 'date_format:H:i'],
             'shifts.*.ends_at'                   => ['required', 'date_format:H:i'],
+            'shifts.*.regular_hours'             => ['required', 'numeric', 'min:0.25', 'max:24'],
             'shifts.*.grace_period_minutes'      => ['required', 'integer', 'min:0', 'max:120'],
         ], [
             'standard_hours_per_day.min'    => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
@@ -602,6 +603,16 @@ class SettingsController extends Controller
                     "shifts.{$id}.ends_at" => 'This leaves under an hour of paid time once the break comes out.',
                 ]);
             }
+
+            // The regular hours are a share of the paid time, not a figure
+            // beside it: a day cannot buy more hours than the shift holds.
+            if (round($fields['regular_hours'] * 60) > $paid) {
+                return back()->withInput()->withErrors([
+                    "shifts.{$id}.regular_hours" =>
+                        'This shift only has ' . rtrim(rtrim(number_format($paid / 60, 2), '0'), '.')
+                        . ' paid hours in it.',
+                ]);
+            }
         }
 
         // Until now this wrote only starts_at, which nothing reads: the hours
@@ -613,7 +624,10 @@ class SettingsController extends Controller
         foreach ($data['shifts'] ?? [] as $id => $fields) {
             Shift::whereKey($id)->update(
                 Shift::layOut($fields['starts_at'], $fields['ends_at'], $break)
-                + ['grace_period_minutes' => $fields['grace_period_minutes']]
+                + [
+                    'grace_period_minutes' => $fields['grace_period_minutes'],
+                    'regular_minutes'      => (int) round($fields['regular_hours'] * 60),
+                ]
             );
         }
 

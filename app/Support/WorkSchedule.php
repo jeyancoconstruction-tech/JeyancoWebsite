@@ -123,17 +123,44 @@ final class WorkSchedule
         return ($session === 'AM' ? $w['AM'][0] : $w['PM'][0])->copy();
     }
 
-    /** What the daily rate buys: the two sessions added together. */
+    /**
+     * What the daily rate buys: the shift's regular hours, or both sessions
+     * when it does not name a figure.
+     *
+     * This is the divisor for the hourly rate and the length of a full day,
+     * so it has to be the paid part — on an eleven-hour shift that pays eight
+     * at the plain rate, a day's wage buys eight hours, not eleven.
+     */
     public static function paidHours(array $s): float
     {
-        $w = self::windows($s, '2026-01-05');
+        $w        = self::windows($s, '2026-01-05');
+        $sessions = self::hours($w['AM'][0], $w['AM'][1]) + self::hours($w['PM'][0], $w['PM'][1]);
+        $cap      = self::regularMinutes($s);
 
-        return self::hours($w['AM'][0], $w['AM'][1]) + self::hours($w['PM'][0], $w['PM'][1]);
+        return $cap === null ? $sessions : min($sessions, $cap / 60);
     }
 
     /**
-     * Split a stretch worked into what the day's rate pays for and the overtime
-     * after the shift ends. Arriving early and the break count as neither.
+     * How many paid minutes a shift counts as regular before the rest of it
+     * becomes overtime. Null is the older rule: all of it.
+     */
+    public static function regularMinutes(array $s): ?int
+    {
+        $v = $s['regular_minutes'] ?? null;
+
+        return ($v === null || $v === '') ? null : max(0, (int) $v);
+    }
+
+    /**
+     * Split a stretch worked into what the day's rate pays for and the
+     * overtime. Arriving early and the break count as neither.
+     *
+     * Overtime is anything past the end of the shift, and — once a shift says
+     * how many of its hours the daily rate buys — anything past that figure
+     * as well. A crew on from eight in the morning to eight at night works
+     * eleven paid hours; if the day buys eight, the last three are overtime
+     * even though the shift has not ended. The changeover is counted in paid
+     * time, so the break does not bring it forward.
      *
      * @return array{regular: float, ot: float, segments: list<array{0: Carbon, 1: Carbon, 2: bool}>}
      */
@@ -148,21 +175,66 @@ final class WorkSchedule
             [$otStart, $otStart->copy()->addDay(), true],
         ];
 
+        // Minutes of regular time still to be bought by the day's rate.
+        $cap  = self::regularMinutes($s);
+        $left = $cap;
+
         $regular  = 0.0;
         $ot       = 0.0;
         $segments = [];
+
+        $keep = function (Carbon $from, Carbon $to, bool $isOt) use (&$regular, &$ot, &$segments) {
+            $segments[] = [$from, $to, $isOt];
+            $isOt ? $ot += self::hours($from, $to) : $regular += self::hours($from, $to);
+        };
 
         foreach ($bands as [$b1, $b2, $isOt]) {
             $from = $in->greaterThan($b1) ? $in->copy() : $b1->copy();
             $to   = $out->lessThan($b2) ? $out->copy() : $b2->copy();
 
-            if ($to->greaterThan($from)) {
-                $segments[] = [$from, $to, $isOt];
-                $isOt ? $ot += self::hours($from, $to) : $regular += self::hours($from, $to);
+            if (! $to->greaterThan($from)) {
+                continue;
             }
+
+            // Past the end of the shift, or no figure set: unchanged.
+            if ($isOt || $left === null) {
+                $keep($from, $to, $isOt);
+                continue;
+            }
+
+            $minutes = (int) round(self::hours($from, $to) * 60);
+
+            if ($minutes <= $left) {
+                $keep($from, $to, false);
+                $left -= $minutes;
+                continue;
+            }
+
+            // The day's regular hours run out partway through this session.
+            if ($left > 0) {
+                $turns = $from->copy()->addMinutes($left);
+                $keep($from, $turns, false);
+                $keep($turns, $to, true);
+            } else {
+                $keep($from, $to, true);
+            }
+
+            $left = 0;
         }
 
         return ['regular' => $regular, 'ot' => $ot, 'segments' => $segments];
+    }
+
+    /** When the first overtime of a stretch begins, if any was worked. */
+    public static function overtimeStart(array $split): ?Carbon
+    {
+        foreach ($split['segments'] as [$from, , $isOt]) {
+            if ($isOt) {
+                return $from;
+            }
+        }
+
+        return null;
     }
 
     /** Hours between 10 PM and 6 AM inside one stretch — the night differential. */

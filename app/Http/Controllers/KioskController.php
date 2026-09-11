@@ -646,8 +646,14 @@ class KioskController extends Controller
                 $split = WorkSchedule::split($sched, $in, $now->copy(), $day);
 
                 if ($split['ot'] > 0) {
+                    // Where the overtime began, which is no longer always the
+                    // end of the shift: a day that buys eight of its eleven
+                    // hours turns over in the middle of the afternoon.
+                    $otFrom = WorkSchedule::overtimeStart($split)
+                        ?? WorkSchedule::sessionEnd($sched, 'PM', $day);
+
                     $payload['ot_hours'] = round($split['ot'], 2);
-                    $payload['ot_from']  = WorkSchedule::label(WorkSchedule::sessionEnd($sched, 'PM', $day));
+                    $payload['ot_from']  = WorkSchedule::label($otFrom);
                     $payload['ot_to']    = WorkSchedule::label($now);
                 }
             }

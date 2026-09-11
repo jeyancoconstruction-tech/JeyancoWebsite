@@ -28,12 +28,14 @@ class Shift extends Model
         'pm_ends_at',
         'time_in_opens_minutes',
         'legacy_starts_at',
+        'regular_minutes',
     ];
 
     protected $casts = [
         'grace_period_minutes'  => 'integer',
         'crosses_midnight'      => 'boolean',
         'time_in_opens_minutes' => 'integer',
+        'regular_minutes'       => 'integer',
     ];
 
     public function employees(): HasMany
@@ -145,6 +147,12 @@ class Shift extends Model
         return $this->pm_ends_at ? substr((string) $this->pm_ends_at, 0, 5) : null;
     }
 
+    /** The paid hours the daily rate buys, before overtime begins. */
+    public function regularHours(): ?float
+    {
+        return $this->regular_minutes === null ? null : $this->regular_minutes / 60;
+    }
+
     /** This shift in the shape WorkSchedule and payroll read. */
     public function schedule(): array
     {
@@ -159,6 +167,7 @@ class Shift extends Model
             'pm_ends_at'       => $this->pm_ends_at,
             'opens'            => (int) ($this->time_in_opens_minutes ?? 120),
             'legacy_starts_at' => $this->legacy_starts_at,
+            'regular_minutes'  => $this->regular_minutes,
         ];
     }
 

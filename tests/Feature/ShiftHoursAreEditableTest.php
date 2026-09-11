@@ -61,6 +61,9 @@ class ShiftHoursAreEditableTest extends TestCase
             $shifts[$s->id] = [
                 'starts_at'            => substr((string) $s->starts_at, 0, 5),
                 'ends_at'              => $s->endsAt(),
+                // Clamped the way the form clamps it: a stored figure can
+                // outgrow its shift when the hours or the break change.
+                'regular_hours'        => min($s->regularHours() ?? 8, (Shift::spanMinutes(substr((string) $s->starts_at, 0, 5), $s->endsAt()) - $break) / 60),
                 'grace_period_minutes' => $s->grace_period_minutes,
             ];
         }
@@ -95,7 +98,7 @@ class ShiftHoursAreEditableTest extends TestCase
 
     public function test_the_hours_typed_become_the_sessions_that_are_run(): void
     {
-        $this->save([$this->day()->id => ['starts_at' => '07:00', 'ends_at' => '16:00']])
+        $this->save([$this->day()->id => ['starts_at' => '07:00', 'ends_at' => '16:00', 'regular_hours' => 8]])
              ->assertSessionHasNoErrors();
 
         $day = $this->day()->fresh();
@@ -113,7 +116,7 @@ class ShiftHoursAreEditableTest extends TestCase
     {
         $day = $this->day();
 
-        $this->save([$day->id => ['starts_at' => '22:00', 'ends_at' => '07:00']])
+        $this->save([$day->id => ['starts_at' => '22:00', 'ends_at' => '07:00', 'regular_hours' => 8]])
              ->assertSessionHasNoErrors();
 
         $moved = $day->fresh();
@@ -141,7 +144,7 @@ class ShiftHoursAreEditableTest extends TestCase
     /** A shift has to be long enough to be a shift. */
     public function test_a_shift_with_no_paid_time_left_is_refused(): void
     {
-        $this->save([$this->day()->id => ['starts_at' => '08:00', 'ends_at' => '08:45']])
+        $this->save([$this->day()->id => ['starts_at' => '08:00', 'ends_at' => '08:45', 'regular_hours' => 0.25]])
              ->assertSessionHasErrors();
 
         $this->assertStringStartsWith('08:00', (string) $this->day()->fresh()->am_starts_at,
@@ -151,7 +154,7 @@ class ShiftHoursAreEditableTest extends TestCase
     /** The point of all of it: shorten the shift, and overtime starts earlier. */
     public function test_moving_the_end_moves_where_overtime_begins(): void
     {
-        $this->save([$this->day()->id => ['starts_at' => '08:00', 'ends_at' => '15:00']])
+        $this->save([$this->day()->id => ['starts_at' => '08:00', 'ends_at' => '15:00', 'regular_hours' => 6]])
              ->assertSessionHasNoErrors();
 
         $emp = Employee::create([
