@@ -274,7 +274,6 @@ class SystemSettingsTest extends TestCase
 
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
-                 'standard_hours_per_day' => 10,
                  'week_starts_on'         => 0,
                  'payroll_cycle'          => 'daily',
                  'shifts'                 => [
@@ -290,7 +289,6 @@ class SystemSettingsTest extends TestCase
         SystemSetting::forget();
         $s = SystemSetting::current();
 
-        $this->assertSame(10.0, $s->standard_hours_per_day);
         $this->assertSame(0, $s->week_starts_on);
         $this->assertSame('daily', $s->payroll_cycle);
         $this->assertFalse($s->auto_count_overtime, 'an unticked box is the off answer');
@@ -312,16 +310,39 @@ class SystemSettingsTest extends TestCase
         $this->assertSame(60, $day->break_minutes, 'the hour between the two sessions');
     }
 
-    /** A day of no hours would divide the daily rate by nothing. */
-    public function test_a_zero_hour_day_is_refused(): void
+    /**
+     * A day of no hours would divide the daily rate by nothing.
+     *
+     * The office used to answer this once for everybody. It is a question
+     * about a shift now, so this is where the floor lives.
+     */
+    public function test_a_shift_that_buys_no_hours_is_refused(): void
     {
+        $day = \App\Models\Shift::where('name', 'Day')->first();
+
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
-                 'standard_hours_per_day' => 0,
-                 'week_starts_on'         => 1,
-                 'payroll_cycle'          => 'weekly',
+                 'week_starts_on' => 1,
+                 'payroll_cycle'  => 'weekly',
+                 'shifts'         => [
+                     $day->id => [
+                         'starts_at' => '08:00', 'ends_at' => '17:00',
+                         'regular_hours' => 0, 'break_minutes' => 60,
+                         'grace_period_minutes' => 10,
+                     ],
+                 ],
              ])
-             ->assertSessionHasErrors('standard_hours_per_day');
+             ->assertSessionHasErrors("shifts.{$day->id}.regular_hours");
+    }
+
+    /** Neither office-wide figure is offered any more. */
+    public function test_the_office_wide_hours_and_break_are_gone_from_the_form(): void
+    {
+        $this->actingAs($this->admin())
+             ->get(route('settings.index', ['tab' => 'attendance']))
+             ->assertOk()
+             ->assertDontSee('name="standard_hours_per_day"', false)
+             ->assertDontSee('name="unpaid_break_minutes"', false);
     }
 
     /**
@@ -332,10 +353,8 @@ class SystemSettingsTest extends TestCase
     {
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
-                 'standard_hours_per_day' => 8,
-                 'unpaid_break_minutes'   => 0,
-                 'week_starts_on'         => 1,
-                 'payroll_cycle'          => 'weekly',
+                 'week_starts_on' => 1,
+                 'payroll_cycle'  => 'weekly',
              ])
              ->assertRedirect(route('settings.index', ['tab' => 'attendance']));
     }

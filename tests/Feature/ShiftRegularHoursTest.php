@@ -76,7 +76,6 @@ class ShiftRegularHoursTest extends TestCase
 
         return $this->actingAs($this->admin())->put(route('settings.attendance.update'), [
             'auto_count_overtime'    => 1,
-            'standard_hours_per_day' => 9,
             'week_starts_on'         => 1,
             'payroll_cycle'          => 'weekly',
             'shifts'                 => $shifts,

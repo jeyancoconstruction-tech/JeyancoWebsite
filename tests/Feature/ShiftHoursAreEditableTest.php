@@ -80,7 +80,6 @@ class ShiftHoursAreEditableTest extends TestCase
             // The real form posts this box; leaving it out is the off
             // answer and would quietly stop overtime being counted.
             'auto_count_overtime'     => 1,
-            'standard_hours_per_day' => 9,
             'week_starts_on'         => 1,
             'payroll_cycle'          => 'weekly',
             'shifts'                 => $shifts,

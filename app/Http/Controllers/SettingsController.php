@@ -555,20 +555,23 @@ class SettingsController extends Controller
     }
 
     /**
-     * The shape of a working day: when a shift starts, what a day's rate buys,
-     * and which days a pay period covers.
+     * The shape of a working day: the hours each shift works, how many of them
+     * its rate buys, and which days a pay period covers.
      *
      * It sits with the payroll settings because that is what it configures —
-     * the standard hours divide a labour type's rate into an hourly one and
-     * mark where overtime begins, and the week start decides what a period is.
-     * The row itself is the system one; only this half of it is payroll's.
+     * a shift's regular hours divide a labour type's rate into an hourly one
+     * and mark where overtime begins, and the week start decides what a period
+     * is. The row itself is the system one; only this half of it is payroll's.
+     *
+     * `standard_hours_per_day` and `unpaid_break_minutes` are no longer among
+     * them. Both still sit on the settings row and are still read — they are
+     * the divisor for days before `schedule_rules_from` and for a shift with
+     * no schedule on file — but editing either would re-cut wages already
+     * paid, so neither is offered any more.
      */
     public function updateAttendance(Request $request)
     {
         $data = $request->validate([
-            // A day of zero hours would divide the daily rate by nothing.
-            'standard_hours_per_day' => ['required', 'numeric', 'min:1', 'max:24'],
-
             'week_starts_on'         => ['required', 'integer', 'min:0', 'max:6'],
             'payroll_cycle'          => ['required', 'in:weekly,daily'],
 
@@ -583,7 +586,7 @@ class SettingsController extends Controller
             'shifts.*.break_minutes'             => ['required', 'integer', 'min:0', 'max:240'],
             'shifts.*.grace_period_minutes'      => ['required', 'integer', 'min:0', 'max:120'],
         ], [
-            'standard_hours_per_day.min'    => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
+            'shifts.*.regular_hours.min'    => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
             'shifts.*.break_minutes.max'    => 'A meal period longer than four hours is not a break, it is two shifts.',
             'shifts.*.grace_period_minutes.max' => 'Two hours of grace is not a grace period.',
         ]);

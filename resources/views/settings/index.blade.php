@@ -422,22 +422,6 @@
                         </div>
                         @error('shifts')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 
-                        {{-- The same two-column grid the shifts use, so this
-                             field lines up with the Day card above it rather
-                             than sitting at a third of the width on a bootstrap
-                             row with a different gutter. --}}
-                        <div class="sh-pick">
-                            <div>
-                                <label class="ps-label" for="standard_hours_per_day">{{ __('Standard hours / day') }}</label>
-                                <input type="number" step="0.25" min="1" max="24"
-                                       class="form-control ps-input @error('standard_hours_per_day') is-invalid @enderror"
-                                       id="standard_hours_per_day" name="standard_hours_per_day"
-                                       value="{{ old('standard_hours_per_day', $system->standard_hours_per_day) }}" required>
-                                <small class="text-muted d-block mt-1">{{ __('Fallback for a shift with no hours set, and for days before the schedule took effect') }}</small>
-                                @error('standard_hours_per_day')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            </div>
-                        </div>
-
                         {{-- The office should not have to do this arithmetic in
                              its head to know what it just set. --}}
                         <div class="sh-sum">
