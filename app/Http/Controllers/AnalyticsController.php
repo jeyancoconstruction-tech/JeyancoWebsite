@@ -20,7 +20,9 @@ class AnalyticsController extends Controller
 
         // ── KPIs ─────────────────────────────────────────────────────────────
         $totalEmployees = Employee::active()->count();
-        $presentToday   = Attendance::whereDate('date', $today)->whereNotNull('time_in')->count();
+        // By the workday each shift is on: the night crew's rows are dated
+        // the evening they started, so the calendar loses them after midnight.
+        $presentToday   = Attendance::onWorkday()->whereNotNull('time_in')->count();
         $activeSites    = Site::withCount('employees')->get()->where('employees_count', '>', 0)->count();
 
         // Current month payroll

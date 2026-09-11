@@ -20,7 +20,10 @@ class DashboardController extends Controller
 
         $totalEmployees = $employees->count();
 
-        $presentToday = Attendance::where('date', Carbon::today()->format('Y-m-d'))
+        // The day each crew is working, not the calendar's. The night shift's
+        // workday is the evening it began on, so at 1am its rows are dated
+        // yesterday and a plain date filter reported the crew as absent.
+        $presentToday = Attendance::onWorkday()
                                    ->whereNotNull('time_in')
                                    ->count();
 
@@ -34,7 +37,7 @@ class DashboardController extends Controller
         $pendingVale = $employees->sum('vale');
 
         // ── Deltas (read-only, for the stat-card trend chips) ──────────────
-        $presentYesterday = Attendance::where('date', Carbon::yesterday()->format('Y-m-d'))
+        $presentYesterday = Attendance::onWorkday(Carbon::now()->subDay())
                                        ->whereNotNull('time_in')
                                        ->count();
 
@@ -48,8 +51,8 @@ class DashboardController extends Controller
             ->count();
 
         // ── Live Attendance (today) ────────────────────────────────────────
-        $todayAttendance = Attendance::with('employee')
-            ->where('date', Carbon::today()->format('Y-m-d'))
+        $todayAttendance = Attendance::with(['employee', 'shift'])
+            ->onWorkday()
             ->whereNotNull('time_in')
             ->orderByDesc('time_in')
             // The panel is full height on the one-screen layout and scrolls its
@@ -95,7 +98,7 @@ class DashboardController extends Controller
         }
 
         // ── Still on site: timed in today and not yet out ──────────────────
-        $stillIn = Attendance::where('date', Carbon::today()->format('Y-m-d'))
+        $stillIn = Attendance::onWorkday()
             ->whereNotNull('time_in')
             ->whereNull('time_out')
             ->count();

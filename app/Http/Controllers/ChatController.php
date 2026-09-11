@@ -48,7 +48,7 @@ class ChatController extends Controller
         // ATTENDANCE QUERIES
         if (str_contains($lower, 'attendance') || str_contains($lower, 'present')) {
             $today = now()->toDateString();
-            $with_records = DB::table('attendances')->whereDate('date', $today)->count();
+            $with_records = \App\Models\Attendance::onWorkday()->count();
             return response()->json(['message' => "✔️ $with_records attendance records today."]);
         }
 

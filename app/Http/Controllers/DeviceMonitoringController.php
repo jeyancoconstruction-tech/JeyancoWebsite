@@ -50,7 +50,7 @@ class DeviceMonitoringController extends Controller
                 'lng'             => $fix['lng'] ?? null,
                 'last_attendance' => $lastAttendance,
                 'today_count'     => Attendance::where('kiosk_id', $kiosk->id)
-                                        ->whereDate('date', now()->toDateString())->count(),
+                                        ->onWorkday()->count(),
             ];
         });
 

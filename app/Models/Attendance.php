@@ -82,9 +82,14 @@ class Attendance extends Model
     /**
      * Computed attendance status (no DB column — derived automatically):
      *   present – timed in AND out (complete record)
-     *   active  – timed in today, not yet out (day still in progress)
+     *   active  – timed in, not yet out, and the day is still being worked
      *   invalid – timed in but never timed out and the day has ended
      *   absent  – no time-in recorded
+     *
+     * "Still being worked" is the shift's question, not the calendar's. At one
+     * in the morning the night crew is four hours into a day dated yesterday:
+     * asking isToday() called that a missed sign-out and showed the whole crew
+     * as invalid while they were standing on site.
      */
     public function getStatusAttribute(): string
     {
@@ -94,7 +99,25 @@ class Attendance extends Model
         if (!empty($this->time_out)) {
             return 'present';
         }
-        return Carbon::parse($this->date)->isToday() ? 'active' : 'invalid';
+        return $this->isOnCurrentWorkday() ? 'active' : 'invalid';
+    }
+
+    /**
+     * How many calendar days after the time-in the time-out landed: 1 for a
+     * night shift that ends the following morning, 0 for an ordinary day.
+     *
+     * The tables print clock times only, so without this "8:00 PM – 7:00 AM"
+     * reads as a day run backwards rather than a shift that crossed midnight.
+     */
+    public function getOutDaysLaterAttribute(): int
+    {
+        if (empty($this->time_in) || empty($this->time_out)) {
+            return 0;
+        }
+
+        [$in, $out] = \App\Support\WorkSchedule::stretch($this->time_in, $this->time_out, (string) $this->date);
+
+        return (int) $in->copy()->startOfDay()->diffInDays($out->copy()->startOfDay());
     }
 
     /**
@@ -113,6 +136,102 @@ class Attendance extends Model
             : '(DAYOFWEEK(date) - 1)';
 
         return $query->whereRaw("{$expression} = ?", [$dayOfWeek]);
+    }
+
+    /**
+     * The workday each shift is on at $now — shift_id => 'Y-m-d', with the
+     * plain calendar date under key 0 for rows worked under no shift.
+     *
+     * Both crews work one workday; they just do not agree on when it is. The
+     * day shift's 11 AM and the night shift's 2 AM belong to the same date on
+     * the payroll, because a shift's day is the date it started on. Attendance
+     * is already filed that way — the kiosk stamps `date` from the shift, and
+     * payroll counts by it — so every screen that asks "what is happening
+     * today" has to ask the same question, and asking the calendar instead is
+     * what emptied the board at midnight on exactly the crew still working.
+     *
+     * @return array<int, string>
+     */
+    public static function workdaysAt(Carbon $now): array
+    {
+        $days = [0 => $now->toDateString()];
+
+        foreach (Shift::lookup() as $id => $schedule) {
+            $days[$id] = \App\Support\WorkSchedule::has($schedule)
+                ? \App\Support\WorkSchedule::shiftDayFor($schedule, $now)
+                : $now->toDateString();
+        }
+
+        return $days;
+    }
+
+    /** Rows on the workday their own shift is working right now. */
+    public function scopeOnWorkday(Builder $query, ?Carbon $now = null): Builder
+    {
+        return self::matchWorkday($query, $now ?? Carbon::now(), '=');
+    }
+
+    /** Rows from a workday that has already finished — the history. */
+    public function scopeBeforeWorkday(Builder $query, ?Carbon $now = null): Builder
+    {
+        return self::matchWorkday($query, $now ?? Carbon::now(), '<');
+    }
+
+    /**
+     * Rows whose workday has not finished: the current one, and anything dated
+     * past it.
+     *
+     * The day view uses this rather than an exact match so that it and the
+     * history together account for every row. The two crews are on different
+     * workdays at the same moment — at 2 PM the day shift is working today
+     * while the night shift's day is still yesterday's, its next one not open
+     * until evening — so a night row dated today is, at 2 PM, ahead of its own
+     * shift's workday. Matched exactly it belonged to neither table and simply
+     * stopped being shown.
+     */
+    public function scopeFromWorkday(Builder $query, ?Carbon $now = null): Builder
+    {
+        return self::matchWorkday($query, $now ?? Carbon::now(), '>=');
+    }
+
+    /**
+     * Compare each row's date against the workday its own shift is on.
+     *
+     * The fallback arm matters: a row must land on exactly one side of now, so
+     * anything pointing at a shift this map does not know — an id left behind
+     * by a deleted shift — is measured against the calendar rather than
+     * dropping out of both the day view and the history.
+     */
+    private static function matchWorkday(Builder $query, Carbon $now, string $operator): Builder
+    {
+        $days  = self::workdaysAt($now);
+        $known = array_values(array_diff(array_keys($days), [0]));
+
+        return $query->where(function (Builder $group) use ($days, $known, $operator) {
+            foreach ($days as $shiftId => $day) {
+                $group->orWhere(function (Builder $q) use ($shiftId, $day, $operator) {
+                    $shiftId === 0 ? $q->whereNull('shift_id') : $q->where('shift_id', $shiftId);
+                    $q->where('date', $operator, $day);
+                });
+            }
+
+            $group->orWhere(fn (Builder $q) => $q->whereNotNull('shift_id')
+                ->whereNotIn('shift_id', $known)
+                ->where('date', $operator, $days[0]));
+        });
+    }
+
+    /** Is this row's day the one its shift is working right now? */
+    public function isOnCurrentWorkday(?Carbon $now = null): bool
+    {
+        $now      = $now ?? Carbon::now();
+        $schedule = $this->shift?->schedule();
+
+        $current = \App\Support\WorkSchedule::has($schedule)
+            ? \App\Support\WorkSchedule::shiftDayFor($schedule, $now)
+            : $now->toDateString();
+
+        return Carbon::parse($this->date)->toDateString() === $current;
     }
 
     /** A day left open longer than this is a broken record, not a running shift. */

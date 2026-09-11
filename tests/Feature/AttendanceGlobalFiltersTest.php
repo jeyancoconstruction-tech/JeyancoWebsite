@@ -35,6 +35,14 @@ class AttendanceGlobalFiltersTest extends TestCase
     {
         parent::setUp();
 
+        // Mid-morning on a Tuesday, pinned. The page now reads each row
+        // against the workday its own shift is on, and the two crews are not
+        // on the same one at every hour — before 6 AM the day crew's day has
+        // not opened yet, and the night crew's runs until the evening. Left to
+        // the wall clock these expectations would hold or fail depending on
+        // what time the suite happened to run.
+        Carbon::setTestNow(Carbon::parse('2026-09-15 10:00:00'));
+
         // firstOrCreate: the migrations seed a default site and the two
         // shifts, so create() would collide on the unique name.
         $this->siteA = Site::firstOrCreate(['name' => 'Site A']);
@@ -88,15 +96,28 @@ class AttendanceGlobalFiltersTest extends TestCase
 
     private function seedTodayAndHistory(): void
     {
-        $today     = Carbon::today()->toDateString();
-        $yesterday = Carbon::yesterday()->toDateString();
+        $today = Carbon::today()->toDateString();
+
+        // Far enough back to be history for both crews. Yesterday is not: a
+        // night shift's workday is the evening it began on and stays current
+        // until the next one opens, so a night row dated yesterday is still
+        // the night crew's current day for most of today — which is the whole
+        // point of the change, and would make "history" here mean one thing
+        // for the day crew and another for the night crew.
+        $past = Carbon::today()->subDays(3)->toDateString();
 
         $this->attendance($this->worker('Ana Day A'),   $this->siteA, $this->day,   $today);
         $this->attendance($this->worker('Ben Night A'), $this->siteA, $this->night, $today);
         $this->attendance($this->worker('Carl Day B'),  $this->siteB, $this->day,   $today);
 
-        $this->attendance($this->worker('Dina Hist A'), $this->siteA, $this->day,   $yesterday);
-        $this->attendance($this->worker('Elmo Hist B'), $this->siteB, $this->night, $yesterday);
+        $this->attendance($this->worker('Dina Hist A'), $this->siteA, $this->day,   $past);
+        $this->attendance($this->worker('Elmo Hist B'), $this->siteB, $this->night, $past);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     public function test_the_page_offers_all_sites_and_all_shifts(): void

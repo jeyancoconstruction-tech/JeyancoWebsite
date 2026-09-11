@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Attendance;
 use App\Models\ChatMessage;
 
 class AIController extends Controller
@@ -201,7 +202,7 @@ class AIController extends Controller
 
         if ($any('daily payroll', 'daily rate', 'daily budget', 'daily estimate', 'daily cost')) {
             $today = now()->toDateString();
-            $present = DB::table('attendances')->whereDate('date', $today)->distinct('employee_id')->count('employee_id');
+            $present = Attendance::onWorkday()->distinct('employee_id')->count('employee_id');
             $avgRate = $this->employees()->avg('rate_per_hour') ?? 0;
             $estimated = $present * $avgRate * 8;
             return "DAILY PAYROLL ESTIMATE\n━━━━━━━━━━━━━━━\n"
@@ -331,7 +332,7 @@ class AIController extends Controller
         if ($any('absent', 'not present', 'who is absent', 'no show')) {
             $today = now()->toDateString();
             $total = $this->employees()->count();
-            $presentIds = DB::table('attendances')->whereDate('date', $today)->pluck('employee_id')->unique();
+            $presentIds = Attendance::onWorkday()->pluck('employee_id')->unique();
             $absent = $this->employees()->whereNotIn('id', $presentIds)->count();
             $present = $total - $absent;
             return "ABSENCE SUMMARY — " . now()->format('M d, Y') . "\n━━━━━━━━━━━━━━━\n"
@@ -354,7 +355,7 @@ class AIController extends Controller
         if ($any('attendance report', 'attendance summary')) {
             $today = now()->toDateString();
             $weekStart = now()->startOfWeek()->toDateString();
-            $todayCount = DB::table('attendances')->whereDate('date', $today)->distinct('employee_id')->count('employee_id');
+            $todayCount = Attendance::onWorkday()->distinct('employee_id')->count('employee_id');
             $weekCount  = DB::table('attendances')->whereDate('date', '>=', $weekStart)->count();
             $total = $this->employees()->count();
             $rate  = $total > 0 ? round(($todayCount / $total) * 100, 1) : 0;
@@ -365,8 +366,8 @@ class AIController extends Controller
 
         if ($any('time in', 'time out', 'clocked out', 'clock out', 'still working')) {
             $today = now()->toDateString();
-            $withOut  = DB::table('attendances')->whereDate('date', $today)->whereNotNull('time_out')->count();
-            $noOut    = DB::table('attendances')->whereDate('date', $today)->whereNull('time_out')->count();
+            $withOut  = Attendance::onWorkday()->whereNotNull('time_out')->count();
+            $noOut    = Attendance::onWorkday()->whereNull('time_out')->count();
             return "TIME OUT STATUS (today)\n━━━━━━━━━━━━━━━\nClocked out: $withOut\nStill in:    $noOut";
         }
 
@@ -375,7 +376,7 @@ class AIController extends Controller
         if ($any('attendance', 'present', 'who is here', 'clocked in', 'time today') || $has('who is', 'in')) {
             $today = now()->toDateString();
             $total = $this->employees()->count();
-            $records = DB::table('attendances')->whereDate('date', $today)->distinct('employee_id')->count('employee_id');
+            $records = Attendance::onWorkday()->distinct('employee_id')->count('employee_id');
             $rate = $total > 0 ? round(($records / $total) * 100, 1) : 0;
             return "ATTENDANCE (Today " . now()->format('M d, Y') . ")\n━━━━━━━━━━━━━━━\n"
                 . "Present: $records / $total employees\nRate:    $rate%";
@@ -557,7 +558,7 @@ class AIController extends Controller
             $e = $this->employees()->count();
             $s = DB::table('sites')->count();
             $u = DB::table('users')->count();
-            $today = DB::table('attendances')->whereDate('date', now()->toDateString())->distinct('employee_id')->count('employee_id');
+            $today = Attendance::onWorkday()->distinct('employee_id')->count('employee_id');
             return "DASHBOARD OVERVIEW\n━━━━━━━━━━━━━━━\n"
                 . "👥 Employees:        $e\n"
                 . "📍 Sites:            $s\n"

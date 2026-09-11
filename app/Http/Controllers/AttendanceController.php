@@ -19,6 +19,7 @@ class AttendanceController extends Controller
     public function index(Request $request)
     {
         $today = Carbon::today();
+        $now   = Carbon::now();
 
         // ── Global filters ──────────────────────────────────────────────────
         // Site and Shift are read once and applied to everything the page
@@ -46,23 +47,30 @@ class AttendanceController extends Controller
             return $query;
         };
 
-        // CURRENT DAY VIEW — resets daily: only today's present employees
-        // (a record exists only once an employee actually times in).
+        // CURRENT DAY VIEW — the day each crew is working, which is not the
+        // same date for both of them. A night shift that timed in at 8pm is
+        // still on its own workday at 2am, on a row dated the evening before;
+        // under a plain calendar filter this table went empty at midnight on
+        // exactly the crew still standing on site, and their rows appeared in
+        // the history as missed sign-outs while they were working.
+        //
         // Eager-load the site each clock was taken at. One kiosk is carried
         // between sites, so "which site" is a property of the attendance, not
         // of the worker — reading it off the employee would show wherever they
-        // were first registered.
+        // were first registered. The shift is loaded too: each row's status is
+        // read against the shift it was worked under.
         $todayAttendances = $filtered(
-                Attendance::with(['employee', 'site'])
-                    ->whereDate('date', $today)
+                Attendance::with(['employee', 'site', 'shift'])
+                    ->fromWorkday($now)
                     ->whereNotNull('time_in')
                     ->orderByDesc('time_in')
             )->get();
 
-        // HISTORY — all previous days (kept accessible, but out of the day view).
+        // HISTORY — workdays that have finished, which for the night crew is
+        // the following morning rather than midnight.
         $historyAttendances = $filtered(
-                Attendance::with(['employee', 'site'])
-                    ->whereDate('date', '<', $today)
+                Attendance::with(['employee', 'site', 'shift'])
+                    ->beforeWorkday($now)
                     ->orderBy('date', 'desc')
                     ->orderBy('session', 'asc')
             )->paginate(15)
@@ -74,11 +82,17 @@ class AttendanceController extends Controller
         $presentToday = $todayAttendances->count();
         $clockedIn    = $todayAttendances->whereNull('time_out')->count(); // still on-site (no time-out yet)
         $weekStart    = Carbon::today()->startOfWeek(); // Monday — resets each week
+
+        // Missed sign-outs within the current week. A day still being worked
+        // is not one, so the running workday is excluded by the shift working
+        // it rather than by yesterday's date — which would have counted the
+        // whole night crew as invalid every night.
         $invalidCount = $filtered(
-                Attendance::whereBetween('date', [$weekStart, $today->copy()->subDay()])
+                Attendance::whereBetween('date', [$weekStart, $today])
+                    ->beforeWorkday($now)
                     ->whereNotNull('time_in')
                     ->whereNull('time_out')
-            )->count(); // missed sign-outs within the current week only
+            )->count();
 
         // Global holiday dates (overlay) — shown as a secondary tag.
         $holidayDates = Holiday::dateList();
@@ -89,7 +103,8 @@ class AttendanceController extends Controller
         // Deliberately unfiltered: an alert is about the whole workforce, and
         // firing it off a filtered count would mean "no invalid attendance"
         // simply because Site B is selected.
-        $invalidAll = Attendance::whereBetween('date', [$weekStart, $today->copy()->subDay()])
+        $invalidAll = Attendance::whereBetween('date', [$weekStart, $today])
+            ->beforeWorkday($now)
             ->whereNotNull('time_in')
             ->whereNull('time_out')
             ->count();
@@ -123,109 +138,20 @@ class AttendanceController extends Controller
         if (empty($ids)) {
             return response()->json(['success' => false, 'message' => 'No records selected.']);
         }
+        // "Past days" as the shift that worked them reckons days. On the
+        // calendar a night crew's running day is already yesterday, so
+        // clearing history at two in the morning deleted the shift in
+        // progress out from under the people working it.
         $deleted = Attendance::whereIn('id', $ids)
-            ->whereDate('date', '<', Carbon::today())
+            ->beforeWorkday()
             ->delete();
         return response()->json(['success' => true, 'deleted' => $deleted]);
     }
 
-    /** Delete every history record (past days only). */
+    /** Delete every history record (finished workdays only). */
     public function deleteAllHistory()
     {
-        $deleted = Attendance::whereDate('date', '<', Carbon::today())->delete();
+        $deleted = Attendance::beforeWorkday()->delete();
         return response()->json(['success' => true, 'deleted' => $deleted]);
-    }
-
-    /**
-     * Kiosk: Handle attendance POST (time_in / time_out)
-     */
-    public function record(Request $request)
-    {
-        $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'type' => 'required|in:time_in,time_out',
-        ]);
-
-        $employeeId = $request->employee_id;
-        $type = $request->type;
-        $now = Carbon::now();
-        $today = $now->format('Y-m-d');
-
-        /** Determine Session based on time. Default: Before 12 PM = AM, After = PM */
-        $currentSession = $now->hour < 12 ? 'AM' : 'PM';
-
-        // Look up this session's record WITHOUT creating one. A row is only
-        // saved once a real time-in happens, so no empty/absent placeholder
-        // records remain for sessions with no activity.
-        $attendance = Attendance::where('employee_id', $employeeId)
-            ->where('date', $today)
-            ->where('session', $currentSession)
-            ->first();
-
-        if ($type === 'time_in') {
-            // An open day, not a filled slot on today's clock: a worker who has
-            // not clocked out of the morning cannot clock into the afternoon.
-            if ($open = Attendance::openRow($employeeId, $now)) {
-                $attendance = $open;
-            }
-
-            if ($attendance && $attendance->time_in && !$attendance->time_out) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Already time-in for $currentSession session."
-                ]);
-            }
-            if (!$attendance) {
-                $attendance = new Attendance([
-                    'employee_id' => $employeeId,
-                    'date'        => $today,
-                    'session'     => $currentSession,
-                ]);
-            }
-            $attendance->time_in = $now; // full datetime — matches kiosk storage
-        }
-        elseif ($type === 'time_out') {
-            // The day this worker has open — which for any shift longer than
-            // the half of the day it began in is not the row the clock points at.
-            $attendance = Attendance::openRow($employeeId, $now);
-
-            if (!$attendance || !$attendance->time_in) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Cannot time-out without a $currentSession time-in."
-                ]);
-            }
-            if ($attendance->time_out) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Already time-out for $currentSession session."
-                ]);
-            }
-            $attendance->time_out = $now; // full datetime — matches kiosk storage
-        }
-
-        $attendance->save();
-
-        // Fire overtime notification when a day runs past the standard hours
-        // the office actually set, not a hardcoded eight.
-        if ($type === 'time_out' && $attendance->time_in && $attendance->time_out) {
-            $hours = abs(Carbon::parse($attendance->time_in)->diffInMinutes(Carbon::parse($attendance->time_out))) / 60;
-            if ($hours > (float) \App\Models\SystemSetting::current()->standard_hours_per_day) {
-                $employee = $attendance->employee ?? Employee::find($employeeId);
-                $name = $employee ? $employee->name : "Employee #{$employeeId}";
-                AttendanceAlert::fireOnce(
-                    \App\Models\User::where('is_admin', true)->first(),
-                    'overtime',
-                    'Overtime Recorded',
-                    "{$name} worked " . round($hours, 1) . " hours ({$currentSession} session)."
-                );
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => "Successfully recorded $type for $currentSession.",
-            'attendance' => $attendance
-        ]);
     }
 }

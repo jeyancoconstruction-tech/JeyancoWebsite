@@ -142,6 +142,12 @@
     [data-bs-theme="dark"] .att-del-sel-btn { background:#450a0a; color:#fca5a5; border-color:#7f1d1d; }
     [data-bs-theme="dark"] .att-del-sel-btn:not(:disabled):hover { background:#7f1d1d; }
 
+    /* Time-out that landed the next morning. The columns print clock times
+       only, so a night shift read as "8:00 PM – 7:00 AM" — a day apparently
+       run backwards — with nothing to say the out was the following day. */
+    .att-nextday { display:inline-block; margin-left:5px; padding:1px 5px; border-radius:5px; background:#e0e7ff; color:#3730a3; font-size:10.5px; font-weight:700; vertical-align:middle; }
+    [data-bs-theme="dark"] .att-nextday { background:#1e1b4b; color:#a5b4fc; }
+
     /* Checkbox column — hidden until mark mode */
     .att-check-col { display:none; width:36px; text-align:center; }
     .att-check-col input[type=checkbox] { cursor:pointer; width:15px; height:15px; accent-color:#dc2626; }
@@ -320,6 +326,9 @@
                                 {{ date('h:i A', strtotime($record->time_in)) }}
                                 &ndash;
                                 {{ $record->time_out ? date('h:i A', strtotime($record->time_out)) : '--' }}
+                                @if($record->out_days_later > 0)
+                                    <span class="att-nextday" title="{{ __('Timed out the next morning — the same workday') }}">+{{ $record->out_days_later }}</span>
+                                @endif
                             </td>
                             <td class="text-center p-2">
                                 <span class="badge-attendance {{ $cls }}">{{ $label }}</span>
@@ -392,6 +401,9 @@
                                     {{ date('h:i A', strtotime($record->time_in)) }}
                                     &ndash;
                                     {{ $record->time_out ? date('h:i A', strtotime($record->time_out)) : '--' }}
+                                    @if($record->out_days_later > 0)
+                                        <span class="att-nextday" title="{{ __('Timed out the next morning — the same workday') }}">+{{ $record->out_days_later }}</span>
+                                    @endif
                                 @else
                                     <span class="text-muted fst-italic">{{ __('No time-in') }}</span>
                                 @endif
