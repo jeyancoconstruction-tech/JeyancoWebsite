@@ -19,6 +19,12 @@ use Illuminate\Support\Facades\Cache;
 class KioskController extends Controller
 {
     /**
+     * A TIME OUT this soon after the TIME IN is the sensor reading the
+     * same finger twice, not a shift that lasted seconds.
+     */
+    private const DOUBLE_READ_SECONDS = 60;
+
+    /**
      * GPS attendance validation (anti-fraud). Returns null when the clock action
      * is allowed, or a ready-to-return rejection payload when it must be blocked.
      *
@@ -584,6 +590,24 @@ class KioskController extends Controller
                     'code'     => 'no_open',
                     'employee' => $who,
                     'message'  => 'No open time in to close. If you forgot to time in, ask the office.',
+                ];
+            }
+
+            // A finger held a moment too long reads twice, and the second read
+            // closed the day the first one opened. That left a whole shift
+            // recorded as a few seconds — worth no hours, but counted as a
+            // clock-in of its own on every screen that lists them, which is
+            // how one worker came to have three sign-ins for one night.
+            $openedAt = WorkSchedule::moment($open->time_in, (string) $open->date);
+
+            if ($openedAt->diffInSeconds($now, true) < self::DOUBLE_READ_SECONDS) {
+                return [
+                    'success'  => false,
+                    'code'     => 'just_timed_in',
+                    'employee' => $who,
+                    'since'    => WorkSchedule::label($openedAt),
+                    'message'  => 'Timed in a moment ago, at ' . WorkSchedule::label($openedAt)
+                                . '. Press TIME OUT again when you are leaving.',
                 ];
             }
 

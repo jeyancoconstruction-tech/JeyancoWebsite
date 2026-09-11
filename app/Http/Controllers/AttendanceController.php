@@ -21,6 +21,13 @@ class AttendanceController extends Controller
         $today = Carbon::today();
         $now   = Carbon::now();
 
+        // A day nobody closed is closed at the end of its session and flagged
+        // for review. There is no scheduler on this deployment, so this runs
+        // where attendance is read — as it already does for payroll and the
+        // kiosk's board. Without it a forgotten time-out sat open for good,
+        // reading "Invalid" on a row the office could not resolve from here.
+        Attendance::closeStale(null, $now);
+
         // ── Global filters ──────────────────────────────────────────────────
         // Site and Shift are read once and applied to everything the page
         // shows: both tables and all three cards. Anything less and the cards
@@ -78,9 +85,13 @@ class AttendanceController extends Controller
             // everything again.
             ->withQueryString();
 
-        // Stats
-        $presentToday = $todayAttendances->count();
-        $clockedIn    = $todayAttendances->whereNull('time_out')->count(); // still on-site (no time-out yet)
+        // Stats. Counted by worker, not by row: a day is several rows — a
+        // morning, an afternoon after lunch, a stretch begun again after a
+        // mistaken time-out — and counting those made one man on site read as
+        // "3 present" beside a workforce of one. It also made the low-turnout
+        // alert below compare a row count against a headcount.
+        $presentToday = $todayAttendances->unique('employee_id')->count();
+        $clockedIn    = $todayAttendances->whereNull('time_out')->unique('employee_id')->count();
         $weekStart    = Carbon::today()->startOfWeek(); // Monday — resets each week
 
         // Missed sign-outs within the current week. A day still being worked

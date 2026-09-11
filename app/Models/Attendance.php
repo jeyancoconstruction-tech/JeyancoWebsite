@@ -165,16 +165,52 @@ class Attendance extends Model
         return $days;
     }
 
+    /**
+     * Where each shift's history stops — shift_id => 'Y-m-d', same shape as
+     * workdaysAt(), and the line the day view and the history divide on.
+     *
+     * Usually that is the workday the shift is on. Once that day has run its
+     * course it is the next one, which is what moves a finished day off the
+     * day view: the night crew's shift ends at 5 AM, but their next workday
+     * does not open until 6 PM, so between those hours shiftDayFor() still
+     * answers "last night" — correctly, it is the day a clock now would
+     * belong to. Used as the boundary it kept last night's finished rows
+     * sitting on Today's Attendance all through the following day, beside
+     * the day crew's, under a heading naming a date neither of them shared.
+     */
+    private static function boundariesAt(Carbon $now): array
+    {
+        $bounds = [0 => $now->toDateString()];
+
+        foreach (Shift::lookup() as $id => $schedule) {
+            if (! \App\Support\WorkSchedule::has($schedule)) {
+                $bounds[$id] = $now->toDateString();
+                continue;
+            }
+
+            $day  = \App\Support\WorkSchedule::shiftDayFor($schedule, $now);
+            $ends = \App\Support\WorkSchedule::windows($schedule, $day)['PM'][1];
+
+            $bounds[$id] = $now->greaterThanOrEqualTo($ends)
+                ? Carbon::parse($day)->addDay()->toDateString()
+                : $day;
+        }
+
+        return $bounds;
+    }
+
     /** Rows on the workday their own shift is working right now. */
     public function scopeOnWorkday(Builder $query, ?Carbon $now = null): Builder
     {
-        return self::matchWorkday($query, $now ?? Carbon::now(), '=');
+        $now = $now ?? Carbon::now();
+
+        return self::matchWorkday($query, self::workdaysAt($now), '=');
     }
 
     /** Rows from a workday that has already finished — the history. */
     public function scopeBeforeWorkday(Builder $query, ?Carbon $now = null): Builder
     {
-        return self::matchWorkday($query, $now ?? Carbon::now(), '<');
+        return self::matchWorkday($query, self::boundariesAt($now ?? Carbon::now()), '<');
     }
 
     /**
@@ -191,7 +227,7 @@ class Attendance extends Model
      */
     public function scopeFromWorkday(Builder $query, ?Carbon $now = null): Builder
     {
-        return self::matchWorkday($query, $now ?? Carbon::now(), '>=');
+        return self::matchWorkday($query, self::boundariesAt($now ?? Carbon::now()), '>=');
     }
 
     /**
@@ -202,9 +238,8 @@ class Attendance extends Model
      * by a deleted shift — is measured against the calendar rather than
      * dropping out of both the day view and the history.
      */
-    private static function matchWorkday(Builder $query, Carbon $now, string $operator): Builder
+    private static function matchWorkday(Builder $query, array $days, string $operator): Builder
     {
-        $days  = self::workdaysAt($now);
         $known = array_values(array_diff(array_keys($days), [0]));
 
         return $query->where(function (Builder $group) use ($days, $known, $operator) {

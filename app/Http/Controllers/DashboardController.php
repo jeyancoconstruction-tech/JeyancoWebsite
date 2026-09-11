@@ -25,7 +25,8 @@ class DashboardController extends Controller
         // yesterday and a plain date filter reported the crew as absent.
         $presentToday = Attendance::onWorkday()
                                    ->whereNotNull('time_in')
-                                   ->count();
+                                   ->distinct('employee_id')
+                                   ->count('employee_id');
 
         // Weekly payout for the current Mon–Sun week — computed by PayrollService
         // so it matches Payroll Records exactly (single source of truth).
@@ -39,7 +40,8 @@ class DashboardController extends Controller
         // ── Deltas (read-only, for the stat-card trend chips) ──────────────
         $presentYesterday = Attendance::onWorkday(Carbon::now()->subDay())
                                        ->whereNotNull('time_in')
-                                       ->count();
+                                       ->distinct('employee_id')
+                                       ->count('employee_id');
 
         $lwFrom = Carbon::now()->subWeek()->startOfWeek(Carbon::MONDAY)->toDateString();
         $lwTo   = Carbon::now()->subWeek()->endOfWeek(Carbon::SUNDAY)->toDateString();
@@ -101,7 +103,8 @@ class DashboardController extends Controller
         $stillIn = Attendance::onWorkday()
             ->whereNotNull('time_in')
             ->whereNull('time_out')
-            ->count();
+            ->distinct('employee_id')
+            ->count('employee_id');
 
         // ── The action queue, and the counters beside it ───────────────────
         $attention = $this->buildAttention($stillIn);
