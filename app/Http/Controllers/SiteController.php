@@ -16,7 +16,7 @@ class SiteController extends Controller
     /** Return all sites with employee count (JSON). */
     public function list()
     {
-        $sites = Site::withCount('employees')->orderBy('name')->get();
+        $sites = Site::withCount(['employees' => fn ($q) => $q->active()])->orderBy('name')->get();
         return response()->json(['success' => true, 'sites' => $sites]);
     }
 
@@ -96,7 +96,7 @@ class SiteController extends Controller
      */
     public function destroy($id)
     {
-        $site  = Site::withCount('employees')->findOrFail($id);
+        $site  = Site::withCount(['employees' => fn ($q) => $q->active()])->findOrFail($id);
         $count = $site->employees_count;
         $site->delete();
 

@@ -66,7 +66,7 @@ class SettingsController extends Controller
 
         // The shifts, with how many people are on each — the count is the part
         // that says whether the split is actually being used.
-        $shifts = Shift::withCount('employees')->orderBy('id')->get();
+        $shifts = Shift::withCount(['employees' => fn ($q) => $q->active()])->orderBy('id')->get();
 
         // Holiday calendar: official PH holidays for the selected year merged
         // with manual entries (auto-recognised, admin-overridable).

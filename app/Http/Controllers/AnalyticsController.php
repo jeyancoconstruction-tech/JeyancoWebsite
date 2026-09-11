@@ -23,7 +23,7 @@ class AnalyticsController extends Controller
         // By the workday each shift is on: the night crew's rows are dated
         // the evening they started, so the calendar loses them after midnight.
         $presentToday   = Attendance::onWorkday()->whereNotNull('time_in')->count();
-        $activeSites    = Site::withCount('employees')->get()->where('employees_count', '>', 0)->count();
+        $activeSites    = Site::withCount(['employees' => fn ($q) => $q->active()])->get()->where('employees_count', '>', 0)->count();
 
         // Current month payroll
         $monthly   = $payroll->computeForRange($monthStart, $monthEnd);
@@ -121,7 +121,7 @@ class AnalyticsController extends Controller
             ->sortByDesc(fn ($c) => $c);
 
         // ── Site distribution ──────────────────────────────────────────────────
-        $siteDist = Site::withCount('employees')
+        $siteDist = Site::withCount(['employees' => fn ($q) => $q->active()])
             ->orderByDesc('employees_count')
             ->get()
             ->mapWithKeys(fn ($s) => [$s->name => $s->employees_count]);

@@ -30,7 +30,7 @@ class ProjectAssignmentController extends Controller
             ->withQueryString();
 
         // The headline the module exists for: who is on each site right now.
-        $bySite = Site::withCount(['employees'])
+        $bySite = Site::withCount(['employees' => fn ($q) => $q->active()])
             ->orderBy('name')
             ->get()
             ->map(function ($site) {
