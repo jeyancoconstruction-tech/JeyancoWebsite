@@ -34,22 +34,38 @@ class AnalyticsController extends Controller
         $monthlyOTPay   = round($empColl->sum(fn ($e) => $e['totals']['overtime']), 2);
         $monthlyHoliday = round($empColl->sum(fn ($e) => $e['totals']['holidayPay']), 2);
 
-        // Attendance rate this month
-        $totalPresent    = Attendance::whereBetween('date', [$monthStart, $monthEnd])
-            ->whereNotNull('time_in')->count();
-        $daysSoFar       = max(1, $today->diffInDays($today->copy()->startOfMonth()) + 1);
+        // Attendance rate this month. A day is one worker on one workday, not
+        // one row: a day comes in several — a morning, an afternoon after
+        // lunch, a stretch begun again after a mistaken time-out — and
+        // counting rows against a headcount put the rate over 100%, which is
+        // what the clamp below was hiding rather than fixing.
+        $totalPresent    = Attendance::ofRegistered()
+            ->whereBetween('date', [$monthStart, $monthEnd])
+            ->whereNotNull('time_in')
+            ->get(['employee_id', 'date'])
+            ->unique(fn ($r) => $r->employee_id . '|' . $r->date)
+            ->count();
+        // Days elapsed this month, today included. This read the diff
+        // backwards — Carbon answers a negative from today to the first —
+        // so it was always 1, the rate was always over 100, and the clamp
+        // below was doing the reporting.
+        $daysSoFar       = $today->day;
         $possiblePresent = max(1, $totalEmployees * $daysSoFar);
         $attendanceRate  = min(100, round(($totalPresent / $possiblePresent) * 100, 1));
 
-        // Overtime hours this month
+        // Overtime hours this month, taken from the payroll already computed
+        // above rather than measured again here.
+        //
+        // This used to be the stretch from clock-in to clock-out, less a
+        // hardcoded eight. That counted the hour a crew spends waiting for
+        // the gate as overtime, ignored the unpaid break, and knew nothing of
+        // what each shift's own hours are — so a worker in at six for an
+        // eight o'clock shift and out at eight reported six hours of overtime
+        // against the three they were paid.
         $overtimeHours = round(
-            Attendance::whereBetween('date', [$monthStart, $monthEnd])
-                ->whereNotNull('time_in')->whereNotNull('time_out')
-                ->get()
-                ->sum(function ($rec) {
-                    $h = abs(Carbon::parse($rec->time_in)->diffInMinutes(Carbon::parse($rec->time_out))) / 60;
-                    return max(0, $h - 8);
-                }),
+            collect($monthly['days'])
+                ->flatMap(fn ($d) => $d['details'] ?? [])
+                ->sum(fn ($r) => (float) ($r['ot_hours'] ?? 0)),
             1
         );
 
