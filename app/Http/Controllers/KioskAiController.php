@@ -286,6 +286,23 @@ class KioskAiController extends Controller
         $cutoffStart = Carbon::now()->startOfWeek(Carbon::MONDAY);
         $cutoffEnd   = Carbon::now()->endOfWeek(Carbon::SUNDAY);
 
+        // Hours and overtime as payroll counts them, indexed by the row they
+        // came from.
+        //
+        // This used to measure them here: clock-in to clock-out, less a flat
+        // eight. That answered a worker asking about their own overtime with
+        // a number their payslip would not show — it counted the wait before
+        // the shift, ignored the unpaid break, and knew nothing of how many
+        // hours their shift's rate actually buys.
+        $paidByRow = [];
+        foreach ($payroll->computeForRange($cutoffStart->toDateString(), $cutoffEnd->toDateString())['days'] as $d) {
+            foreach ($d['details'] ?? [] as $r) {
+                if ((int) $r['employee_id'] === (int) $employee->id) {
+                    $paidByRow[$r['id']] = $r;
+                }
+            }
+        }
+
         // Attendance is stored one row per session (AM/PM), not as am_in/pm_in
         // columns, so a single workday can produce two rows.
         $attendance = Attendance::where('employee_id', $employee->id)
@@ -293,16 +310,19 @@ class KioskAiController extends Controller
             ->orderBy('date')
             ->orderBy('session')
             ->get()
-            ->map(function (Attendance $rec): array {
-                $hours = $this->hoursWorked($rec->time_in, $rec->time_out);
+            ->map(function (Attendance $rec) use ($paidByRow): array {
+                // A day still open is not on a payslip yet, so the plain
+                // stretch is all there is to say about it.
+                $paid = $paidByRow[$rec->id] ?? null;
 
                 return [
                     'date'        => Carbon::parse($rec->date)->toDateString(),
                     'session'     => $rec->session,
                     'time_in'     => $rec->time_in  ? Carbon::parse($rec->time_in)->format('H:i')  : null,
                     'time_out'    => $rec->time_out ? Carbon::parse($rec->time_out)->format('H:i') : null,
-                    'total_hours' => $hours,
-                    'ot_hours'    => round(max(0, $hours - 8), 2),
+                    'total_hours' => $paid ? round((float) $paid['hours'], 2)
+                                           : $this->hoursWorked($rec->time_in, $rec->time_out),
+                    'ot_hours'    => $paid ? round((float) $paid['ot_hours'], 2) : 0.0,
                 ];
             })
             ->values()

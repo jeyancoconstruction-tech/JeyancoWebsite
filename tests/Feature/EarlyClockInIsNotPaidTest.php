@@ -255,6 +255,38 @@ class EarlyClockInIsNotPaidTest extends TestCase
         $this->assertEqualsWithDelta(round(100 / $daysSoFar, 1), $page->viewData('attendanceRate'), 0.11);
     }
 
+    /**
+     * The kiosk assistant answers a worker asking about their own overtime.
+     * It measured it itself — the stretch, less a flat eight — so it would
+     * have told the man who arrived at six that he had six hours of it.
+     */
+    public function test_the_kiosk_assistant_reports_what_payroll_pays(): void
+    {
+        $this->shape(false, '08:00', '20:00', 60, 8);
+        $emp = $this->worker(false);
+
+        $monday = Carbon::today()->startOfWeek(Carbon::MONDAY)->addDay();
+        $this->clock($emp, 'time_in', $monday->format('Y-m-d') . ' 06:00:00');
+        $this->clock($emp, 'time_out', $monday->format('Y-m-d') . ' 20:00:00');
+
+        Carbon::setTestNow($monday->copy()->setTime(21, 0));
+
+        $build = new \ReflectionMethod(\App\Http\Controllers\KioskAiController::class, 'buildContext');
+        $build->setAccessible(true);
+
+        $context = $build->invoke(
+            app(\App\Http\Controllers\KioskAiController::class),
+            $emp->fresh(),
+            app(\App\Services\PayrollService::class),
+        );
+
+        $row = $context['current_cutoff']['attendance'][0];
+
+        $this->assertEqualsWithDelta(3.0, $row['ot_hours'], 0.01,
+            'three hours past the eight the day buys — not six counted from the gate');
+        $this->assertEqualsWithDelta(11.0, $row['total_hours'], 0.01);
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();

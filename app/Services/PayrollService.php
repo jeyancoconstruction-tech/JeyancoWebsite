@@ -780,7 +780,7 @@ class PayrollService
                     'name'                => $employee->name,
                     'shift'               => $r['shift']['name'] ?? null,
                     'hours'               => round($r['hours'], 2),
-                    'dailyRate'           => $r['dailyRate'] !== null ? round($r['dailyRate'], 2) : round($r['rate'] * 8, 2),
+                    'dailyRate'           => round((float) ($r['dailyRate'] ?? 0), 2),
                     'rate'                => round($r['rate'], 2),
                     'basicPay'            => round($r['basicPay'], 2),
                     'ot_hours'            => round($r['ot_hours'], 2),

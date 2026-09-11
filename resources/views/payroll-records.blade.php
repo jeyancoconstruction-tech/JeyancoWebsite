@@ -297,12 +297,17 @@
                                  The daily rate belongs to the worker rather than
                                  to a day, so it is read off any day they worked. --}}
                             @php
-                                $rateOf  = [];
-                                $shiftOf = [];
+                                $rateOf   = [];
+                                $shiftOf  = [];
+                                $hourlyOf = [];
                                 foreach ($days as $day) {
                                     foreach ($day['details'] as $d) {
                                         $rateOf[$d['employee_id']]  ??= $d['dailyRate'];
                                         $shiftOf[$d['employee_id']] ??= $d['shift'];
+                                        // The hourly the days were actually
+                                        // priced at, so the receipt does not
+                                        // have to divide and guess.
+                                        $hourlyOf[$d['employee_id']] ??= $d['rate'];
                                     }
                                 }
                             @endphp
@@ -316,6 +321,7 @@
                                         'employee_id' => $emp['employee_id'],
                                         'name'        => $emp['name'],
                                         'dailyRate'   => $rate,
+                                        'rate'        => $hourlyOf[$emp['employee_id']] ?? null,
                                     ]) }}"
                                     data-date="{{ $period['label'] }}">
                                     <td class="ps-4 text-muted">{{ $period['label'] }}</td>
@@ -596,9 +602,10 @@
     const SLIPS = @json($slipMap);
     const RATES = @json($rates);
 
-    // The hours a daily rate buys: the standard day less its unpaid break, which
-    // is what payroll divides by. This read 8, so a nine-hour day with an hour
-    // of lunch showed an hourly rate the payslip below it did not use.
+    // Last resort only. Each row now carries the hourly rate payroll priced
+    // it at, which is the honest figure: how many hours a day's rate buys is
+    // a property of the shift, and two crews need not agree on it. This
+    // office-wide sum is what remains for a row from before that was true.
     @php
         $sysDay    = \App\Models\SystemSetting::current();
         $paidHours = max(1, (float) $sysDay->standard_hours_per_day - (int) $sysDay->unpaid_break_minutes / 60);
@@ -625,8 +632,12 @@
 
         // The rate the days were priced at, taken from the row that was clicked
         // — a labour type's rate is per worker, not per period.
-        const daily = Number(d.dailyRate) || 0;
-        set('rcBasis', money(daily) + '/day · ' + money(daily / PAID_HOURS) + '/hr · '
+        const daily  = Number(d.dailyRate) || 0;
+        // Zero is a real answer here — a contractual worker is settled against
+        // their contract, not priced by the hour — so this tests for a missing
+        // figure rather than a falsy one.
+        const hourly = (d.rate === undefined || d.rate === null) ? daily / PAID_HOURS : Number(d.rate);
+        set('rcBasis', money(daily) + '/day · ' + money(hourly) + '/hr · '
                      + s.workdays + ' day' + (s.workdays === 1 ? '' : 's') + ' worked'
                      + (s.late > 0 ? ' · ' + s.late + 'm late' : ''));
 
