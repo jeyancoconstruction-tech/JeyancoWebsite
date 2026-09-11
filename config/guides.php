@@ -46,19 +46,6 @@ return [
         ]],
     ],
 
-    'site-attendance' => [
-        'en' => ['title' => 'Site Attendance', 'lines' => [
-            'Attendance taken at a site rather than at the office, listed a day at a time.',
-            'The counts above the list read: records for that day, how many are still timed in, and overtime hours.',
-            'Apply narrows the list to the filters; Today snaps it back to the current day.',
-        ]],
-        'tl' => ['title' => 'Attendance sa Site', 'lines' => [
-            'Attendance na kinuha sa site at hindi sa opisina, nakalista bawat araw.',
-            'Ang bilang sa itaas ay: record sa araw na iyon, ilan ang naka-time in pa, at oras ng overtime.',
-            'Ang Apply ang sumusunod sa filter; ang Today ang magbabalik sa kasalukuyang araw.',
-        ]],
-    ],
-
     'employees' => [
         'en' => ['title' => 'Employee Directory', 'lines' => [
             'Add Employee creates the record. The tabs above the list filter it: All, Regular, Contractual.',

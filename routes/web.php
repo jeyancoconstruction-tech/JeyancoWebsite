@@ -222,11 +222,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::patch('/project-assignments/{assignment}/end', [\App\Http\Controllers\ProjectAssignmentController::class, 'end'])->name('assignments.end');
     });
 
-    // ── PROJECT · Site Attendance (read-only over the kiosk's records) ─────
-    Route::middleware('module:site-attendance')->group(function () {
-        Route::get('/site-attendance', [\App\Http\Controllers\SiteAttendanceController::class, 'index'])->name('site-attendance.index');
-    });
-
     // ── PAYROLL · Processing ──────────────────────────────────────────────
     Route::middleware('module:payroll-processing')->group(function () {
         Route::get   ('/payroll-processing',              [\App\Http\Controllers\PayrollProcessingController::class, 'index'])->name('payroll-processing.index');

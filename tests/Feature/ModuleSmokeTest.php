@@ -93,7 +93,6 @@ class ModuleSmokeTest extends TestCase
             '/leave-overtime?tab=overtime',
             '/loans',
             '/project-assignments',
-            '/site-attendance',
             '/payroll-processing',
             '/payslips',
             '/payroll-reports',
@@ -251,7 +250,7 @@ class ModuleSmokeTest extends TestCase
 
         // ...and nothing else the extension added.
         foreach (['/payroll-processing', '/loans', '/payroll-reports',
-                  '/project-assignments', '/site-attendance'] as $url) {
+                  '/project-assignments'] as $url) {
             $this->actingAs($employee)->get($url)->assertForbidden();
         }
 

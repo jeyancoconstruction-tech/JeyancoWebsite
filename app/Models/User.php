@@ -32,7 +32,7 @@ class User extends Authenticatable
     /** People: employees, leave, overtime, loans. No payroll figures. */
     public const ROLE_HR = 'hr';
 
-    /** One site's crew: assignments, site attendance, overtime approval. */
+    /** One site's crew: assignments, overtime approval, devices. */
     public const ROLE_SUPERVISOR = 'site_supervisor';
 
     /** A worker's own records only. */

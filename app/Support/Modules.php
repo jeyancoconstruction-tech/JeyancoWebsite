@@ -19,7 +19,6 @@ final class Modules
     public const LEAVE       = 'leave';
     public const LOANS       = 'loans';
     public const ASSIGNMENTS = 'assignments';
-    public const SITE_ATT    = 'site-attendance';
     public const PROCESSING  = 'payroll-processing';
     public const PAYSLIPS    = 'payslips';
     public const REPORTS     = 'payroll-reports';
@@ -36,21 +35,21 @@ final class Modules
         // everything it could reach before, and gains the operational modules
         // — but not user administration, the audit trail, or the device rail.
         User::ROLE_STAFF => [
-            self::LEAVE, self::LOANS, self::ASSIGNMENTS, self::SITE_ATT,
+            self::LEAVE, self::LOANS, self::ASSIGNMENTS,
             self::PROCESSING, self::PAYSLIPS, self::REPORTS,
         ],
 
         User::ROLE_PAYROLL => [
-            self::LEAVE, self::LOANS, self::SITE_ATT,
+            self::LEAVE, self::LOANS,
             self::PROCESSING, self::PAYSLIPS, self::REPORTS,
         ],
 
         User::ROLE_HR => [
-            self::LEAVE, self::LOANS, self::ASSIGNMENTS, self::SITE_ATT,
+            self::LEAVE, self::LOANS, self::ASSIGNMENTS,
         ],
 
         User::ROLE_SUPERVISOR => [
-            self::LEAVE, self::ASSIGNMENTS, self::SITE_ATT, self::DEVICES,
+            self::LEAVE, self::ASSIGNMENTS, self::DEVICES,
         ],
 
         // Sees their own records only. The controllers narrow the query; this
@@ -102,7 +101,6 @@ final class Modules
             self::LEAVE       => 'Leave & Overtime',
             self::LOANS       => 'Loans & Advances',
             self::ASSIGNMENTS => 'Project Assignment',
-            self::SITE_ATT    => 'Site Attendance',
             self::PROCESSING  => 'Payroll Processing',
             self::PAYSLIPS    => 'Payslips',
             self::REPORTS     => 'Payroll Reports',

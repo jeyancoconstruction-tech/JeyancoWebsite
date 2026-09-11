@@ -184,11 +184,6 @@
                     <i data-lucide="clipboard-list"></i> <span>{{ __('Project Assignment') }}</span>
                 </a>
             @endif
-            @if(auth()->user()?->canAccessModule('site-attendance'))
-                <a class="nav-link {{ request()->is('site-attendance*') ? 'active' : '' }}" href="{{ route('site-attendance.index') }}">
-                    <i data-lucide="hard-hat"></i> <span>{{ __('Site Attendance') }}</span>
-                </a>
-            @endif
 
             <div class="menu-section">{{ __('PAYROLL') }}</div>
             @if(auth()->user()?->canAccessModule('payroll-processing'))
