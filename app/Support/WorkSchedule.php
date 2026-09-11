@@ -21,6 +21,19 @@ use Carbon\Carbon;
  */
 final class WorkSchedule
 {
+    /**
+     * The night differential window, which the Labor Code fixes at ten in the
+     * evening to six in the morning (Art. 86). Not a setting: it is the law,
+     * the same for every shift and every office, and a figure typed into a
+     * form could only ever make it wrong.
+     *
+     * Named here because it was written out twice — once for the scheduled
+     * count and once for the flat one — and two copies of a rule are two
+     * rules waiting to disagree.
+     */
+    public const NIGHT_FROM_HOUR = 22;
+    public const NIGHT_TO_HOUR   = 6;
+
     /** A schedule is only usable with all four boundaries set. */
     public static function has(?array $s): bool
     {
@@ -273,15 +286,16 @@ final class WorkSchedule
         return null;
     }
 
-    /** Hours between 10 PM and 6 AM inside one stretch — the night differential. */
+    /** Hours inside the night window within one stretch — the differential. */
     public static function nightHoursIn(Carbon $from, Carbon $to): float
     {
         $total = 0.0;
         $day   = $from->copy()->subDay()->startOfDay();
+        $span  = 24 - self::NIGHT_FROM_HOUR + self::NIGHT_TO_HOUR;
 
         while ($day->lessThan($to)) {
-            $n1 = $day->copy()->setTime(22, 0);
-            $n2 = $n1->copy()->addHours(8);
+            $n1 = $day->copy()->setTime(self::NIGHT_FROM_HOUR, 0);
+            $n2 = $n1->copy()->addHours($span);
 
             $a = $from->greaterThan($n1) ? $from : $n1;
             $b = $to->lessThan($n2) ? $to : $n2;

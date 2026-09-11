@@ -92,7 +92,10 @@ class PayrollService
     }
 
     /**
-     * Hours worked between 10 PM and 6 AM, which carry the night differential.
+     * Hours inside the night window, which carry the night differential.
+     *
+     * The flat count, for days before the schedule rules. Same window as
+     * WorkSchedule uses, from the same constants, so the two cannot drift.
      *
      * Measured against the shift as a duration from time-in rather than against
      * the stored time-out: attendance keeps times without dates, so a shift
@@ -115,7 +118,7 @@ class PayrollService
             // segment, which is at most a day's worth.
             while ($cursor < $end) {
                 $h = (int) $cursor->format('G');
-                if ($h >= 22 || $h < 6) $minutes++;
+                if ($h >= WorkSchedule::NIGHT_FROM_HOUR || $h < WorkSchedule::NIGHT_TO_HOUR) $minutes++;
                 $cursor->addMinute();
             }
 
