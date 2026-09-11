@@ -583,11 +583,11 @@ class SettingsController extends Controller
             'shifts.*.starts_at'                 => ['required', 'date_format:H:i'],
             'shifts.*.ends_at'                   => ['required', 'date_format:H:i'],
             'shifts.*.regular_hours'             => ['required', 'numeric', 'min:0.25', 'max:24'],
-            'shifts.*.break_minutes'             => ['required', 'integer', 'min:0', 'max:240'],
+            'shifts.*.break_from'                => ['required', 'date_format:H:i'],
+            'shifts.*.break_to'                  => ['required', 'date_format:H:i'],
             'shifts.*.grace_period_minutes'      => ['required', 'integer', 'min:0', 'max:120'],
         ], [
             'shifts.*.regular_hours.min'    => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
-            'shifts.*.break_minutes.max'    => 'A meal period longer than four hours is not a break, it is two shifts.',
             'shifts.*.grace_period_minutes.max' => 'Two hours of grace is not a grace period.',
         ]);
 
@@ -597,8 +597,27 @@ class SettingsController extends Controller
         // A shift has to leave enough paid time to be a shift. Measured
         // against its own meal period, as being saved in this same request.
         foreach ($data['shifts'] ?? [] as $id => $fields) {
-            $break = (int) $fields['break_minutes'];
-            $paid  = Shift::spanMinutes($fields['starts_at'], $fields['ends_at']) - $break;
+            $span            = Shift::spanMinutes($fields['starts_at'], $fields['ends_at']);
+            [$from, $to]     = Shift::breakOffsets($fields['starts_at'], $fields['break_from'], $fields['break_to']);
+            $break           = $to - $from;
+
+            // The meal period has to fall inside the shift, with work either
+            // side of it. Outside, the two sessions stop describing a day —
+            // a lunch after home time would stretch the afternoon into the
+            // following one.
+            if ($from <= 0 || $to >= $span) {
+                return back()->withInput()->withErrors([
+                    "shifts.{$id}.break_from" => 'The break has to fall inside the shift, with work on both sides of it.',
+                ]);
+            }
+
+            if ($break > 240) {
+                return back()->withInput()->withErrors([
+                    "shifts.{$id}.break_to" => 'A meal period longer than four hours is not a break, it is two shifts.',
+                ]);
+            }
+
+            $paid = $span - $break;
 
             if ($paid < 60) {
                 return back()->withInput()->withErrors([
@@ -625,11 +644,11 @@ class SettingsController extends Controller
         // form lays the shift out now, so what it shows is what is run.
         foreach ($data['shifts'] ?? [] as $id => $fields) {
             Shift::whereKey($id)->update(
-                Shift::layOut($fields['starts_at'], $fields['ends_at'], (int) $fields['break_minutes'])
+                Shift::layOut($fields['starts_at'], $fields['ends_at'],
+                              $fields['break_from'], $fields['break_to'])
                 + [
                     'grace_period_minutes' => $fields['grace_period_minutes'],
                     'regular_minutes'      => (int) round($fields['regular_hours'] * 60),
-                    'break_minutes'        => (int) $fields['break_minutes'],
                 ]
             );
         }

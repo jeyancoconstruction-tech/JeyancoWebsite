@@ -279,8 +279,8 @@ class SystemSettingsTest extends TestCase
                  'shifts'                 => [
                      $day->id => [
                          'starts_at' => '07:30', 'ends_at' => '16:30',
-                         'regular_hours' => 8, 'break_minutes' => 60,
-                         'grace_period_minutes' => 10,
+                         'break_from' => '11:30', 'break_to' => '12:30',
+                         'regular_hours' => 8, 'grace_period_minutes' => 10,
                      ],
                  ],
              ])
@@ -301,7 +301,7 @@ class SystemSettingsTest extends TestCase
         $this->assertSame(10, $day->grace_period_minutes);
         $this->assertStringStartsWith('07:30', (string) $day->starts_at);
         $this->assertStringStartsWith('07:30', (string) $day->am_starts_at);
-        $this->assertStringStartsWith('11:30', (string) $day->am_ends_at);
+        $this->assertStringStartsWith('11:30', (string) $day->am_ends_at, 'the break is where it was typed');
         $this->assertStringStartsWith('12:30', (string) $day->pm_starts_at);
         $this->assertStringStartsWith('16:30', (string) $day->pm_ends_at);
         $this->assertFalse((bool) $day->crosses_midnight);

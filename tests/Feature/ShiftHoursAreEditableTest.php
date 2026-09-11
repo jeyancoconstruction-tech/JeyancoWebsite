@@ -57,17 +57,22 @@ class ShiftHoursAreEditableTest extends TestCase
     }
 
     /** Save the card, keeping every shift's current hours except the ones given. */
-    private function save(array $override, int $break = 60)
+    private function save(array $override)
     {
         $shifts = [];
         foreach (Shift::orderBy('id')->get() as $s) {
+            $start   = substr((string) $s->starts_at, 0, 5);
+            [$f, $t] = Shift::breakOffsets($start, $s->breakStartsAt(), $s->breakEndsAt());
+            $paid    = (Shift::spanMinutes($start, $s->endsAt()) - ($t - $f)) / 60;
+
             $shifts[$s->id] = [
-                'starts_at'            => substr((string) $s->starts_at, 0, 5),
+                'starts_at'            => $start,
                 'ends_at'              => $s->endsAt(),
+                'break_from'           => $s->breakStartsAt(),
+                'break_to'             => $s->breakEndsAt(),
                 // Clamped the way the form clamps it: a stored figure can
                 // outgrow its shift when the hours or the break change.
-                'regular_hours'        => min($s->regularHours() ?? 8, (Shift::spanMinutes(substr((string) $s->starts_at, 0, 5), $s->endsAt()) - $break) / 60),
-                'break_minutes'        => $break,
+                'regular_hours'        => min($s->regularHours() ?? $paid, $paid),
                 'grace_period_minutes' => $s->grace_period_minutes,
             ];
         }
@@ -106,8 +111,8 @@ class ShiftHoursAreEditableTest extends TestCase
         $day = $this->day()->fresh();
 
         $this->assertStringStartsWith('07:00', (string) $day->am_starts_at);
-        $this->assertStringStartsWith('11:00', (string) $day->am_ends_at, 'the break sits in the middle');
-        $this->assertStringStartsWith('12:00', (string) $day->pm_starts_at);
+        $this->assertStringStartsWith('12:00', (string) $day->am_ends_at, 'lunch is where the office put it');
+        $this->assertStringStartsWith('13:00', (string) $day->pm_starts_at);
         $this->assertStringStartsWith('16:00', (string) $day->pm_ends_at);
 
         // And the arithmetic everything else reads agrees with the card.
@@ -118,7 +123,8 @@ class ShiftHoursAreEditableTest extends TestCase
     {
         $day = $this->day();
 
-        $this->save([$day->id => ['starts_at' => '22:00', 'ends_at' => '07:00', 'regular_hours' => 8]])
+        $this->save([$day->id => ['starts_at' => '22:00', 'ends_at' => '07:00',
+                                   'break_from' => '02:00', 'break_to' => '03:00', 'regular_hours' => 8]])
              ->assertSessionHasNoErrors();
 
         $moved = $day->fresh();
@@ -194,47 +200,58 @@ class ShiftHoursAreEditableTest extends TestCase
         $page->assertDontSee('name="unpaid_break_minutes"', false);
 
         foreach ([$this->day(), $this->night()] as $shift) {
-            $page->assertSee('shifts[' . $shift->id . '][break_minutes]', false);
+            $page->assertSee('shifts[' . $shift->id . '][break_from]', false);
         }
     }
 
-    /** Two crews, two meal periods, two different gaps in the middle. */
+    /** Two crews, two meal periods, each where its own office put it. */
     public function test_each_shift_keeps_its_own_break(): void
     {
         $this->save([
-            $this->day()->id   => ['starts_at' => '08:00', 'ends_at' => '17:00', 'break_minutes' => 60, 'regular_hours' => 8],
-            $this->night()->id => ['starts_at' => '20:00', 'ends_at' => '05:00', 'break_minutes' => 30, 'regular_hours' => 8.5],
+            $this->day()->id   => ['starts_at' => '08:00', 'ends_at' => '17:00',
+                                   'break_from' => '12:00', 'break_to' => '13:00', 'regular_hours' => 8],
+            $this->night()->id => ['starts_at' => '20:00', 'ends_at' => '05:00',
+                                   'break_from' => '23:30', 'break_to' => '00:00', 'regular_hours' => 8.5],
         ])->assertSessionHasNoErrors();
 
         $day   = $this->day()->fresh();
         $night = $this->night()->fresh();
 
-        $this->assertSame(60, $day->break_minutes);
+        $this->assertSame(60, $day->break_minutes, 'worked out from the two times');
         $this->assertStringStartsWith('12:00', (string) $day->am_ends_at);
         $this->assertStringStartsWith('13:00', (string) $day->pm_starts_at);
 
         $this->assertSame(30, $night->break_minutes);
-        $this->assertStringStartsWith('00:15', (string) $night->am_ends_at, 'half an hour, taken in the middle');
-        $this->assertStringStartsWith('00:45', (string) $night->pm_starts_at);
+        $this->assertStringStartsWith('23:30', (string) $night->am_ends_at);
+        $this->assertStringStartsWith('00:00', (string) $night->pm_starts_at, 'a break can cross midnight too');
 
         $this->assertEqualsWithDelta(8.0, $day->paidHours(), 0.01);
         $this->assertEqualsWithDelta(8.5, $night->paidHours(), 0.01, 'a shorter lunch is a longer paid day');
     }
 
-    /** Lengthening the break shortens the paid day, and the form says so. */
+    /** Lengthening the break shortens the paid day. */
     public function test_a_longer_break_leaves_less_paid_time(): void
     {
         $this->save([$this->day()->id => [
-            'starts_at' => '08:00', 'ends_at' => '17:00', 'break_minutes' => 120, 'regular_hours' => 7,
+            'starts_at' => '08:00', 'ends_at' => '17:00',
+            'break_from' => '11:00', 'break_to' => '13:00', 'regular_hours' => 7,
         ]])->assertSessionHasNoErrors();
 
         $this->assertEqualsWithDelta(7.0, $this->day()->fresh()->paidHours(), 0.01);
+    }
 
-        // And it cannot swallow the shift whole: four and a half hours on
-        // site with four of them for lunch is half an hour of work.
+    /** A meal period outside the shift is not a meal period. */
+    public function test_a_break_that_falls_outside_the_shift_is_refused(): void
+    {
         $this->save([$this->day()->id => [
-            'starts_at' => '08:00', 'ends_at' => '12:30', 'break_minutes' => 240, 'regular_hours' => 0.5,
+            'starts_at' => '08:00', 'ends_at' => '17:00',
+            'break_from' => '19:00', 'break_to' => '20:00', 'regular_hours' => 8,
         ]])->assertSessionHasErrors();
+
+        $this->save([$this->day()->id => [
+            'starts_at' => '08:00', 'ends_at' => '17:00',
+            'break_from' => '08:00', 'break_to' => '09:00', 'regular_hours' => 7,
+        ]])->assertSessionHasErrors('shifts.' . $this->day()->id . '.break_from');
     }
 
     protected function tearDown(): void

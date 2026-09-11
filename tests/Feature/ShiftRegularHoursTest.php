@@ -55,17 +55,20 @@ class ShiftRegularHoursTest extends TestCase
         return Shift::where('crosses_midnight', true)->firstOrFail();
     }
 
-    private function save(array $override, int $break = 60)
+    private function save(array $override)
     {
         $shifts = [];
         foreach (Shift::orderBy('id')->get() as $s) {
-            $paid = (Shift::spanMinutes(substr((string) $s->starts_at, 0, 5), $s->endsAt()) - $break) / 60;
+            $start   = substr((string) $s->starts_at, 0, 5);
+            [$f, $t] = Shift::breakOffsets($start, $s->breakStartsAt(), $s->breakEndsAt());
+            $paid    = (Shift::spanMinutes($start, $s->endsAt()) - ($t - $f)) / 60;
 
             $shifts[$s->id] = [
-                'starts_at'            => substr((string) $s->starts_at, 0, 5),
+                'starts_at'            => $start,
                 'ends_at'              => $s->endsAt(),
+                'break_from'           => $s->breakStartsAt(),
+                'break_to'             => $s->breakEndsAt(),
                 'regular_hours'        => min($s->regularHours() ?? $paid, $paid),
-                'break_minutes'        => $break,
                 'grace_period_minutes' => $s->grace_period_minutes,
             ];
         }
@@ -220,16 +223,21 @@ class ShiftRegularHoursTest extends TestCase
     /**
      * The rule cuts both ways, and this is the half that is easy to miss.
      *
-     * Somebody who starts at half past one and leaves at nine has worked six
-     * and a half paid hours — short of the eight the day buys — so none of
-     * it is overtime, including the hour after the shift ended. Overtime
-     * used to be anything past the end of the shift, which paid a premium to
-     * a worker who had not put in a full day.
+     * Somebody who starts at half past one and leaves at nine has worked
+     * under the eight hours the day buys, so none of it is overtime —
+     * including the hour after the shift ended. Overtime used to be anything
+     * past the end of the shift, which paid a premium to a worker who had
+     * not put in a full day.
+     *
+     * And nothing is taken off for lunch, because lunch was at noon and she
+     * was not there for it. A meal period is an hour of the day, not an hour
+     * off everybody's total.
      */
     public function test_a_short_day_running_past_the_shift_is_still_not_overtime(): void
     {
         $this->save([$this->day()->id => [
-            'starts_at' => '08:00', 'ends_at' => '20:00', 'regular_hours' => 8,
+            'starts_at' => '08:00', 'ends_at' => '20:00',
+            'break_from' => '12:00', 'break_to' => '13:00', 'regular_hours' => 8,
         ]])->assertSessionHasNoErrors();
 
         $emp = $this->worker($this->day()->fresh());
@@ -238,16 +246,34 @@ class ShiftRegularHoursTest extends TestCase
 
         $paid = $this->paidOn('2026-09-11');
 
-        $this->assertEqualsWithDelta(6.5, $paid['hours'], 0.01, 'half past two to nine — the break is not paid');
+        $this->assertEqualsWithDelta(7.47, $paid['hours'], 0.01,
+            'half past one to nine, whole — she arrived after lunch');
         $this->assertEqualsWithDelta(0.0, $paid['ot_hours'], 0.01,
-            'six and a half hours is not a full day, so nothing in it is overtime');
+            'under eight hours is not a full day, so nothing in it is overtime');
     }
 
-    /** And the hour past the shift is still paid — at the plain rate. */
+    /** Somebody who IS there for lunch loses exactly that hour. */
+    public function test_the_break_is_taken_off_only_those_who_were_there_for_it(): void
+    {
+        $this->save([$this->day()->id => [
+            'starts_at' => '08:00', 'ends_at' => '20:00',
+            'break_from' => '12:00', 'break_to' => '13:00', 'regular_hours' => 8,
+        ]])->assertSessionHasNoErrors();
+
+        $early = $this->worker($this->day()->fresh());
+        $this->clock($early, 'time_in', '2026-09-11 08:00:00');
+        $this->clock($early, 'time_out', '2026-09-11 16:00:00');
+
+        // Eight to four is eight hours on site; one of them was lunch.
+        $this->assertEqualsWithDelta(7.0, $this->paidOn('2026-09-11')['hours'], 0.01);
+    }
+
+    /** The hour past the shift is still paid — at the plain rate. */
     public function test_that_hour_is_paid_as_ordinary_time(): void
     {
         $this->save([$this->day()->id => [
-            'starts_at' => '08:00', 'ends_at' => '20:00', 'regular_hours' => 8,
+            'starts_at' => '08:00', 'ends_at' => '20:00',
+            'break_from' => '12:00', 'break_to' => '13:00', 'regular_hours' => 8,
         ]])->assertSessionHasNoErrors();
 
         $emp = $this->worker($this->day()->fresh());
@@ -256,7 +282,7 @@ class ShiftRegularHoursTest extends TestCase
 
         $paid = $this->paidOn('2026-09-11');
 
-        $this->assertEqualsWithDelta(6.5 * 100, $paid['basicPay'], 0.01);
+        $this->assertEqualsWithDelta(747.0, $paid['basicPay'], 0.01);
         $this->assertEqualsWithDelta(0.0, $paid['otPay'], 0.01);
     }
 

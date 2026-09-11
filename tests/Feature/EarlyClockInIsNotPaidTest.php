@@ -36,12 +36,11 @@ class EarlyClockInIsNotPaidTest extends TestCase
     }
 
     /** Lay a shift out and hand back its schedule. */
-    private function shape(bool $night, string $start, string $end, int $break, float $regular): array
+    private function shape(bool $night, string $start, string $end, string $breakFrom, string $breakTo, float $regular): array
     {
         $shift = Shift::where('crosses_midnight', $night)->firstOrFail();
 
-        $shift->forceFill(Shift::layOut($start, $end, $break) + [
-            'break_minutes'   => $break,
+        $shift->forceFill(Shift::layOut($start, $end, $breakFrom, $breakTo) + [
             'regular_minutes' => (int) round($regular * 60),
         ])->save();
 
@@ -77,7 +76,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
 
     public function test_the_day_starts_when_the_shift_does_however_early_they_arrived(): void
     {
-        $s = $this->shape(false, '08:00', '20:00', 60, 8);
+        $s = $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
 
         $early = WorkSchedule::split($s, Carbon::parse('2026-09-11 06:00'), Carbon::parse('2026-09-11 20:00'), '2026-09-11');
         $onTime = WorkSchedule::split($s, Carbon::parse('2026-09-11 08:00'), Carbon::parse('2026-09-11 20:00'), '2026-09-11');
@@ -90,7 +89,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
 
     public function test_two_hours_early_earn_nothing(): void
     {
-        $this->shape(false, '08:00', '20:00', 60, 8);
+        $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
         $emp = $this->worker(false);
 
         $this->clock($emp, 'time_in', '2026-09-11 06:00:00');
@@ -106,7 +105,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
     /** Arriving early is not overtime at the wrong end of the day. */
     public function test_time_wholly_before_the_shift_is_not_overtime(): void
     {
-        $this->shape(false, '08:00', '20:00', 60, 8);
+        $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
         $emp = $this->worker(false);
 
         $this->clock($emp, 'time_in', '2026-09-11 06:00:00');
@@ -122,7 +121,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
     /** The early minutes must not eat into the hours the day's rate buys. */
     public function test_arriving_early_does_not_bring_overtime_forward(): void
     {
-        $s = $this->shape(false, '08:00', '20:00', 60, 8);
+        $s = $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
 
         $split = WorkSchedule::split($s, Carbon::parse('2026-09-11 06:00'), Carbon::parse('2026-09-11 20:00'), '2026-09-11');
 
@@ -133,7 +132,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
 
     public function test_it_holds_for_a_shift_that_crosses_midnight(): void
     {
-        $this->shape(true, '20:00', '08:00', 60, 8);
+        $this->shape(true, '20:00', '08:00', '00:00', '01:00', 8);
         $emp = $this->worker(true);
 
         $this->clock($emp, 'time_in', '2026-09-11 18:30:00');
@@ -148,7 +147,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
     /** Waiting in the dark does not earn the night differential either. */
     public function test_early_night_hours_earn_no_differential(): void
     {
-        $this->shape(false, '06:00', '15:00', 60, 8);
+        $this->shape(false, '06:00', '15:00', '10:00', '11:00', 8);
         $emp = $this->worker(false);
 
         // Four in the morning is inside the 10pm–6am window; six is not.
@@ -166,7 +165,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
 
     public function test_the_kiosk_says_when_the_pay_starts(): void
     {
-        $this->shape(false, '08:00', '20:00', 60, 8);
+        $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
         $emp = $this->worker(false);
 
         $answer = $this->clock($emp, 'time_in', '2026-09-11 06:30:00');
@@ -177,7 +176,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
 
     public function test_arriving_on_time_says_nothing_about_pay_starting_later(): void
     {
-        $this->shape(false, '08:00', '20:00', 60, 8);
+        $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
         $emp = $this->worker(false);
 
         $answer = $this->clock($emp, 'time_in', '2026-09-11 08:00:00');
@@ -188,7 +187,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
     /** Early is not late, and must not be reported as either. */
     public function test_arriving_early_is_not_lateness(): void
     {
-        $this->shape(false, '08:00', '20:00', 60, 8);
+        $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
         $emp = $this->worker(false);
 
         $this->clock($emp, 'time_in', '2026-09-11 06:00:00');
@@ -207,7 +206,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
      */
     public function test_the_analytics_overtime_figure_matches_what_is_paid(): void
     {
-        $this->shape(false, '08:00', '20:00', 60, 8);
+        $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
         $emp = $this->worker(false);
 
         $today = Carbon::today()->toDateString();
@@ -230,7 +229,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
     /** A day is one worker on one workday, however many rows it took. */
     public function test_the_attendance_rate_counts_days_not_rows(): void
     {
-        $this->shape(false, '08:00', '20:00', 60, 8);
+        $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
         $emp = $this->worker(false);
 
         $today = Carbon::today()->toDateString();
@@ -262,7 +261,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
      */
     public function test_the_kiosk_assistant_reports_what_payroll_pays(): void
     {
-        $this->shape(false, '08:00', '20:00', 60, 8);
+        $this->shape(false, '08:00', '20:00', '12:00', '13:00', 8);
         $emp = $this->worker(false);
 
         $monday = Carbon::today()->startOfWeek(Carbon::MONDAY)->addDay();

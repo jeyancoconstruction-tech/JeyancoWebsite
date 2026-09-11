@@ -344,7 +344,11 @@
                                 @php
                                     $cardStart = old("shifts.{$sh->id}.starts_at", substr((string) $sh->starts_at, 0, 5));
                                     $cardEnd   = old("shifts.{$sh->id}.ends_at", $sh->endsAt() ?: $cardStart);
-                                    $cardBrk   = (int) old("shifts.{$sh->id}.break_minutes", $sh->break_minutes);
+                                    $cardFrom  = old("shifts.{$sh->id}.break_from", $sh->breakStartsAt() ?: $cardStart);
+                                    $cardTo    = old("shifts.{$sh->id}.break_to", $sh->breakEndsAt() ?: $cardFrom);
+
+                                    [$offFrom, $offTo] = \App\Models\Shift::breakOffsets($cardStart, $cardFrom, $cardTo);
+                                    $cardBrk   = max(0, $offTo - $offFrom);
                                     $cardPaid  = max(0, \App\Models\Shift::spanMinutes($cardStart, $cardEnd) - $cardBrk) / 60;
 
                                     // Shown clamped to what the shift actually
@@ -395,12 +399,20 @@
                                                    value="{{ rtrim(rtrim(number_format($cardReg, 2, '.', ''), '0'), '.') }}" required>
                                         </div>
                                         <div class="col-6 col-md-4">
-                                            <label class="ps-label" for="shift_break_{{ $sh->id }}">{{ __('Break (min)') }}</label>
-                                            <input type="number" step="5" min="0" max="240"
-                                                   class="form-control ps-input @error("shifts.{$sh->id}.break_minutes") is-invalid @enderror"
-                                                   id="shift_break_{{ $sh->id }}"
-                                                   name="shifts[{{ $sh->id }}][break_minutes]"
-                                                   value="{{ $cardBrk }}" required>
+                                            <label class="ps-label" for="shift_break_from_{{ $sh->id }}">{{ __('Break from') }}</label>
+                                            <input type="time"
+                                                   class="form-control ps-input @error("shifts.{$sh->id}.break_from") is-invalid @enderror"
+                                                   id="shift_break_from_{{ $sh->id }}"
+                                                   name="shifts[{{ $sh->id }}][break_from]"
+                                                   value="{{ $cardFrom }}" required>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <label class="ps-label" for="shift_break_to_{{ $sh->id }}">{{ __('Break to') }}</label>
+                                            <input type="time"
+                                                   class="form-control ps-input @error("shifts.{$sh->id}.break_to") is-invalid @enderror"
+                                                   id="shift_break_to_{{ $sh->id }}"
+                                                   name="shifts[{{ $sh->id }}][break_to]"
+                                                   value="{{ $cardTo }}" required>
                                         </div>
                                     </div>
                                     @error("shifts.{$sh->id}.ends_at")
@@ -409,7 +421,10 @@
                                     @error("shifts.{$sh->id}.regular_hours")
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
-                                    @error("shifts.{$sh->id}.break_minutes")
+                                    @error("shifts.{$sh->id}.break_from")
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                    @error("shifts.{$sh->id}.break_to")
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                     <small class="text-muted d-block mt-2">
@@ -434,7 +449,10 @@
                                     // whatever the shifts were set to.
                                     $shStart = old("shifts.{$sh->id}.starts_at", substr((string) $sh->starts_at, 0, 5));
                                     $shEnd   = old("shifts.{$sh->id}.ends_at", $sh->endsAt() ?: $shStart);
-                                    $shBrk   = (int) old("shifts.{$sh->id}.break_minutes", $sh->break_minutes);
+                                    $shFrom  = old("shifts.{$sh->id}.break_from", $sh->breakStartsAt() ?: $shStart);
+                                    $shTo    = old("shifts.{$sh->id}.break_to", $sh->breakEndsAt() ?: $shFrom);
+                                    [$sf, $st] = \App\Models\Shift::breakOffsets($shStart, $shFrom, $shTo);
+                                    $shBrk   = max(0, $st - $sf);
                                     $shPaid  = max(0, \App\Models\Shift::spanMinutes($shStart, $shEnd) - $shBrk) / 60;
 
                                     // What the day's rate buys, and what is
@@ -450,6 +468,10 @@
                                     <span>{{ \Carbon\Carbon::parse($shStart)->format('g:i a') }}</span>
                                     <em>{{ __('to') }}</em>
                                     <span>{{ \Carbon\Carbon::parse($shEnd)->format('g:i a') }}</span>
+                                    @if($shBrk > 0)
+                                        <em>{{ __('break') }}</em>
+                                        <span>{{ \Carbon\Carbon::parse($shFrom)->format('g:i a') }}&ndash;{{ \Carbon\Carbon::parse($shTo)->format('g:i a') }}</span>
+                                    @endif
                                     <span class="sh-sum-paid">
                                         @if($shOt > 0)
                                             {{ $num($shReg) }} {{ __('regular') }} + {{ $num($shOt) }} {{ __('OT') }}
@@ -464,9 +486,10 @@
                             <strong>{{ __('Regular (hrs)') }}</strong> is what a labour type's daily rate buys, so that is the
                             divisor for the hourly rate and the line where overtime begins — a shift may run longer
                             than its regular hours, and the rest of it is overtime without waiting for the shift to
-                            end. <strong>{{ __('Break (min)') }}</strong> is that shift's own meal period, taken out of the
-                            middle of its hours and paid for by nobody. A break is only taken off a
-                            stretch longer than five hours — a crew that clocks out for lunch has already left it out.
+                            end. <strong>{{ __('Break from') }}</strong> and <strong>{{ __('Break to') }}</strong> are when
+                            that shift's meal period actually falls, and nobody pays for it — so a worker who starts
+                            after it has nothing taken off, and one who starts before it loses exactly that hour and
+                            no other. A crew that clocks out for lunch has already left it out.
                             Lateness is <strong>{{ __('reported, not deducted') }}</strong> — a worker is already paid only for
                             the hours they worked, and docking on top would cut the same wage twice.
                         </small>

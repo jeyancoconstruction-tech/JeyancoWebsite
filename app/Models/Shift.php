@@ -88,38 +88,72 @@ class Shift extends Model
     }
 
     /**
-     * Lay a shift out from the two times the office actually knows: when the
-     * crew arrives and when they go home.
+     * Lay a shift out from the four times the office actually knows: when the
+     * crew arrives, when they break, when they come back, and when they go
+     * home.
      *
-     * The four session boundaries are derived, never typed. The break sits in
-     * the middle of the stretch, which is where it already was for both crews
-     * — Day 08:00–12:00 · 13:00–17:00, Night 20:00–00:00 · 01:00–05:00 — so
-     * this reproduces the schedule they are running rather than replacing it.
+     * The break used to be a length, dropped into the middle of the stretch.
+     * That is a guess, and it was wrong in a way that cost people money: a
+     * twelve-hour day put lunch at half past one, so somebody starting at one
+     * had an hour taken off a break they had not been there for. Lunch is at
+     * noon because the office says it is at noon, not because noon is halfway
+     * through.
      *
-     * An end at or before the start is the next morning; that is also the only
-     * thing that decides whether a shift crosses midnight, because it is the
-     * only thing that can.
+     * The two break times ARE the inner session boundaries — the gap between
+     * the morning and the afternoon is the meal period — so nothing is
+     * derived here but the total and the direction.
+     *
+     * An end at or before the start is the next morning; that is also the
+     * only thing that decides whether a shift crosses midnight, because it is
+     * the only thing that can.
      *
      * @return array<string, mixed> columns ready to write
      */
-    public static function layOut(string $startsAt, string $endsAt, int $breakMinutes): array
+    public static function layOut(string $startsAt, string $endsAt, string $breakFrom, string $breakTo): array
     {
         [$start, $end] = self::boundsOf($startsAt, $endsAt);
 
-        $paid = $start->diffInMinutes($end) - $breakMinutes;
-        $half = intdiv(max(0, (int) $paid), 2);
-
-        $amEnds   = $start->copy()->addMinutes($half);
-        $pmStarts = $amEnds->copy()->addMinutes($breakMinutes);
+        // Each boundary follows the one before it, rolling into the next
+        // morning when the clock reads earlier — the same way a shift's own
+        // hours do.
+        $from = self::after($start, $breakFrom);
+        $to   = self::after($from, $breakTo);
 
         return [
             'starts_at'        => $start->format('H:i:s'),
             'am_starts_at'     => $start->format('H:i:s'),
-            'am_ends_at'       => $amEnds->format('H:i:s'),
-            'pm_starts_at'     => $pmStarts->format('H:i:s'),
+            'am_ends_at'       => $from->format('H:i:s'),
+            'pm_starts_at'     => $to->format('H:i:s'),
             'pm_ends_at'       => $end->format('H:i:s'),
+            'break_minutes'    => (int) $from->diffInMinutes($to),
             'crosses_midnight' => $end->day !== $start->day,
         ];
+    }
+
+    /** The next moment reading $time at or after $after. */
+    private static function after(Carbon $after, string $time): Carbon
+    {
+        $at = $after->copy()->setTimeFromTimeString($time);
+
+        if ($at->lessThan($after)) {
+            $at->addDay();
+        }
+
+        return $at;
+    }
+
+    /**
+     * Where the meal period falls inside a shift, as minutes from its start.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public static function breakOffsets(string $startsAt, string $breakFrom, string $breakTo): array
+    {
+        $start = Carbon::parse('2026-01-05 ' . $startsAt);
+        $from  = self::after($start, $breakFrom);
+        $to    = self::after($from, $breakTo);
+
+        return [(int) $start->diffInMinutes($from), (int) $start->diffInMinutes($to)];
     }
 
     /** How long a crew is on site, in minutes, break included. */
@@ -147,6 +181,18 @@ class Shift extends Model
     public function endsAt(): ?string
     {
         return $this->pm_ends_at ? substr((string) $this->pm_ends_at, 0, 5) : null;
+    }
+
+    /** When the meal period starts — the gap between the two sessions. */
+    public function breakStartsAt(): ?string
+    {
+        return $this->am_ends_at ? substr((string) $this->am_ends_at, 0, 5) : null;
+    }
+
+    /** When the crew is back from it. */
+    public function breakEndsAt(): ?string
+    {
+        return $this->pm_starts_at ? substr((string) $this->pm_starts_at, 0, 5) : null;
     }
 
     /** The paid hours the daily rate buys, before overtime begins. */
