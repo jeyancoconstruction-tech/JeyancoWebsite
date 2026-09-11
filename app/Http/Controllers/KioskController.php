@@ -579,6 +579,22 @@ class KioskController extends Controller
         $sched = $shift && $shift->hasSchedule() ? $shift->schedule() : null;
         $who   = $this->kioskEmployeePayload($employee);
 
+        // A pending registration is a name waiting for a finger, not a member
+        // of the workforce — and the kiosk's own sign-up creates one holding a
+        // fingerprint, so "we recognise this finger" was never the same
+        // question as "this person is registered". Until registration is
+        // finished they are outside attendance and payroll, which has to mean
+        // no day can be opened for them here either.
+        if ($employee->isPending()) {
+            return [
+                'success'  => false,
+                'code'     => 'not_registered',
+                'employee' => $who,
+                'message'  => $employee->name . ' is not registered yet. Enrol their '
+                            . 'fingerprint at the kiosk, then they can time in.',
+            ];
+        }
+
         Attendance::closeStale($employee->id, $now);
         $open = Attendance::openRow($employee->id, $now);
 
@@ -988,6 +1004,20 @@ class KioskController extends Controller
             $employee->forceFill(['kiosk_id' => $kiosk->id])->save();
         }
 
+        // Say so here rather than suggesting TIME IN and having the write
+        // refuse it a moment later — the worker would see the kiosk offer
+        // them a button and then turn them away for no stated reason.
+        if ($employee->isPending()) {
+            return response()->json([
+                'success'  => false,
+                'code'     => 'not_registered',
+                'employee' => $this->kioskEmployeePayload($employee),
+                'pending'  => true,
+                'message'  => $employee->name . ' is not registered yet. Enrol their '
+                            . 'fingerprint at the kiosk, then they can time in.',
+            ]);
+        }
+
         // Suggest the next action — WITHOUT writing anything; /attendance does
         // the write. An open stretch suggests TIME OUT, none suggests TIME IN.
         //
@@ -1063,6 +1093,7 @@ class KioskController extends Controller
         $yesterday = $now->copy()->subDay()->toDateString();
 
         $rows = Attendance::with(['employee.shift', 'shift'])
+            ->ofRegistered()
             ->whereNotNull('time_in')
             ->where(function ($q) use ($today, $yesterday, $now) {
                 $q->whereIn('date', [$today, $yesterday])

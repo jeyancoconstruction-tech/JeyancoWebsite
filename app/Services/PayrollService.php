@@ -230,7 +230,10 @@ class PayrollService
         // paid — at a guessed time, flagged for review, never with overtime.
         Attendance::closeStale(null, Carbon::now('Asia/Manila'));
 
-        $query = Attendance::with(['employee', 'shift']);
+        // A pending registration is not on the payroll. Their rows are left
+        // out here rather than zeroed later, so they cannot reach a payslip,
+        // a report or a weekly total by any route.
+        $query = Attendance::with(['employee', 'shift'])->ofRegistered();
         if ($from && $to) {
             $query->whereBetween('date', [$from, $to]);
         } elseif ($from) {

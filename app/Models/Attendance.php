@@ -344,6 +344,26 @@ class Attendance extends Model
         });
     }
 
+    /**
+     * Rows belonging to somebody who has finished registering.
+     *
+     * A pending name cannot clock any more, but rows recorded before that
+     * rule existed are still on file and must not be counted as attendance
+     * or paid for.
+     *
+     * whereDoesntHave rather than whereHas, so that a row whose employee was
+     * deleted outright stays visible. That row is history: showing it against
+     * a name the directory no longer holds is honest, and dropping it out of
+     * the totals silently is not.
+     */
+    public function scopeOfRegistered(Builder $query): Builder
+    {
+        return $query->whereDoesntHave(
+            'employee',
+            fn ($q) => $q->withTrashed()->where('status', Employee::STATUS_PENDING)
+        );
+    }
+
     /** Is this row's day the one its shift is working right now? */
     public function isOnCurrentWorkday(?Carbon $now = null): bool
     {

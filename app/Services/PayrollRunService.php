@@ -60,6 +60,7 @@ class PayrollRunService
             ->unique();
 
         $employees = Employee::with('site')
+            ->registered()
             ->whereIn('id', $ids)
             ->when($run->site_id, fn ($q) => $q->where('site_id', $run->site_id))
             ->get()

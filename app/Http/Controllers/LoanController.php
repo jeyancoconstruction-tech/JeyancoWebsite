@@ -29,7 +29,7 @@ class LoanController extends Controller
 
         return view('loans.index', [
             'loans'     => $loans,
-            'employees' => Employee::orderBy('name')->get(['id', 'name']),
+            'employees' => Employee::registered()->orderBy('name')->get(['id', 'name']),
             'summary'   => [
                 'active'      => Loan::where('status', 'active')->count(),
                 'outstanding' => (float) Loan::where('status', 'active')->sum('balance'),

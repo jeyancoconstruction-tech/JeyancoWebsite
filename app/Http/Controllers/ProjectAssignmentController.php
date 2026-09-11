@@ -43,7 +43,7 @@ class ProjectAssignmentController extends Controller
             'assignments' => $assignments,
             'bySite'      => $bySite,
             'sites'       => Site::orderBy('name')->get(['id', 'name']),
-            'employees'   => Employee::with('laborType')->orderBy('name')
+            'employees'   => Employee::registered()->with('laborType')->orderBy('name')
                                 ->get(['id', 'name', 'position', 'rate_per_hour', 'employment_type']),
         ]);
     }

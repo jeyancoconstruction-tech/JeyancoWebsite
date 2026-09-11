@@ -116,6 +116,23 @@ class Employee extends Model
         return $q->where('status', self::STATUS_PENDING);
     }
 
+    /**
+     * Everybody who has finished registering — the workforce proper.
+     *
+     * A pending row is not an employee yet. It is a name waiting for a
+     * finger, and it has no business in a headcount, an attendance board, a
+     * payroll run, or a dropdown offering somebody to file a loan against.
+     *
+     * Wider than active(): somebody who has left is still a person this
+     * company employed, and their leave, loans and payslips have to stay
+     * reachable. The only state this closes the door on is the one where
+     * registration is unfinished.
+     */
+    public function scopeRegistered(Builder $q): Builder
+    {
+        return $q->where('status', '!=', self::STATUS_PENDING);
+    }
+
     public function scopeArchived(Builder $q): Builder
     {
         return $q->where('status', self::STATUS_ARCHIVED);

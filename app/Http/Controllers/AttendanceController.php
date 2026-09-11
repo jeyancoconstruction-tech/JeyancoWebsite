@@ -77,6 +77,7 @@ class AttendanceController extends Controller
 
         $todayAll = $filtered(
                 Attendance::with(['employee', 'site', 'shift'])
+                    ->ofRegistered()
                     ->fromWorkday($now)
                     ->whereNotNull('time_in')
                     ->orderByDesc('time_in')
@@ -98,6 +99,7 @@ class AttendanceController extends Controller
         // fifteen rows on screen would quietly ignore the rest of the result.
         $historyAttendances = $filtered(
                 Attendance::with(['employee', 'site', 'shift'])
+                    ->ofRegistered()
                     ->beforeWorkday($now)
                     ->when($view === 'clocked-in',
                         fn ($q) => $q->whereNotNull('time_in')->whereNull('time_out'))

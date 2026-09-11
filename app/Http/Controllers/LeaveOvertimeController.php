@@ -47,7 +47,7 @@ class LeaveOvertimeController extends Controller
             'tab'       => $tab,
             'leave'     => $leave,
             'overtime'  => $overtime,
-            'employees' => Employee::orderBy('name')->get(['id', 'name', 'rate_per_hour']),
+            'employees' => Employee::registered()->orderBy('name')->get(['id', 'name', 'rate_per_hour']),
             'sites'     => Site::orderBy('name')->get(['id', 'name']),
             'counts'    => [
                 'leave_pending' => LeaveRequest::where('status', 'pending')->count(),
