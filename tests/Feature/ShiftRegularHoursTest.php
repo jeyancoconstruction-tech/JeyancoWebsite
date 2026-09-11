@@ -65,6 +65,7 @@ class ShiftRegularHoursTest extends TestCase
                 'starts_at'            => substr((string) $s->starts_at, 0, 5),
                 'ends_at'              => $s->endsAt(),
                 'regular_hours'        => min($s->regularHours() ?? $paid, $paid),
+                'break_minutes'        => $break,
                 'grace_period_minutes' => $s->grace_period_minutes,
             ];
         }
@@ -76,7 +77,6 @@ class ShiftRegularHoursTest extends TestCase
         return $this->actingAs($this->admin())->put(route('settings.attendance.update'), [
             'auto_count_overtime'    => 1,
             'standard_hours_per_day' => 9,
-            'unpaid_break_minutes'   => $break,
             'week_starts_on'         => 1,
             'payroll_cycle'          => 'weekly',
             'shifts'                 => $shifts,

@@ -339,13 +339,13 @@
                              somebody to the night crew changes what they work
                              next, not how late they were last month. --}}
                         <label class="ps-label">{{ __('Shifts') }}</label>
-                        @php $sumBrk = (int) old('unpaid_break_minutes', $system->unpaid_break_minutes); @endphp
                         <div class="sh-pick mb-3">
                             @foreach($shifts as $sh)
                                 @php
                                     $cardStart = old("shifts.{$sh->id}.starts_at", substr((string) $sh->starts_at, 0, 5));
                                     $cardEnd   = old("shifts.{$sh->id}.ends_at", $sh->endsAt() ?: $cardStart);
-                                    $cardPaid  = max(0, \App\Models\Shift::spanMinutes($cardStart, $cardEnd) - $sumBrk) / 60;
+                                    $cardBrk   = (int) old("shifts.{$sh->id}.break_minutes", $sh->break_minutes);
+                                    $cardPaid  = max(0, \App\Models\Shift::spanMinutes($cardStart, $cardEnd) - $cardBrk) / 60;
 
                                     // Shown clamped to what the shift actually
                                     // holds. A stored figure can outgrow its
@@ -394,11 +394,22 @@
                                                    name="shifts[{{ $sh->id }}][regular_hours]"
                                                    value="{{ rtrim(rtrim(number_format($cardReg, 2, '.', ''), '0'), '.') }}" required>
                                         </div>
+                                        <div class="col-6 col-md-4">
+                                            <label class="ps-label" for="shift_break_{{ $sh->id }}">{{ __('Break (min)') }}</label>
+                                            <input type="number" step="5" min="0" max="240"
+                                                   class="form-control ps-input @error("shifts.{$sh->id}.break_minutes") is-invalid @enderror"
+                                                   id="shift_break_{{ $sh->id }}"
+                                                   name="shifts[{{ $sh->id }}][break_minutes]"
+                                                   value="{{ $cardBrk }}" required>
+                                        </div>
                                     </div>
                                     @error("shifts.{$sh->id}.ends_at")
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                     @error("shifts.{$sh->id}.regular_hours")
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                    @error("shifts.{$sh->id}.break_minutes")
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                     <small class="text-muted d-block mt-2">
@@ -425,15 +436,6 @@
                                 <small class="text-muted d-block mt-1">{{ __('Fallback for a shift with no hours set, and for days before the schedule took effect') }}</small>
                                 @error('standard_hours_per_day')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
-                            <div>
-                                <label class="ps-label" for="unpaid_break_minutes">{{ __('Unpaid break (min)') }}</label>
-                                <input type="number" step="5" min="0" max="240"
-                                       class="form-control ps-input @error('unpaid_break_minutes') is-invalid @enderror"
-                                       id="unpaid_break_minutes" name="unpaid_break_minutes"
-                                       value="{{ old('unpaid_break_minutes', $system->unpaid_break_minutes) }}" required>
-                                <small class="text-muted d-block mt-1">{{ __('The meal period inside those hours') }}</small>
-                                @error('unpaid_break_minutes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            </div>
                         </div>
 
                         {{-- The office should not have to do this arithmetic in
@@ -448,7 +450,8 @@
                                     // whatever the shifts were set to.
                                     $shStart = old("shifts.{$sh->id}.starts_at", substr((string) $sh->starts_at, 0, 5));
                                     $shEnd   = old("shifts.{$sh->id}.ends_at", $sh->endsAt() ?: $shStart);
-                                    $shPaid  = max(0, \App\Models\Shift::spanMinutes($shStart, $shEnd) - $sumBrk) / 60;
+                                    $shBrk   = (int) old("shifts.{$sh->id}.break_minutes", $sh->break_minutes);
+                                    $shPaid  = max(0, \App\Models\Shift::spanMinutes($shStart, $shEnd) - $shBrk) / 60;
 
                                     // What the day's rate buys, and what is
                                     // therefore overtime before the shift has
@@ -477,7 +480,8 @@
                             <strong>{{ __('Regular (hrs)') }}</strong> is what a labour type's daily rate buys, so that is the
                             divisor for the hourly rate and the line where overtime begins — a shift may run longer
                             than its regular hours, and the rest of it is overtime without waiting for the shift to
-                            end. A break is only taken off a
+                            end. <strong>{{ __('Break (min)') }}</strong> is that shift's own meal period, taken out of the
+                            middle of its hours and paid for by nobody. A break is only taken off a
                             stretch longer than five hours — a crew that clocks out for lunch has already left it out.
                             Lateness is <strong>{{ __('reported, not deducted') }}</strong> — a worker is already paid only for
                             the hours they worked, and docking on top would cut the same wage twice.

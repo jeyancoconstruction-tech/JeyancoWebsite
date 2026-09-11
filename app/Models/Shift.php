@@ -29,6 +29,7 @@ class Shift extends Model
         'time_in_opens_minutes',
         'legacy_starts_at',
         'regular_minutes',
+        'break_minutes',
     ];
 
     protected $casts = [
@@ -36,6 +37,7 @@ class Shift extends Model
         'crosses_midnight'      => 'boolean',
         'time_in_opens_minutes' => 'integer',
         'regular_minutes'       => 'integer',
+        'break_minutes'         => 'integer',
     ];
 
     public function employees(): HasMany
@@ -153,6 +155,19 @@ class Shift extends Model
         return $this->regular_minutes === null ? null : $this->regular_minutes / 60;
     }
 
+    /** Hours on site, break included. */
+    public function spanHours(): float
+    {
+        return self::spanMinutes(substr((string) $this->starts_at, 0, 5), $this->endsAt() ?: '00:00') / 60;
+    }
+
+    /** Hours the crew is paid for: the stretch less their own meal period. */
+    public function paidHours(): float
+    {
+        return max(0, self::spanMinutes(substr((string) $this->starts_at, 0, 5), $this->endsAt() ?: '00:00')
+                      - (int) $this->break_minutes) / 60;
+    }
+
     /** This shift in the shape WorkSchedule and payroll read. */
     public function schedule(): array
     {
@@ -168,6 +183,7 @@ class Shift extends Model
             'opens'            => (int) ($this->time_in_opens_minutes ?? 120),
             'legacy_starts_at' => $this->legacy_starts_at,
             'regular_minutes'  => $this->regular_minutes,
+            'break_minutes'    => (int) $this->break_minutes,
         ];
     }
 

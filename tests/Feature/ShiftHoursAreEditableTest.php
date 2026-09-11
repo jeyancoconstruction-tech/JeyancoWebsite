@@ -35,9 +35,12 @@ class ShiftHoursAreEditableTest extends TestCase
         SystemSetting::current()->forceFill(['schedule_rules_from' => '2026-09-01'])->save();
     }
 
+    private ?User $admin = null;
+
+    /** Memoised: some tests save twice, and username is unique. */
     private function admin(): User
     {
-        return User::create([
+        return $this->admin ??= User::create([
             'name' => 'Admin', 'username' => 'admin.hours', 'password' => 'secret123',
             'role' => User::ROLE_ADMIN, 'is_admin' => true, 'is_active' => true,
         ]);
@@ -64,6 +67,7 @@ class ShiftHoursAreEditableTest extends TestCase
                 // Clamped the way the form clamps it: a stored figure can
                 // outgrow its shift when the hours or the break change.
                 'regular_hours'        => min($s->regularHours() ?? 8, (Shift::spanMinutes(substr((string) $s->starts_at, 0, 5), $s->endsAt()) - $break) / 60),
+                'break_minutes'        => $break,
                 'grace_period_minutes' => $s->grace_period_minutes,
             ];
         }
@@ -77,7 +81,6 @@ class ShiftHoursAreEditableTest extends TestCase
             // answer and would quietly stop overtime being counted.
             'auto_count_overtime'     => 1,
             'standard_hours_per_day' => 9,
-            'unpaid_break_minutes'   => $break,
             'week_starts_on'         => 1,
             'payroll_cycle'          => 'weekly',
             'shifts'                 => $shifts,
@@ -179,6 +182,60 @@ class ShiftHoursAreEditableTest extends TestCase
             'eight to three, less the break, is six paid hours');
         $this->assertEqualsWithDelta(2.0, $paid['ot_hours'], 0.01,
             'the two hours past three in the afternoon are overtime now');
+    }
+
+    // ── The meal period belongs to the shift ─────────────────────────────
+
+    public function test_the_break_is_asked_per_shift_not_once_for_the_office(): void
+    {
+        $page = $this->actingAs($this->admin())
+                     ->get(route('settings.index', ['tab' => 'attendance']))
+                     ->assertOk();
+
+        $page->assertDontSee('name="unpaid_break_minutes"', false);
+
+        foreach ([$this->day(), $this->night()] as $shift) {
+            $page->assertSee('shifts[' . $shift->id . '][break_minutes]', false);
+        }
+    }
+
+    /** Two crews, two meal periods, two different gaps in the middle. */
+    public function test_each_shift_keeps_its_own_break(): void
+    {
+        $this->save([
+            $this->day()->id   => ['starts_at' => '08:00', 'ends_at' => '17:00', 'break_minutes' => 60, 'regular_hours' => 8],
+            $this->night()->id => ['starts_at' => '20:00', 'ends_at' => '05:00', 'break_minutes' => 30, 'regular_hours' => 8.5],
+        ])->assertSessionHasNoErrors();
+
+        $day   = $this->day()->fresh();
+        $night = $this->night()->fresh();
+
+        $this->assertSame(60, $day->break_minutes);
+        $this->assertStringStartsWith('12:00', (string) $day->am_ends_at);
+        $this->assertStringStartsWith('13:00', (string) $day->pm_starts_at);
+
+        $this->assertSame(30, $night->break_minutes);
+        $this->assertStringStartsWith('00:15', (string) $night->am_ends_at, 'half an hour, taken in the middle');
+        $this->assertStringStartsWith('00:45', (string) $night->pm_starts_at);
+
+        $this->assertEqualsWithDelta(8.0, $day->paidHours(), 0.01);
+        $this->assertEqualsWithDelta(8.5, $night->paidHours(), 0.01, 'a shorter lunch is a longer paid day');
+    }
+
+    /** Lengthening the break shortens the paid day, and the form says so. */
+    public function test_a_longer_break_leaves_less_paid_time(): void
+    {
+        $this->save([$this->day()->id => [
+            'starts_at' => '08:00', 'ends_at' => '17:00', 'break_minutes' => 120, 'regular_hours' => 7,
+        ]])->assertSessionHasNoErrors();
+
+        $this->assertEqualsWithDelta(7.0, $this->day()->fresh()->paidHours(), 0.01);
+
+        // And it cannot swallow the shift whole: four and a half hours on
+        // site with four of them for lunch is half an hour of work.
+        $this->save([$this->day()->id => [
+            'starts_at' => '08:00', 'ends_at' => '12:30', 'break_minutes' => 240, 'regular_hours' => 0.5,
+        ]])->assertSessionHasErrors();
     }
 
     protected function tearDown(): void

@@ -275,11 +275,14 @@ class SystemSettingsTest extends TestCase
         $this->actingAs($this->admin())
              ->put(route('settings.attendance.update'), [
                  'standard_hours_per_day' => 10,
-                 'unpaid_break_minutes'   => 60,
                  'week_starts_on'         => 0,
                  'payroll_cycle'          => 'daily',
                  'shifts'                 => [
-                     $day->id => ['starts_at' => '07:30', 'ends_at' => '16:30', 'regular_hours' => 8, 'grace_period_minutes' => 10],
+                     $day->id => [
+                         'starts_at' => '07:30', 'ends_at' => '16:30',
+                         'regular_hours' => 8, 'break_minutes' => 60,
+                         'grace_period_minutes' => 10,
+                     ],
                  ],
              ])
              ->assertSessionHasNoErrors();
@@ -288,7 +291,6 @@ class SystemSettingsTest extends TestCase
         $s = SystemSetting::current();
 
         $this->assertSame(10.0, $s->standard_hours_per_day);
-        $this->assertSame(60, $s->unpaid_break_minutes, 'the meal period inside those hours');
         $this->assertSame(0, $s->week_starts_on);
         $this->assertSame('daily', $s->payroll_cycle);
         $this->assertFalse($s->auto_count_overtime, 'an unticked box is the off answer');
@@ -305,6 +307,9 @@ class SystemSettingsTest extends TestCase
         $this->assertStringStartsWith('12:30', (string) $day->pm_starts_at);
         $this->assertStringStartsWith('16:30', (string) $day->pm_ends_at);
         $this->assertFalse((bool) $day->crosses_midnight);
+
+        // The meal period belongs to the shift now, not to the office.
+        $this->assertSame(60, $day->break_minutes, 'the hour between the two sessions');
     }
 
     /** A day of no hours would divide the daily rate by nothing. */

@@ -568,7 +568,6 @@ class SettingsController extends Controller
         $data = $request->validate([
             // A day of zero hours would divide the daily rate by nothing.
             'standard_hours_per_day' => ['required', 'numeric', 'min:1', 'max:24'],
-            'unpaid_break_minutes'   => ['required', 'integer', 'min:0', 'max:240'],
 
             'week_starts_on'         => ['required', 'integer', 'min:0', 'max:6'],
             'payroll_cycle'          => ['required', 'in:weekly,daily'],
@@ -581,22 +580,22 @@ class SettingsController extends Controller
             'shifts.*.starts_at'                 => ['required', 'date_format:H:i'],
             'shifts.*.ends_at'                   => ['required', 'date_format:H:i'],
             'shifts.*.regular_hours'             => ['required', 'numeric', 'min:0.25', 'max:24'],
+            'shifts.*.break_minutes'             => ['required', 'integer', 'min:0', 'max:240'],
             'shifts.*.grace_period_minutes'      => ['required', 'integer', 'min:0', 'max:120'],
         ], [
             'standard_hours_per_day.min'    => 'A day has to buy at least an hour, or the hourly rate has no divisor.',
-            'unpaid_break_minutes.max'      => 'A meal period longer than four hours is not a break, it is two shifts.',
+            'shifts.*.break_minutes.max'    => 'A meal period longer than four hours is not a break, it is two shifts.',
             'shifts.*.grace_period_minutes.max' => 'Two hours of grace is not a grace period.',
         ]);
 
         // An unticked checkbox posts nothing, which is the off answer.
         $data['auto_count_overtime'] = $request->boolean('auto_count_overtime');
 
-        // A shift has to leave enough paid time to be a shift. Checked against
-        // the break being saved in the same request, not the one on file.
-        $break = (int) $data['unpaid_break_minutes'];
-
+        // A shift has to leave enough paid time to be a shift. Measured
+        // against its own meal period, as being saved in this same request.
         foreach ($data['shifts'] ?? [] as $id => $fields) {
-            $paid = Shift::spanMinutes($fields['starts_at'], $fields['ends_at']) - $break;
+            $break = (int) $fields['break_minutes'];
+            $paid  = Shift::spanMinutes($fields['starts_at'], $fields['ends_at']) - $break;
 
             if ($paid < 60) {
                 return back()->withInput()->withErrors([
@@ -623,10 +622,11 @@ class SettingsController extends Controller
         // form lays the shift out now, so what it shows is what is run.
         foreach ($data['shifts'] ?? [] as $id => $fields) {
             Shift::whereKey($id)->update(
-                Shift::layOut($fields['starts_at'], $fields['ends_at'], $break)
+                Shift::layOut($fields['starts_at'], $fields['ends_at'], (int) $fields['break_minutes'])
                 + [
                     'grace_period_minutes' => $fields['grace_period_minutes'],
                     'regular_minutes'      => (int) round($fields['regular_hours'] * 60),
+                    'break_minutes'        => (int) $fields['break_minutes'],
                 ]
             );
         }
