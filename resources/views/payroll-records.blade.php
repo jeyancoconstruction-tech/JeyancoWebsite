@@ -99,22 +99,10 @@
     }
     .rc-math span { color: var(--text-secondary); display: block; }
     .rc-math b    { color: var(--text-primary); font-weight: 700; }
-    .rc-rates { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
-    .rc-rates-head {
-        font-size: 9.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
-        color: var(--text-secondary); margin-bottom: 7px;
-    }
-    .rc-badge {
-        margin-left: 6px; padding: 1px 7px; border-radius: 999px; letter-spacing: .3px;
-        background: rgba(22,163,74,.12); color: var(--success);
-    }
-    .rc-rates-grid {
-        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr) auto); gap: 4px 10px;
-        font-size: 11px; font-variant-numeric: tabular-nums;
-    }
-    .rc-rates-grid span { color: var(--text-muted); }
-    .rc-rates-grid b    { color: var(--text-secondary); font-weight: 700; text-align: right; }
-    .rc-note { margin: 10px 0 0; font-size: 11px; line-height: 1.6; color: var(--text-muted); }
+    /* The rates table and its footnote were styled here, and both are gone.
+       The receipt says what this worker was paid; the office-wide multipliers
+       behind it live on Payroll Settings, and each line already names its
+       own. */
 </style>
 @endpush
 
@@ -419,33 +407,6 @@
                                 <span class="v" id="rcNet">&mdash;</span>
                             </div>
 
-                            {{-- The settings the period was computed at. The
-                                 figures above are only checkable against the
-                                 numbers that produced them. --}}
-                            <div class="rc-rates">
-                                <div class="rc-rates-head">
-                                    Rates applied
-                                    @if($rates['uses_defaults'])<span class="rc-badge">{{ __('statutory defaults') }}</span>@endif
-                                </div>
-                                <div class="rc-rates-grid">
-                                    <span>{{ __('Overtime') }}</span><b>&times;{{ number_format($rates['ot_multiplier'], 2) }}</b>
-                                    <span>{{ __('Night differential') }}</span><b>&times;{{ number_format($rates['night_diff_multiplier'], 2) }}</b>
-                                    <span>{{ __('Rest day') }}</span><b>&times;{{ number_format($rates['rest_day_multiplier'], 2) }}</b>
-                                    <span>{{ __('Regular holiday') }}</span><b>&times;{{ number_format($rates['regular_holiday_multiplier'], 2) }}</b>
-                                    <span>{{ __('SSS') }}</span><b>{{ number_format($rates['sss_rate'], 2) }}%</b>
-                                    <span>{{ __('PhilHealth') }}</span><b>{{ number_format($rates['philhealth_rate'], 2) }}%</b>
-                                    <span>{{ __('Pag-IBIG') }}</span><b>{{ number_format($rates['pagibig_rate'], 2) }}%</b>
-                                    <span>{{ __('Withholding tax') }}</span><b>{{ $rates['withholding_tax'] ? 'BIR table' : 'off' }}</b>
-                                    <span>{{ __('Bonus') }}</span><b>&#8369;{{ number_format($rates['bonus'], 2) }}/period</b>
-                                    <span>{{ __('Wage floor') }}</span><b>{{ $rates['daily_rate'] ? '&#8369;' . number_format($rates['daily_rate'], 2) : 'none set' }}</b>
-                                </div>
-                            </div>
-
-                            <p class="rc-note">
-                                Night differential is 10:00 PM &ndash; 6:00 AM. Contributions are the employee share
-                                on gross; the withholding tax is the BIR daily table on what is left after them.
-                                Vale and adjustments are entered per attendance record, not here.
-                            </p>
 
                             <div class="d-flex gap-2 mt-3">
                                 <button type="button" class="btn btn-sm fw-600"
