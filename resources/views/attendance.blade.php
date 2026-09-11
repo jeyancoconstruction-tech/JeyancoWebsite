@@ -36,6 +36,28 @@
 .att-stat-success .att-stat-head i { color:var(--success,#027a48); }
 .att-stat-warning .att-stat-head i { color:var(--warning,#b54708); }
 
+/* Each card asks a question, so each card is a link. Anchors, not buttons:
+   the result is a URL the office can bookmark or send to somebody. */
+.att-stat { display:block; text-decoration:none; color:inherit; cursor:pointer;
+            transition:background .15s, box-shadow .15s; }
+.att-stat:hover { background:var(--bg-elevated,#eef1f6); text-decoration:none; color:inherit; }
+.att-stat:focus-visible { outline:2px solid var(--brand,#1668dc); outline-offset:2px; }
+.att-stat.is-active { background:var(--bg-elevated,#eef1f6); box-shadow:inset 0 0 0 1px var(--border-md,#d0d5dd); }
+.att-stat.is-active .att-stat-value { color:var(--brand,#1668dc); }
+.att-stat-brand.is-active   .att-stat-value { color:var(--brand,#1668dc); }
+.att-stat-success.is-active .att-stat-value { color:var(--success,#027a48); }
+.att-stat-warning.is-active .att-stat-value { color:var(--warning,#b54708); }
+
+/* The line that says a card is in force, and how to get back out. */
+.att-viewing {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    margin:-8px 0 16px; padding:8px 12px;
+    background:var(--bg-subtle,#f8f9fb); border:1px solid var(--border,#e4e7ec);
+    border-radius:8px; font-size:.8rem; color:var(--text-secondary,#344054);
+}
+.att-viewing i { color:var(--text-muted,#667085); }
+.att-viewing a { margin-left:auto; font-weight:600; color:var(--brand,#1668dc); }
+
 /* ── Control row ──────────────────────────────────────────────────────── */
 .att-controls {
     display:flex; align-items:center; justify-content:space-between;
@@ -187,35 +209,60 @@
          a short line under each number saying what it counts. They follow the
          filters below: the numbers and the rows always describe the same set
          of records. --}}
+    @php
+        // A card is a question — three of them, and the answer to each is a
+        // list of people. Clicking one narrows both tables to the rows behind
+        // its number; clicking it again puts them back. The site and shift
+        // already chosen are carried along, and the page number is not: the
+        // rows underneath are about to be a different set.
+        $cardBase = request()->except(['view', 'tab', 'page']);
+        $cardUrl  = fn (?string $v) => route('attendance', $v === null ? $cardBase : $cardBase + ['view' => $v]);
+    @endphp
     <div class="att-stats">
-        <div class="att-stat att-stat-brand">
+        <a class="att-stat att-stat-brand {{ $view === null ? 'is-active' : '' }}"
+           href="{{ $cardUrl(null) }}" @if($view === null) aria-current="true" @endif>
             <div class="att-stat-head">
                 <i class="fas fa-user-check"></i>
                 <span>{{ __('Present today') }}</span>
             </div>
             <div class="att-stat-value">{{ $presentToday }}</div>
             <div class="att-stat-sub">{{ __('Clocked in today') }}</div>
-        </div>
-        <div class="att-stat att-stat-success">
+        </a>
+        <a class="att-stat att-stat-success {{ $view === 'clocked-in' ? 'is-active' : '' }}"
+           href="{{ $cardUrl($view === 'clocked-in' ? null : 'clocked-in') }}"
+           @if($view === 'clocked-in') aria-current="true" @endif>
             <div class="att-stat-head">
                 <i class="fas fa-clock"></i>
                 <span>{{ __('Currently clocked in') }}</span>
             </div>
             <div class="att-stat-value">{{ $clockedIn }}</div>
             <div class="att-stat-sub">{{ __('On-site, no time-out') }}</div>
-        </div>
-        <div class="att-stat att-stat-warning">
+        </a>
+        <a class="att-stat att-stat-warning {{ $view === 'missed' ? 'is-active' : '' }}"
+           href="{{ $cardUrl($view === 'missed' ? null : 'missed') }}"
+           @if($view === 'missed') aria-current="true" @endif>
             <div class="att-stat-head">
                 <i class="fas fa-triangle-exclamation"></i>
                 <span>{{ __('Invalid attendance') }}</span>
             </div>
             <div class="att-stat-value">{{ $invalidCount }}</div>
             <div class="att-stat-sub">{{ __('Missed sign-out') }}</div>
-        </div>
+        </a>
     </div>
 
+    @if($view)
+        {{-- Both tables are narrowed, and a reader who lands here from a card
+             needs to see that before reading an empty one as "nobody". --}}
+        <div class="att-viewing">
+            <i class="fas fa-filter"></i>
+            <span>{{ $view === 'clocked-in'
+                ? __('Showing only workers still on site')
+                : __('Showing only missed sign-outs this week') }}</span>
+            <a href="{{ $cardUrl(null) }}">{{ __('Show all') }}</a>
+        </div>
+    @endif
+
     <!-- TABS -->
-    @php $openTab = request('tab') === 'history' ? 'history' : 'today'; @endphp
     <ul class="nav nav-tabs att-tabs" role="tablist">
         <li class="nav-item">
             <button class="nav-link {{ $openTab === 'today' ? 'active' : '' }}" data-bs-toggle="tab"
@@ -440,7 +487,7 @@
                     {{-- appends(): these links live in the History pane, so
                          page 2 has to carry the tab as well as the filters or
                          it lands on Today's Attendance. --}}
-                    {{ $historyAttendances->appends(['tab' => 'history'])->links() }}
+                    {{ $historyAttendances->appends(array_filter(['tab' => 'history', 'view' => $view]))->links() }}
                 </div>
             </div>
         </div>

@@ -66,18 +66,42 @@ class AttendanceController extends Controller
         // of the worker — reading it off the employee would show wherever they
         // were first registered. The shift is loaded too: each row's status is
         // read against the shift it was worked under.
-        $todayAttendances = $filtered(
+        // Which card the reader clicked, if any. It narrows the two tables to
+        // the rows behind a number — the question "who are they" that a
+        // figure on its own cannot answer — and deliberately does NOT narrow
+        // the cards themselves: clicking Currently Clocked In must not go on
+        // to rewrite Present Today as the same number.
+        $view = in_array($request->query('view'), ['clocked-in', 'missed'], true)
+            ? $request->query('view')
+            : null;
+
+        $todayAll = $filtered(
                 Attendance::with(['employee', 'site', 'shift'])
                     ->fromWorkday($now)
                     ->whereNotNull('time_in')
                     ->orderByDesc('time_in')
             )->get();
 
+        // Narrowed in memory rather than by a second query: the day view is
+        // already loaded whole, because the cards above are counted from it.
+        $todayAttendances = match ($view) {
+            'clocked-in' => $todayAll->whereNull('time_out')->values(),
+            'missed'     => $todayAll->filter(
+                                fn ($r) => $r->signOutOverdue($now) || $r->needs_review
+                            )->values(),
+            default      => $todayAll,
+        };
+
         // HISTORY — workdays that have finished, which for the night crew is
         // the following morning rather than midnight.
+        // History is paginated, so this one narrows in SQL — filtering the
+        // fifteen rows on screen would quietly ignore the rest of the result.
         $historyAttendances = $filtered(
                 Attendance::with(['employee', 'site', 'shift'])
                     ->beforeWorkday($now)
+                    ->when($view === 'clocked-in',
+                        fn ($q) => $q->whereNotNull('time_in')->whereNull('time_out'))
+                    ->when($view === 'missed', fn ($q) => $q->missedSignOut($now))
                     ->orderBy('date', 'desc')
                     ->orderBy('session', 'asc')
             )->paginate(15)
@@ -90,8 +114,10 @@ class AttendanceController extends Controller
         // mistaken time-out — and counting those made one man on site read as
         // "3 present" beside a workforce of one. It also made the low-turnout
         // alert below compare a row count against a headcount.
-        $presentToday = $todayAttendances->unique('employee_id')->count();
-        $clockedIn    = $todayAttendances->whereNull('time_out')->unique('employee_id')->count();
+        // Counted from the whole day view, not from whatever a clicked card
+        // has narrowed it to.
+        $presentToday = $todayAll->unique('employee_id')->count();
+        $clockedIn    = $todayAll->whereNull('time_out')->unique('employee_id')->count();
         $weekStart    = Carbon::today()->startOfWeek(); // Monday — resets each week
 
         // Missed sign-outs within the current week, by the same rule the
@@ -132,10 +158,20 @@ class AttendanceController extends Controller
             );
         }
 
+        // Which tab to open on. A clicked card knows what it was counting but
+        // not where those rows live: a missed sign-out is past its shift's
+        // end, so it is usually in the history, while somebody still on site
+        // is always on the day view. Landing on an empty table and leaving
+        // the reader to find the other one is not an answer to "show me who".
+        $openTab = $request->query('tab') === 'history' ? 'history' : 'today';
+        if ($view && $todayAttendances->isEmpty() && $historyAttendances->total() > 0) {
+            $openTab = 'history';
+        }
+
         return view('attendance', compact(
             'todayAttendances', 'historyAttendances',
             'presentToday', 'clockedIn', 'invalidCount', 'holidayDates',
-            'sites', 'shifts', 'siteId', 'shiftId'
+            'sites', 'shifts', 'siteId', 'shiftId', 'view', 'openTab'
         ));
     }
 
