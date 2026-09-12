@@ -6,11 +6,8 @@ use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\Loan;
 use App\Models\LoanDeduction;
-use App\Models\OvertimeRequest;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunItem;
-use App\Models\SystemSetting;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -22,8 +19,8 @@ use Illuminate\Support\Facades\DB;
  * this adds is everything around it:
  *
  *   1. asks PayrollService for the period,
- *   2. layers on the things it has no way to know about: approved overtime
- *      claims, approved paid leave, and loan instalments due,
+ *   2. layers on the things it has no way to know about: approved paid
+ *      leave and loan instalments due,
  *   3. writes the result down, so the numbers stop moving.
  *
  * Recalculating replaces a run's items wholesale. Collecting against loans is
@@ -48,14 +45,13 @@ class PayrollRunService
         $computed = $this->payroll->computeForRange($from, $to);
         $byEmployee = collect($computed['employees'] ?? [])->keyBy('employee_id');
 
-        $overtime = $this->approvedOvertime($from, $to, $computed['days'] ?? []);
-        $leave    = $this->approvedLeave($from, $to);
-        $loans    = $this->collectibleLoans($to);
+        $otHours = $this->overtimeHours($computed['days'] ?? []);
+        $leave   = $this->approvedLeave($from, $to);
+        $loans   = $this->collectibleLoans($to);
 
-        // Everyone the period touches: worked, or has approved leave, or has
-        // approved overtime. A worker with only leave still needs a payslip.
+        // Everyone the period touches: worked, or has approved leave. A worker
+        // with only leave still needs a payslip.
         $ids = $byEmployee->keys()
-            ->merge($overtime->keys())
             ->merge($leave->keys())
             ->unique();
 
@@ -66,7 +62,7 @@ class PayrollRunService
             ->get()
             ->keyBy('id');
 
-        DB::transaction(function () use ($run, $employees, $byEmployee, $overtime, $leave, $loans) {
+        DB::transaction(function () use ($run, $employees, $byEmployee, $otHours, $leave, $loans) {
             $run->items()->delete();
 
             $gross = $deductions = $net = 0.0;
@@ -77,7 +73,7 @@ class PayrollRunService
                     $run,
                     $employee,
                     $byEmployee->get($id),
-                    $overtime->get($id),
+                    $otHours[$id] ?? 0.0,
                     $leave->get($id, collect()),
                     $loans->get($id, collect())
                 );
@@ -105,13 +101,14 @@ class PayrollRunService
 
     /**
      * One worker's row. Everything PayrollService produced is carried across
-     * verbatim; only the three things it cannot see are added on top.
+     * verbatim; only the two things it cannot see — leave and loans — are
+     * added on top.
      */
     private function buildItem(
         PayrollRun $run,
         Employee $employee,
         ?array $computed,
-        ?object $ot,
+        float $otHours,
         $leaveRows,
         $loanRows
     ): array {
@@ -134,10 +131,6 @@ class PayrollRunService
         // without counting any peso twice.
         $basicOnly = round($basic - $engineOt - $holiday - $restDay - $nightDiff - $bonus, 2);
         $basicOnly = max($basicOnly, 0);
-
-        // ── Approved overtime claims, which the engine cannot see ─────────
-        $claimedOt      = $ot ? (float) $ot->amount : 0.0;
-        $claimedOtHours = $ot ? (float) $ot->hours : 0.0;
 
         // ── Approved paid leave, credited at the daily rate ───────────────
         $paidLeaveDays = 0.0;
@@ -169,7 +162,7 @@ class PayrollRunService
         }
 
         $grossPay = round(
-            $basicOnly + $engineOt + $claimedOt + $holiday + $restDay
+            $basicOnly + $engineOt + $holiday + $restDay
             + $nightDiff + $leavePay + $bonus,
             2
         );
@@ -187,14 +180,14 @@ class PayrollRunService
 
             'days_worked'     => (float) ($t['workdays'] ?? 0),
             'regular_hours'   => (float) ($t['hours'] ?? 0),
-            'ot_hours'        => round($claimedOtHours, 2),
+            'ot_hours'        => round($otHours, 2),
             'late_minutes'    => 0,
             'absent_days'     => 0,
             'leave_days'      => round($leaveDays, 2),
             'paid_leave_days' => round($paidLeaveDays, 2),
 
             'basic_pay'      => $basicOnly,
-            'overtime_pay'   => round($engineOt + $claimedOt, 2),
+            'overtime_pay'   => round($engineOt, 2),
             'holiday_pay'    => $holiday,
             'rest_day_pay'   => $restDay,
             'night_diff_pay' => $nightDiff,
@@ -274,48 +267,29 @@ class PayrollRunService
     }
 
     /**
-     * Approved overtime in the range, summed per employee — less what the
-     * attendance already paid as overtime on the same day.
+     * Overtime hours per employee, as attendance counted them — the time past
+     * each shift's regular hours. The engine's totals carry the overtime pay
+     * but not the hours, so they are summed from its days.
      *
-     * Once overtime is counted from the kiosk (the time after the shift ends),
-     * a claim for that same evening would pay it twice: the engine's overtime
-     * and the claim were simply added. On a day that has both, the larger of
-     * the two is paid now, not the sum. Days before the new count are left as
-     * they were computed, so no settled period moves.
+     * Overtime used to be claimed by hand as well, and approved claims were
+     * added here on top of this. Claims are retired: overtime is counted, not
+     * filed, and a claim could only pay the same evening twice. Runs already
+     * finalised keep the figures they were frozen with.
+     *
+     * @return array<int, float> employee_id => hours
      */
-    private function approvedOvertime(string $from, string $to, array $days = [])
+    private function overtimeHours(array $days): array
     {
-        $rulesFrom = SystemSetting::current()->schedule_rules_from;
-        $rulesFrom = $rulesFrom ? Carbon::parse($rulesFrom)->toDateString() : null;
+        $hours = [];
 
-        $kioskOt = [];
         foreach ($days as $day) {
-            $date = Carbon::parse($day['date'])->toDateString();
             foreach ($day['details'] ?? [] as $d) {
-                $key           = $d['employee_id'] . '|' . $date;
-                $kioskOt[$key] = ($kioskOt[$key] ?? 0.0) + (float) ($d['ot_hours'] ?? 0);
+                $id         = (int) $d['employee_id'];
+                $hours[$id] = ($hours[$id] ?? 0.0) + (float) ($d['ot_hours'] ?? 0);
             }
         }
 
-        return OvertimeRequest::approved()
-            ->inRange($from, $to)
-            ->get()
-            ->groupBy('employee_id')
-            ->map(function ($claims, $empId) use ($kioskOt, $rulesFrom) {
-                $hours = $amount = 0.0;
-
-                foreach ($claims as $c) {
-                    $date    = $c->date->toDateString();
-                    $already = ($rulesFrom && $date >= $rulesFrom) ? ($kioskOt[$empId . '|' . $date] ?? 0.0) : 0.0;
-                    $payable = max(0.0, (float) $c->hours - $already);
-                    $share   = (float) $c->hours > 0 ? $payable / (float) $c->hours : 0.0;
-
-                    $hours  += $payable;
-                    $amount += (float) $c->amount * $share;
-                }
-
-                return (object) ['hours' => round($hours, 2), 'amount' => round($amount, 2)];
-            });
+        return $hours;
     }
 
     /** Approved leave touching the range, grouped per employee. */

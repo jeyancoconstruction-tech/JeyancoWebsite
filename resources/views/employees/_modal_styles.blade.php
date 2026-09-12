@@ -1,7 +1,7 @@
 {{-- Chrome for the employee form modal.
 
      It lived inside register.blade.php's page-scoped <style>, which meant the
-     six other screens using these class names — Leave & Overtime, Loans,
+     five other screens using these class names — Leave & Loans,
      Project Assignment, both Payroll Processing pages and the Employee
      directory — rendered their dialogs with no styling at all: a browser
      default close button, unstyled Cancel and Save, no navy header.

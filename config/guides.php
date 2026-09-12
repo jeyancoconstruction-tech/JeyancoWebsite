@@ -59,29 +59,16 @@ return [
         ]],
     ],
 
-    'leave-overtime' => [
-        'en' => ['title' => 'Leave and Overtime', 'lines' => [
-            'File Leave and File Overtime record a request. It stays pending until somebody acts on it.',
-            'Approve or Reject decides it, and payroll reads that decision.',
-            'Apply filters the two lists; Reset clears the filters again.',
+    'leave-loans' => [
+        'en' => ['title' => 'Leave and Loans', 'lines' => [
+            'File Leave records a request. It stays pending until somebody approves or rejects it, and payroll reads that decision.',
+            'New Loan / Advance records what was handed over; payroll collects against it each period, and Record payment covers anything paid back outside a run.',
+            'Overtime is not filed here. Payroll counts it from attendance — the time past the shift\'s regular hours.',
         ]],
-        'tl' => ['title' => 'Leave at Overtime', 'lines' => [
-            'Ang File Leave at File Overtime ay nagre-record ng request. Nananatili itong pending hanggang may kumilos.',
-            'Ang Approve o Reject ang magdedesisyon, at ito ang binabasa ng payroll.',
-            'Ang Apply ang sumasala sa dalawang listahan; ang Reset ang naglilinis ng filter.',
-        ]],
-    ],
-
-    'loans' => [
-        'en' => ['title' => 'Loans and Advances', 'lines' => [
-            'New Loan / Advance records what was handed over. The balance starts at the full amount.',
-            'Payroll collects against it each period, so the balance falls on its own.',
-            'Record payment is for anything paid back outside a payroll run.',
-        ]],
-        'tl' => ['title' => 'Mga Utang at Vale', 'lines' => [
-            'Ang New Loan / Advance ang nagre-record ng ibinigay. Buo ang halaga sa simula ng balanse.',
-            'Kinokolekta ito ng payroll kada panahon, kaya kusang bumababa ang balanse.',
-            'Ang Record payment ay para sa anumang binayaran sa labas ng payroll run.',
+        'tl' => ['title' => 'Leave at Utang', 'lines' => [
+            'Ang File Leave ay nagre-record ng request. Pending ito hanggang may mag-approve o mag-reject, at ang desisyong iyon ang binabasa ng payroll.',
+            'Ang New Loan / Advance ang nagre-record ng ibinigay; kinokolekta ito ng payroll kada panahon, at ang Record payment ay para sa binayaran sa labas ng run.',
+            'Hindi dito fina-file ang overtime. Binibilang ito ng payroll mula sa attendance — ang oras na lampas sa regular hours ng shift.',
         ]],
     ],
 

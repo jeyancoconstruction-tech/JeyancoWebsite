@@ -120,7 +120,7 @@
                 @empty
                     @include('modules._empty', ['cols' => 10, 'icon' => 'fa-calculator',
                         'title' => __('Nothing computed for this period'),
-                        'sub' => __('No attendance, approved leave or approved overtime falls inside it.')])
+                        'sub' => __('No attendance or approved leave falls inside it.')])
                 @endforelse
                 </tbody>
             </table>

@@ -189,19 +189,6 @@ class DashboardController extends Controller
             }
         }
 
-        if (Schema::hasTable('overtime_requests')) {
-            $n = \App\Models\OvertimeRequest::where('status', 'pending')->count();
-            if ($n > 0) {
-                $rows[] = [
-                    'icon'  => 'fa-clock',
-                    'tone'  => 'warn',
-                    'label' => 'Overtime claims awaiting approval',
-                    'count' => $n,
-                    'url'   => route('leave.index', ['tab' => 'overtime', 'status' => 'pending']),
-                ];
-            }
-        }
-
         if (Schema::hasTable('payroll_runs')) {
             $open = \App\Models\PayrollRun::whereIn('status', ['draft', 'calculated'])->count();
             if ($open > 0) {

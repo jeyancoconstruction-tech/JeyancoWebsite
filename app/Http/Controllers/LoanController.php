@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
-use App\Models\Employee;
 use App\Models\Loan;
 use App\Models\LoanDeduction;
 use Illuminate\Http\Request;
@@ -13,30 +12,16 @@ use Illuminate\Http\Request;
  *
  * The `vale` on employees is a different instrument, settled inside a single
  * period, and payroll already handles it. Nothing here touches it.
+ *
+ * The list is the Loans & Advances tab of Leave & Loans (LeaveLoansController);
+ * the writes stay here, behind the loans module.
  */
 class LoanController extends Controller
 {
-    public function index(Request $request)
+    /** The old address. Loans & Advances is a tab of Leave & Loans now. */
+    public function index()
     {
-        $loans = Loan::with(['employee', 'deductions'])
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->when($request->filled('type'), fn ($q) => $q->where('type', $request->type))
-            ->when($request->filled('q'), fn ($q) => $q->whereHas('employee',
-                fn ($e) => $e->where('name', 'like', '%' . $request->q . '%')))
-            ->latest('issued_on')
-            ->paginate(15)
-            ->withQueryString();
-
-        return view('loans.index', [
-            'loans'     => $loans,
-            'employees' => Employee::registered()->orderBy('name')->get(['id', 'name']),
-            'summary'   => [
-                'active'      => Loan::where('status', 'active')->count(),
-                'outstanding' => (float) Loan::where('status', 'active')->sum('balance'),
-                'issued'      => (float) Loan::sum('principal'),
-                'collected'   => (float) LoanDeduction::sum('amount'),
-            ],
-        ]);
+        return redirect()->route('leave.index', ['tab' => 'loans']);
     }
 
     public function store(Request $request)

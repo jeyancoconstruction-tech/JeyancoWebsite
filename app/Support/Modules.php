@@ -94,11 +94,14 @@ final class Modules
         return array_keys(self::labels());
     }
 
-    /** Human labels, matching the sidebar wording exactly. */
+    /**
+     * Human labels. Leave and loans are the two tabs of the Leave & Loans
+     * page, so they carry the tab names; the rest match the sidebar.
+     */
     public static function labels(): array
     {
         return [
-            self::LEAVE       => 'Leave & Overtime',
+            self::LEAVE       => 'Leave',
             self::LOANS       => 'Loans & Advances',
             self::ASSIGNMENTS => 'Project Assignment',
             self::PROCESSING  => 'Payroll Processing',

@@ -163,14 +163,10 @@
                 @endif
             </a>
 
+            {{-- Loans & Advances is a tab on this page, not an entry of its own. --}}
             @if(auth()->user()?->canAccessModule('leave'))
-                <a class="nav-link {{ request()->is('leave-overtime*') ? 'active' : '' }}" href="{{ route('leave.index') }}">
-                    <i data-lucide="calendar-clock"></i> <span>{{ __('Leave & Overtime') }}</span>
-                </a>
-            @endif
-            @if(auth()->user()?->canAccessModule('loans'))
-                <a class="nav-link {{ request()->is('loans*') ? 'active' : '' }}" href="{{ route('loans.index') }}">
-                    <i data-lucide="hand-coins"></i> <span>{{ __('Loans & Advances') }}</span>
+                <a class="nav-link {{ request()->is('leave-loans*') ? 'active' : '' }}" href="{{ route('leave.index') }}">
+                    <i data-lucide="calendar-days"></i> <span>{{ __('Leave & Loans') }}</span>
                 </a>
             @endif
 

@@ -7,7 +7,6 @@ use App\Models\Employee;
 use App\Models\LaborType;
 use App\Models\Loan;
 use App\Models\LeaveRequest;
-use App\Models\OvertimeRequest;
 use App\Models\PayrollRun;
 use App\Models\Shift;
 use App\Models\Site;
@@ -89,9 +88,8 @@ class ModuleSmokeTest extends TestCase
     public function test_new_module_pages_render(): void
     {
         $urls = [
-            '/leave-overtime',
-            '/leave-overtime?tab=overtime',
-            '/loans',
+            '/leave-loans',
+            '/leave-loans?tab=loans',
             '/project-assignments',
             '/payroll-processing',
             '/payslips',
@@ -152,7 +150,7 @@ class ModuleSmokeTest extends TestCase
         }
     }
 
-    /** The whole chain: leave + overtime + a loan, through a run, to a payslip. */
+    /** The whole chain: leave + a loan, through a run, to a payslip — and no overtime claim. */
     public function test_payroll_run_computes_approves_and_finalises(): void
     {
         $from = now()->subDays(7)->toDateString();
@@ -164,10 +162,13 @@ class ModuleSmokeTest extends TestCase
             'is_paid' => true, 'status' => 'approved',
         ]);
 
-        OvertimeRequest::create([
+        // A claim left on file from when overtime was filed by hand. Overtime
+        // is counted from attendance now, so this must not be paid on top.
+        \DB::table('overtime_requests')->insert([
             'employee_id' => $this->employee->id, 'site_id' => $this->site->id,
             'date' => $from, 'hours' => 3, 'hourly_rate' => 125,
             'multiplier' => 1.25, 'amount' => 468.75, 'status' => 'approved',
+            'created_at' => now(), 'updated_at' => now(),
         ]);
 
         $loan = Loan::create([
@@ -187,7 +188,16 @@ class ModuleSmokeTest extends TestCase
         $this->assertGreaterThan(0, $run->items()->count(), 'run produced no lines');
 
         $item = $run->items()->first();
-        $this->assertGreaterThan(0, $item->overtime_pay, 'approved overtime was not added');
+
+        $computed = app(\App\Services\PayrollService::class)->computeForRange($from, $to);
+        $engine   = collect($computed['employees'])->firstWhere('employee_id', $this->employee->id);
+        $otHours  = collect($computed['days'])->flatMap(fn ($d) => $d['details'] ?? [])
+            ->where('employee_id', $this->employee->id)->sum('ot_hours');
+
+        $this->assertEqualsWithDelta((float) data_get($engine, 'totals.overtime', 0), $item->overtime_pay, 0.01,
+            'overtime is what attendance counted — the old claim must not be added');
+        $this->assertEqualsWithDelta((float) $otHours, $item->ot_hours, 0.01,
+            'the overtime hours on the line are the ones attendance counted');
         $this->assertGreaterThan(0, $item->leave_pay, 'approved paid leave was not credited');
         $this->assertSame(500.0, (float) $item->loan_deduction, 'loan instalment was not charged');
 
@@ -246,10 +256,10 @@ class ModuleSmokeTest extends TestCase
 
         // An Employee may see their payslips and leave...
         $this->actingAs($employee)->get('/payslips')->assertOk();
-        $this->actingAs($employee)->get('/leave-overtime')->assertOk();
+        $this->actingAs($employee)->get('/leave-loans')->assertOk();
 
-        // ...and nothing else the extension added.
-        foreach (['/payroll-processing', '/loans', '/payroll-reports',
+        // ...and nothing else the extension added — the loans tab included.
+        foreach (['/payroll-processing', '/loans', '/leave-loans?tab=loans', '/payroll-reports',
                   '/project-assignments'] as $url) {
             $this->actingAs($employee)->get($url)->assertForbidden();
         }

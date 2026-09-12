@@ -198,16 +198,22 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
 // =========================================================================
 Route::middleware(['auth', 'active'])->group(function () {
 
-    // ── WORKFORCE · Leave & Overtime ──────────────────────────────────────
+    // ── WORKFORCE · Leave & Loans ─────────────────────────────────────────
+    // One page with two tabs. It opens under the leave module; the loans tab
+    // checks the loans module itself, and every loan write is in the group
+    // below, so a role with leave but not loans reaches neither.
     Route::middleware('module:leave')->group(function () {
-        Route::get ('/leave-overtime', [\App\Http\Controllers\LeaveOvertimeController::class, 'index'])->name('leave.index');
-        Route::post('/leave-overtime/leave',    [\App\Http\Controllers\LeaveOvertimeController::class, 'storeLeave'])->name('leave.store');
-        Route::post('/leave-overtime/overtime', [\App\Http\Controllers\LeaveOvertimeController::class, 'storeOvertime'])->name('overtime.store');
-        Route::patch('/leave-overtime/{kind}/{id}/decide', [\App\Http\Controllers\LeaveOvertimeController::class, 'decide'])
-            ->whereIn('kind', ['leave', 'overtime'])->name('leave.decide');
+        Route::get  ('/leave-loans',                   [\App\Http\Controllers\LeaveLoansController::class, 'index'])->name('leave.index');
+        Route::post ('/leave-loans/leave',             [\App\Http\Controllers\LeaveLoansController::class, 'storeLeave'])->name('leave.store');
+        Route::patch('/leave-loans/leave/{id}/decide', [\App\Http\Controllers\LeaveLoansController::class, 'decide'])
+            ->whereNumber('id')->name('leave.decide');
+
+        // Where the page lived while it also filed overtime.
+        Route::redirect('/leave-overtime', '/leave-loans');
     });
 
-    // ── WORKFORCE · Loans & Advances ──────────────────────────────────────
+    // ── WORKFORCE · Loans & Advances (a tab of Leave & Loans) ─────────────
+    // GET /loans only redirects to the tab now; the writes live here.
     Route::middleware('module:loans')->group(function () {
         Route::get ('/loans',              [\App\Http\Controllers\LoanController::class, 'index'])->name('loans.index');
         Route::post('/loans',              [\App\Http\Controllers\LoanController::class, 'store'])->name('loans.store');

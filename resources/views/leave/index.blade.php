@@ -1,16 +1,28 @@
 @extends('layouts')
-@section('page_title', 'Leave & Overtime')
+@section('page_title', 'Leave & Loans')
 
 @section('content')
+@php
+    // The subtitle and the one button follow the open tab.
+    $head = $tab === 'loans'
+        ? [
+            'sub'    => __('Sums issued to a worker and collected back over several payrolls. Payroll Processing takes the instalment due; the balance moves only when a run is finalised.'),
+            'modal'  => 'loanModal',
+            'button' => __('New Loan / Advance'),
+        ]
+        : [
+            'sub'    => __('Filed leave and the decisions on it. Approved leave is picked up by Payroll Processing and never writes an attendance record. Overtime is not filed — payroll counts it from attendance.'),
+            'modal'  => 'leaveModal',
+            'button' => __('File Leave'),
+        ];
+@endphp
 <div class="mod-page">
 
     @include('modules._head', [
-        'title' => __('Leave & Overtime'),
-        'sub'   => __('Filed leave and overtime claims, and the decisions on them. Approved rows are picked up by Payroll Processing; neither one writes an attendance record.'),
+        'title'   => __('Leave & Loans'),
+        'sub'     => $head['sub'],
         'actions' => '<button type="button" class="mod-btn primary" data-bs-toggle="modal" data-bs-target="#'
-                     . ($tab === 'overtime' ? 'otModal' : 'leaveModal') . '">'
-                     . '<i class="fas fa-plus"></i> ' . ($tab === 'overtime' ? __('File Overtime') : __('File Leave'))
-                     . '</button>',
+                     . $head['modal'] . '"><i class="fas fa-plus"></i> ' . $head['button'] . '</button>',
     ])
 
     @include('modules._flash')
@@ -20,10 +32,11 @@
             <i class="fas fa-calendar-day"></i> {{ __('Leave') }}
             @if($counts['leave_pending'])<span class="mod-tab-count">{{ $counts['leave_pending'] }}</span>@endif
         </a>
-        <a class="mod-tab {{ $tab === 'overtime' ? 'active' : '' }}" href="{{ route('leave.index', ['tab' => 'overtime']) }}">
-            <i class="fas fa-clock"></i> {{ __('Overtime') }}
-            @if($counts['ot_pending'])<span class="mod-tab-count">{{ $counts['ot_pending'] }}</span>@endif
-        </a>
+        @if($canLoans)
+            <a class="mod-tab {{ $tab === 'loans' ? 'active' : '' }}" href="{{ route('leave.index', ['tab' => 'loans']) }}">
+                <i class="fas fa-hand-holding-dollar"></i> {{ __('Loans & Advances') }}
+            </a>
+        @endif
     </div>
 
     @if($tab === 'leave')
@@ -103,12 +116,12 @@
                             <td>
                                 @if($row->status === 'pending')
                                     <div class="mod-row-actions">
-                                        <form method="POST" action="{{ route('leave.decide', ['kind' => 'leave', 'id' => $row->id]) }}">
+                                        <form method="POST" action="{{ route('leave.decide', ['id' => $row->id]) }}">
                                             @csrf @method('PATCH')
                                             <input type="hidden" name="decision" value="approved">
                                             <button class="mod-btn sm ok" type="submit"><i class="fas fa-check"></i> {{ __('Approve') }}</button>
                                         </form>
-                                        <form method="POST" action="{{ route('leave.decide', ['kind' => 'leave', 'id' => $row->id]) }}">
+                                        <form method="POST" action="{{ route('leave.decide', ['id' => $row->id]) }}">
                                             @csrf @method('PATCH')
                                             <input type="hidden" name="decision" value="rejected">
                                             <button class="mod-btn sm danger" type="submit"><i class="fas fa-xmark"></i> {{ __('Reject') }}</button>
@@ -127,42 +140,60 @@
             @if($leave->hasPages())<div class="mod-pager">{{ $leave->links() }}</div>@endif
         </div>
     @else
+        <div class="mod-note">
+            <i class="fas fa-circle-info"></i>
+            <div>{{ __('Vale is a separate instrument, settled inside one pay period, and is still handled in Payroll Settings. Nothing here changes it.') }}</div>
+        </div>
+
+        <div class="mod-stats">
+            <div class="mod-stat">
+                <p class="mod-stat-label">{{ __('Active') }}</p>
+                <p class="mod-stat-value">{{ $summary['active'] }}</p>
+                <p class="mod-stat-sub">{{ __('still being collected') }}</p>
+            </div>
+            <div class="mod-stat">
+                <p class="mod-stat-label">{{ __('Outstanding') }}</p>
+                <p class="mod-stat-value is-warn">₱{{ number_format($summary['outstanding'], 2) }}</p>
+                <p class="mod-stat-sub">{{ __('owed across all workers') }}</p>
+            </div>
+            <div class="mod-stat">
+                <p class="mod-stat-label">{{ __('Total Issued') }}</p>
+                <p class="mod-stat-value">₱{{ number_format($summary['issued'], 2) }}</p>
+            </div>
+            <div class="mod-stat">
+                <p class="mod-stat-label">{{ __('Collected') }}</p>
+                <p class="mod-stat-value is-ok">₱{{ number_format($summary['collected'], 2) }}</p>
+            </div>
+        </div>
+
         <div class="mod-card">
             <form method="GET" class="mod-filters">
-                <input type="hidden" name="tab" value="overtime">
+                <input type="hidden" name="tab" value="loans">
                 <div class="mod-filter mod-filter-grow">
-                    <label for="oq">{{ __('Employee') }}</label>
-                    <input id="oq" class="form-control" type="text" name="q" value="{{ request('q') }}" placeholder="{{ __('Search a name') }}">
+                    <label for="fq">{{ __('Employee') }}</label>
+                    <input id="fq" class="form-control" type="text" name="q" value="{{ request('q') }}" placeholder="{{ __('Search a name') }}">
                 </div>
                 <div class="mod-filter">
-                    <label for="ostatus">{{ __('Status') }}</label>
-                    <select id="ostatus" class="form-select" name="status">
+                    <label for="ftype">{{ __('Type') }}</label>
+                    <select id="ftype" class="form-select" name="type">
                         <option value="">{{ __('All') }}</option>
-                        @foreach(\App\Models\OvertimeRequest::STATUSES as $k => $v)
+                        @foreach(\App\Models\Loan::TYPES as $k => $v)
+                            <option value="{{ $k }}" @selected(request('type') === $k)>{{ $v }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mod-filter">
+                    <label for="fstatus">{{ __('Status') }}</label>
+                    <select id="fstatus" class="form-select" name="status">
+                        <option value="">{{ __('All') }}</option>
+                        @foreach(\App\Models\Loan::STATUSES as $k => $v)
                             <option value="{{ $k }}" @selected(request('status') === $k)>{{ $v }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="mod-filter">
-                    <label for="osite">{{ __('Site') }}</label>
-                    <select id="osite" class="form-select" name="site_id">
-                        <option value="">{{ __('All sites') }}</option>
-                        @foreach($sites as $s)
-                            <option value="{{ $s->id }}" @selected(request('site_id') == $s->id)>{{ $s->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="mod-filter">
-                    <label for="ofrom">{{ __('From') }}</label>
-                    <input id="ofrom" class="form-control" type="date" name="from" value="{{ request('from') }}">
-                </div>
-                <div class="mod-filter">
-                    <label for="oto">{{ __('To') }}</label>
-                    <input id="oto" class="form-control" type="date" name="to" value="{{ request('to') }}">
-                </div>
                 <div class="mod-filter-actions">
                     <button class="mod-btn primary" type="submit"><i class="fas fa-magnifying-glass"></i> {{ __('Apply') }}</button>
-                    <a class="mod-btn" href="{{ route('leave.index', ['tab' => 'overtime']) }}">{{ __('Reset') }}</a>
+                    <a class="mod-btn" href="{{ route('leave.index', ['tab' => 'loans']) }}">{{ __('Reset') }}</a>
                 </div>
             </form>
 
@@ -171,62 +202,57 @@
                     <thead>
                         <tr>
                             <th>{{ __('Employee') }}</th>
-                            <th>{{ __('Date') }}</th>
-                            <th>{{ __('Site') }}</th>
-                            <th>{{ __('Hours') }}</th>
-                            <th class="num">{{ __('Rate') }}</th>
-                            <th class="num">{{ __('Amount') }}</th>
+                            <th>{{ __('Type') }}</th>
+                            <th class="num">{{ __('Principal') }}</th>
+                            <th class="num">{{ __('Balance') }}</th>
+                            <th class="num">{{ __('Instalment') }}</th>
+                            <th>{{ __('Schedule') }}</th>
+                            <th>{{ __('Issued') }}</th>
                             <th>{{ __('Status') }}</th>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody>
-                    @forelse($overtime as $row)
+                    @forelse($loans as $loan)
                         <tr>
-                            <td>@include('modules._person', ['name' => $row->employee->name ?? '—', 'sub' => $row->employee->position ?? ''])</td>
-                            <td class="muted">{{ $row->date->format('M d, Y') }}</td>
-                            <td class="muted">{{ $row->site->name ?? '—' }}</td>
-                            <td class="strong">
-                                {{ rtrim(rtrim(number_format($row->hours, 2), '0'), '.') }}h
-                                @if($row->starts_at && $row->ends_at)
-                                    <div class="mod-person-sub">{{ \Carbon\Carbon::parse($row->starts_at)->format('g:i A') }} – {{ \Carbon\Carbon::parse($row->ends_at)->format('g:i A') }}</div>
-                                @endif
+                            <td>@include('modules._person', ['name' => $loan->employee->name ?? '—', 'sub' => $loan->reference ?: ''])</td>
+                            <td class="muted">{{ $loan->type_label }}</td>
+                            <td class="num">₱{{ number_format($loan->principal, 2) }}</td>
+                            <td class="num strong">
+                                ₱{{ number_format($loan->balance, 2) }}
+                                <div class="mod-person-sub">{{ $loan->progress }}% {{ __('paid') }}</div>
                             </td>
-                            <td class="num muted">₱{{ number_format($row->hourly_rate, 2) }} &times; {{ rtrim(rtrim(number_format($row->multiplier, 2), '0'), '.') }}</td>
-                            <td class="num strong">₱{{ number_format($row->amount, 2) }}</td>
+                            <td class="num">₱{{ number_format($loan->installment, 2) }}</td>
+                            <td class="muted">{{ $loan->schedule === 'monthly' ? __('Monthly') : __('Per payroll') }}</td>
+                            <td class="muted">{{ $loan->issued_on->format('M d, Y') }}</td>
                             <td>
-                                @php $tone = ['approved' => 'ok', 'rejected' => 'danger'][$row->status] ?? 'warn'; @endphp
-                                <span class="mod-badge {{ $tone }}"><span class="dot"></span>{{ $row->status_label }}</span>
+                                @php $tone = ['paid' => 'ok', 'cancelled' => 'muted', 'on_hold' => 'warn'][$loan->status] ?? 'info'; @endphp
+                                <span class="mod-badge {{ $tone }}"><span class="dot"></span>{{ $loan->status_label }}</span>
                             </td>
                             <td>
-                                @if($row->status === 'pending')
+                                @if($loan->status === 'active')
                                     <div class="mod-row-actions">
-                                        <form method="POST" action="{{ route('leave.decide', ['kind' => 'overtime', 'id' => $row->id]) }}">
-                                            @csrf @method('PATCH')
-                                            <input type="hidden" name="decision" value="approved">
-                                            <button class="mod-btn sm ok" type="submit"><i class="fas fa-check"></i> {{ __('Approve') }}</button>
-                                        </form>
-                                        <form method="POST" action="{{ route('leave.decide', ['kind' => 'overtime', 'id' => $row->id]) }}">
-                                            @csrf @method('PATCH')
-                                            <input type="hidden" name="decision" value="rejected">
-                                            <button class="mod-btn sm danger" type="submit"><i class="fas fa-xmark"></i> {{ __('Reject') }}</button>
-                                        </form>
+                                        <button class="mod-btn sm" type="button" data-bs-toggle="modal"
+                                                data-bs-target="#payModal{{ $loan->id }}">
+                                            <i class="fas fa-peso-sign"></i> {{ __('Record payment') }}
+                                        </button>
                                     </div>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        @include('modules._empty', ['cols' => 8, 'icon' => 'fa-clock',
-                            'title' => __('No overtime filed'), 'sub' => __('Approved overtime is added to payroll as a separate earning.')])
+                        @include('modules._empty', ['cols' => 9, 'icon' => 'fa-hand-holding-dollar',
+                            'title' => __('No loans recorded'), 'sub' => __('Issued loans and advances appear here with their running balance.')])
                     @endforelse
                     </tbody>
                 </table>
             </div>
-            @if($overtime->hasPages())<div class="mod-pager">{{ $overtime->links() }}</div>@endif
+            @if($loans->hasPages())<div class="mod-pager">{{ $loans->links() }}</div>@endif
         </div>
     @endif
 </div>
 
+@if($tab === 'leave')
 {{-- ── File leave ──────────────────────────────────────────────────────── --}}
 <div class="modal fade" id="leaveModal" tabindex="-1" aria-hidden="true" aria-labelledby="leaveModalTitle">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog">
@@ -290,76 +316,130 @@
     </div>
   </div>
 </div>
+@else
+{{-- A record-payment dialog per active loan: the amount is capped at that
+     loan's own balance, which a single shared form could not enforce. --}}
+@foreach($loans as $loan)
+    @if($loan->status === 'active')
+    <div class="modal fade" id="payModal{{ $loan->id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered emp-dialog" style="max-width:460px;">
+        <div class="modal-content emp-modal">
+          <form method="POST" action="{{ route('loans.payment', $loan) }}">
+            @csrf
+            <div class="emp-head">
+                <span class="emp-head-icon"><i class="fas fa-peso-sign"></i></span>
+                <div class="emp-head-text">
+                    <h6 class="emp-head-title">{{ __('Record Payment') }}</h6>
+                    <p class="emp-head-sub">{{ $loan->employee->name ?? '' }} &middot; {{ __('balance') }} ₱{{ number_format($loan->balance, 2) }}</p>
+                </div>
+                <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body emp-body">
+                <div class="mod-note">
+                    <i class="fas fa-circle-info"></i>
+                    <div>{{ __('For a payment made outside payroll. Payroll posts its own collections when a run is finalised.') }}</div>
+                </div>
+                <div class="emp-field">
+                    <label class="ep-label" for="amt{{ $loan->id }}">{{ __('Amount') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="amt{{ $loan->id }}" type="number" step="0.01" min="0.01"
+                           max="{{ $loan->balance }}" name="amount" required>
+                </div>
+                <div class="emp-field">
+                    <label class="ep-label" for="don{{ $loan->id }}">{{ __('Date') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="don{{ $loan->id }}" type="date" name="deducted_on" value="{{ now()->toDateString() }}" required>
+                </div>
+                <div class="emp-field">
+                    <label class="ep-label" for="nt{{ $loan->id }}">{{ __('Note') }}</label>
+                    <input class="form-control" id="nt{{ $loan->id }}" type="text" name="note" maxlength="255">
+                </div>
+            </div>
+            <div class="emp-foot">
+                <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                <button type="submit" class="emp-btn-save"><i class="fas fa-check"></i> <span>{{ __('Record') }}</span></button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    @endif
+@endforeach
 
-{{-- ── File overtime ───────────────────────────────────────────────────── --}}
-<div class="modal fade" id="otModal" tabindex="-1" aria-hidden="true" aria-labelledby="otModalTitle">
+{{-- ── New loan ────────────────────────────────────────────────────────── --}}
+<div class="modal fade" id="loanModal" tabindex="-1" aria-hidden="true" aria-labelledby="loanModalTitle">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog">
     <div class="modal-content emp-modal">
-      <form method="POST" action="{{ route('overtime.store') }}">
+      <form method="POST" action="{{ route('loans.store') }}">
         @csrf
         <div class="emp-head">
-            <span class="emp-head-icon" aria-hidden="true"><i class="fas fa-clock"></i></span>
+            <span class="emp-head-icon"><i class="fas fa-hand-holding-dollar"></i></span>
             <div class="emp-head-text">
-                <h6 class="emp-head-title" id="otModalTitle">{{ __('File Overtime') }}</h6>
-                <p class="emp-head-sub">{{ __('A claim on top of the day the kiosk already recorded.') }}</p>
+                <h6 class="emp-head-title" id="loanModalTitle">{{ __('New Loan or Advance') }}</h6>
+                <p class="emp-head-sub">{{ __('The balance starts at the full amount and falls as payroll collects.') }}</p>
             </div>
             <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body emp-body">
             <div class="mod-form-grid">
                 <div class="emp-field full">
-                    <label class="ep-label" for="ot_emp">{{ __('Employee') }} <span class="ep-req">*</span></label>
-                    <select class="form-select" id="ot_emp" name="employee_id" required>
+                    <label class="ep-label" for="ln_emp">{{ __('Employee') }} <span class="ep-req">*</span></label>
+                    <select class="form-select" id="ln_emp" name="employee_id" required>
                         <option value="">{{ __('— Select —') }}</option>
                         @foreach($employees as $e)<option value="{{ $e->id }}">{{ $e->name }}</option>@endforeach
                     </select>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ot_date">{{ __('Date') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="ot_date" type="date" name="date" required>
-                </div>
-                <div class="emp-field">
-                    <label class="ep-label" for="ot_site">{{ __('Site') }}</label>
-                    <select class="form-select" id="ot_site" name="site_id">
-                        <option value="">{{ __('— None —') }}</option>
-                        @foreach($sites as $s)<option value="{{ $s->id }}">{{ $s->name }}</option>@endforeach
+                    <label class="ep-label" for="ln_type">{{ __('Type') }} <span class="ep-req">*</span></label>
+                    <select class="form-select" id="ln_type" name="type" required>
+                        @foreach(\App\Models\Loan::TYPES as $k => $v)<option value="{{ $k }}">{{ $v }}</option>@endforeach
                     </select>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ot_start">{{ __('Start Time') }}</label>
-                    <input class="form-control" id="ot_start" type="time" name="starts_at">
+                    <label class="ep-label" for="ln_ref">{{ __('Reference') }}</label>
+                    <input class="form-control" id="ln_ref" type="text" name="reference" maxlength="40">
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ot_end">{{ __('End Time') }}</label>
-                    <input class="form-control" id="ot_end" type="time" name="ends_at">
+                    <label class="ep-label" for="ln_amt">{{ __('Amount') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="ln_amt" type="number" step="0.01" min="1" name="principal" required>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ot_hours">{{ __('Total Hours') }}</label>
-                    <input class="form-control" id="ot_hours" type="number" step="0.25" min="0" name="hours" placeholder="{{ __('Auto from times') }}">
+                    <label class="ep-label" for="ln_inst">{{ __('Instalment') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="ln_inst" type="number" step="0.01" min="1" name="installment" required>
+                    <span class="ep-hint">{{ __('Taken each payroll until the balance is nil.') }}</span>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ot_mult">{{ __('OT Multiplier') }}</label>
-                    <input class="form-control" id="ot_mult" type="number" step="0.05" min="1" name="multiplier" value="1.25">
-                    <span class="ep-hint">{{ __('Applied to the worker\'s hourly rate.') }}</span>
+                    <label class="ep-label" for="ln_sched">{{ __('Schedule') }} <span class="ep-req">*</span></label>
+                    <select class="form-select" id="ln_sched" name="schedule" required>
+                        <option value="per_payroll">{{ __('Every payroll') }}</option>
+                        <option value="monthly">{{ __('Monthly') }}</option>
+                    </select>
+                </div>
+                <div class="emp-field">
+                    <label class="ep-label" for="ln_issued">{{ __('Date Issued') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="ln_issued" type="date" name="issued_on" value="{{ now()->toDateString() }}" required>
+                </div>
+                <div class="emp-field">
+                    <label class="ep-label" for="ln_starts">{{ __('Start Collecting') }}</label>
+                    <input class="form-control" id="ln_starts" type="date" name="starts_on">
+                    <span class="ep-hint">{{ __('Blank collects from the next payroll.') }}</span>
                 </div>
                 <div class="emp-field full">
-                    <label class="ep-label" for="ot_reason">{{ __('Reason') }}</label>
-                    <textarea class="form-control" id="ot_reason" name="reason" rows="2" style="height:auto;padding:9px 13px;"></textarea>
+                    <label class="ep-label" for="ln_notes">{{ __('Notes') }}</label>
+                    <textarea class="form-control" id="ln_notes" name="notes" rows="2" style="height:auto;padding:9px 13px;"></textarea>
                 </div>
             </div>
         </div>
         <div class="emp-foot">
             <p class="emp-foot-note"><span class="ep-req">*</span> {{ __('Required') }}</p>
             <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-            <button type="submit" class="emp-btn-save"><i class="fas fa-check"></i> <span>{{ __('File Overtime') }}</span></button>
+            <button type="submit" class="emp-btn-save"><i class="fas fa-check"></i> <span>{{ __('Record') }}</span></button>
         </div>
       </form>
     </div>
   </div>
 </div>
+@endif
 
 @include('modules._kit')
 @include('employees._profile_styles')
 @include('employees._modal_styles')
 @endsection
-

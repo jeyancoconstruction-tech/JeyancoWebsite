@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Loan;
 use App\Models\LoanDeduction;
-use App\Models\OvertimeRequest;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunItem;
 use App\Models\Site;
@@ -61,7 +60,7 @@ class PayrollReportController extends Controller
             'reports' => self::REPORTS,
             'runs'    => $runs,
             'items'   => $items,
-            'rows'    => $this->rowsFor($report, $items, $runs, $from, $to),
+            'rows'    => $this->rowsFor($report, $items, $runs),
             'totals'  => [
                 'gross'      => round($items->sum('gross_pay'), 2),
                 'deductions' => round($items->sum('total_deductions'), 2),
@@ -79,7 +78,7 @@ class PayrollReportController extends Controller
     }
 
     /** Each report is the same rows, grouped by a different question. */
-    private function rowsFor(string $report, $items, $runs, string $from, string $to): array
+    private function rowsFor(string $report, $items, $runs): array
     {
         return match ($report) {
             'employee' => $items->groupBy('employee_id')->map(fn ($g) => [
@@ -102,19 +101,18 @@ class PayrollReportController extends Controller
                 'net'        => round($g->sum('net_pay'), 2),
             ])->sortBy('label')->values()->all(),
 
-            'overtime' => OvertimeRequest::with(['employee', 'site'])
-                ->approved()->inRange($from, $to)
-                ->get()
-                ->groupBy('employee_id')
-                ->map(fn ($g) => [
-                    'label'      => $g->first()->employee->name ?? '—',
-                    'sub'        => $g->first()->site->name ?? 'No site',
-                    'count'      => $g->count(),
-                    'days'       => round($g->sum('hours'), 2),
-                    'gross'      => round($g->sum('amount'), 2),
-                    'deductions' => 0,
-                    'net'        => round($g->sum('amount'), 2),
-                ])->sortBy('label')->values()->all(),
+            // Overtime as the runs paid it, which is overtime counted from
+            // attendance. It listed filed claims until those were retired; a
+            // report of what was claimed would disagree with the payslips.
+            'overtime' => $items->where('overtime_pay', '>', 0)->groupBy('employee_id')->map(fn ($g) => [
+                'label'      => $g->first()->employee_name,
+                'sub'        => $g->first()->site->name ?? 'No site',
+                'count'      => $g->count(),
+                'days'       => round($g->sum('ot_hours'), 2),
+                'gross'      => round($g->sum('overtime_pay'), 2),
+                'deductions' => 0,
+                'net'        => round($g->sum('overtime_pay'), 2),
+            ])->sortBy('label')->values()->all(),
 
             'deductions' => collect([
                 ['label' => 'Vale',            'key' => 'vale'],
