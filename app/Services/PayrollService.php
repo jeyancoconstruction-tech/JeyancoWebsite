@@ -837,6 +837,9 @@ class PayrollService
                     'rate'                => round($r['rate'], 2),
                     'basicPay'            => round($r['basicPay'], 2),
                     'ot_hours'            => round($r['ot_hours'], 2),
+                    // Exact, where ot_hours is rounded: a week added up from
+                    // rounded days drifts by a minute (3 × 2.17 is not 6h 30m).
+                    'ot_minutes'          => (int) round($r['ot_hours'] * 60),
                     'ot_rate'             => round($r['ot_rate'], 2),
                     'late_minutes'        => $r['lateMinutes'],
                     'otPay'               => round($r['otPay'], 2),

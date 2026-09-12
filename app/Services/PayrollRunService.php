@@ -38,6 +38,49 @@ class PayrollRunService
      */
     public function calculate(PayrollRun $run): PayrollRun
     {
+        $rows = $this->rows($run);
+
+        DB::transaction(function () use ($run, $rows) {
+            $run->items()->delete();
+
+            foreach ($rows as $row) {
+                PayrollRunItem::create($row);
+            }
+
+            $run->update([
+                'status'           => $run->status === 'draft' ? 'calculated' : $run->status,
+                'total_gross'      => round(array_sum(array_column($rows, 'gross_pay')), 2),
+                'total_deductions' => round(array_sum(array_column($rows, 'total_deductions')), 2),
+                'total_net'        => round(array_sum(array_column($rows, 'net_pay')), 2),
+                'employee_count'   => count($rows),
+                'calculated_at'    => now(),
+            ]);
+        });
+
+        return $run->fresh('items');
+    }
+
+    /**
+     * What calculate() would write for a period, without writing it.
+     *
+     * The Payroll Processing page shows a period nobody has processed yet this
+     * way, so the figures the office reviews are the figures that get frozen —
+     * one computation, not a preview that could disagree with the run.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function preview(string $from, string $to): array
+    {
+        return $this->rows(new PayrollRun(['period_start' => $from, 'period_end' => $to]));
+    }
+
+    /**
+     * One row per worker the period touches, in the shape of a run item.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function rows(PayrollRun $run): array
+    {
         $from = $run->period_start->toDateString();
         $to   = $run->period_end->toDateString();
 
@@ -46,6 +89,7 @@ class PayrollRunService
         $byEmployee = collect($computed['employees'] ?? [])->keyBy('employee_id');
 
         $otHours  = $this->overtimeHours($computed['days'] ?? []);
+        $rates    = $this->ratesPriced($computed['days'] ?? []);
         $leave    = $this->approvedLeave($from, $to);
         $advances = $this->collectibleAdvances($to);
 
@@ -62,41 +106,21 @@ class PayrollRunService
             ->get()
             ->keyBy('id');
 
-        DB::transaction(function () use ($run, $employees, $byEmployee, $otHours, $leave, $advances) {
-            $run->items()->delete();
+        $rows = [];
 
-            $gross = $deductions = $net = 0.0;
-            $count = 0;
+        foreach ($employees as $id => $employee) {
+            $rows[] = $this->buildItem(
+                $run,
+                $employee,
+                $byEmployee->get($id),
+                $otHours[$id] ?? 0.0,
+                $rates[$id] ?? null,
+                $leave->get($id, collect()),
+                $advances->get($id, collect())
+            );
+        }
 
-            foreach ($employees as $id => $employee) {
-                $row = $this->buildItem(
-                    $run,
-                    $employee,
-                    $byEmployee->get($id),
-                    $otHours[$id] ?? 0.0,
-                    $leave->get($id, collect()),
-                    $advances->get($id, collect())
-                );
-
-                PayrollRunItem::create($row);
-
-                $gross      += $row['gross_pay'];
-                $deductions += $row['total_deductions'];
-                $net        += $row['net_pay'];
-                $count++;
-            }
-
-            $run->update([
-                'status'           => $run->status === 'draft' ? 'calculated' : $run->status,
-                'total_gross'      => round($gross, 2),
-                'total_deductions' => round($deductions, 2),
-                'total_net'        => round($net, 2),
-                'employee_count'   => $count,
-                'calculated_at'    => now(),
-            ]);
-        });
-
-        return $run->fresh('items');
+        return $rows;
     }
 
     /**
@@ -109,13 +133,20 @@ class PayrollRunService
         Employee $employee,
         ?array $computed,
         float $otHours,
+        ?array $rate,
         $leaveRows,
         $advanceRows
     ): array {
-        $t = $computed['totals'] ?? [];
+        $t     = $computed['totals'] ?? [];
+        $weeks = collect($computed['periods'] ?? []);
 
-        $dailyRate  = (float) ($employee->rate_per_hour * 8);
-        $hourlyRate = (float) $employee->rate_per_hour;
+        // The rate the engine priced the days at. rate_per_hour is a cached
+        // figure that can drift from the labour type's daily rate the engine
+        // actually uses, and a payslip that reads "hours × rate" has to name
+        // the rate that was used. A worker with only leave has no priced day
+        // and falls back to it.
+        $dailyRate  = $rate['daily']  ?? (float) ($employee->rate_per_hour * 8);
+        $hourlyRate = $rate['hourly'] ?? (float) $employee->rate_per_hour;
 
         // ── Earnings from attendance, as the engine computed them ─────────
         $basic      = (float) ($t['gross'] ?? 0);
@@ -126,10 +157,15 @@ class PayrollRunService
         $engineOt   = (float) ($t['overtime'] ?? 0);
 
         // The engine's gross already contains its own overtime, holiday, rest
-        // day, night differential and bonus. Basic is what is left once those
-        // are taken back out, so the payslip can show them as separate lines
+        // day and night differential. Basic is what is left once those are
+        // taken back out, so the payslip can show them as separate lines
         // without counting any peso twice.
-        $basicOnly = round($basic - $engineOt - $holiday - $restDay - $nightDiff - $bonus, 2);
+        //
+        // The bonus is not in that gross — the engine adds it to net, a bonus
+        // not being wages — so it is not taken out. It used to be, which cut
+        // basic pay by the bonus and then added it back as a line of its own:
+        // the payslip showed a bonus that the net never paid.
+        $basicOnly = round($basic - $engineOt - $holiday - $restDay - $nightDiff, 2);
         $basicOnly = max($basicOnly, 0);
 
         // ── Approved paid leave, credited at the daily rate ───────────────
@@ -144,11 +180,17 @@ class PayrollRunService
         }
         $leavePay = round($paidLeaveDays * $dailyRate, 2);
 
-        // ── Deductions the engine already applied ─────────────────────────
-        $vale             = (float) ($t['vale'] ?? 0);
-        $engineDeductions = (float) ($t['totalDeductions'] ?? 0);
-        $statutoryAndOther = round($engineDeductions - $vale, 2);
-        $statutoryAndOther = max($statutoryAndOther, 0);
+        // ── Deductions the engine already applied, line by line ───────────
+        // Each week of its answer carries the statutory split, so the run adds
+        // those up rather than carrying one lump: a contribution is remitted
+        // to its own agency, and a lump cannot be. (The totals never carried a
+        // vale at all, which is why it is read off the weeks too.)
+        $sss   = round((float) $weeks->sum('sssDeduction'), 2);
+        $phil  = round((float) $weeks->sum('philhealthDeduction'), 2);
+        $pag   = round((float) $weeks->sum('pagibigDeduction'), 2);
+        $tax   = round((float) $weeks->sum('withholdingTax'), 2);
+        $vale  = round((float) $weeks->sum('vale'), 2);
+        $other = round((float) $weeks->sum('manualDeductions'), 2);
 
         // ── Cash advance instalments due this period ──────────────────────
         $advanceDue = 0.0;
@@ -162,7 +204,7 @@ class PayrollRunService
             2
         );
 
-        $totalDeductions = round($statutoryAndOther + $vale + $advanceDue, 2);
+        $totalDeductions = round($sss + $phil + $pag + $tax + $vale + $other + $advanceDue, 2);
 
         return [
             'payroll_run_id' => $run->id,
@@ -176,7 +218,7 @@ class PayrollRunService
             'days_worked'     => (float) ($t['workdays'] ?? 0),
             'regular_hours'   => (float) ($t['hours'] ?? 0),
             'ot_hours'        => round($otHours, 2),
-            'late_minutes'    => 0,
+            'late_minutes'    => (int) $weeks->sum('late_minutes'),
             'absent_days'     => 0,
             'leave_days'      => round($leaveDays, 2),
             'paid_leave_days' => round($paidLeaveDays, 2),
@@ -190,18 +232,16 @@ class PayrollRunService
             'bonus'          => $bonus,
             'other_earnings' => 0,
 
-            // The statutory split lives inside PayrollService's own totals; it
-            // is carried as one figure rather than guessed at line by line.
-            'sss'               => 0,
-            'philhealth'        => 0,
-            'pagibig'           => 0,
-            'tax'               => 0,
+            'sss'               => $sss,
+            'philhealth'        => $phil,
+            'pagibig'           => $pag,
+            'tax'               => $tax,
             'vale'              => round($vale, 2),
             // Loans are no longer issued. The column keeps what older runs
             // charged, and collectLoans() still settles those at finalisation.
             'loan_deduction'    => 0,
             'advance_deduction' => round($advanceDue, 2),
-            'other_deductions'  => $statutoryAndOther,
+            'other_deductions'  => $other,
 
             'gross_pay'        => $grossPay,
             'total_deductions' => $totalDeductions,
@@ -292,11 +332,35 @@ class PayrollRunService
         foreach ($days as $day) {
             foreach ($day['details'] ?? [] as $d) {
                 $id         = (int) $d['employee_id'];
-                $hours[$id] = ($hours[$id] ?? 0.0) + (float) ($d['ot_hours'] ?? 0);
+                $hours[$id] = ($hours[$id] ?? 0.0) + (isset($d['ot_minutes'])
+                    ? $d['ot_minutes'] / 60
+                    : (float) ($d['ot_hours'] ?? 0));
             }
         }
 
         return $hours;
+    }
+
+    /**
+     * The rate each worker's days were priced at, off the last day of theirs
+     * the engine priced in the period.
+     *
+     * @return array<int, array{daily: float, hourly: float}>
+     */
+    private function ratesPriced(array $days): array
+    {
+        $rates = [];
+
+        foreach ($days as $day) {
+            foreach ($day['details'] ?? [] as $d) {
+                $rates[(int) $d['employee_id']] = [
+                    'daily'  => (float) ($d['dailyRate'] ?? 0),
+                    'hourly' => (float) ($d['rate'] ?? 0),
+                ];
+            }
+        }
+
+        return $rates;
     }
 
     /** Approved leave touching the range, grouped per employee. */

@@ -10,9 +10,9 @@ use Tests\TestCase;
 /**
  * What the rail offers.
  *
- * Payroll Processing leads the Payroll group, above Payroll Records, and its
- * page is empty for now while it is redrawn. Payslips are off the office rail;
- * a worker's own account keeps them, having no payroll run to open them from.
+ * Payroll Processing leads the Payroll group, above Payroll Records. Payslips
+ * are off the office rail; a worker's own account keeps them, having no
+ * payroll run to open them from.
  */
 class SidebarEntriesTest extends TestCase
 {
@@ -59,7 +59,7 @@ class SidebarEntriesTest extends TestCase
         $this->assertStringNotContainsString(route('payroll-processing.index'), $rail);
     }
 
-    public function test_the_payroll_processing_page_is_empty_for_now(): void
+    public function test_each_run_still_opens_on_its_own_page(): void
     {
         $admin = $this->user(User::ROLE_ADMIN, 'rail.admin');
         $run   = PayrollRun::create([
@@ -67,9 +67,9 @@ class SidebarEntriesTest extends TestCase
             'period_end' => now(), 'status' => 'calculated',
         ]);
 
+        // The old list and its dialog are gone; the page is one period at a time.
         $this->actingAs($admin)->get(route('payroll-processing.index'))
              ->assertOk()
-             ->assertDontSee($run->code)
              ->assertDontSee('New Payroll Run');
 
         // The runs themselves are untouched, and each still opens.

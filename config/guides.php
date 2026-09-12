@@ -100,14 +100,14 @@ return [
 
     'payroll-processing' => [
         'en' => ['title' => 'Payroll Processing', 'lines' => [
-            'This page is empty for now while Payroll Processing is being redesigned.',
-            'Payroll runs already on file are unchanged.',
-            'Pay for any period can still be read in Payroll Records.',
+            'Pick a period and an employee on the left; the three cards switch between the salary computation, the remittance tracker and the payslip.',
+            'The bar at the top shows where the period stands — computed, processed, approved, finalized, remitted — and holds the next step.',
+            'Contributions and net pay are marked once the run is finalized, and each step records who took it and when.',
         ]],
         'tl' => ['title' => 'Pagproseso ng Sahod', 'lines' => [
-            'Walang laman ang page na ito habang binabago ang Payroll Processing.',
-            'Hindi nagbago ang mga payroll run na naka-file na.',
-            'Makikita pa rin ang sahod ng anumang panahon sa Payroll Records.',
+            'Pumili ng panahon at empleyado sa kaliwa; ang tatlong card ang nagpapalit sa kuwenta ng sahod, sa remittance tracker at sa payslip.',
+            'Ipinapakita ng bar sa itaas kung nasaan na ang panahon — computed, processed, approved, finalized, remitted — at naroon ang susunod na hakbang.',
+            'Minamarkahan ang mga kontribusyon at net pay kapag finalized na ang run, at nakatala kung sino at kailan ginawa ang bawat hakbang.',
         ]],
     ],
 

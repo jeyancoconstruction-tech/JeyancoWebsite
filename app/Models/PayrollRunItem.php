@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** One worker's frozen figures inside a payroll run. */
 class PayrollRunItem extends Model
@@ -64,6 +65,12 @@ class PayrollRunItem extends Model
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    /** Where this payslip's contributions and net pay have got to. */
+    public function remittances(): HasMany
+    {
+        return $this->hasMany(PayrollRemittance::class);
     }
 
     /** Payslip earnings, in the order they are printed. */
