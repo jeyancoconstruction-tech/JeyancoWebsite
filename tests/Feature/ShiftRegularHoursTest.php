@@ -282,7 +282,9 @@ class ShiftRegularHoursTest extends TestCase
 
         $paid = $this->paidOn('2026-09-11');
 
-        $this->assertEqualsWithDelta(747.0, $paid['basicPay'], 0.01);
+        // Seven hours and twenty-eight minutes at ₱100 an hour, priced by the
+        // minute — not the 7.47 hours it used to be rounded to first.
+        $this->assertEqualsWithDelta(746.67, $paid['basicPay'], 0.01);
         $this->assertEqualsWithDelta(0.0, $paid['otPay'], 0.01);
     }
 

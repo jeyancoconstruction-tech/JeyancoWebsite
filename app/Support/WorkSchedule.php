@@ -350,6 +350,18 @@ final class WorkSchedule
         return abs($a->diffInSeconds($b)) / 3600;
     }
 
+    /**
+     * "8h 05m", or "1m" under an hour — how a length of time worked is
+     * written. Payroll counts whole minutes, and decimal hours read wrong at
+     * that scale: one minute is 0.02 of an hour, which looks like two minutes.
+     */
+    public static function duration(int|float $minutes): string
+    {
+        $m = max(0, (int) round($minutes));
+
+        return $m < 60 ? "{$m}m" : sprintf('%dh %02dm', intdiv($m, 60), $m % 60);
+    }
+
     /** "8:00 AM" — how the kiosk and its messages write a time. */
     public static function label(Carbon $at): string
     {

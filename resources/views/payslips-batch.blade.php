@@ -115,7 +115,7 @@
                         <span class="who">{{ $s['name'] }}</span>
                         <span class="meta">#{{ str_pad($s['employee_id'], 4, '0', STR_PAD_LEFT) }}
                             @if($s['position']) &middot; {{ $s['position'] }} @endif
-                            &middot; {{ $s['workdays'] }}d / {{ number_format($s['hours'], 1) }}h</span>
+                            &middot; {{ $s['workdays'] }}d / {{ \App\Support\WorkSchedule::duration($s['minutes'] ?? $s['hours'] * 60) }}</span>
                     </div>
 
                     <div class="cols">

@@ -228,7 +228,7 @@
         <div class="pr-stat">
             <div class="k">{{ __('Hours / Days') }}</div>
             <div class="v" style="color:var(--text-secondary);">
-                {{ $summary['hours'] }}<span style="font-size:0.8rem;opacity:.75;">h / {{ $summary['workdays'] }}d</span>
+                {{ \App\Support\WorkSchedule::duration($summary['minutes']) }}<span style="font-size:0.8rem;opacity:.75;"> / {{ $summary['workdays'] }}d</span>
             </div>
         </div>
     </div>
@@ -278,7 +278,7 @@
                                             <span class="pr-late" title="{{ __('Past the grace period for this shift') }}">{{ $d['late_minutes'] }}m {{ __('late') }}</span>
                                         @endif
                                     </td>
-                                    <td class="text-end">{{ $d['hours'] }}</td>
+                                    <td class="text-end">{{ \App\Support\WorkSchedule::duration($d['minutes']) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['bonus'], 2) }}</td>
@@ -332,7 +332,7 @@
                                             <span class="pr-late" title="{{ __('Total past the grace period this period') }}">{{ $t['late_minutes'] }}m {{ __('late') }}</span>
                                         @endif
                                     </td>
-                                    <td class="text-end">{{ number_format($t['hours'], 2) }}</td>
+                                    <td class="text-end">{{ \App\Support\WorkSchedule::duration($t['minutes']) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($rate, 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($t['restDayPay'] ?? 0, 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($t['bonus'], 2) }}</td>
@@ -544,6 +544,7 @@
             'position'  => $emp['position'] ?? '',
             'workdays'  => $t['workdays'],
             'hours'     => $t['hours'],
+            'duration'  => \App\Support\WorkSchedule::duration($t['minutes']),
             'regular'   => $regular,
             'overtime'  => $t['overtime'],
             'night'     => $t['nightDiffPay'] ?? 0,
@@ -601,7 +602,7 @@
         set('rcName', s.name || '');
         set('rcMeta', '#' + id.padStart(4, '0')
                     + (s.position ? ' · ' + s.position : '')
-                    + ' · ' + s.workdays + 'd / ' + peso.format(s.hours) + 'h');
+                    + ' · ' + s.workdays + 'd / ' + s.duration);
 
         // The rate the days were priced at, taken from the row that was clicked
         // — a labour type's rate is per worker, not per period.

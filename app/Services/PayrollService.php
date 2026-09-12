@@ -315,7 +315,12 @@ class PayrollService
         ];
     }
 
-    /**
+    /** Hours as a whole number of minutes, without the float noise of adding them up. */
+    private static function wholeMinutes(float $hours): float
+    {
+        return round($hours * 60) / 60;
+    }
+
     /**
      * Per-record payroll breakdown — identical math used by every grouping.
      */
@@ -367,7 +372,7 @@ class PayrollService
         $breakHours   = max(0.0, (float) ($day->unpaid_break_minutes ?? 0) / 60);
         $paidStandard = max(1.0, $standard - $breakHours);
 
-        $hours = round(max(0, $hours), 2);
+        $hours = self::wholeMinutes(max(0, $hours));
 
         // A meal period is only taken on a stretch long enough to contain one —
         // the Labor Code requires it of work exceeding five hours, and that is
@@ -377,11 +382,13 @@ class PayrollService
         // short of the line and lose nothing, because the break is already out.
         // Never below the line itself, so a longer day is never a smaller wage.
         if ($breakHours > 0 && $hours > self::MEAL_PERIOD_AFTER_HOURS) {
-            $hours = round(max(self::MEAL_PERIOD_AFTER_HOURS, $hours - $breakHours), 2);
+            $hours = self::wholeMinutes(max(self::MEAL_PERIOD_AFTER_HOURS, $hours - $breakHours));
         }
 
-        // Round worked hours to 2 decimals BEFORE computing pay so the
-        // displayed hours reconcile exactly with gross (hours × rate = gross).
+        // Priced by the minute. The hours used to be rounded to two decimals
+        // first, so that hours × rate on screen came to the gross exactly —
+        // but a hundredth of an hour is thirty-six seconds, and one minute
+        // went in as 0.02 of an hour: a minute and twelve seconds' pay.
         $regular_hours = $autoOt ? min($paidStandard, $hours) : $hours;
         $ot_hours      = $autoOt ? max(0, $hours - $paidStandard) : 0.0;
 
@@ -419,12 +426,12 @@ class PayrollService
 
             // What the daily rate buys is the two sessions, so that is the divisor.
             $paidStandard  = max(1.0, WorkSchedule::paidHours($schedShift));
-            $regular_hours = round($split['regular'], 2);
+            $regular_hours = self::wholeMinutes($split['regular']);
 
             // With auto-overtime off, the hours after the shift wait for an
             // approved overtime request instead of being paid here.
-            $ot_hours = $autoOt ? round($split['ot'], 2) : 0.0;
-            $hours    = round($regular_hours + $ot_hours, 2);
+            $ot_hours = $autoOt ? self::wholeMinutes($split['ot']) : 0.0;
+            $hours    = $regular_hours + $ot_hours;
 
             $nightRegularHours = $nightOtHours = 0.0;
             foreach ($split['segments'] as [$from, $to, $isOt]) {
@@ -763,6 +770,9 @@ class PayrollService
                         'position'            => $employee->position ?? '',
                         'workdays'            => count(array_unique($empDates)),
                         'hours'               => round($sumHours, 2),
+                        // Exact, where the hours above are rounded: screens
+                        // write time worked from this.
+                        'minutes'             => (int) round($sumHours * 60),
                         'gross'               => round($sumGross, 2),
                         'overtime'            => round($sumOvertime, 2),
                         'holidayPay'          => round($sumHoliday, 2),
@@ -822,6 +832,7 @@ class PayrollService
                     'name'                => $employee->name,
                     'shift'               => $r['shift']['name'] ?? null,
                     'hours'               => round($r['hours'], 2),
+                    'minutes'             => (int) round($r['hours'] * 60),
                     'dailyRate'           => round((float) ($r['dailyRate'] ?? 0), 2),
                     'rate'                => round($r['rate'], 2),
                     'basicPay'            => round($r['basicPay'], 2),
@@ -882,6 +893,7 @@ class PayrollService
                         'totals'      => [
                             'workdays'        => 0,
                             'hours'           => 0,
+                            'minutes'         => 0,
                             'gross'           => 0,
                             'overtime'        => 0,
                             'holidayPay'      => 0,
@@ -900,6 +912,7 @@ class PayrollService
 
                 $employees[$id]['totals']['workdays']        += $d['workdays'];
                 $employees[$id]['totals']['hours']           += $d['hours'];
+                $employees[$id]['totals']['minutes']         += $d['minutes'];
                 $employees[$id]['totals']['gross']           += $d['gross'];
                 $employees[$id]['totals']['overtime']        += $d['overtime'];
                 $employees[$id]['totals']['holidayPay']      += $d['holidayPay'];
@@ -916,6 +929,7 @@ class PayrollService
                 $emp['totals'][$k] = round($v, 2);
             }
             $emp['totals']['workdays'] = (int) $emp['totals']['workdays'];
+            $emp['totals']['minutes']  = (int) $emp['totals']['minutes'];
         }
         unset($emp);
 

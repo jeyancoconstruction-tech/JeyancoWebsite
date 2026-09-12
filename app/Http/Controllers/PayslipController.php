@@ -98,6 +98,7 @@ class PayslipController extends Controller
                 'position'        => $e['position'] ?? '',
                 'workdays'        => $t['workdays'],
                 'hours'           => $t['hours'],
+                'minutes'         => $t['minutes'],
                 'regular'         => $regular,
                 'overtime'        => $t['overtime'],
                 'holidayPay'      => $t['holidayPay'],
@@ -152,7 +153,7 @@ class PayslipController extends Controller
 
         $ded = ['sss' => 0, 'philhealth' => 0, 'pagibig' => 0, 'tax' => 0, 'vale' => 0, 'other' => 0];
         $totals = [
-            'workdays' => 0, 'hours' => 0, 'gross' => 0, 'overtime' => 0,
+            'workdays' => 0, 'hours' => 0, 'minutes' => 0, 'gross' => 0, 'overtime' => 0,
             'holidayPay' => 0, 'restDayPay' => 0, 'bonus' => 0, 'totalDeductions' => 0, 'net' => 0,
         ];
         $periods = [];

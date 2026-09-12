@@ -177,6 +177,7 @@ class PayrollRecordsController extends Controller
             'employee_count'  => count($employees),
             'workdays'        => (int) array_sum(array_map(fn ($e) => $e['totals']['workdays'], $employees)),
             'hours'           => $sum('hours'),
+            'minutes'         => (int) array_sum(array_map(fn ($e) => $e['totals']['minutes'], $employees)),
             'gross'           => $sum('gross'),
             'overtime'        => $sum('overtime'),
             'holidayPay'      => $sum('holidayPay'),
