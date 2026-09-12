@@ -104,10 +104,26 @@ html[data-bs-theme="dark"] .ana {
     .ana-g2 { grid-template-columns: 1fr; }
 }
 
-/* Entrance */
-@keyframes ana-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.ana-anim { opacity: 0; animation: ana-rise .5s ease forwards; }
-@media (prefers-reduced-motion: reduce) { .ana-anim { animation: none; opacity: 1; } .ana-card:hover { transform: none; } }
+/* ── Entrance ────────────────────────────────────────────────────────────
+   The page rises into place once, on arrival: the header, then the filters,
+   then each card and each chart a beat after the one before. Only opacity
+   and transform move, so the browser composites it without laying anything
+   out again, and the last item has settled in under a second.
+
+   `backwards` rather than `forwards`: the start frame holds through each
+   delay, but once an item has arrived its own rules style it again. A
+   `forwards` fill would pin the final transform and kill the cards' hover
+   lift for good. Each item carries its place in line as --ana-i; the group
+   around it sets where that line starts and how far apart its items are. */
+.ana       { --ana-dur: 420ms; --ana-ease: cubic-bezier(.22, 1, .36, 1); --ana-base: 0ms; --ana-step: 60ms; }
+.ana-cards { --ana-base: 90ms;  --ana-step: 30ms; }
+.ana-grid  { --ana-base: 220ms; --ana-step: 50ms; }
+@keyframes ana-enter { from { opacity: 0; transform: translate3d(0, 12px, 0); } }
+.ana-enter {
+    animation: ana-enter var(--ana-dur) var(--ana-ease) backwards;
+    animation-delay: calc(var(--ana-base) + var(--ana-i, 0) * var(--ana-step));
+}
+@media (prefers-reduced-motion: reduce) { .ana-enter { animation: none; } .ana-card:hover { transform: none; } }
 </style>
 @endpush
 
@@ -127,7 +143,7 @@ html[data-bs-theme="dark"] .ana {
 @endphp
 <div class="ana" id="anaRoot" data-endpoint="{{ route('analytics.data') }}">
 
-    <div class="ana-head ana-anim" style="animation-delay:.02s">
+    <div class="ana-head ana-enter" style="--ana-i:0">
         <div>
             <h1>Analytics &amp; insights</h1>
             <div class="ana-sub">Performance overview for <b id="anaPeriodLabel">{{ $p['label'] }}{{ $p['scope'] !== '' ? ' — ' . $p['scope'] : '' }}</b></div>
@@ -137,7 +153,7 @@ html[data-bs-theme="dark"] .ana {
 
     {{-- A real form, so the filters still work with scripting off; with it on,
          every change redraws in place. --}}
-    <form class="ana-filters ana-anim" id="anaFilters" method="GET" action="{{ route('analytics') }}" style="animation-delay:.06s">
+    <form class="ana-filters ana-enter" id="anaFilters" method="GET" action="{{ route('analytics') }}" style="--ana-i:1">
         <div class="ana-fgroup">
             <label for="anaRange">Date range</label>
             <div class="ana-fctrl">
@@ -189,18 +205,18 @@ html[data-bs-theme="dark"] .ana {
         <button class="ana-fbtn" type="submit"><i class="ti ti-adjustments"></i>Apply filters</button>
     </form>
 
-    <div class="ana-cards ana-anim" style="animation-delay:.1s">
-        <div class="ana-card"><div class="ana-ico ana-i-blue"><i class="ti ti-users"></i></div><div class="ana-lbl">Total employees</div><div class="ana-val" data-v="totalEmp">{{ $c['totalEmp'] }}</div><div class="ana-meta" data-m="totalEmp">{{ $m['totalEmp'] }}</div></div>
-        <div class="ana-card"><div class="ana-ico ana-i-green"><i class="ti ti-user-check"></i></div><div class="ana-lbl">Present</div><div class="ana-val" data-v="present">{{ $avg($c['present']) }}</div><div class="ana-meta" data-m="present">{{ $m['present'] }}</div></div>
-        <div class="ana-card"><div class="ana-ico ana-i-red"><i class="ti ti-user-x"></i></div><div class="ana-lbl">Absent</div><div class="ana-val" data-v="absent">{{ $avg($c['absent']) }}</div><div class="ana-meta" data-m="absent">{{ $m['absent'] }}</div></div>
-        <div class="ana-card"><div class="ana-ico ana-i-amber"><i class="ti ti-clock-exclamation"></i></div><div class="ana-lbl">Late</div><div class="ana-val" data-v="late">{{ $c['late'] }}</div><div class="ana-meta" data-m="late">{{ $m['late'] }}</div></div>
-        <div class="ana-card"><div class="ana-ico ana-i-violet"><i class="ti ti-clock-plus"></i></div><div class="ana-lbl">Overtime</div><div class="ana-val" data-v="ot">{{ number_format($c['ot'], 1) }}<span class="ana-unit">h</span></div><div class="ana-meta" data-m="ot">{{ $m['ot'] }}</div></div>
-        <div class="ana-card"><div class="ana-ico ana-i-blue"><i class="ti ti-briefcase"></i></div><div class="ana-lbl">Hours worked</div><div class="ana-val" data-v="hours">{{ number_format($c['hours']) }}<span class="ana-unit">h</span></div><div class="ana-meta" data-m="hours">{{ $m['hours'] }}</div></div>
-        <div class="ana-card"><div class="ana-ico ana-i-green"><i class="ti ti-cash"></i></div><div class="ana-lbl">Payroll cost</div><div class="ana-val" data-v="payroll">₱{{ number_format($c['payroll']) }}</div><div class="ana-meta" data-m="payroll">{{ $m['payroll'] }}</div></div>
+    <div class="ana-cards">
+        <div class="ana-card ana-enter" style="--ana-i:0"><div class="ana-ico ana-i-blue"><i class="ti ti-users"></i></div><div class="ana-lbl">Total employees</div><div class="ana-val" data-v="totalEmp">{{ $c['totalEmp'] }}</div><div class="ana-meta" data-m="totalEmp">{{ $m['totalEmp'] }}</div></div>
+        <div class="ana-card ana-enter" style="--ana-i:1"><div class="ana-ico ana-i-green"><i class="ti ti-user-check"></i></div><div class="ana-lbl">Present</div><div class="ana-val" data-v="present">{{ $avg($c['present']) }}</div><div class="ana-meta" data-m="present">{{ $m['present'] }}</div></div>
+        <div class="ana-card ana-enter" style="--ana-i:2"><div class="ana-ico ana-i-red"><i class="ti ti-user-x"></i></div><div class="ana-lbl">Absent</div><div class="ana-val" data-v="absent">{{ $avg($c['absent']) }}</div><div class="ana-meta" data-m="absent">{{ $m['absent'] }}</div></div>
+        <div class="ana-card ana-enter" style="--ana-i:3"><div class="ana-ico ana-i-amber"><i class="ti ti-clock-exclamation"></i></div><div class="ana-lbl">Late</div><div class="ana-val" data-v="late">{{ $c['late'] }}</div><div class="ana-meta" data-m="late">{{ $m['late'] }}</div></div>
+        <div class="ana-card ana-enter" style="--ana-i:4"><div class="ana-ico ana-i-violet"><i class="ti ti-clock-plus"></i></div><div class="ana-lbl">Overtime</div><div class="ana-val" data-v="ot">{{ number_format($c['ot'], 1) }}<span class="ana-unit">h</span></div><div class="ana-meta" data-m="ot">{{ $m['ot'] }}</div></div>
+        <div class="ana-card ana-enter" style="--ana-i:5"><div class="ana-ico ana-i-blue"><i class="ti ti-briefcase"></i></div><div class="ana-lbl">Hours worked</div><div class="ana-val" data-v="hours">{{ number_format($c['hours']) }}<span class="ana-unit">h</span></div><div class="ana-meta" data-m="hours">{{ $m['hours'] }}</div></div>
+        <div class="ana-card ana-enter" style="--ana-i:6"><div class="ana-ico ana-i-green"><i class="ti ti-cash"></i></div><div class="ana-lbl">Payroll cost</div><div class="ana-val" data-v="payroll">₱{{ number_format($c['payroll']) }}</div><div class="ana-meta" data-m="payroll">{{ $m['payroll'] }}</div></div>
     </div>
 
-    <div class="ana-grid ana-anim" style="animation-delay:.14s">
-        <div class="ana-chart-card wide">
+    <div class="ana-grid">
+        <div class="ana-chart-card wide ana-enter" style="--ana-i:0">
             <div class="ana-ch-head">
                 <div><h3>Attendance trends</h3><div class="ana-desc">Daily employee presence over the selected period</div></div>
                 <span class="ana-tag"><i class="ti ti-chart-line"></i><span id="anaTrendTag">{{ $p['tag'] }}</span></span>
@@ -209,13 +225,13 @@ html[data-bs-theme="dark"] .ana {
         </div>
     </div>
 
-    <div class="ana-grid ana-g2 ana-anim" style="animation-delay:.18s">
-        <div class="ana-chart-card">
+    <div class="ana-grid ana-g2">
+        <div class="ana-chart-card ana-enter" style="--ana-i:1">
             <div class="ana-ch-head"><div><h3>Late / absent trends</h3><div class="ana-desc">Punctuality issues over time</div></div></div>
             <div class="ana-canvas"><canvas id="anaLateAbsent" role="img" aria-label="Late starts and absences per day"></canvas><div class="ana-empty" data-empty><i class="ti ti-mood-empty"></i>No data</div></div>
             <div class="ana-legend"><span><i style="background:var(--ana-amber)"></i>Late</span><span><i style="background:var(--ana-red)"></i>Absent</span></div>
         </div>
-        <div class="ana-chart-card">
+        <div class="ana-chart-card ana-enter" style="--ana-i:2">
             <div class="ana-ch-head"><div><h3>Hours worked by shift</h3><div class="ana-desc">{{ $shiftList->count() > 1 ? $shiftList->implode(' vs ') . ' distribution' : 'Distribution by shift' }}</div></div></div>
             <div class="ana-canvas"><canvas id="anaShiftHours" role="img" aria-label="Hours worked per day, by shift"></canvas><div class="ana-empty" data-empty><i class="ti ti-mood-empty"></i>No data</div></div>
             <div class="ana-legend" id="anaShiftLegend">
@@ -226,12 +242,12 @@ html[data-bs-theme="dark"] .ana {
         </div>
     </div>
 
-    <div class="ana-grid ana-g2 ana-anim" style="animation-delay:.22s">
-        <div class="ana-chart-card">
+    <div class="ana-grid ana-g2">
+        <div class="ana-chart-card ana-enter" style="--ana-i:3">
             <div class="ana-ch-head"><div><h3>Site performance</h3><div class="ana-desc">Attendance rate by site</div></div></div>
             <div class="ana-canvas"><canvas id="anaSites" role="img" aria-label="Attendance rate by site"></canvas><div class="ana-empty" data-empty><i class="ti ti-mood-empty"></i>No data</div></div>
         </div>
-        <div class="ana-chart-card">
+        <div class="ana-chart-card ana-enter" style="--ana-i:4">
             <div class="ana-ch-head"><div><h3>Payroll summary</h3><div class="ana-desc">Gross vs net — weekly</div></div><span class="ana-tag"><i class="ti ti-currency-peso"></i>Pesos</span></div>
             <div class="ana-canvas"><canvas id="anaPayroll" role="img" aria-label="Gross and net pay by pay week"></canvas><div class="ana-empty" data-empty><i class="ti ti-mood-empty"></i>No data</div></div>
             <div class="ana-legend"><span><i style="background:var(--ana-accent)"></i>Gross pay</span><span><i style="background:var(--ana-green)"></i>Net pay</span></div>
@@ -257,6 +273,12 @@ html[data-bs-theme="dark"] .ana {
     let data       = JSON.parse(document.getElementById('anaData').textContent);
     let colors     = palette();
     let paintedAt  = 0;
+
+    // Motion is for arrival only: the first paint times its count-ups and
+    // chart draws to each item's entrance, and every later paint starts at
+    // once. Somebody who has asked for less motion gets none of it.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let entering       = true;
 
     // ── Theme ────────────────────────────────────────────────────────────
     // A canvas inherits nothing, so every colour is read off the page's own
@@ -291,24 +313,42 @@ html[data-bs-theme="dark"] .ana {
         payroll:  v => '₱' + Math.round(v).toLocaleString('en-US'),
     };
 
-    function animateVal(el, to, fmt) {
-        const from  = parseFloat(el.getAttribute('data-cur') || '0');
-        const start = performance.now();
-        const dur   = 700;
+    // How long an item waits before its entrance, as the stylesheet set it.
+    function entryDelay(el) {
+        const item = el && el.closest('.ana-enter');
+        if (!entering || reduceMotion || !item) return 0;
+        return (parseFloat(getComputedStyle(item).animationDelay) || 0) * 1000;
+    }
+
+    // Count a card from what it shows now to its new value. A newer count
+    // takes over from one still running rather than fighting it for the text.
+    function animateVal(el, to, fmt, wait) {
+        const run  = (el._anaRun = (el._anaRun || 0) + 1);
+        const from = el._anaNow ?? parseFloat(el.getAttribute('data-cur') || '0');
+        const dur  = 700;
+        let start  = null;
+
+        const show = v => { el._anaNow = v; el.childNodes[0].nodeValue = fmt(v); };
+
+        if (reduceMotion) { el.setAttribute('data-cur', to); show(to); return; }
+
         function tick(now) {
+            if (el._anaRun !== run) return;
+            if (start === null) start = now;
             const t = Math.min(1, (now - start) / dur);
-            const e = 1 - Math.pow(1 - t, 3);
-            el.childNodes[0].nodeValue = fmt(from + (to - from) * e);
+            show(from + (to - from) * (1 - Math.pow(1 - t, 3)));
             if (t < 1) requestAnimationFrame(tick);
-            else { el.setAttribute('data-cur', to); el.childNodes[0].nodeValue = fmt(to); }
+            else { el.setAttribute('data-cur', to); show(to); }
         }
-        requestAnimationFrame(tick);
+
+        if (wait > 0) setTimeout(() => requestAnimationFrame(tick), wait);
+        else requestAnimationFrame(tick);
     }
 
     function setCards(a) {
         root.querySelectorAll('[data-v]').forEach(el => {
             const k = el.getAttribute('data-v');
-            if (k in a.cards) animateVal(el, Number(a.cards[k]) || 0, FORMAT[k]);
+            if (k in a.cards) animateVal(el, Number(a.cards[k]) || 0, FORMAT[k], entryDelay(el));
         });
         root.querySelectorAll('[data-m]').forEach(el => {
             const k = el.getAttribute('data-m');
@@ -317,7 +357,14 @@ html[data-bs-theme="dark"] .ana {
     }
 
     // ── Charts ───────────────────────────────────────────────────────────
-    const anim = { duration: 800, easing: 'easeOutQuart' };
+    // A chart's first draw waits for its card to arrive, so a line is not
+    // half drawn by the time anybody can see it. Every later draw starts at
+    // once — the delay is asked afresh each time, and arrival is over by then.
+    function motion(id) {
+        if (reduceMotion) return false;
+        const wait = entryDelay(document.getElementById(id));
+        return { duration: 800, easing: 'easeOutQuart', delay: () => (entering ? wait : 0) };
+    }
     const gridCfg = () => ({ color: colors.grid, drawBorder: false });
     const baseScales = x => ({
         x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: x || 10 } },
@@ -356,8 +403,9 @@ html[data-bs-theme="dark"] .ana {
         };
     }
     function upsert(key, id, config) {
-        if (charts[key]) { charts[key].data = config.data; charts[key].update(); }
-        else charts[key] = new Chart(document.getElementById(id), config);
+        if (charts[key]) { charts[key].data = config.data; charts[key].update(); return; }
+        config.options.animation = motion(id);
+        charts[key] = new Chart(document.getElementById(id), config);
     }
 
     function renderAll(a) {
@@ -374,7 +422,7 @@ html[data-bs-theme="dark"] .ana {
                 pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: colors.accent,
                 pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2,
             }] },
-            options: { responsive: true, maintainAspectRatio: false, animation: anim,
+            options: { responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: tt() }, scales: baseScales(12),
                 interaction: { mode: 'index', intersect: false } },
         });
@@ -387,7 +435,7 @@ html[data-bs-theme="dark"] .ana {
                 { label: 'Late', data: t.late, backgroundColor: colors.amber, borderRadius: 3, barPercentage: .7, categoryPercentage: .6 },
                 { label: 'Absent', data: t.absent, backgroundColor: colors.red, borderRadius: 3, barPercentage: .7, categoryPercentage: .6 },
             ] },
-            options: { responsive: true, maintainAspectRatio: false, animation: anim,
+            options: { responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: tt() }, scales: baseScales(8) },
         });
 
@@ -400,7 +448,7 @@ html[data-bs-theme="dark"] .ana {
                 label: d.label, data: d.data, backgroundColor: shiftColor(i),
                 borderRadius: { topLeft: 3, topRight: 3 }, stack: 'h',
             })) },
-            options: { responsive: true, maintainAspectRatio: false, animation: anim,
+            options: { responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: tt('h') },
                 scales: {
                     x: { grid: { display: false }, stacked: true, ticks: { maxTicksLimit: 8, maxRotation: 0 } },
@@ -425,7 +473,7 @@ html[data-bs-theme="dark"] .ana {
                 backgroundColor: rates.map(v => v >= 70 ? colors.green : v >= 40 ? colors.amber : colors.red),
                 borderRadius: 5, maxBarThickness: 26, minBarLength: 3,
             }] },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: anim,
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: tt('%') },
                 scales: {
                     x: { grid: gridCfg(), beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
@@ -442,7 +490,7 @@ html[data-bs-theme="dark"] .ana {
                 { label: 'Gross', data: p.gross, backgroundColor: colors.accent, borderRadius: 4, barPercentage: .7, categoryPercentage: .6 },
                 { label: 'Net', data: p.net, backgroundColor: colors.green, borderRadius: 4, barPercentage: .7, categoryPercentage: .6 },
             ] },
-            options: { responsive: true, maintainAspectRatio: false, animation: anim,
+            options: { responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false }, tooltip: tt('₱') },
                 scales: {
                     x: { grid: { display: false }, ticks: { maxRotation: 0 } },
@@ -512,6 +560,7 @@ html[data-bs-theme="dark"] .ana {
     }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
 
     paint(data);
+    entering = false;
 })();
 </script>
 @endpush
