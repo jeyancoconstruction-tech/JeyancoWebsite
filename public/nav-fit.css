@@ -103,6 +103,39 @@
     }
 }
 
+/* A large monitor gets type and icons to match the room it has. */
+@media (min-height: 1100px) {
+    .sidebar-top { padding: 18px 12px !important; }
+    .menu-section { font-size: 10px !important; margin: 16px 0 6px !important; }
+    .nav-menu .nav-link { font-size: 14px !important; padding: 8px 12px !important; }
+    .nav-menu .nav-link svg, .nav-menu .nav-link i[data-lucide] {
+        width: 18px !important; height: 18px !important;
+    }
+}
+
+/* ── The rail fills its height ────────────────────────────────────────────
+   The tiers above set the smallest a row may be. They stopped at 940px, so
+   on any taller screen the rows kept that size and the lower part of the rail
+   sat empty. The menu now fills the rail instead: the rail lays itself out as
+   a column, the menu takes whatever height the brand leaves, and each link
+   takes an equal share of the spare room — up to 48px (56px on a large
+   monitor), a navigation drawer's own row height and the point past which a
+   row stops reading as a menu item and starts reading as a button. Labels
+   keep their size, so each group still reads as one.
+
+   Growth only adds: a row never shrinks below its tier, so a short screen
+   looks exactly as it did, and a menu that still does not fit scrolls. The
+   drawer below 1025px wide is left alone — it has its own touch-sized rows. */
+@media (min-width: 1025px) {
+    .sidebar-top { display: flex !important; flex-direction: column !important; }
+    .nav-menu { flex: 1 0 auto; }
+    .nav-menu .menu-section { flex: 0 0 auto; }
+    .nav-menu .nav-link { flex: 1 0 auto; max-height: 48px; }
+}
+@media (min-width: 1025px) and (min-height: 1100px) {
+    .nav-menu .nav-link { max-height: 56px; }
+}
+
 /* ── The mobile drawer is a different problem ─────────────────────────────
    Off-canvas at ≤1024px, opened deliberately and dismissed after a tap. It has
    the whole screen, so it keeps touch-sized rows rather than inheriting a
