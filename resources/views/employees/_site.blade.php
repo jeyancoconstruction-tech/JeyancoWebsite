@@ -1,5 +1,5 @@
 @if($e->site)
-    <span class="rm-badge rm-badge-site"><i class="fas fa-map-marker-alt"></i> {{ $e->site->name }}</span>
+    <span class="rmx-pill"><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $e->site->name }}</span>
 @else
-    <span class="rm-dash">—</span>
+    <span class="rmx-dash">—</span>
 @endif

@@ -1,5 +1,5 @@
 @if($e->fingerprint_id)
-    <span class="rm-badge rm-badge-fp"><i class="fas fa-fingerprint"></i> {{ $e->fingerprint_id }}</span>
+    <span class="rmx-pill rmx-pill-ok" title="{{ __('Fingerprint slot on the kiosk') }}"><i class="ti ti-fingerprint" aria-hidden="true"></i>{{ $e->fingerprint_id }}</span>
 @else
-    <span class="rm-dash">{{ __('Not set') }}</span>
+    <span class="rmx-pill" title="{{ __('No fingerprint enrolled yet') }}"><i class="ti ti-fingerprint" aria-hidden="true"></i>{{ __('Not set') }}</span>
 @endif

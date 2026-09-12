@@ -1,15 +1,212 @@
 @extends('layouts')
 @section('page_title', 'Register & Manage Employees')
 
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+{{-- The Register Employee page's own chrome (.ep-label, .ep-hint, .ep-req,
+     .ep-optional, .ep-mono) and the dialog's, included rather than copied so
+     the modal and the full form cannot drift apart. In the head, not the
+     body: a stylesheet the parser only reaches late paints the page unstyled
+     first. --}}
+@include('employees._profile_styles')
+@include('employees._modal_styles')
+<style>
+/* Register & Manage. The redesigned parts are named .rmx-*: the older .rm-*
+   names are claimed by site-wide rules marked !important (a brand bar down
+   the left of every .rm-tab, a grey chip on every .rm-pill) that the design
+   cannot sit under. .rm-pane stays — it is the hook the tabs, and the tests
+   pinning which tab opens, read. Light is the base palette; dark follows. */
+.rmx {
+    --rmx-card: #FFFFFF;   --rmx-track: #E9EDF2;  --rmx-tab-on: #FFFFFF;
+    --rmx-table: #FFFFFF;  --rmx-thead: #F8F9FB;  --rmx-hover: #F5F7FA;
+    --rmx-chip: #F2F4F7;
+    --rmx-line: #E4E7EC;   --rmx-line-strong: #D0D5DD; --rmx-bw: 1px;
+    --rmx-txt: #101828;    --rmx-txt-2: #475467;  --rmx-txt-3: #667085;
+    --rmx-primary: #185FA5;
+    --rmx-accent-bg: #EAF2FD; --rmx-accent-fg: #1668DC; --rmx-accent-line: #C5DAF7;
+    --rmx-danger-bg: #FEF3F2; --rmx-danger-fg: #B42318; --rmx-danger-line: #FECDCA;
+    --rmx-ok-bg: #ECFDF3;     --rmx-ok-fg: #027A48;     --rmx-ok-line: #ABEFC6;
+    --rmx-warn-bg: #FFFAEB;   --rmx-warn-fg: #B54708;   --rmx-warn-line: #FEDF89;
+    --rmx-green: #22C55E;     --rmx-amber: #F59E0B;     --rmx-slate: #64748B;
+    --rmx-green-ico: #16A34A; --rmx-amber-ico: #D97706;
+    --rmx-lift: 0 1px 2px rgba(16, 24, 40, .06);
+    color: var(--rmx-txt);
+}
+html[data-bs-theme="dark"] .rmx {
+    --rmx-card: #131E2D;   --rmx-track: #131E2D;  --rmx-tab-on: #1E2B3F;
+    --rmx-table: #151F2F;  --rmx-thead: #131C2B;  --rmx-hover: #1A2638;
+    --rmx-chip: #1B2638;
+    --rmx-line: rgba(255, 255, 255, .08); --rmx-line-strong: rgba(255, 255, 255, .16); --rmx-bw: .5px;
+    --rmx-txt: #E7ECF3;    --rmx-txt-2: #9CA9BD;  --rmx-txt-3: #78879E;
+    --rmx-accent-bg: rgba(59, 130, 246, .16); --rmx-accent-fg: #6FAEFF; --rmx-accent-line: rgba(79, 151, 245, .45);
+    --rmx-danger-bg: rgba(239, 68, 68, .14);  --rmx-danger-fg: #F87171; --rmx-danger-line: rgba(239, 68, 68, .45);
+    --rmx-ok-bg: rgba(34, 197, 94, .14);      --rmx-ok-fg: #4ADE80;     --rmx-ok-line: rgba(34, 197, 94, .35);
+    --rmx-warn-bg: rgba(245, 158, 11, .14);   --rmx-warn-fg: #FBBF24;   --rmx-warn-line: rgba(245, 158, 11, .4);
+    --rmx-green-ico: #4ADE80; --rmx-amber-ico: #FBBF24;
+    --rmx-lift: none;
+}
+.rmx *, .rmx *::before, .rmx *::after { box-sizing: border-box; }
+
+/* Validation errors the modal could not show */
+.rm-alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: 10px; font-size: 13.5px; margin-bottom: 18px; border-left: 4px solid transparent; }
+.rm-alert-err { background: var(--rmx-danger-bg); color: var(--rmx-danger-fg); border-left-color: #DC2626; }
+
+/* Header */
+.rmx-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.rmx .rmx-title { font-size: 22px !important; font-weight: 600 !important; letter-spacing: -.01em !important; line-height: 1.3; color: var(--rmx-txt); margin: 0 0 5px; }
+.rmx-sub { font-size: 13px; color: var(--rmx-txt-2); margin: 0; }
+.rmx-primary { height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    background: var(--rmx-primary); color: #fff; border: none; border-radius: 8px; font-size: 13.5px; font-weight: 500;
+    text-decoration: none; transition: filter .15s; }
+.rmx-primary:hover, .rmx-primary:focus { color: #fff; text-decoration: none; filter: brightness(1.1); }
+.rmx-primary i { font-size: 16px; }
+
+/* Stat cards — they also switch tabs */
+.rmx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.25rem; }
+@media (max-width: 720px) { .rmx-stats { grid-template-columns: 1fr; } }
+.rmx-stat { appearance: none; margin: 0; font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer;
+    background: var(--rmx-card); border: 0; border-left: 3px solid var(--rmx-slate); border-radius: 0 12px 12px 0;
+    padding: 1rem 1.25rem; box-shadow: var(--rmx-lift); transition: background .15s; }
+.rmx-stat:hover { background: var(--rmx-hover); }
+.rmx-stat-active  { border-left-color: var(--rmx-green); }
+.rmx-stat-pending { border-left-color: var(--rmx-amber); }
+.rmx-stat-num { display: block; font-size: 28px; font-weight: 600; color: var(--rmx-txt); line-height: 1; font-variant-numeric: tabular-nums; }
+.rmx-stat-lbl { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: var(--rmx-txt-2); text-transform: uppercase; letter-spacing: .5px; }
+.rmx-stat-lbl i { font-size: 15px; color: var(--rmx-txt-3); }
+.rmx-stat-active  .rmx-stat-lbl i { color: var(--rmx-green-ico); }
+.rmx-stat-pending .rmx-stat-lbl i { color: var(--rmx-amber-ico); }
+
+/* Tabs and the one Select toggle */
+.rmx-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
+.rmx-tabs { display: inline-flex; background: var(--rmx-track); border-radius: 10px; padding: 3px; gap: 2px; }
+.rmx-tab { appearance: none; border: none; background: none; color: var(--rmx-txt-2); font: inherit; font-size: 13px;
+    padding: 7px 14px; border-radius: 7px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: background .15s, color .15s; }
+.rmx-tab:hover { color: var(--rmx-txt); }
+.rmx-tab.is-open { background: var(--rmx-tab-on); color: var(--rmx-txt); font-weight: 500; box-shadow: var(--rmx-lift); }
+.rmx-count { background: var(--rmx-chip); color: var(--rmx-txt-3); font-size: 11px; padding: 1px 7px; border-radius: 10px; font-variant-numeric: tabular-nums; }
+.rmx-tab.is-open .rmx-count { background: var(--rmx-accent-bg); color: var(--rmx-accent-fg); }
+.rmx-outline { height: 34px; padding: 0 13px; display: inline-flex; align-items: center; gap: 6px; background: transparent;
+    color: var(--rmx-txt); border: var(--rmx-bw) solid var(--rmx-line-strong); border-radius: 8px; font: inherit;
+    font-size: 13px; cursor: pointer; transition: background .15s, border-color .15s; }
+.rmx-outline i { font-size: 15px; }
+.rmx-outline:hover { background: var(--rmx-hover); }
+.rmx-outline.is-on { background: var(--rmx-primary); border-color: var(--rmx-primary); color: #fff; }
+.rmx-outline:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Panes */
+.rm-pane { display: none; }
+.rm-pane.active { display: block; }
+
+/* Table card */
+.rmx-card { background: var(--rmx-table); border: var(--rmx-bw) solid var(--rmx-line); border-radius: 12px; overflow: hidden; }
+.rmx-note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 14px; font-size: 12.5px; color: var(--rmx-txt-2);
+    background: var(--rmx-thead); border-bottom: var(--rmx-bw) solid var(--rmx-line); }
+.rmx-note i { color: var(--rmx-accent-fg); font-size: 15px; margin-top: 1px; flex: none; }
+/* One flex item for the sentence, or each text node becomes its own column. */
+.rmx-note > span { flex: 1; min-width: 0; line-height: 1.6; }
+.rmx-table-wrap { overflow-x: auto; }
+.rmx-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rmx-table thead tr { background: var(--rmx-thead); }
+.rmx-table th { text-align: left; padding: 11px 10px; font-size: 10.5px; font-weight: 500; color: var(--rmx-txt-3);
+    text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+.rmx-table td { padding: 12px 10px; border-top: var(--rmx-bw) solid var(--rmx-line); vertical-align: middle; color: var(--rmx-txt-2); }
+.rmx-table th:first-child, .rmx-table td:first-child { padding-left: 14px; }
+.rmx-table th:last-child,  .rmx-table td:last-child  { padding-right: 14px; }
+.rmx-table tbody tr { transition: background .12s; }
+.rmx-table tbody tr:hover { background: var(--rmx-hover); }
+.rmx-table .rmx-num { text-align: right; }
+.rmx-table .rmx-center { text-align: center; }
+
+/* Selection: the checkbox column exists only while its pane is selecting. */
+.rmx-check-col { display: none; width: 38px; text-align: center; }
+.rm-pane.selecting .rmx-check-col { display: table-cell; }
+.rmx-check, .rmx-check-all { width: 16px; height: 16px; cursor: pointer; accent-color: var(--rmx-primary); vertical-align: middle; }
+.rmx-check-all:disabled { cursor: not-allowed; opacity: .4; }
+.rmx-bulk { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px;
+    background: var(--rmx-accent-bg); border-bottom: var(--rmx-bw) solid var(--rmx-line); }
+.rmx-bulk[hidden] { display: none; }
+.rmx-bulk-count { font-size: 13px; font-weight: 500; color: var(--rmx-txt); }
+.rmx-bulk-count strong { font-size: 14px; }
+.rmx-bulk-spacer { flex: 1 1 auto; }
+.rmx-bulk-btn { height: 30px; padding: 0 12px; border-radius: 7px; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; background: transparent; color: var(--rmx-txt);
+    border: var(--rmx-bw) solid var(--rmx-line-strong); transition: filter .15s; }
+.rmx-bulk-btn:hover { filter: brightness(1.08); }
+.rmx-bulk-btn.danger { background: #DC2626; border-color: #DC2626; color: #fff; }
+.rmx-bulk-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* A worker */
+.rmx-person { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.rmx-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; flex-shrink: 0; overflow: hidden; }
+.rmx-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.rmx-who { min-width: 0; }
+.rmx-name { font-size: 13.5px; font-weight: 500; color: var(--rmx-txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.rmx-name.is-muted { color: var(--rmx-warn-fg); font-style: italic; }
+.rmx-id { font-size: 11px; color: var(--rmx-txt-3); font-variant-numeric: tabular-nums; margin-top: 1px; }
+.rmx-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 5px 0 0 44px; }
+
+/* Cells */
+.rmx-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+    background: var(--rmx-chip); color: var(--rmx-txt-2); border: var(--rmx-bw) solid var(--rmx-line); }
+.rmx-pill i { font-size: 12px; }
+.rmx-pill-ok     { background: var(--rmx-ok-bg);     color: var(--rmx-ok-fg);     border-color: transparent; }
+.rmx-pill-warn   { background: var(--rmx-warn-bg);   color: var(--rmx-warn-fg);   border-color: transparent; }
+.rmx-pill-accent { background: var(--rmx-accent-bg); color: var(--rmx-accent-fg); border-color: transparent; }
+.rmx-labor { display: inline-flex; align-items: center; gap: 5px; color: var(--rmx-txt-2); font-size: 13px; white-space: nowrap; }
+.rmx-labor i { font-size: 14px; color: var(--rmx-txt-3); }
+.rmx-labor + .rmx-pill { margin-left: 6px; }
+.rmx-rate { text-align: right; font-weight: 500; color: var(--rmx-txt); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rmx-logs { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px;
+    border-radius: 11px; background: var(--rmx-chip); color: var(--rmx-txt-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.rmx-dash { color: var(--rmx-txt-3); }
+.rmx-muted { color: var(--rmx-txt-3); font-size: 12.5px; white-space: nowrap; }
+
+/* Row actions */
+.rmx-actions { text-align: right; white-space: nowrap; }
+.rmx-actions-inner { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.rmx-actions form { display: inline; margin: 0; }
+.rmx-icon-btn, .rmx-text-btn { border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    text-decoration: none; font: inherit; transition: filter .15s; }
+.rmx-icon-btn { width: 32px; height: 32px; padding: 0; font-size: 15px; }
+.rmx-text-btn { height: 32px; padding: 0 12px; gap: 6px; font-size: 12.5px; font-weight: 500; }
+.rmx-icon-btn i, .rmx-text-btn i { font-size: 15px; }
+.rmx-icon-btn:hover, .rmx-text-btn:hover { filter: brightness(1.15); text-decoration: none; }
+.rmx-edit, .rmx-edit:hover       { background: var(--rmx-accent-bg); color: var(--rmx-accent-fg); border: var(--rmx-bw) solid var(--rmx-accent-line); }
+.rmx-del, .rmx-del:hover         { background: var(--rmx-danger-bg); color: var(--rmx-danger-fg); border: var(--rmx-bw) solid var(--rmx-danger-line); }
+.rmx-restore, .rmx-restore:hover { background: var(--rmx-ok-bg);     color: var(--rmx-ok-fg);     border: var(--rmx-bw) solid var(--rmx-ok-line); }
+
+/* Empty tab */
+.rmx-empty td { padding: 0 !important; }
+.rmx-empty-inner { display: flex; flex-direction: column; align-items: center; padding: 48px 16px; text-align: center; }
+.rmx-empty-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--rmx-chip); display: flex; align-items: center;
+    justify-content: center; font-size: 24px; color: var(--rmx-txt-3); margin-bottom: 12px; }
+.rmx-empty-title { font-size: 14.5px; font-weight: 500; color: var(--rmx-txt); margin: 0 0 4px; }
+.rmx-empty-sub { font-size: 12.5px; color: var(--rmx-txt-3); margin: 0; max-width: 380px; }
+</style>
+@endpush
+
 @section('content')
 @php
-    use App\Models\Employee;
-    $renderName = fn ($e) => ($e->isPending() && $e->name === 'Unregistered Worker') ? 'Unregistered Worker' : $e->name;
-@endphp
-<div class="rm-page">
+    // Which tab opens, decided here rather than after paint. ?tab=pending is
+    // where saving a worker lands; with nothing asked for, Active leads —
+    // unless there is nobody active and somebody pending, because a fresh
+    // system should not open on an empty table.
+    $openTab = in_array(request('tab'), ['active', 'pending', 'removed'], true)
+        ? request('tab')
+        : (($active->count() === 0 && $pending->count() > 0) ? 'pending' : 'active');
 
-    {{-- ── Flash / errors ──────────────────────────────────────────────────── --}}
-    {{-- session('success') is a toast now. --}}
+    $tabs = [
+        'active'  => ['label' => __('Active'),  'count' => $active->count()],
+        'pending' => ['label' => __('Pending'), 'count' => $pending->count()],
+        'removed' => ['label' => __('Removed'), 'count' => $removed->count()],
+    ];
+@endphp
+<div class="rm-page rmx">
+
+    {{-- session('success') is a toast. Errors that belong to the modal are
+         shown in it as well; this is for anything that arrives without it. --}}
     @if($errors->any())
     <div class="rm-alert rm-alert-err">
         <i class="fas fa-exclamation-circle"></i>
@@ -20,121 +217,112 @@
     @endif
 
     {{-- ── Header ──────────────────────────────────────────────────────────── --}}
-    <div class="rm-header">
+    <div class="rmx-head">
         <div>
-            <h1 class="rm-title">{{ __('Register & Manage Employees') }}</h1>
-            {{-- One line. The only thing here that cannot be guessed from the
-                 page is why a worker sits in Pending; where they show up once
-                 they are active is evident from the app itself. --}}
-            <p class="rm-sub">{{ __('New workers and kiosk detections stay in Pending until a fingerprint is enrolled.') }}</p>
+            <h1 class="rmx-title">{{ __('Register & manage employees') }}</h1>
+            <p class="rmx-sub">{{ __('New workers and kiosk detections stay in Pending until a fingerprint is enrolled.') }}</p>
         </div>
-        <div class="rm-header-actions">
-            {{-- "Clear All Fingerprints" used to sit here. It wiped every enrolled
-                 finger in one click — the whole workforce had to re-enrol, and
-                 there was no way to act on just a few. The per-tab select-all
-                 below covers the real need without that blast radius. --}}
-            {{-- Goes to the full registration form rather than the compact
-                 modal: a complete worker profile (personal, contact, address,
-                 education, work history, skills) does not fit in a dialog.
-                 The modal stays for completing kiosk detections and quick
-                 edits, where only pay details change. --}}
-            <a href="{{ route('employees.create') }}" class="rm-btn-primary" id="rmAddBtn">
-                <i class="fas fa-user-plus"></i> {{ __('Register Employee') }}
-            </a>
-        </div>
+        {{-- The full registration form, not the compact modal: a complete
+             worker profile does not fit in a dialog. The modal stays for
+             confirming and completing kiosk detections. --}}
+        <a href="{{ route('employees.create') }}" class="rmx-primary" id="rmAddBtn">
+            <i class="ti ti-user-plus" aria-hidden="true"></i>{{ __('Register employee') }}
+        </a>
     </div>
 
-    {{-- Which tab opens, decided here rather than after paint. ?tab=pending is
-         where saving a worker lands; with nothing asked for, Active leads,
-         unless there is nobody active and somebody pending — a fresh system
-         should not open on an empty table. --}}
-    @php
-        $openTab = in_array(request('tab'), ['active', 'pending', 'removed'], true)
-            ? request('tab')
-            : (($active->count() === 0 && $pending->count() > 0) ? 'pending' : 'active');
-    @endphp
-
-    {{-- ── Stat chips (also switch tabs) ───────────────────────────────────── --}}
-    <div class="rm-stats">
-        <button class="rm-stat rm-stat-active {{ $openTab === 'active' ? 'active' : '' }}" data-tab="active">
-            <span class="rm-stat-num">{{ $active->count() }}</span>
-            <span class="rm-stat-lbl"><i class="fas fa-user-check"></i> {{ __('Active') }}</span>
+    {{-- ── Stat cards (also switch tabs) ───────────────────────────────────── --}}
+    <div class="rmx-stats">
+        <button type="button" class="rmx-stat rmx-stat-active" data-tab="active">
+            <span class="rmx-stat-num">{{ $active->count() }}</span>
+            <span class="rmx-stat-lbl"><i class="ti ti-user-check" aria-hidden="true"></i>{{ __('Active') }}</span>
         </button>
-        <button class="rm-stat rm-stat-pending {{ $openTab === 'pending' ? 'active' : '' }}" data-tab="pending">
-            <span class="rm-stat-num">{{ $pending->count() }}</span>
-            <span class="rm-stat-lbl"><i class="fas fa-fingerprint"></i> {{ __('Pending from kiosk') }}</span>
+        <button type="button" class="rmx-stat rmx-stat-pending" data-tab="pending">
+            <span class="rmx-stat-num">{{ $pending->count() }}</span>
+            <span class="rmx-stat-lbl"><i class="ti ti-fingerprint" aria-hidden="true"></i>{{ __('Pending from kiosk') }}</span>
         </button>
-        <button class="rm-stat rm-stat-removed {{ $openTab === 'removed' ? 'active' : '' }}" data-tab="removed">
-            <span class="rm-stat-num">{{ $removed->count() }}</span>
-            <span class="rm-stat-lbl"><i class="fas fa-trash-can-arrow-up"></i> {{ __('Removed') }}</span>
+        <button type="button" class="rmx-stat rmx-stat-removed" data-tab="removed">
+            <span class="rmx-stat-num">{{ $removed->count() }}</span>
+            <span class="rmx-stat-lbl"><i class="ti ti-user-off" aria-hidden="true"></i>{{ __('Removed') }}</span>
         </button>
     </div>
 
-    {{-- ── Tabs ────────────────────────────────────────────────────────────── --}}
-    <div class="rm-tabs">
-        <button class="rm-tab {{ $openTab === 'active' ? 'active' : '' }}" data-tab="active">{{ __('Active') }} <span class="rm-tab-count">{{ $active->count() }}</span></button>
-        <button class="rm-tab {{ $openTab === 'pending' ? 'active' : '' }}" data-tab="pending">{{ __('Pending') }} <span class="rm-tab-count">{{ $pending->count() }}</span></button>
-        <button class="rm-tab {{ $openTab === 'removed' ? 'active' : '' }}" data-tab="removed">{{ __('Removed') }} <span class="rm-tab-count">{{ $removed->count() }}</span></button>
+    {{-- ── Tabs, and the one Select toggle for whichever tab is open ────────── --}}
+    <div class="rmx-bar">
+        <div class="rmx-tabs" role="tablist">
+            @foreach($tabs as $key => $t)
+                <button type="button" class="rmx-tab {{ $openTab === $key ? 'is-open' : '' }}" data-tab="{{ $key }}"
+                        role="tab" aria-selected="{{ $openTab === $key ? 'true' : 'false' }}">
+                    {{ $t['label'] }} <span class="rmx-count">{{ $t['count'] }}</span>
+                </button>
+            @endforeach
+        </div>
+        {{-- Bulk removal is destructive, so it is something you opt into: the
+             checkbox column stays hidden until Select is pressed, and pressing
+             it again (it reads Done) puts it away. --}}
+        <button type="button" class="rmx-outline" id="rmxSelect">
+            <i class="ti ti-list-check" aria-hidden="true"></i><span class="js-select-label">{{ __('Select') }}</span>
+        </button>
     </div>
 
     {{-- ═══ ACTIVE ═════════════════════════════════════════════════════════ --}}
-    {{-- Active leads the page: the day-to-day job here is looking up a worker
-         who is already on the payroll. Pending is the exception queue, and the
-         stat chip plus the sidebar badge already announce it when it is not
-         empty — so it sits second rather than in front of the common case. --}}
-    <div class="rm-pane {{ $openTab === 'active' ? 'active' : '' }}" data-pane="active">
-        <div class="rm-card">
-            {{-- Bulk removal is destructive, so it is something you opt into.
-                 Until "Select" is pressed the checkbox column stays hidden —
-                 a page used mostly for looking a worker up should not open
-                 with an empty tickbox sitting in front of every row. --}}
-            <div class="rm-tools">
-                <span class="rm-tools-spacer"></span>
-                <button type="button" class="rm-btn-ghost js-select-toggle">
-                    <i class="fas fa-list-check"></i> <span class="js-select-label">{{ __('Select') }}</span>
-                </button>
+    <div class="rm-pane {{ $openTab === 'active' ? 'active' : '' }}" data-pane="active" role="tabpanel">
+        <div class="rmx-card">
+            <div class="rmx-bulk" hidden>
+                <span class="rmx-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
+                <button type="button" class="rmx-bulk-btn js-bulk-clear">{{ __('Clear selection') }}</button>
+                <span class="rmx-bulk-spacer"></span>
+                <button type="button" class="rmx-bulk-btn danger js-bulk-remove"><i class="ti ti-trash" aria-hidden="true"></i>{{ __('Remove selected') }}</button>
             </div>
-            <div class="rm-bulk" data-bulk="active" hidden>
-                <span class="rm-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
-                <button type="button" class="rm-bulk-plain js-bulk-clear">{{ __('Clear selection') }}</button>
-                <span class="rm-bulk-spacer"></span>
-                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-trash"></i> {{ __('Remove selected') }}</button>
-            </div>
-            <div class="table-responsive">
-                <table class="rm-table">
+            <div class="rmx-table-wrap">
+                <table class="rmx-table">
                     <thead>
                         <tr>
-                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="{{ __('Select all') }}"></th>
-                            <th>{{ __('Employee') }}</th><th>{{ __('Site') }}</th><th>{{ __('Labor Type') }}</th>
-                            <th class="text-center">{{ __('Rate / hr') }}</th><th>{{ __('Fingerprint') }}</th>
-                            <th class="text-center">{{ __('Logs') }}</th><th></th>
+                            <th class="rmx-check-col"><input type="checkbox" class="rmx-check-all" aria-label="{{ __('Select all') }}"></th>
+                            <th>{{ __('Employee') }}</th>
+                            <th>{{ __('Site') }}</th>
+                            <th>{{ __('Labor type') }}</th>
+                            <th class="rmx-num">{{ __('Rate / hr') }}</th>
+                            <th class="rmx-center" title="{{ __('Fingerprint slot on the kiosk') }}">{{ __('FP') }}</th>
+                            <th class="rmx-center">{{ __('Logs') }}</th>
+                            <th class="rmx-num">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
                     @forelse($active as $e)
                         <tr>
-                            <td class="rm-check-col"><input type="checkbox" class="rm-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
+                            <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td>@include('employees._person', ['e' => $e, 'displayName' => $e->name])</td>
                             <td>@include('employees._site', ['e' => $e])</td>
                             <td>@include('employees._labor', ['e' => $e])</td>
-                            <td class="rm-rate">₱{{ number_format($e->rate_per_hour, 2) }}</td>
-                            <td>@include('employees._fp', ['e' => $e])</td>
-                            <td class="text-center"><span class="rm-pill">{{ $e->attendances_count }}</span></td>
-                            <td class="rm-actions">
-                                {{-- Edit opens the full Register Employee form,
-                                     not the quick modal. Two screens for the same
-                                     job meant a worker could be corrected in a
-                                     five-field dialog that never showed the
-                                     twenty other fields on their record. The
-                                     pending rows above already link here. --}}
-                                <a href="{{ route('employees.edit', $e->id) }}" class="rm-btn-ghost">
-                                    <i class="fas fa-pen"></i> {{ __('Edit') }}
-                                </a>
-                                @include('employees._menu', ['e' => $e, 'context' => 'active'])
+                            <td class="rmx-rate">₱{{ number_format($e->rate_per_hour, 2) }}</td>
+                            <td class="rmx-center">@include('employees._fp', ['e' => $e])</td>
+                            <td class="rmx-center"><span class="rmx-logs">{{ $e->attendances_count }}</span></td>
+                            <td class="rmx-actions">
+                                <div class="rmx-actions-inner">
+                                    {{-- Edit opens the full Register Employee form, not
+                                         the quick modal: a five-field dialog could
+                                         correct a record without ever showing the
+                                         twenty other fields on it. --}}
+                                    <a href="{{ route('employees.edit', $e->id) }}" class="rmx-icon-btn rmx-edit"
+                                       title="{{ __('Edit') }}" aria-label="{{ __('Edit') }} {{ $e->name }}">
+                                        <i class="ti ti-pencil" aria-hidden="true"></i>
+                                    </a>
+                                    <form action="{{ route('employees.destroy', $e->id) }}" method="POST"
+                                          data-confirm="{{ __('The records of :name are preserved and can be restored from the Removed tab.', ['name' => $e->name]) }}"
+                                          data-confirm-title="{{ __('Remove this worker?') }}"
+                                          data-confirm-label="{{ __('Remove') }}"
+                                          data-confirm-tone="warning">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="rmx-icon-btn rmx-del"
+                                                title="{{ __('Remove') }}" aria-label="{{ __('Remove') }} {{ $e->name }}">
+                                            <i class="ti ti-trash" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
-                        @include('employees._empty', ['icon' => 'users', 'title' => 'No active employees', 'sub' => 'Complete a pending detection, or use Register Employee to get started.'])
+                        @include('employees._empty', ['icon' => 'users', 'title' => 'No active employees', 'sub' => 'Complete a pending detection, or use Register employee to get started.'])
                     @endforelse
                     </tbody>
                 </table>
@@ -143,34 +331,29 @@
     </div>
 
     {{-- ═══ PENDING ════════════════════════════════════════════════════════ --}}
-    <div class="rm-pane {{ $openTab === 'pending' ? 'active' : '' }}" data-pane="pending">
-        <div class="rm-card">
-            {{-- The text lives in one <span>: .rm-card-note is a flex row, so
-                 loose text nodes each become their own flex item and the
-                 sentence breaks into columns. --}}
-            <div class="rm-card-note">
-                <i class="fas fa-circle-info"></i>
+    <div class="rm-pane {{ $openTab === 'pending' ? 'active' : '' }}" data-pane="pending" role="tabpanel">
+        <div class="rmx-card">
+            <div class="rmx-note">
+                <i class="ti ti-info-circle" aria-hidden="true"></i>
                 <span>{{ __('Please scan your fingerprint on the kiosk.') }}</span>
             </div>
-            <div class="rm-tools">
-                <span class="rm-tools-spacer"></span>
-                <button type="button" class="rm-btn-ghost js-select-toggle">
-                    <i class="fas fa-list-check"></i> <span class="js-select-label">{{ __('Select') }}</span>
-                </button>
+            <div class="rmx-bulk" hidden>
+                <span class="rmx-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
+                <button type="button" class="rmx-bulk-btn js-bulk-clear">{{ __('Clear selection') }}</button>
+                <span class="rmx-bulk-spacer"></span>
+                <button type="button" class="rmx-bulk-btn danger js-bulk-remove"><i class="ti ti-x" aria-hidden="true"></i>{{ __('Cancel selected') }}</button>
             </div>
-            <div class="rm-bulk" data-bulk="pending" hidden>
-                <span class="rm-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
-                <button type="button" class="rm-bulk-plain js-bulk-clear">{{ __('Clear selection') }}</button>
-                <span class="rm-bulk-spacer"></span>
-                <button type="button" class="rm-bulk-danger js-bulk-remove"><i class="fas fa-xmark"></i> {{ __('Cancel selected') }}</button>
-            </div>
-            <div class="table-responsive">
-                <table class="rm-table">
+            <div class="rmx-table-wrap">
+                <table class="rmx-table">
                     <thead>
                         <tr>
-                            <th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="{{ __('Select all') }}"></th>
-                            <th>{{ __('Worker') }}</th><th>{{ __('Fingerprint') }}</th><th>{{ __('Site') }}</th>
-                            <th>{{ __('First seen') }}</th><th class="text-center">{{ __('Logs') }}</th><th></th>
+                            <th class="rmx-check-col"><input type="checkbox" class="rmx-check-all" aria-label="{{ __('Select all') }}"></th>
+                            <th>{{ __('Worker') }}</th>
+                            <th class="rmx-center" title="{{ __('Fingerprint slot on the kiosk') }}">{{ __('FP') }}</th>
+                            <th>{{ __('Site') }}</th>
+                            <th>{{ __('First seen') }}</th>
+                            <th class="rmx-center">{{ __('Logs') }}</th>
+                            <th class="rmx-num">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody id="rmPendingBody">
@@ -182,43 +365,66 @@
     </div>
 
     {{-- ═══ REMOVED ════════════════════════════════════════════════════════ --}}
-    <div class="rm-pane {{ $openTab === 'removed' ? 'active' : '' }}" data-pane="removed">
-        <div class="rm-card">
-            <div class="rm-card-note">
-                <i class="fas fa-circle-info"></i>
+    <div class="rm-pane {{ $openTab === 'removed' ? 'active' : '' }}" data-pane="removed" role="tabpanel">
+        <div class="rmx-card">
+            <div class="rmx-note">
+                <i class="ti ti-info-circle" aria-hidden="true"></i>
                 <span>{{ __('Removed records are hidden everywhere but never lost. Restore them, or permanently delete as a last resort.') }}</span>
             </div>
-            <div class="rm-tools">
-                <span class="rm-tools-spacer"></span>
-                <button type="button" class="rm-btn-ghost js-select-toggle">
-                    <i class="fas fa-list-check"></i> <span class="js-select-label">{{ __('Select') }}</span>
-                </button>
+            <div class="rmx-bulk" hidden>
+                <span class="rmx-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
+                <button type="button" class="rmx-bulk-btn js-bulk-clear">{{ __('Clear selection') }}</button>
+                <span class="rmx-bulk-spacer"></span>
+                <button type="button" class="rmx-bulk-btn js-bulk-restore"><i class="ti ti-restore" aria-hidden="true"></i>{{ __('Restore selected') }}</button>
+                <button type="button" class="rmx-bulk-btn danger js-bulk-purge"><i class="ti ti-trash-x" aria-hidden="true"></i>{{ __('Delete permanently') }}</button>
             </div>
-            <div class="rm-bulk" data-bulk="removed" hidden>
-                <span class="rm-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
-                <button type="button" class="rm-bulk-plain js-bulk-clear">{{ __('Clear selection') }}</button>
-                <span class="rm-bulk-spacer"></span>
-                <button type="button" class="rm-bulk-plain js-bulk-restore"><i class="fas fa-rotate-left"></i> {{ __('Restore selected') }}</button>
-                <button type="button" class="rm-bulk-danger js-bulk-purge"><i class="fas fa-trash"></i> {{ __('Delete permanently') }}</button>
-            </div>
-            <div class="table-responsive">
-                <table class="rm-table">
+            <div class="rmx-table-wrap">
+                <table class="rmx-table">
                     <thead>
-                        <tr><th class="rm-check-col"><input type="checkbox" class="rm-check-all" aria-label="{{ __('Select all') }}"></th><th>{{ __('Employee') }}</th><th>{{ __('Site') }}</th><th>{{ __('Labor Type') }}</th><th>{{ __('Removed') }}</th><th class="text-center">{{ __('Logs') }}</th><th></th></tr>
+                        <tr>
+                            <th class="rmx-check-col"><input type="checkbox" class="rmx-check-all" aria-label="{{ __('Select all') }}"></th>
+                            <th>{{ __('Employee') }}</th>
+                            <th>{{ __('Site') }}</th>
+                            <th>{{ __('Labor type') }}</th>
+                            <th>{{ __('Removed') }}</th>
+                            <th class="rmx-center">{{ __('Logs') }}</th>
+                            <th class="rmx-num">{{ __('Actions') }}</th>
+                        </tr>
                     </thead>
                     <tbody>
                     @forelse($removed as $e)
                         <tr>
-                            <td class="rm-check-col"><input type="checkbox" class="rm-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
+                            <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td>@include('employees._person', ['e' => $e, 'displayName' => $e->name])</td>
                             <td>@include('employees._site', ['e' => $e])</td>
                             <td>@include('employees._labor', ['e' => $e])</td>
-                            <td class="rm-muted">{{ $e->deleted_at?->format('M d, Y') ?? '—' }}</td>
-                            <td class="text-center"><span class="rm-pill">{{ $e->attendances_count }}</span></td>
-                            <td class="rm-actions">@include('employees._menu', ['e' => $e, 'context' => 'removed'])</td>
+                            <td class="rmx-muted">{{ $e->deleted_at?->format('M d, Y') ?? '—' }}</td>
+                            <td class="rmx-center"><span class="rmx-logs">{{ $e->attendances_count }}</span></td>
+                            <td class="rmx-actions">
+                                <div class="rmx-actions-inner">
+                                    <form action="{{ route('employees.restore', $e->id) }}" method="POST">
+                                        @csrf @method('PATCH')
+                                        <button type="submit" class="rmx-icon-btn rmx-restore"
+                                                title="{{ __('Restore') }}" aria-label="{{ __('Restore') }} {{ $e->name }}">
+                                            <i class="ti ti-restore" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                    <form action="{{ route('employees.force-delete', $e->id) }}" method="POST"
+                                          data-confirm="{{ __('This deletes :name and every attendance record they have. It cannot be undone.', ['name' => $e->name]) }}"
+                                          data-confirm-title="{{ __('Delete permanently?') }}"
+                                          data-confirm-label="{{ __('Delete permanently') }}"
+                                          data-confirm-tone="danger">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="rmx-icon-btn rmx-del"
+                                                title="{{ __('Delete permanently') }}" aria-label="{{ __('Delete permanently') }} {{ $e->name }}">
+                                            <i class="ti ti-trash-x" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     @empty
-                        @include('employees._empty', ['icon' => 'trash-can-arrow-up', 'title' => 'Nothing removed', 'sub' => 'Removed records can be restored from here.'])
+                        @include('employees._empty', ['icon' => 'user-off', 'title' => 'Nothing removed', 'sub' => 'Removed records can be restored from here.'])
                     @endforelse
                     </tbody>
                 </table>
@@ -229,14 +435,10 @@
 
 {{-- ════════════════════════════ EMPLOYEE FORM MODAL ═══════════════════════
      One modal serves four jobs — Add, Confirm, Complete and Edit — with the
-     title, the sub-line and the submit label swapped by openModal(). It now
+     title, the sub-line and the submit label swapped by openModal(). It
      speaks the same language as the Register Employee page: the .ep-* chrome
-     from employees/_profile_styles.blade.php, Bootstrap form controls the
-     design tokens already theme for both modes, and the app's own brand rather
-     than the electric blue this modal alone still used.
-
-     Every id, name and value is unchanged — the JS below and the controllers
-     behind it read exactly what they read before. --}}
+     from employees/_profile_styles.blade.php and Bootstrap form controls the
+     design tokens already theme for both modes. --}}
 <div class="modal fade" id="empFormModal" tabindex="-1" aria-hidden="true" aria-labelledby="empFormTitle">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog">
     <div class="modal-content emp-modal">
@@ -281,16 +483,12 @@
                         <p class="ep-section-sub">{{ __('Who this record is for.') }}</p>
                     </div>
                 </header>
-                {{-- Three fields, the same three Register Employee asks for.
-                     The single Full Name box that used to be here wrote the
-                     `name` column straight, leaving first/middle/last as
-                     whatever they were — so a correction made here and the
-                     same correction made on the full form disagreed. The
-                     controller composes `name` from these, so both routes now
-                     end at the same value.
-
-                     Middle Name carries no asterisk: the full form requires it
-                     because it posts profile_form, and this modal does not. --}}
+                {{-- Three fields, the same three Register Employee asks for. The
+                     controller composes `name` from these, so a correction made
+                     here and the same one made on the full form end at the same
+                     value. Middle Name carries no asterisk: the full form
+                     requires it because it posts profile_form, and this modal
+                     does not. --}}
                 <div class="emp-grid emp-grid-3">
                     <div class="emp-field">
                         <label class="ep-label" for="empFirst">{{ __('First Name') }} <span class="ep-req" aria-hidden="true">*</span></label>
@@ -355,9 +553,7 @@
 
                     <div class="emp-field">
                         <label class="ep-label" for="empRateView">{{ __('Rate / hour') }}</label>
-                        {{-- Filled from the labor type, never typed. It reads as a
-                             locked field, the same way Register Employee shows a
-                             value the form works out for you. --}}
+                        {{-- Filled from the labor type, never typed. --}}
                         <div class="emp-rate" id="empRateBox" aria-live="polite">
                             <span class="emp-rate-cur" aria-hidden="true">₱</span>
                             <span id="empRateView" class="emp-rate-val" tabindex="-1">—</span>
@@ -427,9 +623,7 @@
                     @enderror
                 </div>
 
-                {{-- No photo field — see the note in employees/create.blade.php.
-                     The section keeps its name because the fingerprint slot
-                     above is still the other half of it. --}}
+                {{-- No photo field — see the note in employees/create.blade.php. --}}
             </section>
         </div>
 
@@ -445,301 +639,32 @@
   </div>
 </div>
 
-{{-- The Register Employee page's own chrome — .ep-label, .ep-hint, .ep-req,
-     .ep-optional, .ep-mono. Included rather than copied, so the modal and the
-{{-- In the head, not the body. A stylesheet the parser only reaches near
-     the end of the page paints everything above it unstyled first. --}}
-@push('styles')
-     full form cannot drift apart. --}}
-@include('employees._profile_styles')
-@include('employees._modal_styles')
-
-{{-- ── Styles ──────────────────────────────────────────────────────────────── --}}
-<style>
-.rm-page { max-width: none; width: 100%; margin: 0; }
-
-.rm-alert { display:flex; gap:10px; align-items:flex-start; padding:12px 16px; border-radius:10px; font-size:13.5px; margin-bottom:18px; border-left:4px solid transparent; }
-.rm-alert-err { background:#fef2f2; color:#991b1b; border-left-color:#dc2626; }
-
-.rm-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
-.rm-title { font-size:1.5rem; font-weight:700; color:#0f172a; margin:0 0 5px; }
-.rm-sub { font-size:.875rem; color:#64748b; margin:0; max-width:640px; }
-
-.rm-btn-primary { height:42px; padding:0 20px; font-size:14px; font-weight:700; color:#fff; border:none; border-radius:9px; cursor:pointer;
-    background:var(--brand,#1769e0); display:inline-flex; align-items:center; gap:8px; box-shadow:none; transition:transform .1s, opacity .15s; white-space:nowrap; }
-.rm-btn-primary:hover { opacity:.93; transform:translateY(-1px); }
-/* Register Employee is an <a>, so keep it looking like the button it replaced. */
-a.rm-btn-primary, a.rm-btn-primary:hover, a.rm-btn-primary:focus { text-decoration:none; color:#fff; }
-/* Edit is a link on both the active and the pending rows, and a link that
-   looks like a button should not carry an underline. */
-a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:none; }
-
-.rm-header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.rm-btn-danger { height:42px; padding:0 18px; font-size:14px; font-weight:700; color:#b91c1c; border:1px solid #fecaca; border-radius:9px;
-    cursor:pointer; background:#fef2f2; display:inline-flex; align-items:center; gap:8px; transition:background .15s, transform .1s; white-space:nowrap; }
-.rm-btn-danger:hover { background:#fee2e2; transform:translateY(-1px); }
-.rm-btn-danger:disabled { opacity:.6; cursor:not-allowed; transform:none; }
-
-/* Named at the kiosk but no rate could be resolved — the position they picked
-   is not one of the web's labor types. */
-.rm-needs-rate { display:inline-flex; align-items:center; gap:5px; margin-top:3px; margin-left:46px;
-    font-size:11px; font-weight:600; color:#b45309; background:#fffbeb; border:1px solid #fde68a;
-    border-radius:7px; padding:1px 7px; white-space:nowrap; }
-.rm-needs-rate i { font-size:9.5px; }
-
-/* Registered on the web, waiting for the kiosk to read their finger. */
-.rm-awaiting-fp { display:inline-flex; align-items:center; gap:5px; margin-top:3px; margin-left:46px;
-    font-size:11px; font-weight:600; white-space:nowrap; border-radius:7px; padding:1px 7px;
-    color:var(--brand,#1e5c9b); background:var(--brand-subtle,#eff6ff); border:1px solid var(--border,#bfdbfe); }
-.rm-awaiting-fp i { font-size:9.5px; }
-
-/* Stat chips */
-.rm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
-@media(max-width:720px){ .rm-stats{ grid-template-columns:repeat(2,1fr); } }
-.rm-stat { text-align:left; background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:16px 18px; cursor:pointer;
-    display:flex; flex-direction:column; gap:6px; transition:border-color .15s, box-shadow .15s, transform .1s; }
-.rm-stat:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(15,23,42,.07); }
-.rm-stat.active { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.08); }
-.rm-stat-num { font-size:1.7rem; font-weight:800; color:#0f172a; line-height:1; }
-.rm-stat-lbl { font-size:12.5px; font-weight:600; color:#64748b; display:flex; align-items:center; gap:6px; }
-.rm-stat-pending  .rm-stat-num { color:#b45309; }
-.rm-stat-active   .rm-stat-num { color:#15803d; }
-.rm-stat-archived .rm-stat-num { color:#7c3aed; }
-.rm-stat-removed  .rm-stat-num { color:#dc2626; }
-
-/* Tabs */
-.rm-tabs { display:flex; gap:6px; margin-bottom:18px; overflow-x:auto; padding:2px 2px 4px; }
-.rm-tab { background:none; padding:10px 14px; font-size:14px; font-weight:600; color:#64748b; cursor:pointer;
-    white-space:nowrap; transition:color .15s, background .15s, border-color .15s; }
-.rm-tab:hover { color:#1e293b; }
-.rm-tab-count { font-size:11px; font-weight:700; background:#f1f5f9; color:#475569; border-radius:10px; padding:1px 7px; margin-left:3px; }
-.rm-tab.active .rm-tab-count { background:#eff6ff; color:#2563eb; }
-
-/* ── Bulk selection ─────────────────────────────────────────────────────── */
-/* The checkbox column only exists while the pane is in selection mode. It is
-   hidden on both the <th> and the <td>, so the column collapses entirely
-   rather than leaving an empty gutter. */
-.rm-check-col { display:none; width:38px; text-align:center; padding-left:14px !important; padding-right:0 !important; }
-.rm-pane.selecting .rm-check-col { display:table-cell; }
-.rm-check, .rm-check-all {
-    width:16px; height:16px; cursor:pointer; accent-color:var(--brand,#1e5c9b); vertical-align:middle;
-}
-.rm-check-all:disabled { cursor:not-allowed; opacity:.4; }
-
-/* Toolbar strip that carries the Select toggle. */
-.rm-tools { display:flex; align-items:center; gap:10px; padding:11px 16px; border-bottom:1px solid #eef2f7; }
-.rm-tools-spacer { flex:1 1 auto; }
-/* Pressed state: the button stays visible as "Done" while selecting, so the
-   way out of selection mode is the same control that got you in. */
-.js-select-toggle.is-on { background:#1e5c9b; border-color:#1e5c9b; color:#fff; }
-.js-select-toggle.is-on:hover { background:#17497c; color:#fff; }
-.js-select-toggle:disabled { opacity:.5; cursor:not-allowed; }
-
-.rm-bulk {
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    margin:12px 16px; padding:10px 14px; border-radius:10px;
-    background:rgba(30,92,155,0.08); border:1px solid rgba(30,92,155,0.28);
-}
-.rm-bulk[hidden] { display:none; }
-.rm-bulk-count { font-size:13px; font-weight:600; }
-.rm-bulk-count strong { font-size:15px; }
-.rm-bulk-spacer { flex:1 1 auto; }
-.rm-bulk-plain, .rm-bulk-danger {
-    border-radius:8px; padding:7px 13px; font-size:12.5px; font-weight:600;
-    cursor:pointer; display:inline-flex; align-items:center; gap:6px;
-    transition:filter .15s, opacity .15s;
-}
-.rm-bulk-plain  { background:transparent; border:1px solid rgba(148,163,184,.5); color:inherit; }
-.rm-bulk-danger { background:#dc2626; border:1px solid #dc2626; color:#fff; }
-.rm-bulk-plain:hover, .rm-bulk-danger:hover { filter:brightness(1.08); }
-.rm-bulk-plain:disabled, .rm-bulk-danger:disabled { opacity:.55; cursor:not-allowed; }
-
-/* Contractual tag. Recorded only — payroll still computes the same way. */
-.rm-badge-contract {
-    background: rgba(232,163,61,0.14); color: #b26f00;
-    border: 1px solid rgba(232,163,61,0.55); margin-left: 5px;
-}
-
-.rm-pane { display:none; }
-.rm-pane.active { display:block; }
-
-.rm-card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; }
-.rm-card-note { display:flex; gap:9px; align-items:flex-start; padding:13px 18px; background:#f8fafc; border-bottom:1px solid #eef2f7; font-size:12.5px; color:#475569; }
-/* Keep the copy as ONE flex item — otherwise each text node and <strong>
-   becomes its own item and the sentence lays out as columns. */
-.rm-card-note > span { flex:1; min-width:0; line-height:1.65; }
-.rm-card-note i { color:#3b82f6; margin-top:3px; flex:none; }
-.rm-card-note strong { color:#334155; font-weight:700; }
-
-.rm-table { width:100%; border-collapse:collapse; }
-.rm-table thead th { background:#f8fafc; padding:11px 16px; font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#64748b; border-bottom:1px solid #e2e8f0; white-space:nowrap; }
-.rm-table tbody td { padding:13px 16px; border-bottom:1px solid #f1f5f9; vertical-align:middle; font-size:14px; }
-.rm-table tbody tr:last-child td { border-bottom:none; }
-.rm-table tbody tr:hover td { background:#f8fafc; }
-
-.rm-person { display:flex; align-items:center; gap:12px; }
-.rm-avatar { width:42px; height:42px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-    font-size:15px; font-weight:700; color:#fff; background:linear-gradient(135deg,#3b82f6,#3b82f6); overflow:hidden; border:2px solid #e0e7ef; }
-.rm-avatar img { width:100%; height:100%; object-fit:cover; }
-.rm-person-info { display:flex; flex-direction:column; gap:3px; min-width:0; }
-.rm-person-name { font-size:14px; font-weight:600; color:#0f172a; }
-.rm-person-name.muted { color:#b45309; font-style:italic; }
-.rm-id { font-size:11px; font-weight:600; font-family:monospace; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0; padding:1px 6px; border-radius:4px; width:fit-content; }
-
-.rm-badge { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:4px 9px; border-radius:20px; white-space:nowrap; }
-.rm-badge-site  { color:#166534; background:#f0fdf4; border:1px solid #bbf7d0; }
-.rm-badge-labor { color:#fff; background:linear-gradient(135deg,#3b82f6,#3b82f6); }
-.rm-badge-fp    { color:#fff; background:#059669; font-family:monospace; }
-.rm-badge i { font-size:10px; }
-.rm-dash { color:#94a3b8; font-size:13px; }
-.rm-muted { color:#64748b; font-size:13px; white-space:nowrap; }
-.rm-rate { text-align:center; font-weight:700; color:#374151; }
-.rm-pill { display:inline-block; min-width:26px; font-size:12px; font-weight:700; color:#475569; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:20px; padding:2px 8px; }
-
-.rm-actions { text-align:right; white-space:nowrap; }
-.rm-actions > * { vertical-align:middle; }
-.rm-actions > * + * { margin-left:6px; }
-.rm-btn-complete { height:34px; padding:0 14px; font-size:13px; font-weight:700; color:#fff; border:none; border-radius:8px; cursor:pointer;
-    background:#3b82f6; display:inline-flex; align-items:center; gap:6px; transition:opacity .15s; }
-.rm-btn-complete:hover { opacity:.9; }
-.rm-btn-ghost { height:34px; padding:0 13px; font-size:13px; font-weight:600; color:#475569; background:#f1f5f9; border:1.5px solid #e2e8f0; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s; }
-.rm-btn-ghost:hover { background:#e2e8f0; color:#1e293b; }
-.rm-btn-danger-ghost { color:#dc2626; }
-.rm-btn-accept { height:34px; padding:0 14px; font-size:13px; font-weight:700; color:#fff; border:none; border-radius:8px; cursor:pointer;
-    background:linear-gradient(135deg,#15803d,#22c55e); display:inline-flex; align-items:center; gap:6px; transition:opacity .15s; }
-.rm-btn-accept:hover { opacity:.9; }
-.rm-btn-reject { height:34px; padding:0 13px; font-size:13px; font-weight:700; color:#dc2626; background:#fef2f2; border:1.5px solid #fecaca; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:background .15s; }
-.rm-btn-reject:hover { background:#fee2e2; }
-
-/* kebab menu */
-.rm-menu-wrap { position:relative; display:inline-block; }
-.rm-menu-btn { width:34px; height:34px; border-radius:8px; border:1.5px solid #e2e8f0; background:#f8fafc; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .12s; }
-.rm-menu-btn:hover, .rm-menu-btn.active { background:#eff6ff; border-color:#bfdbfe; color:#2563eb; }
-/* Fixed, not absolute: .rm-card and the table's scroll wrapper both clip what
-   escapes them, so the menu opened inside the row and was never seen. Placed
-   by the script below. */
-.rm-menu { display:none; position:fixed; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.1); z-index:1080; min-width:172px; overflow:hidden; }
-.rm-menu.open { display:block; }
-.rm-menu-item { display:flex; align-items:center; gap:9px; padding:10px 14px; font-size:13px; font-weight:500; color:#374151; background:none; border:none; width:100%; text-align:left; cursor:pointer; text-decoration:none; transition:background .1s; }
-.rm-menu-item:hover { background:#f8fafc; }
-.rm-menu-item i { width:14px; text-align:center; font-size:12px; }
-.rm-menu-item.danger { color:#dc2626; }
-.rm-menu-item.danger:hover { background:#fef2f2; }
-.rm-menu-item.ok { color:#15803d; }
-.rm-menu-item.ok:hover { background:#f0fdf4; }
-
-/* empty */
-.rm-empty td { padding:0 !important; }
-.rm-empty-inner { display:flex; flex-direction:column; align-items:center; padding:52px 0; text-align:center; }
-.rm-empty-icon { width:60px; height:60px; border-radius:50%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:22px; color:#94a3b8; margin-bottom:14px; }
-.rm-empty-title { font-size:15px; font-weight:600; color:#374151; margin:0 0 5px; }
-.rm-empty-sub { font-size:13px; color:#94a3b8; margin:0; max-width:380px; }
-
-/* modal */
-
-/* ── Dark mode ───────────────────────────────────────────────────────────── */
-[data-bs-theme="dark"] .rm-title { color:#e8edf5; }
-[data-bs-theme="dark"] .rm-sub { color:#94a3b8; }
-[data-bs-theme="dark"] .rm-stat { background:#151d2e; border-color:#283449; }
-[data-bs-theme="dark"] .rm-stat-num { color:#e8edf5; }
-[data-bs-theme="dark"] .rm-stat.active { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
-[data-bs-theme="dark"] .rm-tab { color:#94a3b8; }
-[data-bs-theme="dark"] .rm-tab-count { background:#1c2740; color:#9fb0c7; }
-[data-bs-theme="dark"] .rm-btn-reject { background:#2a1416; border-color:#5b2426; color:#f87171; }
-[data-bs-theme="dark"] .rm-btn-reject:hover { background:#3a1a1d; }
-[data-bs-theme="dark"] .rm-card { background:#151d2e; border-color:#283449; }
-[data-bs-theme="dark"] .rm-card-note { background:#0f1a2e; border-bottom-color:#1c2740; color:#9fb0c7; }
-[data-bs-theme="dark"] .rm-card-note strong { color:#dbe4f0; }
-[data-bs-theme="dark"] .rm-table thead th { background:#1c2740; color:#6b7d96; border-bottom-color:#283449; }
-[data-bs-theme="dark"] .rm-table tbody td { border-bottom-color:#1a2336; }
-[data-bs-theme="dark"] .rm-table tbody tr:hover td { background:#1a2336; }
-[data-bs-theme="dark"] .rm-person-name { color:#e8edf5; }
-[data-bs-theme="dark"] .rm-id { background:#1c2740; border-color:#283449; color:#9fb0c7; }
-[data-bs-theme="dark"] .rm-muted { color:#9fb0c7; }
-[data-bs-theme="dark"] .rm-rate { color:#cdd7e5; }
-[data-bs-theme="dark"] .rm-pill { background:#1c2740; border-color:#283449; color:#9fb0c7; }
-[data-bs-theme="dark"] .rm-badge-site { color:#86efac; background:#052e16; border-color:#166534; }
-[data-bs-theme="dark"] .rm-btn-ghost { background:#1c2740; border-color:#283449; color:#94a3b8; }
-[data-bs-theme="dark"] .rm-btn-ghost:hover { background:#283449; color:#e2e8f0; }
-/* Must come after the .rm-btn-ghost dark rule above — same specificity, so
-   whichever is written last wins, and the pressed state has to. */
-[data-bs-theme="dark"] .rm-tools { border-bottom-color:#1c2740; }
-[data-bs-theme="dark"] .js-select-toggle.is-on { background:#2563eb; border-color:#2563eb; color:#fff; }
-[data-bs-theme="dark"] .js-select-toggle.is-on:hover { background:#1d4ed8; color:#fff; }
-[data-bs-theme="dark"] .rm-menu-btn { background:#1c2740; border-color:#283449; color:#94a3b8; }
-[data-bs-theme="dark"] .rm-menu-btn:hover, [data-bs-theme="dark"] .rm-menu-btn.active { background:#172554; border-color:#1d4ed8; color:#93c5fd; }
-[data-bs-theme="dark"] .rm-menu { background:#1c2740; border-color:#283449; box-shadow:0 8px 24px rgba(0,0,0,.4); }
-[data-bs-theme="dark"] .rm-menu-item { color:#cdd7e5; }
-[data-bs-theme="dark"] .rm-menu-item:hover { background:#283449; }
-[data-bs-theme="dark"] .rm-empty-icon { background:#1c2740; color:#475569; }
-[data-bs-theme="dark"] .rm-empty-title { color:#9fb0c7; }
-
-</style>
-@endpush
-
 {{-- ── Script ──────────────────────────────────────────────────────────────── --}}
 <script>
 (function () {
-    // ── Tabs + stat chips ────────────────────────────────────────────────────
+    // ── Tabs + stat cards ────────────────────────────────────────────────────
+    // Leaving a tab is announced, so the selection module can put away a
+    // selection that would otherwise survive out of sight.
     function switchTab(name) {
-        document.querySelectorAll('.rm-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-        document.querySelectorAll('.rm-stat').forEach(s => s.classList.toggle('active', s.dataset.tab === name));
+        const leaving = document.querySelector('.rm-pane.active');
+        document.querySelectorAll('.rmx-tab').forEach(t => {
+            const on = t.dataset.tab === name;
+            t.classList.toggle('is-open', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
         document.querySelectorAll('.rm-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
+        document.dispatchEvent(new CustomEvent('rmx:tab', {
+            detail: { from: leaving && leaving.dataset.pane !== name ? leaving : null },
+        }));
         try { history.replaceState(null, '', '#' + name); } catch (e) {}
     }
-    document.querySelectorAll('.rm-tab, .rm-stat').forEach(el => el.addEventListener('click', () => switchTab(el.dataset.tab)));
-    // The open tab is already decided in the markup — see $openTab above — so
-    // there is nothing to correct here on load. The hash is still honoured for
-    // links saved before ?tab= existed; without JavaScript those now open on
-    // Active instead of moving, which is the same page either way.
+    document.querySelectorAll('.rmx-tab, .rmx-stat').forEach(el => el.addEventListener('click', () => switchTab(el.dataset.tab)));
+    // The open tab is decided in the markup — see $openTab above. The hash is
+    // still honoured for links saved before ?tab= existed.
     const hash = (location.hash || '').replace('#', '');
-    if (['pending','active','removed'].includes(hash)) switchTab(hash);
+    if (['pending', 'active', 'removed'].includes(hash)) switchTab(hash);
 
-    // ── Kebab menus ──────────────────────────────────────────────────────────
-    // Fixed, so placed by hand: under the button, right edges aligned, flipped
-    // above when there is no room below.
-    function placeRmMenu(btn, menu) {
-        const r = btn.getBoundingClientRect();
-        const below = window.innerHeight - r.bottom;
-
-        menu.style.left = Math.max(8, r.right - menu.offsetWidth) + 'px';
-        menu.style.top  = (below < menu.offsetHeight + 12)
-            ? (r.top - menu.offsetHeight - 6) + 'px'
-            : (r.bottom + 6) + 'px';
-    }
-
-    function closeRmMenus() {
-        document.querySelectorAll('.rm-menu.open').forEach(m => {
-            m.classList.remove('open');
-            m.previousElementSibling?.classList.remove('active');
-        });
-    }
-
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.rm-menu-btn');
-        document.querySelectorAll('.rm-menu.open').forEach(m => {
-            if (!btn || m !== btn.nextElementSibling) {
-                m.classList.remove('open');
-                m.previousElementSibling?.classList.remove('active');
-            }
-        });
-        if (btn) {
-            e.stopPropagation();
-            const menu = btn.nextElementSibling, opening = !menu.classList.contains('open');
-            menu.classList.toggle('open', opening);
-            btn.classList.toggle('active', opening);
-
-            // Measured after it is shown, or width and height are both zero.
-            if (opening) placeRmMenu(btn, menu);
-        }
-    });
-
-    // A fixed menu does not travel with its row, so it closes rather than
-    // drifting away from the button it belongs to.
-    window.addEventListener('scroll', closeRmMenus, true);
-    window.addEventListener('resize', closeRmMenus);
-
-    // ── Employee form modal (add / complete / edit) ──────────────────────────
+    // ── Employee form modal (confirm / complete) ─────────────────────────────
     const storeUrl = "{{ route('employees.store') }}";
     const baseUrl  = "{{ url('employees') }}";
     const nextFp   = "{{ $nextFingerprintId }}";
@@ -776,13 +701,6 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
         }
     }
     laborEl.addEventListener('change', updateRate);
-
-    // The photo picker was here. It is gone with the field itself — see the
-    // note in employees/create.blade.php. Leaving the handlers behind would
-    // have been worse than useless: binding a listener to an element that no
-    // longer exists throws, and the throw would take the whole modal script
-    // down with it, exactly as a missing Bootstrap once did to the other
-    // picker.
 
     const modeField = document.getElementById('empFormModeField');
     const idField   = document.getElementById('empFormIdField');
@@ -836,7 +754,6 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
             rate: btn.dataset.rate, site: btn.dataset.site, fp: btn.dataset.fp,
         });
     });
-    // "Register Employee" is a link to the full form now — no modal to open.
 
     form.addEventListener('submit', function () {
         const b = document.getElementById('empFormSubmit');
@@ -854,7 +771,7 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
 
     // ── Realtime: auto-refresh kiosk-detected (pending) workers ──────────────
     // Polls a lightweight feed every few seconds so new fingerprint scans on
-    // the Pi kiosk appear here without the admin having to refresh the page.
+    // the kiosk appear here without the admin having to refresh the page.
     (function () {
         const liveUrl = "{{ route('employees.register.live') }}";
         const body    = document.getElementById('rmPendingBody');
@@ -864,8 +781,8 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
         function setCount(sel, val) { const el = document.querySelector(sel); if (el) el.textContent = val; }
         function updateCounts(c) {
             ['pending', 'active', 'removed'].forEach(k => {
-                setCount('.rm-stat-' + k + ' .rm-stat-num', c[k]);
-                setCount('.rm-tab[data-tab="' + k + '"] .rm-tab-count', c[k]);
+                setCount('.rmx-stat-' + k + ' .rmx-stat-num', c[k]);
+                setCount('.rmx-tab[data-tab="' + k + '"] .rmx-count', c[k]);
             });
             const badge = document.querySelector('.nav-pending-badge');
             if (badge) {
@@ -873,10 +790,6 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
                 badge.style.display = c.pending > 0 ? '' : 'none';
             }
         }
-        // Was its own bottom-centre bar in a hardcoded blue, built with
-        // innerHTML. Same name and same call signature; the shared notifier
-        // does the drawing, and escapes the message.
-        function toast(msg) { Notify.info(msg); }
 
         async function poll() {
             try {
@@ -889,7 +802,7 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
                 updateCounts(d.counts);
                 if (d.counts.pending > prevPending) {
                     const n = d.counts.pending - prevPending;
-                    toast(n + ' new worker' + (n > 1 ? 's' : '') + ' detected from the kiosk');
+                    Notify.info(n + ' new worker' + (n > 1 ? 's' : '') + ' detected from the kiosk');
                 }
                 prevPending = d.counts.pending;
             } catch (e) { /* offline / transient — try again next tick */ }
@@ -900,11 +813,12 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
 
 
 // ── Bulk selection ───────────────────────────────────────────────────────────
-// Replaces the old "Clear All Fingerprints" sledgehammer: pick exactly the rows
-// you mean — or tick the header box for the whole tab — and act on them once.
-// Each tab keeps its own selection, and the buttons match what that tab can do.
+// One Select toggle, beside the tabs, acting on whichever tab is open. Each
+// tab keeps its own checkboxes and its own actions, and leaving a tab puts
+// its selection away so nothing stays ticked out of sight.
 (function () {
-    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const csrf   = document.querySelector('meta[name="csrf-token"]').content;
+    const toggle = document.getElementById('rmxSelect');
 
     const ENDPOINTS = {
         remove:  { url: '{{ route('employees.bulk-delete') }}',       method: 'DELETE' },
@@ -912,17 +826,26 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
         purge:   { url: '{{ route('employees.bulk-force-delete') }}', method: 'DELETE' },
     };
 
+    const openPane = () => document.querySelector('.rm-pane.active');
     const paneOf   = el   => el.closest('.rm-pane');
-    const boxesIn  = pane => Array.from(pane.querySelectorAll('tbody .rm-check'));
+    const boxesIn  = pane => Array.from(pane.querySelectorAll('tbody .rmx-check'));
     const pickedIn = pane => boxesIn(pane).filter(b => b.checked);
+
+    function syncToggle() {
+        const pane = openPane();
+        const on   = !!pane && pane.classList.contains('selecting');
+        toggle.classList.toggle('is-on', on);
+        toggle.querySelector('.js-select-label').textContent = on ? 'Done' : 'Select';
+        // Nothing to select on an empty tab, so the toggle has no job there.
+        toggle.disabled = !pane || (boxesIn(pane).length === 0 && !on);
+    }
 
     function sync(pane) {
         if (!pane) return;
         const boxes     = boxesIn(pane);
         const picked    = pickedIn(pane);
-        const all       = pane.querySelector('.rm-check-all');
-        const bar       = pane.querySelector('.rm-bulk');
-        const toggle    = pane.querySelector('.js-select-toggle');
+        const all       = pane.querySelector('.rmx-check-all');
+        const bar       = pane.querySelector('.rmx-bulk');
         const selecting = pane.classList.contains('selecting');
 
         if (all) {
@@ -930,17 +853,15 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
             all.checked       = boxes.length > 0 && picked.length === boxes.length;
             all.indeterminate = picked.length > 0 && picked.length < boxes.length;
         }
-        // Nothing to select on an empty tab, so the toggle has no job there.
-        if (toggle) toggle.disabled = boxes.length === 0 && !selecting;
         if (bar) {
             // The bar rides along with selection mode rather than appearing on
-            // the first tick: entering the mode should show what can be done
-            // with a selection, not hide it until something is already chosen.
+            // the first tick, so entering the mode shows what can be done.
             bar.hidden = !selecting;
-            const n = bar.querySelector('.rm-bulk-count strong');
+            const n = bar.querySelector('.rmx-bulk-count strong');
             if (n) n.textContent = picked.length;
             bar.querySelectorAll('button').forEach(b => { b.disabled = picked.length === 0; });
         }
+        if (pane === openPane()) syncToggle();
     }
 
     // Entering the mode reveals the checkbox column; leaving it drops whatever
@@ -948,36 +869,32 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
     function setSelecting(pane, on) {
         if (!pane) return;
         pane.classList.toggle('selecting', on);
-        const toggle = pane.querySelector('.js-select-toggle');
-        if (toggle) {
-            toggle.classList.toggle('is-on', on);
-            const label = toggle.querySelector('.js-select-label');
-            if (label) label.textContent = on ? 'Done' : 'Select';
-        }
         if (!on) {
             boxesIn(pane).forEach(b => { b.checked = false; });
-            const all = pane.querySelector('.rm-check-all');
+            const all = pane.querySelector('.rmx-check-all');
             if (all) { all.checked = false; all.indeterminate = false; }
         }
         sync(pane);
+        syncToggle();
     }
 
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.js-select-toggle');
-        if (!btn) return;
-        const pane = paneOf(btn);
-        setSelecting(pane, !pane.classList.contains('selecting'));
+    toggle.addEventListener('click', function () {
+        const pane = openPane();
+        if (pane) setSelecting(pane, !pane.classList.contains('selecting'));
     });
 
-    function syncAll() { document.querySelectorAll('.rm-pane').forEach(sync); }
+    document.addEventListener('rmx:tab', function (e) {
+        if (e.detail && e.detail.from) setSelecting(e.detail.from, false);
+        syncToggle();
+    });
 
     document.addEventListener('change', function (e) {
         const t = e.target;
-        if (t.classList && t.classList.contains('rm-check-all')) {
+        if (t.classList && t.classList.contains('rmx-check-all')) {
             const pane = paneOf(t);
             boxesIn(pane).forEach(b => { b.checked = t.checked; });
             sync(pane);
-        } else if (t.classList && t.classList.contains('rm-check')) {
+        } else if (t.classList && t.classList.contains('rmx-check')) {
             sync(paneOf(t));
         }
     });
@@ -1021,7 +938,7 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
 
         const { url, method } = ENDPOINTS[kind];
         const label = btn.innerHTML;
-        pane.querySelectorAll('.rm-bulk button').forEach(b => { b.disabled = true; });
+        pane.querySelectorAll('.rmx-bulk button').forEach(b => { b.disabled = true; });
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Working…';
 
         try {
@@ -1061,7 +978,8 @@ a.rm-btn-ghost, a.rm-btn-ghost:hover, a.rm-btn-ghost:focus { text-decoration:non
         new MutationObserver(() => sync(paneOf(pendingBody))).observe(pendingBody, { childList: true });
     }
 
-    syncAll();
+    document.querySelectorAll('.rm-pane').forEach(sync);
+    syncToggle();
 })();
 </script>
 @endsection
