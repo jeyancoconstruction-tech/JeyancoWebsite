@@ -352,7 +352,7 @@
             data: {
                 labels: {!! json_encode($attendanceLabels ?? []) !!},
                 datasets: [{
-                    label: 'Hours Worked',
+                    label: 'Workers Present',
                     data: {!! json_encode($attendanceData ?? []) !!},
                     borderColor: cBrand,
                     backgroundColor: 'transparent',
@@ -377,7 +377,7 @@
                         bodyColor: cSurface,
                         padding: 10,
                         borderRadius: 8,
-                        callbacks: { label: ctx => ' ' + ctx.parsed.y + ' hrs' }
+                        callbacks: { label: ctx => ' ' + ctx.parsed.y + (ctx.parsed.y === 1 ? ' worker' : ' workers') }
                     }
                 },
                 scales: {

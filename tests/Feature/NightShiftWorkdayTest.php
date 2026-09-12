@@ -30,7 +30,7 @@ use Tests\TestCase;
  * progress, because to the calendar it was already yesterday.
  *
  * @see \App\Support\WorkSchedule::shiftDayFor()
- * @see \App\Models\Attendance::workdaysAt()
+ * @see \App\Models\Attendance::scopeOnWorkday()
  */
 class NightShiftWorkdayTest extends TestCase
 {

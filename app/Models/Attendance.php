@@ -180,34 +180,16 @@ class Attendance extends Model
 
     /**
      * The workday each shift is on at $now — shift_id => 'Y-m-d', with the
-     * plain calendar date under key 0 for rows worked under no shift.
+     * plain calendar date under key 0 for rows worked under no shift. It is
+     * the line the day view and the history divide on, and the one every
+     * figure headed "today" counts by.
      *
      * Both crews work one workday; they just do not agree on when it is. The
      * day shift's 11 AM and the night shift's 2 AM belong to the same date on
      * the payroll, because a shift's day is the date it started on. Attendance
      * is already filed that way — the kiosk stamps `date` from the shift, and
-     * payroll counts by it — so every screen that asks "what is happening
-     * today" has to ask the same question, and asking the calendar instead is
-     * what emptied the board at midnight on exactly the crew still working.
-     *
-     * @return array<int, string>
-     */
-    public static function workdaysAt(Carbon $now): array
-    {
-        $days = [0 => $now->toDateString()];
-
-        foreach (Shift::lookup() as $id => $schedule) {
-            $days[$id] = \App\Support\WorkSchedule::has($schedule)
-                ? \App\Support\WorkSchedule::shiftDayFor($schedule, $now)
-                : $now->toDateString();
-        }
-
-        return $days;
-    }
-
-    /**
-     * Where each shift's history stops — shift_id => 'Y-m-d', same shape as
-     * workdaysAt(), and the line the day view and the history divide on.
+     * payroll counts by it — so asking the calendar instead is what emptied
+     * the board at midnight on exactly the crew still working.
      *
      * Usually that is the workday the shift is on. Once that day has run its
      * course it is the next one, which is what moves a finished day off the
@@ -239,12 +221,20 @@ class Attendance extends Model
         return $bounds;
     }
 
-    /** Rows on the workday their own shift is working right now. */
+    /**
+     * Rows on the workday their own shift is on right now, by the line the
+     * day view draws — so every "today" figure counts what Today's
+     * Attendance lists.
+     *
+     * It used to match the day a clock would land on instead. From the end
+     * of the night shift until the next one opened in the evening, that kept
+     * the crew's finished night as "today" on the dashboard, in analytics and
+     * in the assistant, while the Attendance page had already moved it to
+     * the history.
+     */
     public function scopeOnWorkday(Builder $query, ?Carbon $now = null): Builder
     {
-        $now = $now ?? Carbon::now();
-
-        return self::matchWorkday($query, self::workdaysAt($now), '=');
+        return self::matchWorkday($query, self::boundariesAt($now ?? Carbon::now()), '=');
     }
 
     /** Rows from a workday that has already finished — the history. */

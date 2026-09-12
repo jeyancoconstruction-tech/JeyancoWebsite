@@ -20,13 +20,21 @@ class DashboardController extends Controller
 
         $totalEmployees = $employees->count();
 
-        // The day each crew is working, not the calendar's. The night shift's
-        // workday is the evening it began on, so at 1am its rows are dated
-        // yesterday and a plain date filter reported the crew as absent.
-        $presentToday = Attendance::onWorkday()
-                                   ->whereNotNull('time_in')
-                                   ->distinct('employee_id')
-                                   ->count('employee_id');
+        // Today is the rows Today's Attendance lists, by the same scopes, so
+        // these tiles, the Live Attendance panel and the page its "View all"
+        // opens cannot disagree about who is here. That is the day each crew
+        // is working, not the calendar's — at 1am the night shift's rows are
+        // dated yesterday — but a night that is over is history even before
+        // the crew's next day opens. Matched on where a clock would land,
+        // last night's finished shift sat under TODAY here all the next day
+        // while the Attendance page showed nobody. Pending workers' old rows
+        // are left out, as they are there.
+        $now       = Carbon::now();
+        $todayRows = fn () => Attendance::ofRegistered()
+                                        ->fromWorkday($now)
+                                        ->whereNotNull('time_in');
+
+        $presentToday = $todayRows()->distinct('employee_id')->count('employee_id');
 
         // Weekly payout for the current Mon–Sun week — computed by PayrollService
         // so it matches Payroll Records exactly (single source of truth).
@@ -38,7 +46,9 @@ class DashboardController extends Controller
         $pendingVale = $employees->sum('vale');
 
         // ── Deltas (read-only, for the stat-card trend chips) ──────────────
-        $presentYesterday = Attendance::onWorkday(Carbon::now()->subDay())
+        // The workday each crew last finished: the same line, a day earlier.
+        $presentYesterday = Attendance::ofRegistered()
+                                       ->onWorkday($now->copy()->subDay())
                                        ->whereNotNull('time_in')
                                        ->distinct('employee_id')
                                        ->count('employee_id');
@@ -53,9 +63,7 @@ class DashboardController extends Controller
             ->count();
 
         // ── Live Attendance (today) ────────────────────────────────────────
-        $todayAttendance = Attendance::with(['employee', 'shift'])
-            ->onWorkday()
-            ->whereNotNull('time_in')
+        $todayAttendance = $todayRows()->with(['employee', 'shift'])
             ->orderByDesc('time_in')
             // The panel is full height on the one-screen layout and scrolls its
             // own body, so six rows left a third of it empty. Twelve fills it
@@ -74,7 +82,7 @@ class DashboardController extends Controller
                 'time'     => $e->created_at,
             ]);
         });
-        Attendance::with('employee')->whereNotNull('time_in')->latest('created_at')->take(4)->get()
+        Attendance::with('employee')->ofRegistered()->whereNotNull('time_in')->latest('created_at')->take(4)->get()
             ->each(function ($a) use ($recentActivities) {
                 $recentActivities->push([
                     'icon'     => 'fa-clock',
@@ -90,18 +98,23 @@ class DashboardController extends Controller
             ->take(8)
             ->values();
 
-        // Attendance chart
+        // Attendance chart — workers present on each workday, counted by
+        // person like the tiles. It counted rows and its tooltip called them
+        // hours, so one worker's morning and afternoon read as "2 hrs".
         $attendanceLabels = [];
         $attendanceData = [];
         for ($i=6; $i>=0; $i--) {
             $date = Carbon::today()->subDays($i);
             $attendanceLabels[] = $date->format('M d');
-            $attendanceData[] = Attendance::where('date', $date->format('Y-m-d'))->count();
+            $attendanceData[] = Attendance::ofRegistered()
+                ->where('date', $date->format('Y-m-d'))
+                ->whereNotNull('time_in')
+                ->distinct('employee_id')
+                ->count('employee_id');
         }
 
         // ── Still on site: timed in today and not yet out ──────────────────
-        $stillIn = Attendance::onWorkday()
-            ->whereNotNull('time_in')
+        $stillIn = $todayRows()
             ->whereNull('time_out')
             ->distinct('employee_id')
             ->count('employee_id');
