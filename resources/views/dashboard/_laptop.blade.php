@@ -50,7 +50,6 @@
     .dash-bar-right { flex-wrap: nowrap; flex: 0 0 auto; gap: 6px; }
 }
 @media (min-width: 992px) and (max-width: 1500px) {
-    .dash-act { height: 29px; padding: 0 9px; font-size: 11.5px; gap: 5px; }
     .dash-clock { padding: 4px 9px 4px 6px; gap: 7px; }
     .dash-clock-ic { width: 23px; height: 23px; font-size: 11px; }
     .dash-clock-time { font-size: 12px; }

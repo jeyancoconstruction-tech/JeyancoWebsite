@@ -182,9 +182,10 @@
             @endif
 
             <div class="menu-section">{{ __('PAYROLL') }}</div>
-            {{-- Payroll Processing is not on the rail: a run is started from the
-                 Dashboard's Payroll Run button, and one left open is announced
-                 in its Needs Attention panel. --}}
+            {{-- Payroll Processing is not on the rail, nor on the Dashboard since
+                 its quick buttons went. A run left open is announced in the
+                 Dashboard's Needs Attention panel; the page itself stays at
+                 /payroll-processing. --}}
             <a class="nav-link {{ (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*')) && ! request()->is('payroll-processing*') && ! request()->is('payroll-reports*') && ! request()->is('payslips*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
             </a>

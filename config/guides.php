@@ -23,12 +23,12 @@ return [
     'dashboard' => [
         'en' => ['title' => 'Dashboard', 'lines' => [
             'The tiles read today: who is active, who is present, who is still timed in, and what this week has cost so far.',
-            'The four buttons at the top go straight to the work — register a worker, start a payroll run, open attendance or payroll records.',
+            'Needs Attention lists what is waiting on somebody — kiosk registrations, leave to decide, payroll runs to review — and each row opens the screen that clears it.',
             'Nothing is entered here. Every figure comes from another section, so a wrong number is corrected where it was recorded.',
         ]],
         'tl' => ['title' => 'Dashboard', 'lines' => [
             'Ang mga tile ay para sa ngayong araw: sino ang aktibo, sino ang present, sino ang naka-time in pa, at magkano na ang gastos ngayong linggo.',
-            'Ang apat na buton sa itaas ay diretso sa trabaho — magrehistro ng manggagawa, magsimula ng payroll run, buksan ang attendance o payroll records.',
+            'Nasa Needs Attention ang mga naghihintay ng aksyon — rehistro mula sa kiosk, leave na dedesisyunan, payroll run na rerepasuhin — at bawat hanay ay nagbubukas ng screen na tatapos dito.',
             'Walang inilalagay dito. Galing sa ibang section ang bawat numero, kaya doon itama ang mali.',
         ]],
     ],

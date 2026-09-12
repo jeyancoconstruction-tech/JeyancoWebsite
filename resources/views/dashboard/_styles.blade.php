@@ -36,20 +36,6 @@
 .dash-greet p { margin: 1px 0 0; font-size: .76rem; color: var(--text-secondary); }
 .dash-bar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-.dash-act {
-    height: 32px; padding: 0 11px; font-size: 12.5px; font-weight: 600;
-    display: inline-flex; align-items: center; gap: 6px;
-    border: 1px solid var(--border); border-radius: var(--radius-sm);
-    background: var(--bg-surface); color: var(--text-primary); text-decoration: none;
-    white-space: nowrap; cursor: pointer;
-    transition: background .15s ease, border-color .15s ease, color .15s ease;
-}
-.dash-act:hover { background: var(--brand-subtle); border-color: var(--brand); color: var(--brand); }
-.dash-act:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.dash-act.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
-.dash-act.primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); color: #fff; }
-.dash-act i { font-size: 11px; }
-
 /* The clock keeps its own id and ticker; only its size changes here. */
 .dash-clock {
     display: flex; align-items: center; gap: 9px;

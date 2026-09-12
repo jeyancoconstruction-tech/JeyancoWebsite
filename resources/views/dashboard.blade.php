@@ -34,22 +34,6 @@
         </div>
 
         <div class="dash-bar-right">
-            {{-- Every one of these goes somewhere real. --}}
-            <a class="dash-act primary" href="{{ route('employees.create') }}">
-                <i class="fas fa-user-plus"></i> {{ __('Register Worker') }}
-            </a>
-            @if(auth()->user()?->canAccessModule('payroll-processing'))
-                <a class="dash-act" href="{{ route('payroll-processing.index') }}">
-                    <i class="fas fa-calculator"></i> {{ __('Payroll Run') }}
-                </a>
-            @endif
-            <a class="dash-act" href="{{ url('/attendance') }}">
-                <i class="fas fa-calendar-check"></i> {{ __('Attendance') }}
-            </a>
-            <a class="dash-act" href="{{ url('/payroll-records') }}">
-                <i class="fas fa-receipt"></i> {{ __('Payroll Records') }}
-            </a>
-
             {{-- Same ids the live ticker and the month popover already use. --}}
             <div class="clock-shell" style="position:relative;">
                 <div class="dash-clock" id="clockWidget" role="button" tabindex="0"
