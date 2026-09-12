@@ -40,6 +40,19 @@ class DashboardLayoutTest extends TestCase
             'name' => 'Dash Admin', 'username' => 'dashadmin',
             'password' => 'secret123', 'role' => User::ROLE_ADMIN, 'is_active' => true,
         ]);
+
+        // Mid-morning, in the middle of the day shift. The worker seeded below
+        // is timed in and not out, and whether that reads as "still timed in"
+        // depends on whether their shift is still running: once it is over,
+        // an open row is history, as it is on the Attendance page. Left on the
+        // real clock, a suite run in the evening failed here.
+        \Carbon\Carbon::setTestNow(\Carbon\Carbon::today()->setTime(10, 0));
+    }
+
+    protected function tearDown(): void
+    {
+        \Carbon\Carbon::setTestNow();
+        parent::tearDown();
     }
 
     private function seedWorkforce(): Employee
