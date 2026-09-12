@@ -59,15 +59,15 @@ return [
         ]],
     ],
 
-    'leave-loans' => [
-        'en' => ['title' => 'Leave and Loans', 'lines' => [
+    'leave-advances' => [
+        'en' => ['title' => 'Leave and Advances', 'lines' => [
             'File Leave records a request. It stays pending until somebody approves or rejects it, and payroll reads that decision.',
-            'New Loan / Advance records what was handed over; payroll collects against it each period, and Record payment covers anything paid back outside a run.',
+            'New Cash Advance records what was handed over; payroll collects the instalment each period, and Record payment covers anything paid back outside a run.',
             'Overtime is not filed here. Payroll counts it from attendance — the time past the shift\'s regular hours.',
         ]],
-        'tl' => ['title' => 'Leave at Utang', 'lines' => [
+        'tl' => ['title' => 'Leave at Cash Advance', 'lines' => [
             'Ang File Leave ay nagre-record ng request. Pending ito hanggang may mag-approve o mag-reject, at ang desisyong iyon ang binabasa ng payroll.',
-            'Ang New Loan / Advance ang nagre-record ng ibinigay; kinokolekta ito ng payroll kada panahon, at ang Record payment ay para sa binayaran sa labas ng run.',
+            'Ang New Cash Advance ang nagre-record ng ibinigay; kinokolekta ng payroll ang hulog kada panahon, at ang Record payment ay para sa binayaran sa labas ng run.',
             'Hindi dito fina-file ang overtime. Binibilang ito ng payroll mula sa attendance — ang oras na lampas sa regular hours ng shift.',
         ]],
     ],

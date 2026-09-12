@@ -91,7 +91,7 @@ class PayrollRunItem extends Model
             'Withholding Tax'  => $this->tax,
             'Vale'             => $this->vale,
             'Loan'             => $this->loan_deduction,
-            'Salary Advance'   => $this->advance_deduction,
+            'Cash Advance'     => $this->advance_deduction,
             'Other Deductions' => $this->other_deductions,
         ], fn ($v) => $v > 0);
     }

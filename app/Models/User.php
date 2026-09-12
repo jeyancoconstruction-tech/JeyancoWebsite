@@ -29,7 +29,7 @@ class User extends Authenticatable
     /** Payroll, its reports and payslips. No employee administration. */
     public const ROLE_PAYROLL = 'payroll_officer';
 
-    /** People: employees, leave, loans. No payroll figures. */
+    /** People: employees, leave, cash advances. No payroll figures. */
     public const ROLE_HR = 'hr';
 
     /** One site's crew: assignments, leave approval, devices. */

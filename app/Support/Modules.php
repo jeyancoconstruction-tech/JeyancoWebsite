@@ -17,7 +17,10 @@ final class Modules
 {
     // Keys used on routes and in the sidebar.
     public const LEAVE       = 'leave';
-    public const LOANS       = 'loans';
+    // Cash advances. The key is still 'loans' from when the module issued
+    // loans as well; it names a permission, and renaming it would only
+    // rename a string.
+    public const ADVANCES    = 'loans';
     public const ASSIGNMENTS = 'assignments';
     public const PROCESSING  = 'payroll-processing';
     public const PAYSLIPS    = 'payslips';
@@ -35,17 +38,17 @@ final class Modules
         // everything it could reach before, and gains the operational modules
         // — but not user administration, the audit trail, or the device rail.
         User::ROLE_STAFF => [
-            self::LEAVE, self::LOANS, self::ASSIGNMENTS,
+            self::LEAVE, self::ADVANCES, self::ASSIGNMENTS,
             self::PROCESSING, self::PAYSLIPS, self::REPORTS,
         ],
 
         User::ROLE_PAYROLL => [
-            self::LEAVE, self::LOANS,
+            self::LEAVE, self::ADVANCES,
             self::PROCESSING, self::PAYSLIPS, self::REPORTS,
         ],
 
         User::ROLE_HR => [
-            self::LEAVE, self::LOANS, self::ASSIGNMENTS,
+            self::LEAVE, self::ADVANCES, self::ASSIGNMENTS,
         ],
 
         User::ROLE_SUPERVISOR => [
@@ -95,14 +98,14 @@ final class Modules
     }
 
     /**
-     * Human labels. Leave and loans are the two tabs of the Leave & Loans
-     * page, so they carry the tab names; the rest match the sidebar.
+     * Human labels. Leave and cash advances are the two tabs of the Leave &
+     * Advances page, so they carry the tab names; the rest match the sidebar.
      */
     public static function labels(): array
     {
         return [
             self::LEAVE       => 'Leave',
-            self::LOANS       => 'Loans & Advances',
+            self::ADVANCES    => 'Cash Advances',
             self::ASSIGNMENTS => 'Project Assignment',
             self::PROCESSING  => 'Payroll Processing',
             self::PAYSLIPS    => 'Payslips',

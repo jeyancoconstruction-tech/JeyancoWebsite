@@ -175,7 +175,7 @@ class PendingEmployeeIsNotWorkforceTest extends TestCase
 
         $admin = $this->admin();
 
-        foreach (['/leave-loans', '/leave-loans?tab=loans', '/project-assignments'] as $url) {
+        foreach (['/leave-advances', '/leave-advances?tab=advances', '/project-assignments'] as $url) {
             $page = $this->actingAs($admin)->get($url)->assertOk();
 
             $names = collect($page->viewData('employees'))->pluck('name');

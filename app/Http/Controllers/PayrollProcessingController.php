@@ -107,8 +107,8 @@ class PayrollProcessingController extends Controller
     }
 
     /**
-     * The irreversible step. Loan instalments are collected HERE and only
-     * here, so a run recalculated five times never collects five times.
+     * The irreversible step. Cash advance instalments are collected HERE and
+     * only here, so a run recalculated five times never collects five times.
      */
     public function finalize(Request $request, PayrollRun $run)
     {
@@ -129,7 +129,7 @@ class PayrollProcessingController extends Controller
         AuditLog::record('Payroll', 'finalized',
             'Finalised ' . $run->code . ' — ₱' . number_format($run->total_net, 2)
             . ' net across ' . $run->employee_count . ' worker(s), '
-            . $collected . ' loan collection(s) posted', $run);
+            . $collected . ' instalment collection(s) posted', $run);
 
         return back()->with('success', 'Run finalised. Payslips are now available.');
     }

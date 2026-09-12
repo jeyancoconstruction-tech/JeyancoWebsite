@@ -79,9 +79,9 @@
                         <th>{{ __('Detail') }}</th>
                         <th class="num">{{ __('Lines') }}</th>
                         <th class="num">{{ $report === 'overtime' ? __('Hours') : __('Days') }}</th>
-                        <th class="num">{{ $report === 'loans' ? __('Principal') : __('Gross') }}</th>
-                        <th class="num">{{ $report === 'loans' ? __('Paid') : __('Deductions') }}</th>
-                        <th class="num">{{ $report === 'loans' ? __('Balance') : __('Net') }}</th>
+                        <th class="num">{{ $report === 'advances' ? __('Principal') : __('Gross') }}</th>
+                        <th class="num">{{ $report === 'advances' ? __('Paid') : __('Deductions') }}</th>
+                        <th class="num">{{ $report === 'advances' ? __('Balance') : __('Net') }}</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -1,14 +1,14 @@
 @extends('layouts')
-@section('page_title', 'Leave & Loans')
+@section('page_title', 'Leave & Advances')
 
 @section('content')
 @php
     // The subtitle and the one button follow the open tab.
-    $head = $tab === 'loans'
+    $head = $tab === 'advances'
         ? [
-            'sub'    => __('Sums issued to a worker and collected back over several payrolls. Payroll Processing takes the instalment due; the balance moves only when a run is finalised.'),
-            'modal'  => 'loanModal',
-            'button' => __('New Loan / Advance'),
+            'sub'    => __('Cash handed to a worker ahead of pay and collected back over several payrolls. Payroll Processing takes the instalment due; the balance moves only when a run is finalised.'),
+            'modal'  => 'advanceModal',
+            'button' => __('New Cash Advance'),
         ]
         : [
             'sub'    => __('Filed leave and the decisions on it. Approved leave is picked up by Payroll Processing and never writes an attendance record. Overtime is not filed — payroll counts it from attendance.'),
@@ -19,7 +19,7 @@
 <div class="mod-page">
 
     @include('modules._head', [
-        'title'   => __('Leave & Loans'),
+        'title'   => __('Leave & Advances'),
         'sub'     => $head['sub'],
         'actions' => '<button type="button" class="mod-btn primary" data-bs-toggle="modal" data-bs-target="#'
                      . $head['modal'] . '"><i class="fas fa-plus"></i> ' . $head['button'] . '</button>',
@@ -32,9 +32,9 @@
             <i class="fas fa-calendar-day"></i> {{ __('Leave') }}
             @if($counts['leave_pending'])<span class="mod-tab-count">{{ $counts['leave_pending'] }}</span>@endif
         </a>
-        @if($canLoans)
-            <a class="mod-tab {{ $tab === 'loans' ? 'active' : '' }}" href="{{ route('leave.index', ['tab' => 'loans']) }}">
-                <i class="fas fa-hand-holding-dollar"></i> {{ __('Loans & Advances') }}
+        @if($canAdvances)
+            <a class="mod-tab {{ $tab === 'advances' ? 'active' : '' }}" href="{{ route('leave.index', ['tab' => 'advances']) }}">
+                <i class="fas fa-hand-holding-dollar"></i> {{ __('Cash Advances') }}
             </a>
         @endif
     </div>
@@ -168,19 +168,10 @@
 
         <div class="mod-card">
             <form method="GET" class="mod-filters">
-                <input type="hidden" name="tab" value="loans">
+                <input type="hidden" name="tab" value="advances">
                 <div class="mod-filter mod-filter-grow">
                     <label for="fq">{{ __('Employee') }}</label>
                     <input id="fq" class="form-control" type="text" name="q" value="{{ request('q') }}" placeholder="{{ __('Search a name') }}">
-                </div>
-                <div class="mod-filter">
-                    <label for="ftype">{{ __('Type') }}</label>
-                    <select id="ftype" class="form-select" name="type">
-                        <option value="">{{ __('All') }}</option>
-                        @foreach(\App\Models\Loan::TYPES as $k => $v)
-                            <option value="{{ $k }}" @selected(request('type') === $k)>{{ $v }}</option>
-                        @endforeach
-                    </select>
                 </div>
                 <div class="mod-filter">
                     <label for="fstatus">{{ __('Status') }}</label>
@@ -193,7 +184,7 @@
                 </div>
                 <div class="mod-filter-actions">
                     <button class="mod-btn primary" type="submit"><i class="fas fa-magnifying-glass"></i> {{ __('Apply') }}</button>
-                    <a class="mod-btn" href="{{ route('leave.index', ['tab' => 'loans']) }}">{{ __('Reset') }}</a>
+                    <a class="mod-btn" href="{{ route('leave.index', ['tab' => 'advances']) }}">{{ __('Reset') }}</a>
                 </div>
             </form>
 
@@ -202,8 +193,7 @@
                     <thead>
                         <tr>
                             <th>{{ __('Employee') }}</th>
-                            <th>{{ __('Type') }}</th>
-                            <th class="num">{{ __('Principal') }}</th>
+                            <th class="num">{{ __('Amount') }}</th>
                             <th class="num">{{ __('Balance') }}</th>
                             <th class="num">{{ __('Instalment') }}</th>
                             <th>{{ __('Schedule') }}</th>
@@ -213,27 +203,26 @@
                         </tr>
                     </thead>
                     <tbody>
-                    @forelse($loans as $loan)
+                    @forelse($advances as $advance)
                         <tr>
-                            <td>@include('modules._person', ['name' => $loan->employee->name ?? '—', 'sub' => $loan->reference ?: ''])</td>
-                            <td class="muted">{{ $loan->type_label }}</td>
-                            <td class="num">₱{{ number_format($loan->principal, 2) }}</td>
+                            <td>@include('modules._person', ['name' => $advance->employee->name ?? '—', 'sub' => $advance->reference ?: ''])</td>
+                            <td class="num">₱{{ number_format($advance->principal, 2) }}</td>
                             <td class="num strong">
-                                ₱{{ number_format($loan->balance, 2) }}
-                                <div class="mod-person-sub">{{ $loan->progress }}% {{ __('paid') }}</div>
+                                ₱{{ number_format($advance->balance, 2) }}
+                                <div class="mod-person-sub">{{ $advance->progress }}% {{ __('paid') }}</div>
                             </td>
-                            <td class="num">₱{{ number_format($loan->installment, 2) }}</td>
-                            <td class="muted">{{ $loan->schedule === 'monthly' ? __('Monthly') : __('Per payroll') }}</td>
-                            <td class="muted">{{ $loan->issued_on->format('M d, Y') }}</td>
+                            <td class="num">₱{{ number_format($advance->installment, 2) }}</td>
+                            <td class="muted">{{ $advance->schedule === 'monthly' ? __('Monthly') : __('Per payroll') }}</td>
+                            <td class="muted">{{ $advance->issued_on->format('M d, Y') }}</td>
                             <td>
-                                @php $tone = ['paid' => 'ok', 'cancelled' => 'muted', 'on_hold' => 'warn'][$loan->status] ?? 'info'; @endphp
-                                <span class="mod-badge {{ $tone }}"><span class="dot"></span>{{ $loan->status_label }}</span>
+                                @php $tone = ['paid' => 'ok', 'cancelled' => 'muted', 'on_hold' => 'warn'][$advance->status] ?? 'info'; @endphp
+                                <span class="mod-badge {{ $tone }}"><span class="dot"></span>{{ $advance->status_label }}</span>
                             </td>
                             <td>
-                                @if($loan->status === 'active')
+                                @if($advance->status === 'active')
                                     <div class="mod-row-actions">
                                         <button class="mod-btn sm" type="button" data-bs-toggle="modal"
-                                                data-bs-target="#payModal{{ $loan->id }}">
+                                                data-bs-target="#payModal{{ $advance->id }}">
                                             <i class="fas fa-peso-sign"></i> {{ __('Record payment') }}
                                         </button>
                                     </div>
@@ -241,13 +230,13 @@
                             </td>
                         </tr>
                     @empty
-                        @include('modules._empty', ['cols' => 9, 'icon' => 'fa-hand-holding-dollar',
-                            'title' => __('No loans recorded'), 'sub' => __('Issued loans and advances appear here with their running balance.')])
+                        @include('modules._empty', ['cols' => 8, 'icon' => 'fa-hand-holding-dollar',
+                            'title' => __('No cash advances recorded'), 'sub' => __('Advances appear here with their running balance.')])
                     @endforelse
                     </tbody>
                 </table>
             </div>
-            @if($loans->hasPages())<div class="mod-pager">{{ $loans->links() }}</div>@endif
+            @if($advances->hasPages())<div class="mod-pager">{{ $advances->links() }}</div>@endif
         </div>
     @endif
 </div>
@@ -317,20 +306,20 @@
   </div>
 </div>
 @else
-{{-- A record-payment dialog per active loan: the amount is capped at that
-     loan's own balance, which a single shared form could not enforce. --}}
-@foreach($loans as $loan)
-    @if($loan->status === 'active')
-    <div class="modal fade" id="payModal{{ $loan->id }}" tabindex="-1" aria-hidden="true">
+{{-- A record-payment dialog per active advance: the amount is capped at that
+     advance's own balance, which a single shared form could not enforce. --}}
+@foreach($advances as $advance)
+    @if($advance->status === 'active')
+    <div class="modal fade" id="payModal{{ $advance->id }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered emp-dialog" style="max-width:460px;">
         <div class="modal-content emp-modal">
-          <form method="POST" action="{{ route('loans.payment', $loan) }}">
+          <form method="POST" action="{{ route('loans.payment', $advance) }}">
             @csrf
             <div class="emp-head">
                 <span class="emp-head-icon"><i class="fas fa-peso-sign"></i></span>
                 <div class="emp-head-text">
                     <h6 class="emp-head-title">{{ __('Record Payment') }}</h6>
-                    <p class="emp-head-sub">{{ $loan->employee->name ?? '' }} &middot; {{ __('balance') }} ₱{{ number_format($loan->balance, 2) }}</p>
+                    <p class="emp-head-sub">{{ $advance->employee->name ?? '' }} &middot; {{ __('balance') }} ₱{{ number_format($advance->balance, 2) }}</p>
                 </div>
                 <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
             </div>
@@ -340,17 +329,17 @@
                     <div>{{ __('For a payment made outside payroll. Payroll posts its own collections when a run is finalised.') }}</div>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="amt{{ $loan->id }}">{{ __('Amount') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="amt{{ $loan->id }}" type="number" step="0.01" min="0.01"
-                           max="{{ $loan->balance }}" name="amount" required>
+                    <label class="ep-label" for="amt{{ $advance->id }}">{{ __('Amount') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="amt{{ $advance->id }}" type="number" step="0.01" min="0.01"
+                           max="{{ $advance->balance }}" name="amount" required>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="don{{ $loan->id }}">{{ __('Date') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="don{{ $loan->id }}" type="date" name="deducted_on" value="{{ now()->toDateString() }}" required>
+                    <label class="ep-label" for="don{{ $advance->id }}">{{ __('Date') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="don{{ $advance->id }}" type="date" name="deducted_on" value="{{ now()->toDateString() }}" required>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="nt{{ $loan->id }}">{{ __('Note') }}</label>
-                    <input class="form-control" id="nt{{ $loan->id }}" type="text" name="note" maxlength="255">
+                    <label class="ep-label" for="nt{{ $advance->id }}">{{ __('Note') }}</label>
+                    <input class="form-control" id="nt{{ $advance->id }}" type="text" name="note" maxlength="255">
                 </div>
             </div>
             <div class="emp-foot">
@@ -364,8 +353,8 @@
     @endif
 @endforeach
 
-{{-- ── New loan ────────────────────────────────────────────────────────── --}}
-<div class="modal fade" id="loanModal" tabindex="-1" aria-hidden="true" aria-labelledby="loanModalTitle">
+{{-- ── New cash advance ────────────────────────────────────────────────── --}}
+<div class="modal fade" id="advanceModal" tabindex="-1" aria-hidden="true" aria-labelledby="advanceModalTitle">
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog">
     <div class="modal-content emp-modal">
       <form method="POST" action="{{ route('loans.store') }}">
@@ -373,7 +362,7 @@
         <div class="emp-head">
             <span class="emp-head-icon"><i class="fas fa-hand-holding-dollar"></i></span>
             <div class="emp-head-text">
-                <h6 class="emp-head-title" id="loanModalTitle">{{ __('New Loan or Advance') }}</h6>
+                <h6 class="emp-head-title" id="advanceModalTitle">{{ __('New Cash Advance') }}</h6>
                 <p class="emp-head-sub">{{ __('The balance starts at the full amount and falls as payroll collects.') }}</p>
             </div>
             <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
@@ -381,50 +370,44 @@
         <div class="modal-body emp-body">
             <div class="mod-form-grid">
                 <div class="emp-field full">
-                    <label class="ep-label" for="ln_emp">{{ __('Employee') }} <span class="ep-req">*</span></label>
-                    <select class="form-select" id="ln_emp" name="employee_id" required>
+                    <label class="ep-label" for="ca_emp">{{ __('Employee') }} <span class="ep-req">*</span></label>
+                    <select class="form-select" id="ca_emp" name="employee_id" required>
                         <option value="">{{ __('— Select —') }}</option>
                         @foreach($employees as $e)<option value="{{ $e->id }}">{{ $e->name }}</option>@endforeach
                     </select>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ln_type">{{ __('Type') }} <span class="ep-req">*</span></label>
-                    <select class="form-select" id="ln_type" name="type" required>
-                        @foreach(\App\Models\Loan::TYPES as $k => $v)<option value="{{ $k }}">{{ $v }}</option>@endforeach
-                    </select>
+                    <label class="ep-label" for="ca_amt">{{ __('Amount') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="ca_amt" type="number" step="0.01" min="1" name="principal" required>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ln_ref">{{ __('Reference') }}</label>
-                    <input class="form-control" id="ln_ref" type="text" name="reference" maxlength="40">
-                </div>
-                <div class="emp-field">
-                    <label class="ep-label" for="ln_amt">{{ __('Amount') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="ln_amt" type="number" step="0.01" min="1" name="principal" required>
-                </div>
-                <div class="emp-field">
-                    <label class="ep-label" for="ln_inst">{{ __('Instalment') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="ln_inst" type="number" step="0.01" min="1" name="installment" required>
+                    <label class="ep-label" for="ca_inst">{{ __('Instalment') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="ca_inst" type="number" step="0.01" min="1" name="installment" required>
                     <span class="ep-hint">{{ __('Taken each payroll until the balance is nil.') }}</span>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ln_sched">{{ __('Schedule') }} <span class="ep-req">*</span></label>
-                    <select class="form-select" id="ln_sched" name="schedule" required>
+                    <label class="ep-label" for="ca_sched">{{ __('Schedule') }} <span class="ep-req">*</span></label>
+                    <select class="form-select" id="ca_sched" name="schedule" required>
                         <option value="per_payroll">{{ __('Every payroll') }}</option>
                         <option value="monthly">{{ __('Monthly') }}</option>
                     </select>
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ln_issued">{{ __('Date Issued') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="ln_issued" type="date" name="issued_on" value="{{ now()->toDateString() }}" required>
+                    <label class="ep-label" for="ca_ref">{{ __('Reference') }}</label>
+                    <input class="form-control" id="ca_ref" type="text" name="reference" maxlength="40">
                 </div>
                 <div class="emp-field">
-                    <label class="ep-label" for="ln_starts">{{ __('Start Collecting') }}</label>
-                    <input class="form-control" id="ln_starts" type="date" name="starts_on">
+                    <label class="ep-label" for="ca_issued">{{ __('Date Issued') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="ca_issued" type="date" name="issued_on" value="{{ now()->toDateString() }}" required>
+                </div>
+                <div class="emp-field">
+                    <label class="ep-label" for="ca_starts">{{ __('Start Collecting') }}</label>
+                    <input class="form-control" id="ca_starts" type="date" name="starts_on">
                     <span class="ep-hint">{{ __('Blank collects from the next payroll.') }}</span>
                 </div>
                 <div class="emp-field full">
-                    <label class="ep-label" for="ln_notes">{{ __('Notes') }}</label>
-                    <textarea class="form-control" id="ln_notes" name="notes" rows="2" style="height:auto;padding:9px 13px;"></textarea>
+                    <label class="ep-label" for="ca_notes">{{ __('Notes') }}</label>
+                    <textarea class="form-control" id="ca_notes" name="notes" rows="2" style="height:auto;padding:9px 13px;"></textarea>
                 </div>
             </div>
         </div>

@@ -198,22 +198,24 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
 // =========================================================================
 Route::middleware(['auth', 'active'])->group(function () {
 
-    // ── WORKFORCE · Leave & Loans ─────────────────────────────────────────
-    // One page with two tabs. It opens under the leave module; the loans tab
-    // checks the loans module itself, and every loan write is in the group
-    // below, so a role with leave but not loans reaches neither.
+    // ── WORKFORCE · Leave & Advances ──────────────────────────────────────
+    // One page with two tabs. It opens under the leave module; the advances
+    // tab checks the advances module itself, and every advance write is in
+    // the group below, so a role with leave but not advances reaches neither.
     Route::middleware('module:leave')->group(function () {
-        Route::get  ('/leave-loans',                   [\App\Http\Controllers\LeaveLoansController::class, 'index'])->name('leave.index');
-        Route::post ('/leave-loans/leave',             [\App\Http\Controllers\LeaveLoansController::class, 'storeLeave'])->name('leave.store');
-        Route::patch('/leave-loans/leave/{id}/decide', [\App\Http\Controllers\LeaveLoansController::class, 'decide'])
+        Route::get  ('/leave-advances',                   [\App\Http\Controllers\LeaveAdvancesController::class, 'index'])->name('leave.index');
+        Route::post ('/leave-advances/leave',             [\App\Http\Controllers\LeaveAdvancesController::class, 'storeLeave'])->name('leave.store');
+        Route::patch('/leave-advances/leave/{id}/decide', [\App\Http\Controllers\LeaveAdvancesController::class, 'decide'])
             ->whereNumber('id')->name('leave.decide');
 
-        // Where the page lived while it also filed overtime.
-        Route::redirect('/leave-overtime', '/leave-loans');
+        // Where the page lived while it filed overtime, and then loans.
+        Route::redirect('/leave-overtime', '/leave-advances');
+        Route::redirect('/leave-loans', '/leave-advances');
     });
 
-    // ── WORKFORCE · Loans & Advances (a tab of Leave & Loans) ─────────────
-    // GET /loans only redirects to the tab now; the writes live here.
+    // ── WORKFORCE · Cash Advances (a tab of Leave & Advances) ─────────────
+    // The module key is still 'loans'. GET /loans only redirects to the tab;
+    // the writes live here, and they create cash advances only.
     Route::middleware('module:loans')->group(function () {
         Route::get ('/loans',              [\App\Http\Controllers\LoanController::class, 'index'])->name('loans.index');
         Route::post('/loans',              [\App\Http\Controllers\LoanController::class, 'store'])->name('loans.store');

@@ -8,16 +8,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A sum issued to a worker and collected back over several payrolls.
+ * A cash advance issued to a worker and collected back over several payrolls.
  *
  * Distinct from `vale`, which payroll already handles and which is settled
  * inside a single period.
+ *
+ * The table is still `loans`, and its type column still tells an advance from
+ * a loan. Loans are no longer issued, but the ones that were keep their
+ * history, and a run calculated while they were still charged settles them at
+ * finalisation (PayrollRunService::collectLoans).
  */
 class Loan extends Model
 {
+    /** The only kind issued now. */
+    public const ADVANCE = 'advance';
+
+    /** Labels for every kind on file, the retired one included. */
     public const TYPES = [
         'loan'    => 'Loan',
-        'advance' => 'Salary Advance',
+        'advance' => 'Cash Advance',
     ];
 
     public const STATUSES = [
@@ -55,7 +64,13 @@ class Loan extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** Loans a payroll run should look at: still owed, and not paused. */
+    /** Cash advances — everything this table still issues. */
+    public function scopeAdvances(Builder $q): Builder
+    {
+        return $q->where('type', self::ADVANCE);
+    }
+
+    /** Rows a payroll run should look at: still owed, and not paused. */
     public function scopeCollectible(Builder $q): Builder
     {
         return $q->where('status', 'active')->where('balance', '>', 0);
@@ -88,8 +103,8 @@ class Loan extends Model
     /**
      * What this payroll should take, given the period it covers.
      *
-     * Never more than the balance, so the last instalment settles the loan
-     * exactly rather than overshooting it. A loan whose collection has not
+     * Never more than the balance, so the last instalment settles the advance
+     * exactly rather than overshooting it. One whose collection has not
      * started by the end of the period is left alone.
      */
     public function installmentFor(string $periodEnd): float
@@ -105,4 +120,3 @@ class Loan extends Model
         return round(min($this->installment, $this->balance), 2);
     }
 }
-

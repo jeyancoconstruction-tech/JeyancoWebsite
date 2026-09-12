@@ -27,7 +27,7 @@ class PayrollReportController extends Controller
         'site'       => 'Labor Cost by Site',
         'overtime'   => 'Overtime Report',
         'deductions' => 'Deductions Report',
-        'loans'      => 'Loans & Advances',
+        'advances'   => 'Cash Advances',
     ];
 
     public function index(Request $request)
@@ -117,7 +117,7 @@ class PayrollReportController extends Controller
             'deductions' => collect([
                 ['label' => 'Vale',            'key' => 'vale'],
                 ['label' => 'Loan Repayment',  'key' => 'loan_deduction'],
-                ['label' => 'Salary Advance',  'key' => 'advance_deduction'],
+                ['label' => 'Cash Advance',    'key' => 'advance_deduction'],
                 ['label' => 'Statutory & Other', 'key' => 'other_deductions'],
             ])->map(fn ($d) => [
                 'label'      => $d['label'],
@@ -129,9 +129,11 @@ class PayrollReportController extends Controller
                 'net'        => round($items->sum($d['key']), 2),
             ])->filter(fn ($r) => $r['deductions'] > 0)->values()->all(),
 
-            'loans' => Loan::with('employee')->get()->map(fn ($l) => [
+            // Cash advances only. Loans are no longer issued, and the ones on
+            // file are history rather than a balance anybody is collecting.
+            'advances' => Loan::advances()->with(['employee', 'deductions'])->get()->map(fn ($l) => [
                 'label'      => $l->employee->name ?? '—',
-                'sub'        => $l->type_label . ' · ' . $l->status_label,
+                'sub'        => $l->status_label,
                 'count'      => $l->deductions->count(),
                 'days'       => 0,
                 'gross'      => round($l->principal, 2),

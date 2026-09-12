@@ -8,27 +8,29 @@ use App\Models\LoanDeduction;
 use Illuminate\Http\Request;
 
 /**
- * Loans and salary advances collected over several payrolls.
+ * Cash advances collected over several payrolls.
  *
  * The `vale` on employees is a different instrument, settled inside a single
  * period, and payroll already handles it. Nothing here touches it.
  *
- * The list is the Loans & Advances tab of Leave & Loans (LeaveLoansController);
- * the writes stay here, behind the loans module.
+ * The list is the Cash Advances tab of Leave & Advances
+ * (LeaveAdvancesController); the writes stay here, behind the advances
+ * module. Loans used to be issued here too. They are not any more: whatever
+ * the form sends, a new row is an advance, and the loans already on file
+ * cannot be edited or paid against from here.
  */
 class LoanController extends Controller
 {
-    /** The old address. Loans & Advances is a tab of Leave & Loans now. */
+    /** The old address. Cash Advances is a tab of Leave & Advances now. */
     public function index()
     {
-        return redirect()->route('leave.index', ['tab' => 'loans']);
+        return redirect()->route('leave.index', ['tab' => 'advances']);
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
             'employee_id' => 'required|exists:employees,id',
-            'type'        => 'required|in:loan,advance',
             'principal'   => 'required|numeric|min:1',
             'installment' => 'required|numeric|min:1',
             'schedule'    => 'required|in:per_payroll,monthly',
@@ -38,10 +40,11 @@ class LoanController extends Controller
             'notes'       => 'nullable|string|max:1000',
         ]);
 
-        // An instalment larger than the loan would collect more than was ever
-        // issued. Cap it so the first collection simply settles the whole sum.
+        // An instalment larger than the advance would collect more than was
+        // ever issued. Cap it so the first collection simply settles the sum.
         $data['installment'] = min($data['installment'], $data['principal']);
 
+        $data['type']       = Loan::ADVANCE;
         $data['balance']    = $data['principal'];
         $data['status']     = 'active';
         $data['created_by'] = auth()->id();
@@ -57,6 +60,8 @@ class LoanController extends Controller
 
     public function update(Request $request, Loan $loan)
     {
+        $this->onlyAdvances($loan);
+
         $data = $request->validate([
             'installment' => 'nullable|numeric|min:0',
             'status'      => 'nullable|in:active,paid,on_hold,cancelled',
@@ -68,7 +73,7 @@ class LoanController extends Controller
         AuditLog::record('Loans', 'updated', 'Updated ' . $loan->type_label
             . ' for ' . $loan->employee->name, $loan);
 
-        return back()->with('success', 'Loan updated.');
+        return back()->with('success', 'Cash advance updated.');
     }
 
     /**
@@ -78,6 +83,8 @@ class LoanController extends Controller
      */
     public function recordPayment(Request $request, Loan $loan)
     {
+        $this->onlyAdvances($loan);
+
         $data = $request->validate([
             'amount'      => 'required|numeric|min:0.01|max:' . max($loan->balance, 0.01),
             'deducted_on' => 'required|date',
@@ -102,5 +109,10 @@ class LoanController extends Controller
 
         return back()->with('success', 'Payment recorded.');
     }
-}
 
+    /** A loan on file is history now; nothing here changes it. */
+    private function onlyAdvances(Loan $loan): void
+    {
+        abort_unless($loan->type === Loan::ADVANCE, 404);
+    }
+}

@@ -11,56 +11,57 @@ use App\Support\Modules;
 use Illuminate\Http\Request;
 
 /**
- * Leave and loans, on one screen with two tabs — the same shape the
+ * Leave and cash advances, on one screen with two tabs — the same shape the
  * Attendance page already uses.
  *
- * Overtime used to be the second tab, filed and approved by hand as a claim.
- * It is counted from attendance now — the time past the shift's regular
- * hours — so a claim could only pay the same evening twice, and the tab went.
- * Loans & Advances, which had a sidebar entry of its own, took its place.
+ * What is not here matters as much. Overtime was a tab, filed by hand as a
+ * claim; it is counted from attendance now, so a claim could only pay the
+ * same evening twice. Loans sat beside the advances; they are no longer
+ * issued. Old loan rows stay on file but are neither listed nor collected.
  *
- * The page opens under the leave module. The loans tab needs the loans module
- * as well, and so does every loan write (LoanController): a supervisor who
- * approves leave has no business seeing who owes the company what.
+ * The page opens under the leave module. The advances tab needs the advances
+ * module as well, and so does every advance write (LoanController): a
+ * supervisor who approves leave has no business seeing who owes the company
+ * what.
  *
- * Neither tab writes attendance. Approved leave and loan instalments are read
- * by Payroll Processing.
+ * Neither tab writes attendance. Approved leave and advance instalments are
+ * read by Payroll Processing.
  */
-class LeaveLoansController extends Controller
+class LeaveAdvancesController extends Controller
 {
     public function index(Request $request)
     {
-        $canLoans = (bool) $request->user()?->canAccessModule(Modules::LOANS);
-        $tab      = $request->get('tab') === 'loans' ? 'loans' : 'leave';
+        $canAdvances = (bool) $request->user()?->canAccessModule(Modules::ADVANCES);
+        $tab         = $request->get('tab') === 'advances' ? 'advances' : 'leave';
 
-        abort_if($tab === 'loans' && ! $canLoans, 403);
+        abort_if($tab === 'advances' && ! $canAdvances, 403);
 
         $view = [
-            'tab'       => $tab,
-            'canLoans'  => $canLoans,
-            'employees' => Employee::registered()->orderBy('name')->get(['id', 'name']),
-            'counts'    => [
+            'tab'         => $tab,
+            'canAdvances' => $canAdvances,
+            'employees'   => Employee::registered()->orderBy('name')->get(['id', 'name']),
+            'counts'      => [
                 'leave_pending' => LeaveRequest::where('status', 'pending')->count(),
             ],
         ];
 
-        // Only the open tab is queried. The two share filter names — status,
-        // type, q — that mean different things on each side.
-        if ($tab === 'loans') {
-            $view['loans'] = Loan::with(['employee', 'deductions'])
+        // Only the open tab is queried. The two share filter names — status
+        // and q — that mean different things on each side.
+        if ($tab === 'advances') {
+            $view['advances'] = Loan::advances()
+                ->with('employee')
                 ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-                ->when($request->filled('type'), fn ($q) => $q->where('type', $request->type))
                 ->when($request->filled('q'), fn ($q) => $q->whereHas('employee',
                     fn ($e) => $e->where('name', 'like', '%' . $request->q . '%')))
                 ->latest('issued_on')
-                ->paginate(15, ['*'], 'loan_page')
+                ->paginate(15, ['*'], 'advance_page')
                 ->withQueryString();
 
             $view['summary'] = [
-                'active'      => Loan::where('status', 'active')->count(),
-                'outstanding' => (float) Loan::where('status', 'active')->sum('balance'),
-                'issued'      => (float) Loan::sum('principal'),
-                'collected'   => (float) LoanDeduction::sum('amount'),
+                'active'      => Loan::advances()->where('status', 'active')->count(),
+                'outstanding' => (float) Loan::advances()->where('status', 'active')->sum('balance'),
+                'issued'      => (float) Loan::advances()->sum('principal'),
+                'collected'   => (float) LoanDeduction::whereHas('loan', fn ($q) => $q->advances())->sum('amount'),
             ];
         } else {
             $view['leave'] = LeaveRequest::with(['employee', 'approver'])

@@ -210,7 +210,7 @@
   </div>
 
   <div class="sec">
-    <div class="sec-head"><span class="sec-num">3.2</span><h2>Leave and Loans — Leave</h2><span class="where">/leave-loans</span></div>
+    <div class="sec-head"><span class="sec-num">3.2</span><h2>Leave and Advances — Leave</h2><span class="where">/leave-advances</span></div>
     <div class="lbl">How it works</div>
     <ul>
       <li><b>File Leave</b> records a request. It stays <b>pending</b> until somebody acts on it.</li>
@@ -223,10 +223,11 @@
   </div>
 
   <div class="sec">
-    <div class="sec-head"><span class="sec-num">3.3</span><h2>Leave and Loans — Loans and Advances (Vale)</h2><span class="where">/leave-loans?tab=loans</span></div>
+    <div class="sec-head"><span class="sec-num">3.3</span><h2>Leave and Advances — Cash Advances</h2><span class="where">/leave-advances?tab=advances</span></div>
     <div class="lbl">How it works</div>
     <ul>
-      <li><b>New Loan / Advance</b> records what was handed over. The balance starts at the full amount.</li>
+      <li><b>New Cash Advance</b> records what was handed over. The balance starts at the full amount.</li>
+      <li>Loans are no longer issued — only cash advances.</li>
       <li>Payroll collects against it each period, so the balance falls on its own.</li>
       <li><b>Record payment</b> is for anything paid back outside a payroll run.</li>
     </ul>
@@ -440,8 +441,8 @@
     <tbody>
       <tr><td>1</td><td>Employees</td><td>Everyone who will be paid exists, with the right rate, site and labor type.</td></tr>
       <tr><td>2</td><td>Attendance / Site Attendance</td><td>Hours are in for the whole period, and corrected while they can still be corrected.</td></tr>
-      <tr><td>3</td><td>Leave &amp; Loans · Leave</td><td>Every leave request for the period is approved or rejected. Nothing left pending.</td></tr>
-      <tr><td>4</td><td>Leave &amp; Loans · Loans &amp; Advances</td><td>Any vale handed out during the period is recorded, so payroll can collect against it.</td></tr>
+      <tr><td>3</td><td>Leave &amp; Advances · Leave</td><td>Every leave request for the period is approved or rejected. Nothing left pending.</td></tr>
+      <tr><td>4</td><td>Leave &amp; Advances · Cash Advances</td><td>Any cash advance handed out during the period is recorded, so payroll can collect against it.</td></tr>
       <tr><td>5</td><td>Payroll Settings</td><td>Checked, not changed — unless a rule genuinely changed. Changes apply to the next run.</td></tr>
       <tr><td>6</td><td>Payroll Processing</td><td>New Payroll Run → Create &amp; Calculate → Review → approve.</td></tr>
       <tr><td>7</td><td>Payslips</td><td>Payslips appear. Print all, hand out.</td></tr>

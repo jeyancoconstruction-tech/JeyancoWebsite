@@ -98,7 +98,7 @@
                         <th class="num">{{ __('OT') }}</th>
                         <th class="num">{{ __('Leave') }}</th>
                         <th class="num">{{ __('Gross') }}</th>
-                        <th class="num">{{ __('Loans') }}</th>
+                        <th class="num">{{ __('Advances') }}</th>
                         <th class="num">{{ __('Deductions') }}</th>
                         <th class="num">{{ __('Net Pay') }}</th>
                     </tr>

@@ -20,11 +20,11 @@ use Illuminate\Support\Facades\DB;
  *
  *   1. asks PayrollService for the period,
  *   2. layers on the things it has no way to know about: approved paid
- *      leave and loan instalments due,
+ *      leave and cash advance instalments due,
  *   3. writes the result down, so the numbers stop moving.
  *
- * Recalculating replaces a run's items wholesale. Collecting against loans is
- * deliberately NOT done here — that happens once, at finalisation, so a run
+ * Recalculating replaces a run's items wholesale. Collecting against advances
+ * is deliberately NOT done here — that happens once, at finalisation, so a run
  * recalculated five times does not collect five instalments.
  */
 class PayrollRunService
@@ -45,9 +45,9 @@ class PayrollRunService
         $computed = $this->payroll->computeForRange($from, $to);
         $byEmployee = collect($computed['employees'] ?? [])->keyBy('employee_id');
 
-        $otHours = $this->overtimeHours($computed['days'] ?? []);
-        $leave   = $this->approvedLeave($from, $to);
-        $loans   = $this->collectibleLoans($to);
+        $otHours  = $this->overtimeHours($computed['days'] ?? []);
+        $leave    = $this->approvedLeave($from, $to);
+        $advances = $this->collectibleAdvances($to);
 
         // Everyone the period touches: worked, or has approved leave. A worker
         // with only leave still needs a payslip.
@@ -62,7 +62,7 @@ class PayrollRunService
             ->get()
             ->keyBy('id');
 
-        DB::transaction(function () use ($run, $employees, $byEmployee, $otHours, $leave, $loans) {
+        DB::transaction(function () use ($run, $employees, $byEmployee, $otHours, $leave, $advances) {
             $run->items()->delete();
 
             $gross = $deductions = $net = 0.0;
@@ -75,7 +75,7 @@ class PayrollRunService
                     $byEmployee->get($id),
                     $otHours[$id] ?? 0.0,
                     $leave->get($id, collect()),
-                    $loans->get($id, collect())
+                    $advances->get($id, collect())
                 );
 
                 PayrollRunItem::create($row);
@@ -101,8 +101,8 @@ class PayrollRunService
 
     /**
      * One worker's row. Everything PayrollService produced is carried across
-     * verbatim; only the two things it cannot see — leave and loans — are
-     * added on top.
+     * verbatim; only the two things it cannot see — leave and cash advances —
+     * are added on top.
      */
     private function buildItem(
         PayrollRun $run,
@@ -110,7 +110,7 @@ class PayrollRunService
         ?array $computed,
         float $otHours,
         $leaveRows,
-        $loanRows
+        $advanceRows
     ): array {
         $t = $computed['totals'] ?? [];
 
@@ -150,15 +150,10 @@ class PayrollRunService
         $statutoryAndOther = round($engineDeductions - $vale, 2);
         $statutoryAndOther = max($statutoryAndOther, 0);
 
-        // ── Loan and advance instalments due this period ──────────────────
-        $loanDue = $advanceDue = 0.0;
-        foreach ($loanRows as $loan) {
-            $due = $loan->installmentFor($run->period_end->toDateString());
-            if ($loan->type === 'advance') {
-                $advanceDue += $due;
-            } else {
-                $loanDue += $due;
-            }
+        // ── Cash advance instalments due this period ──────────────────────
+        $advanceDue = 0.0;
+        foreach ($advanceRows as $advance) {
+            $advanceDue += $advance->installmentFor($run->period_end->toDateString());
         }
 
         $grossPay = round(
@@ -167,7 +162,7 @@ class PayrollRunService
             2
         );
 
-        $totalDeductions = round($statutoryAndOther + $vale + $loanDue + $advanceDue, 2);
+        $totalDeductions = round($statutoryAndOther + $vale + $advanceDue, 2);
 
         return [
             'payroll_run_id' => $run->id,
@@ -202,7 +197,9 @@ class PayrollRunService
             'pagibig'           => 0,
             'tax'               => 0,
             'vale'              => round($vale, 2),
-            'loan_deduction'    => round($loanDue, 2),
+            // Loans are no longer issued. The column keeps what older runs
+            // charged, and collectLoans() still settles those at finalisation.
+            'loan_deduction'    => 0,
             'advance_deduction' => round($advanceDue, 2),
             'other_deductions'  => $statutoryAndOther,
 
@@ -213,8 +210,14 @@ class PayrollRunService
     }
 
     /**
-     * Collect the loan instalments this run charged. Called once, from
+     * Collect the instalments this run charged. Called once, from
      * finalisation, so recalculating a run never collects twice.
+     *
+     * Each instalment is taken from its own kind. A run charges cash advances
+     * only now, but a loan issued before that may still be open, and taking an
+     * advance's instalment from whichever row is oldest would pay the loan
+     * down with it. A run calculated while loans were still charged carries a
+     * loan instalment too, and that one still settles its loan.
      */
     public function collectLoans(PayrollRun $run): int
     {
@@ -222,43 +225,47 @@ class PayrollRunService
 
         DB::transaction(function () use ($run, &$collected) {
             foreach ($run->items as $item) {
-                $due = $item->loan_deduction + $item->advance_deduction;
-                if ($due <= 0) {
-                    continue;
-                }
+                $owed = ['loan' => $item->loan_deduction, Loan::ADVANCE => $item->advance_deduction];
 
-                $loans = Loan::collectible()
-                    ->where('employee_id', $item->employee_id)
-                    ->orderBy('issued_on')
-                    ->get();
-
-                foreach ($loans as $loan) {
+                foreach ($owed as $type => $due) {
                     if ($due <= 0) {
-                        break;
-                    }
-
-                    $take = min($loan->installmentFor($run->period_end->toDateString()), $due, $loan->balance);
-                    if ($take <= 0) {
                         continue;
                     }
 
-                    LoanDeduction::create([
-                        'loan_id'        => $loan->id,
-                        'payroll_run_id' => $run->id,
-                        'amount'         => $take,
-                        'deducted_on'    => $run->period_end->toDateString(),
-                        'note'           => 'Collected by payroll run ' . $run->code,
-                    ]);
+                    $rows = Loan::collectible()
+                        ->where('employee_id', $item->employee_id)
+                        ->where('type', $type)
+                        ->orderBy('issued_on')
+                        ->get();
 
-                    $loan->balance = round($loan->balance - $take, 2);
-                    if ($loan->balance <= 0) {
-                        $loan->balance = 0;
-                        $loan->status  = 'paid';
+                    foreach ($rows as $loan) {
+                        if ($due <= 0) {
+                            break;
+                        }
+
+                        $take = min($loan->installmentFor($run->period_end->toDateString()), $due, $loan->balance);
+                        if ($take <= 0) {
+                            continue;
+                        }
+
+                        LoanDeduction::create([
+                            'loan_id'        => $loan->id,
+                            'payroll_run_id' => $run->id,
+                            'amount'         => $take,
+                            'deducted_on'    => $run->period_end->toDateString(),
+                            'note'           => 'Collected by payroll run ' . $run->code,
+                        ]);
+
+                        $loan->balance = round($loan->balance - $take, 2);
+                        if ($loan->balance <= 0) {
+                            $loan->balance = 0;
+                            $loan->status  = 'paid';
+                        }
+                        $loan->save();
+
+                        $due -= $take;
+                        $collected++;
                     }
-                    $loan->save();
-
-                    $due -= $take;
-                    $collected++;
                 }
             }
         });
@@ -301,10 +308,10 @@ class PayrollRunService
             ->groupBy('employee_id');
     }
 
-    /** Loans still owed, grouped per employee. */
-    private function collectibleLoans(string $periodEnd)
+    /** Cash advances still owed, grouped per employee. Old loans are not charged. */
+    private function collectibleAdvances(string $periodEnd)
     {
-        return Loan::collectible()
+        return Loan::advances()->collectible()
             ->where(function ($q) use ($periodEnd) {
                 $q->whereNull('starts_on')->orWhere('starts_on', '<=', $periodEnd);
             })

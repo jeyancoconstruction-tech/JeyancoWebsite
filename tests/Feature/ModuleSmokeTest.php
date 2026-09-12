@@ -88,8 +88,8 @@ class ModuleSmokeTest extends TestCase
     public function test_new_module_pages_render(): void
     {
         $urls = [
-            '/leave-loans',
-            '/leave-loans?tab=loans',
+            '/leave-advances',
+            '/leave-advances?tab=advances',
             '/project-assignments',
             '/payroll-processing',
             '/payslips',
@@ -98,7 +98,7 @@ class ModuleSmokeTest extends TestCase
             '/payroll-reports?report=site',
             '/payroll-reports?report=overtime',
             '/payroll-reports?report=deductions',
-            '/payroll-reports?report=loans',
+            '/payroll-reports?report=advances',
             '/users-roles',
             '/audit-logs',
             '/device-monitoring',
@@ -150,7 +150,7 @@ class ModuleSmokeTest extends TestCase
         }
     }
 
-    /** The whole chain: leave + a loan, through a run, to a payslip — and no overtime claim. */
+    /** The whole chain: leave + a cash advance, through a run, to a payslip — and no overtime claim or loan. */
     public function test_payroll_run_computes_approves_and_finalises(): void
     {
         $from = now()->subDays(7)->toDateString();
@@ -172,9 +172,18 @@ class ModuleSmokeTest extends TestCase
         ]);
 
         $loan = Loan::create([
-            'employee_id' => $this->employee->id, 'type' => 'loan',
+            'employee_id' => $this->employee->id, 'type' => 'advance',
             'principal' => 2000, 'balance' => 2000, 'installment' => 500,
             'schedule' => 'per_payroll', 'issued_on' => $from, 'status' => 'active',
+        ]);
+
+        // A loan left on file from when loans were still issued, and older
+        // than the advance. Only the advance is charged now, and collecting it
+        // must not reach for this row just because it comes first.
+        $oldLoan = Loan::create([
+            'employee_id' => $this->employee->id, 'type' => 'loan',
+            'principal' => 3000, 'balance' => 3000, 'installment' => 700,
+            'schedule' => 'per_payroll', 'issued_on' => now()->subDays(30)->toDateString(), 'status' => 'active',
         ]);
 
         // Create — the controller calculates immediately.
@@ -199,7 +208,8 @@ class ModuleSmokeTest extends TestCase
         $this->assertEqualsWithDelta((float) $otHours, $item->ot_hours, 0.01,
             'the overtime hours on the line are the ones attendance counted');
         $this->assertGreaterThan(0, $item->leave_pay, 'approved paid leave was not credited');
-        $this->assertSame(500.0, (float) $item->loan_deduction, 'loan instalment was not charged');
+        $this->assertSame(500.0, (float) $item->advance_deduction, 'the cash advance instalment was not charged');
+        $this->assertSame(0.0, (float) $item->loan_deduction, 'an old loan must not be charged');
 
         // Recalculating must not collect the loan twice.
         $this->actingAs($this->admin)->post("/payroll-processing/{$run->id}/calculate");
@@ -217,7 +227,8 @@ class ModuleSmokeTest extends TestCase
             ->post("/payroll-processing/{$run->id}/finalize", ['confirm' => 1]);
 
         $this->assertSame('finalized', $run->fresh()->status);
-        $this->assertSame(1500.0, (float) $loan->fresh()->balance, 'loan was not collected once');
+        $this->assertSame(1500.0, (float) $loan->fresh()->balance, 'the advance was not collected once');
+        $this->assertSame(3000.0, (float) $oldLoan->fresh()->balance, 'the advance was taken off an old loan');
 
         // Re-read the line: recalculating replaces a run's items wholesale, so
         // the row captured before that call no longer exists. A 404 on the old
@@ -256,10 +267,10 @@ class ModuleSmokeTest extends TestCase
 
         // An Employee may see their payslips and leave...
         $this->actingAs($employee)->get('/payslips')->assertOk();
-        $this->actingAs($employee)->get('/leave-loans')->assertOk();
+        $this->actingAs($employee)->get('/leave-advances')->assertOk();
 
-        // ...and nothing else the extension added — the loans tab included.
-        foreach (['/payroll-processing', '/loans', '/leave-loans?tab=loans', '/payroll-reports',
+        // ...and nothing else the extension added — the advances tab included.
+        foreach (['/payroll-processing', '/loans', '/leave-advances?tab=advances', '/payroll-reports',
                   '/project-assignments'] as $url) {
             $this->actingAs($employee)->get($url)->assertForbidden();
         }

@@ -163,10 +163,10 @@
                 @endif
             </a>
 
-            {{-- Loans & Advances is a tab on this page, not an entry of its own. --}}
+            {{-- Cash Advances is a tab on this page, not an entry of its own. --}}
             @if(auth()->user()?->canAccessModule('leave'))
-                <a class="nav-link {{ request()->is('leave-loans*') ? 'active' : '' }}" href="{{ route('leave.index') }}">
-                    <i data-lucide="calendar-days"></i> <span>{{ __('Leave & Loans') }}</span>
+                <a class="nav-link {{ request()->is('leave-advances*') ? 'active' : '' }}" href="{{ route('leave.index') }}">
+                    <i data-lucide="calendar-days"></i> <span>{{ __('Leave & Advances') }}</span>
                 </a>
             @endif
 
