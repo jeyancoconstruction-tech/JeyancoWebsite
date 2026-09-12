@@ -1,721 +1,517 @@
 @extends('layouts')
 @section('page_title', 'Analytics')
 
+@push('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<style>
+/* Analytics & Insights. Every name is prefixed: the reference's own class
+   names (.card, .grid, .tag, .legend…) are ones the app's global styles
+   already claim. Light is the base palette; dark is the reference's. */
+.ana {
+    --ana-panel: #FFFFFF;  --ana-panel-2: #F8F9FB;
+    --ana-line: #E4E7EC;   --ana-line-2: #D0D5DD;  --ana-bw: 1px;
+    --ana-txt: #101828;    --ana-txt-2: #475467;   --ana-txt-3: #667085;
+    --ana-grid: rgba(16, 24, 40, .06);
+    --ana-accent: #3B82F6; --ana-accent-soft: rgba(59, 130, 246, .12);
+    --ana-green: #22C55E;  --ana-green-soft: rgba(34, 197, 94, .12);
+    --ana-amber: #F59E0B;  --ana-amber-soft: rgba(245, 158, 11, .14);
+    --ana-red: #EF4444;    --ana-red-soft: rgba(239, 68, 68, .12);
+    --ana-violet: #8B5CF6; --ana-violet-soft: rgba(139, 92, 246, .12);
+    --ana-ico-blue: #2563EB; --ana-ico-green: #16A34A; --ana-ico-red: #DC2626;
+    --ana-ico-amber: #D97706; --ana-ico-violet: #7C3AED;
+    --ana-radius: 12px;
+
+    max-width: 1400px; margin: 0 auto;
+    color: var(--ana-txt);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+}
+html[data-bs-theme="dark"] .ana {
+    --ana-panel: #111827;  --ana-panel-2: #0E1524;
+    --ana-line: rgba(255, 255, 255, .07); --ana-line-2: rgba(255, 255, 255, .12); --ana-bw: .5px;
+    --ana-txt: #E7ECF3;    --ana-txt-2: #9CA9BD;   --ana-txt-3: #64748B;
+    --ana-grid: rgba(255, 255, 255, .06);
+    --ana-accent-soft: rgba(59, 130, 246, .14); --ana-green-soft: rgba(34, 197, 94, .14);
+    --ana-amber-soft: rgba(245, 158, 11, .14);  --ana-red-soft: rgba(239, 68, 68, .14);
+    --ana-violet-soft: rgba(139, 92, 246, .14);
+    --ana-ico-blue: #60A5FA; --ana-ico-green: #4ADE80; --ana-ico-red: #F87171;
+    --ana-ico-amber: #FBBF24; --ana-ico-violet: #A78BFA;
+}
+.ana *, .ana *::before, .ana *::after { box-sizing: border-box; }
+.ana h1, .ana h3, .ana p { margin: 0; }
+
+/* Header */
+.ana-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.ana .ana-head h1 { font-size: 22px !important; font-weight: 600 !important; letter-spacing: -.01em !important; line-height: 1.3; color: var(--ana-txt); }
+.ana-sub { font-size: 13px; color: var(--ana-txt-2); margin-top: 3px; }
+.ana-sub b { color: var(--ana-txt); font-weight: 500; }
+.ana-period { display: inline-flex; align-items: center; gap: 7px; background: var(--ana-panel); border: var(--ana-bw) solid var(--ana-line-2); border-radius: 20px; padding: 7px 14px; font-size: 13px; color: var(--ana-txt-2); }
+
+/* Filters */
+.ana-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; background: var(--ana-panel); border: var(--ana-bw) solid var(--ana-line); border-radius: var(--ana-radius); padding: 14px; margin-bottom: 18px; }
+.ana-fgroup { display: flex; flex-direction: column; gap: 5px; }
+.ana-fgroup label { font-size: 10.5px; font-weight: 600; color: var(--ana-txt-3); text-transform: uppercase; letter-spacing: .6px; margin: 0; }
+.ana-fctrl { position: relative; }
+.ana-fctrl select { appearance: none; -webkit-appearance: none; background: var(--ana-panel-2); border: var(--ana-bw) solid var(--ana-line-2); border-radius: 8px; color: var(--ana-txt); font-size: 13px; padding: 9px 32px 9px 12px; height: 38px; min-width: 150px; cursor: pointer; font-family: inherit; transition: border-color .15s; }
+.ana-fctrl select:hover { border-color: var(--ana-accent); }
+.ana-fctrl select:focus { outline: none; border-color: var(--ana-accent); box-shadow: 0 0 0 3px var(--ana-accent-soft); }
+.ana-fctrl select option { background: var(--ana-panel); color: var(--ana-txt); }
+.ana-chev { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); color: var(--ana-txt-3); pointer-events: none; font-size: 16px; }
+.ana-fspacer { flex: 1; min-width: 0; }
+.ana-fbtn { height: 38px; display: inline-flex; align-items: center; gap: 6px; background: var(--ana-accent); border: none; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; padding: 0 16px; cursor: pointer; transition: filter .15s; font-family: inherit; text-decoration: none; }
+.ana-fbtn:hover { filter: brightness(1.08); color: #fff; }
+.ana-fbtn.ghost { background: transparent; border: var(--ana-bw) solid var(--ana-line-2); color: var(--ana-txt-2); }
+.ana-fbtn.ghost:hover { background: var(--ana-panel-2); color: var(--ana-txt); filter: none; }
+
+/* Summary cards */
+.ana-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.ana-card { background: var(--ana-panel); border: var(--ana-bw) solid var(--ana-line); border-radius: var(--ana-radius); padding: 15px; position: relative; overflow: hidden; transition: border-color .2s, transform .2s; }
+.ana-card:hover { border-color: var(--ana-line-2); transform: translateY(-2px); }
+.ana-ico { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 19px; margin-bottom: 11px; }
+.ana-lbl { font-size: 11px; font-weight: 600; color: var(--ana-txt-3); text-transform: uppercase; letter-spacing: .5px; }
+.ana-val { font-size: 26px; font-weight: 600; letter-spacing: -.02em; margin-top: 5px; line-height: 1; color: var(--ana-txt); }
+.ana-unit { font-size: 14px; }
+.ana-meta { font-size: 11.5px; color: var(--ana-txt-2); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+.ana-i-blue   { background: var(--ana-accent-soft); color: var(--ana-ico-blue); }
+.ana-i-green  { background: var(--ana-green-soft);  color: var(--ana-ico-green); }
+.ana-i-red    { background: var(--ana-red-soft);    color: var(--ana-ico-red); }
+.ana-i-amber  { background: var(--ana-amber-soft);  color: var(--ana-ico-amber); }
+.ana-i-violet { background: var(--ana-violet-soft); color: var(--ana-ico-violet); }
+
+/* Chart grid */
+.ana-grid { display: grid; gap: 16px; margin-bottom: 16px; }
+.ana-g2 { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+.ana-chart-card { background: var(--ana-panel); border: var(--ana-bw) solid var(--ana-line); border-radius: var(--ana-radius); padding: 18px; min-width: 0; }
+.ana-chart-card.wide { grid-column: 1 / -1; }
+.ana-ch-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.ana-ch-head h3 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--ana-txt); }
+.ana-desc { font-size: 12px; color: var(--ana-txt-2); margin-top: 2px; }
+.ana-tag { display: inline-flex; align-items: center; gap: 5px; background: var(--ana-panel-2); border: var(--ana-bw) solid var(--ana-line-2); border-radius: 20px; padding: 4px 11px; font-size: 11.5px; color: var(--ana-txt-2); white-space: nowrap; }
+.ana-canvas { position: relative; height: 260px; transition: opacity .2s; }
+.ana-canvas.tall { height: 300px; }
+.ana-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; justify-content: center; }
+.ana-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ana-txt-2); }
+.ana-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.ana-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--ana-txt-3); font-size: 13px; }
+.ana-empty i { font-size: 28px; opacity: .5; }
+
+/* A filter change in flight */
+.ana.is-loading .ana-canvas, .ana.is-loading .ana-val { opacity: .55; }
+
+@media (max-width: 640px) {
+    .ana-fctrl select { min-width: 130px; }
+    .ana-cards { grid-template-columns: repeat(2, 1fr); }
+    .ana-g2 { grid-template-columns: 1fr; }
+}
+
+/* Entrance */
+@keyframes ana-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.ana-anim { opacity: 0; animation: ana-rise .5s ease forwards; }
+@media (prefers-reduced-motion: reduce) { .ana-anim { animation: none; opacity: 1; } .ana-card:hover { transform: none; } }
+</style>
+@endpush
+
 @section('content')
-<div class="an-page">
+@php
+    $c = $analytics['cards'];
+    $m = $analytics['meta'];
+    $p = $analytics['period'];
 
-    {{-- ── Page header ─────────────────────────────────────────────────────── --}}
-    <div class="an-header">
+    // The formats the page's script counts up to, so the first paint and the
+    // animated one read the same.
+    $avg = fn ($v) => rtrim(rtrim(number_format((float) $v, 1, '.', ''), '0'), '.');
+
+    // Shift colours in the order the chart assigns them.
+    $shiftColours = ['--ana-accent', '--ana-violet', '--ana-amber', '--ana-green', '--ana-red'];
+    $shiftList    = $shifts->pluck('name');
+@endphp
+<div class="ana" id="anaRoot" data-endpoint="{{ route('analytics.data') }}">
+
+    <div class="ana-head ana-anim" style="animation-delay:.02s">
         <div>
-            <h1 class="an-title">{{ __('Analytics & Insights') }}</h1>
-            <p class="an-sub">{{ __('Performance overview for') }} <strong>{{ $monthLabel }}</strong></p>
+            <h1>Analytics &amp; insights</h1>
+            <div class="ana-sub">Performance overview for <b id="anaPeriodLabel">{{ $p['label'] }}{{ $p['scope'] !== '' ? ' — ' . $p['scope'] : '' }}</b></div>
         </div>
-        <span class="an-period-chip">
-            <i class="fas fa-calendar-alt"></i> {{ $monthLabel }}
-        </span>
+        <div class="ana-period" id="anaLive" title="Updated {{ $analytics['updated_at'] }}"><i class="ti ti-calendar"></i><span>Live data</span></div>
     </div>
 
-    {{-- ── KPI Row ──────────────────────────────────────────────────────────── --}}
-    <div class="an-kpi-grid">
-
-        <div class="an-kpi-card">
-            <div class="an-kpi-icon" style="background:#eff6ff;color:#3b82f6;">
-                <i class="fas fa-users"></i>
-            </div>
-            <div class="an-kpi-body">
-                <p class="an-kpi-label">{{ __('Total Employees') }}</p>
-                <p class="an-kpi-value">{{ $totalEmployees }}</p>
-                <p class="an-kpi-sub">{{ $activeSites }} active site{{ $activeSites !== 1 ? 's' : '' }}</p>
-            </div>
-        </div>
-
-        <div class="an-kpi-card">
-            <div class="an-kpi-icon" style="background:#f0fdf4;color:#16a34a;">
-                <i class="fas fa-user-check"></i>
-            </div>
-            <div class="an-kpi-body">
-                <p class="an-kpi-label">{{ __('Present Today') }}</p>
-                <p class="an-kpi-value">{{ $presentToday }}</p>
-                <p class="an-kpi-sub">
-                    @php $absentToday = max(0, $totalEmployees - $presentToday); @endphp
-                    {{ $absentToday }} absent
-                </p>
-            </div>
-        </div>
-
-        <div class="an-kpi-card">
-            <div class="an-kpi-icon" style="background:#f0fdf4;color:#059669;">
-                <i class="fas fa-money-bill-wave"></i>
-            </div>
-            <div class="an-kpi-body">
-                <p class="an-kpi-label">{{ __('Net Payroll (Month)') }}</p>
-                <p class="an-kpi-value">₱{{ number_format($monthlyNet, 0) }}</p>
-                @if($netChange !== null)
-                <p class="an-kpi-sub {{ $netChange >= 0 ? 'an-up' : 'an-down' }}">
-                    <i class="fas fa-arrow-{{ $netChange >= 0 ? 'up' : 'down' }}"></i>
-                    {{ abs($netChange) }}% vs last month
-                </p>
-                @else
-                <p class="an-kpi-sub">{{ __('No prior month data') }}</p>
-                @endif
-            </div>
-        </div>
-
-        <div class="an-kpi-card">
-            <div class="an-kpi-icon" style="background:#fefce8;color:#ca8a04;">
-                <i class="fas fa-calendar-check"></i>
-            </div>
-            <div class="an-kpi-body">
-                <p class="an-kpi-label">{{ __('Attendance Rate') }}</p>
-                <p class="an-kpi-value">{{ $attendanceRate }}%</p>
-                <p class="an-kpi-sub">{{ __('This month') }}</p>
-            </div>
-            <div class="an-kpi-ring" style="--pct:{{ $attendanceRate }};--clr:#ca8a04;">
-                <svg viewBox="0 0 36 36"><circle class="an-ring-bg" cx="18" cy="18" r="15.9"/><circle class="an-ring-fg" cx="18" cy="18" r="15.9" style="stroke:var(--clr);stroke-dasharray:{{ $attendanceRate }} {{ 100 - $attendanceRate }};"/></svg>
-            </div>
-        </div>
-
-        <div class="an-kpi-card">
-            <div class="an-kpi-icon" style="background:#fdf4ff;color:#9333ea;">
-                <i class="fas fa-business-time"></i>
-            </div>
-            <div class="an-kpi-body">
-                <p class="an-kpi-label">{{ __('Overtime Hours') }}</p>
-                <p class="an-kpi-value">{{ number_format($overtimeHours, 1) }}<span class="an-kpi-unit">h</span></p>
-                <p class="an-kpi-sub">₱{{ number_format($monthlyOTPay, 0) }} OT pay</p>
-            </div>
-        </div>
-
-        <div class="an-kpi-card">
-            <div class="an-kpi-icon" style="background:#fff7ed;color:#ea580c;">
-                <i class="fas fa-chart-pie"></i>
-            </div>
-            <div class="an-kpi-body">
-                <p class="an-kpi-label">{{ __('Gross Payroll') }}</p>
-                <p class="an-kpi-value">₱{{ number_format($monthlyGross, 0) }}</p>
-                <p class="an-kpi-sub">₱{{ number_format($monthlyHoliday, 0) }} holiday pay</p>
-            </div>
-        </div>
-
-    </div>
-
-    {{-- ── Attendance Trend ─────────────────────────────────────────────────── --}}
-    <div class="an-card an-card-full">
-        <div class="an-card-head">
-            <div>
-                <p class="an-card-title">{{ __('Attendance Trend') }}</p>
-                <p class="an-card-sub">{{ __('Daily employee presence over the last 30 days') }}</p>
-            </div>
-            <span class="an-badge-blue">{{ __('30-day view') }}</span>
-        </div>
-        <div class="an-chart-wrap" style="height:220px;">
-            <canvas id="attendanceTrendChart"></canvas>
-        </div>
-    </div>
-
-    {{-- ── Row 2: Weekly Payroll + Labor Type ──────────────────────────────── --}}
-    <div class="an-row-2">
-        <div class="an-card">
-            <div class="an-card-head">
-                <div>
-                    <p class="an-card-title">{{ __('Weekly Payroll') }}</p>
-                    <p class="an-card-sub">{{ __('Gross vs Net — last 4 weeks') }}</p>
-                </div>
-                <span class="an-badge-green">{{ __('₱ Pesos') }}</span>
-            </div>
-            <div class="an-chart-wrap" style="height:240px;">
-                <canvas id="weeklyPayrollChart"></canvas>
-            </div>
-        </div>
-
-        <div class="an-card">
-            <div class="an-card-head">
-                <div>
-                    <p class="an-card-title">{{ __('Labor Type Distribution') }}</p>
-                    <p class="an-card-sub">{{ __('Employees by position') }}</p>
-                </div>
-            </div>
-            @if($laborDist->isEmpty())
-            <div class="an-empty">{{ __('No employee data') }}</div>
-            @else
-            <div class="an-chart-wrap" style="height:240px;">
-                <canvas id="laborTypeChart"></canvas>
-            </div>
-            @endif
-        </div>
-    </div>
-
-    {{-- ── Row 3: Top OT + Deductions ──────────────────────────────────────── --}}
-    <div class="an-row-2">
-        <div class="an-card">
-            <div class="an-card-head">
-                <div>
-                    <p class="an-card-title">{{ __('Top Overtime Earners') }}</p>
-                    <p class="an-card-sub">{{ __('Overtime pay (₱) this month') }}</p>
-                </div>
-                <span class="an-badge-purple">{{ __('Top 5') }}</span>
-            </div>
-            @if($topOT->isEmpty() || $topOT->every(fn($e) => $e['ot'] == 0))
-            <div class="an-empty">{{ __('No overtime recorded this month') }}</div>
-            @else
-            <div class="an-chart-wrap" style="height:240px;">
-                <canvas id="overtimeChart"></canvas>
-            </div>
-            @endif
-        </div>
-
-        <div class="an-card">
-            <div class="an-card-head">
-                <div>
-                    <p class="an-card-title">{{ __('Deduction Breakdown') }}</p>
-                    <p class="an-card-sub">{{ __('Monthly statutory & voluntary') }}</p>
-                </div>
-            </div>
-            @php $totalDeductions = $sssTot + $philTot + $pagibigTot + $taxTot + $valeTot + $otherTot; @endphp
-            @if($totalDeductions == 0)
-            <div class="an-empty">{{ __('No deductions recorded this month') }}</div>
-            @else
-            <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-                <div class="an-chart-wrap" style="height:200px;flex:1;min-width:120px;">
-                    <canvas id="deductionChart"></canvas>
-                </div>
-                <div class="an-deduction-legend">
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#3b82f6;"></span><span class="an-dl-label">{{ __('SSS') }}</span><span class="an-dl-val">₱{{ number_format($sssTot, 0) }}</span></div>
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#10b981;"></span><span class="an-dl-label">{{ __('PhilHealth') }}</span><span class="an-dl-val">₱{{ number_format($philTot, 0) }}</span></div>
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#14b8a6;"></span><span class="an-dl-label">{{ __('Pag-IBIG') }}</span><span class="an-dl-val">₱{{ number_format($pagibigTot, 0) }}</span></div>
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#a855f7;"></span><span class="an-dl-label">{{ __('Withholding Tax') }}</span><span class="an-dl-val">₱{{ number_format($taxTot, 0) }}</span></div>
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#ef4444;"></span><span class="an-dl-label">{{ __('Vale') }}</span><span class="an-dl-val">₱{{ number_format($valeTot, 0) }}</span></div>
-                    @if($otherTot > 0)
-                    <div class="an-dl-row"><span class="an-dl-dot" style="background:#64748b;"></span><span class="an-dl-label">{{ __('Other') }}</span><span class="an-dl-val">₱{{ number_format($otherTot, 0) }}</span></div>
-                    @endif
-                    <div class="an-dl-total">Total: ₱{{ number_format($totalDeductions, 0) }}</div>
-                </div>
-            </div>
-            @endif
-        </div>
-    </div>
-
-    {{-- ── Row 4: Site Distribution ─────────────────────────────────────────── --}}
-    @if($siteDist->isNotEmpty())
-    <div class="an-card an-card-full">
-        <div class="an-card-head">
-            <div>
-                <p class="an-card-title">{{ __('Workforce by Site') }}</p>
-                <p class="an-card-sub">{{ __('Employee headcount per work site') }}</p>
-            </div>
-        </div>
-        <div class="an-site-bars">
-            @foreach($siteDist as $siteName => $count)
-            @php $pct = $totalEmployees > 0 ? ($count / $totalEmployees) * 100 : 0; @endphp
-            <div class="an-site-row">
-                <span class="an-site-name">{{ $siteName }}</span>
-                <div class="an-site-bar-wrap">
-                    <div class="an-site-bar-fill" style="width:{{ $pct }}%;"></div>
-                </div>
-                <span class="an-site-count">{{ $count }} emp{{ $count !== 1 ? 's' : '' }}</span>
-            </div>
-            @endforeach
-        </div>
-    </div>
-    @endif
-
-    {{-- ── Employee Performance Table ───────────────────────────────────────── --}}
-    @if($empTable->isNotEmpty())
-    <div class="an-card an-card-full">
-        <div class="an-card-head">
-            <div>
-                <p class="an-card-title">Employee Performance — {{ $monthLabel }}</p>
-                <p class="an-card-sub">{{ __('Individual payroll summary sorted by net pay') }}</p>
-            </div>
-            <span class="an-badge-blue">{{ $empTable->count() }} employees</span>
-        </div>
-        <div class="table-responsive">
-            <table class="an-table">
-                <thead>
-                    <tr>
-                        <th>{{ __('Employee') }}</th>
-                        <th class="text-center">{{ __('Workdays') }}</th>
-                        <th class="text-center">{{ __('Hours') }}</th>
-                        <th class="text-end">{{ __('Gross') }}</th>
-                        <th class="text-end">{{ __('OT Pay') }}</th>
-                        <th class="text-end">{{ __('Holiday') }}</th>
-                        <th class="text-end">{{ __('Deductions') }}</th>
-                        <th class="text-end">{{ __('Net Pay') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($empTable as $emp)
-                    <tr>
-                        <td>
-                            <div class="an-emp-cell">
-                                <div class="an-emp-avatar">{{ strtoupper(substr($emp['name'], 0, 1)) }}</div>
-                                <div>
-                                    <p class="an-emp-name">{{ $emp['name'] }}</p>
-                                    <p class="an-emp-pos">{{ $emp['position'] ?: '—' }}</p>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="text-center an-td-num">{{ $emp['totals']['workdays'] }}</td>
-                        <td class="text-center an-td-num">{{ number_format($emp['totals']['hours'], 1) }}h</td>
-                        <td class="text-end an-td-num">₱{{ number_format($emp['totals']['gross'], 2) }}</td>
-                        <td class="text-end an-td-num">
-                            @if($emp['totals']['overtime'] > 0)
-                            <span class="an-ot-badge">₱{{ number_format($emp['totals']['overtime'], 2) }}</span>
-                            @else
-                            <span class="an-td-muted">—</span>
-                            @endif
-                        </td>
-                        <td class="text-end an-td-num">
-                            @if($emp['totals']['holidayPay'] > 0)
-                            <span class="an-holiday-badge">₱{{ number_format($emp['totals']['holidayPay'], 2) }}</span>
-                            @else
-                            <span class="an-td-muted">—</span>
-                            @endif
-                        </td>
-                        <td class="text-end an-td-num an-td-ded">₱{{ number_format($emp['totals']['totalDeductions'], 2) }}</td>
-                        <td class="text-end">
-                            <span class="an-net-val">₱{{ number_format($emp['totals']['net'], 2) }}</span>
-                        </td>
-                    </tr>
+    {{-- A real form, so the filters still work with scripting off; with it on,
+         every change redraws in place. --}}
+    <form class="ana-filters ana-anim" id="anaFilters" method="GET" action="{{ route('analytics') }}" style="animation-delay:.06s">
+        <div class="ana-fgroup">
+            <label for="anaRange">Date range</label>
+            <div class="ana-fctrl">
+                <select id="anaRange" name="range">
+                    @foreach($ranges as $value => $label)
+                        <option value="{{ $value }}" @selected($filters['range'] === (string) $value)>{{ $label }}</option>
                     @endforeach
-                </tbody>
-                <tfoot>
-                    <tr class="an-tfoot">
-                        <td><strong>{{ __('TOTAL') }}</strong></td>
-                        <td class="text-center">{{ $empTable->sum(fn($e) => $e['totals']['workdays']) }}</td>
-                        <td class="text-center">{{ number_format($empTable->sum(fn($e) => $e['totals']['hours']), 1) }}h</td>
-                        <td class="text-end">₱{{ number_format($monthlyGross, 2) }}</td>
-                        <td class="text-end">₱{{ number_format($monthlyOTPay, 2) }}</td>
-                        <td class="text-end">₱{{ number_format($monthlyHoliday, 2) }}</td>
-                        <td class="text-end">₱{{ number_format($empTable->sum(fn($e) => $e['totals']['totalDeductions']), 2) }}</td>
-                        <td class="text-end"><strong>₱{{ number_format($monthlyNet, 2) }}</strong></td>
-                    </tr>
-                </tfoot>
-            </table>
+                </select>
+                <i class="ti ti-chevron-down ana-chev"></i>
+            </div>
+        </div>
+        <div class="ana-fgroup">
+            <label for="anaSite">Site</label>
+            <div class="ana-fctrl">
+                <select id="anaSite" name="site">
+                    <option value="all">All sites</option>
+                    @foreach($sites as $s)
+                        <option value="{{ $s->id }}" @selected($filters['site'] === $s->id)>{{ $s->name }}</option>
+                    @endforeach
+                </select>
+                <i class="ti ti-chevron-down ana-chev"></i>
+            </div>
+        </div>
+        <div class="ana-fgroup">
+            <label for="anaShift">Shift</label>
+            <div class="ana-fctrl">
+                <select id="anaShift" name="shift">
+                    <option value="all">All shifts</option>
+                    @foreach($shifts as $s)
+                        <option value="{{ $s->id }}" @selected($filters['shift'] === $s->id)>{{ $s->name }}</option>
+                    @endforeach
+                </select>
+                <i class="ti ti-chevron-down ana-chev"></i>
+            </div>
+        </div>
+        <div class="ana-fgroup">
+            <label for="anaStatus">Employee status</label>
+            <div class="ana-fctrl">
+                <select id="anaStatus" name="status">
+                    @foreach($statuses as $value => $label)
+                        <option value="{{ $value }}" @selected($filters['status'] === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+                <i class="ti ti-chevron-down ana-chev"></i>
+            </div>
+        </div>
+        <div class="ana-fspacer"></div>
+        <a class="ana-fbtn ghost" id="anaReset" href="{{ route('analytics') }}"><i class="ti ti-refresh"></i>Reset</a>
+        <button class="ana-fbtn" type="submit"><i class="ti ti-adjustments"></i>Apply filters</button>
+    </form>
+
+    <div class="ana-cards ana-anim" style="animation-delay:.1s">
+        <div class="ana-card"><div class="ana-ico ana-i-blue"><i class="ti ti-users"></i></div><div class="ana-lbl">Total employees</div><div class="ana-val" data-v="totalEmp">{{ $c['totalEmp'] }}</div><div class="ana-meta" data-m="totalEmp">{{ $m['totalEmp'] }}</div></div>
+        <div class="ana-card"><div class="ana-ico ana-i-green"><i class="ti ti-user-check"></i></div><div class="ana-lbl">Present</div><div class="ana-val" data-v="present">{{ $avg($c['present']) }}</div><div class="ana-meta" data-m="present">{{ $m['present'] }}</div></div>
+        <div class="ana-card"><div class="ana-ico ana-i-red"><i class="ti ti-user-x"></i></div><div class="ana-lbl">Absent</div><div class="ana-val" data-v="absent">{{ $avg($c['absent']) }}</div><div class="ana-meta" data-m="absent">{{ $m['absent'] }}</div></div>
+        <div class="ana-card"><div class="ana-ico ana-i-amber"><i class="ti ti-clock-exclamation"></i></div><div class="ana-lbl">Late</div><div class="ana-val" data-v="late">{{ $c['late'] }}</div><div class="ana-meta" data-m="late">{{ $m['late'] }}</div></div>
+        <div class="ana-card"><div class="ana-ico ana-i-violet"><i class="ti ti-clock-plus"></i></div><div class="ana-lbl">Overtime</div><div class="ana-val" data-v="ot">{{ number_format($c['ot'], 1) }}<span class="ana-unit">h</span></div><div class="ana-meta" data-m="ot">{{ $m['ot'] }}</div></div>
+        <div class="ana-card"><div class="ana-ico ana-i-blue"><i class="ti ti-briefcase"></i></div><div class="ana-lbl">Hours worked</div><div class="ana-val" data-v="hours">{{ number_format($c['hours']) }}<span class="ana-unit">h</span></div><div class="ana-meta" data-m="hours">{{ $m['hours'] }}</div></div>
+        <div class="ana-card"><div class="ana-ico ana-i-green"><i class="ti ti-cash"></i></div><div class="ana-lbl">Payroll cost</div><div class="ana-val" data-v="payroll">₱{{ number_format($c['payroll']) }}</div><div class="ana-meta" data-m="payroll">{{ $m['payroll'] }}</div></div>
+    </div>
+
+    <div class="ana-grid ana-anim" style="animation-delay:.14s">
+        <div class="ana-chart-card wide">
+            <div class="ana-ch-head">
+                <div><h3>Attendance trends</h3><div class="ana-desc">Daily employee presence over the selected period</div></div>
+                <span class="ana-tag"><i class="ti ti-chart-line"></i><span id="anaTrendTag">{{ $p['tag'] }}</span></span>
+            </div>
+            <div class="ana-canvas tall"><canvas id="anaTrend" role="img" aria-label="Employees present per day"></canvas><div class="ana-empty" data-empty><i class="ti ti-mood-empty"></i>No data for these filters</div></div>
         </div>
     </div>
-    @endif
+
+    <div class="ana-grid ana-g2 ana-anim" style="animation-delay:.18s">
+        <div class="ana-chart-card">
+            <div class="ana-ch-head"><div><h3>Late / absent trends</h3><div class="ana-desc">Punctuality issues over time</div></div></div>
+            <div class="ana-canvas"><canvas id="anaLateAbsent" role="img" aria-label="Late starts and absences per day"></canvas><div class="ana-empty" data-empty><i class="ti ti-mood-empty"></i>No data</div></div>
+            <div class="ana-legend"><span><i style="background:var(--ana-amber)"></i>Late</span><span><i style="background:var(--ana-red)"></i>Absent</span></div>
+        </div>
+        <div class="ana-chart-card">
+            <div class="ana-ch-head"><div><h3>Hours worked by shift</h3><div class="ana-desc">{{ $shiftList->count() > 1 ? $shiftList->implode(' vs ') . ' distribution' : 'Distribution by shift' }}</div></div></div>
+            <div class="ana-canvas"><canvas id="anaShiftHours" role="img" aria-label="Hours worked per day, by shift"></canvas><div class="ana-empty" data-empty><i class="ti ti-mood-empty"></i>No data</div></div>
+            <div class="ana-legend" id="anaShiftLegend">
+                @foreach($analytics['shiftHours']['datasets'] as $i => $set)
+                    <span><i style="background:var({{ $shiftColours[$i % count($shiftColours)] }})"></i>{{ $set['label'] }}</span>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    <div class="ana-grid ana-g2 ana-anim" style="animation-delay:.22s">
+        <div class="ana-chart-card">
+            <div class="ana-ch-head"><div><h3>Site performance</h3><div class="ana-desc">Attendance rate by site</div></div></div>
+            <div class="ana-canvas"><canvas id="anaSites" role="img" aria-label="Attendance rate by site"></canvas><div class="ana-empty" data-empty><i class="ti ti-mood-empty"></i>No data</div></div>
+        </div>
+        <div class="ana-chart-card">
+            <div class="ana-ch-head"><div><h3>Payroll summary</h3><div class="ana-desc">Gross vs net — weekly</div></div><span class="ana-tag"><i class="ti ti-currency-peso"></i>Pesos</span></div>
+            <div class="ana-canvas"><canvas id="anaPayroll" role="img" aria-label="Gross and net pay by pay week"></canvas><div class="ana-empty" data-empty><i class="ti ti-mood-empty"></i>No data</div></div>
+            <div class="ana-legend"><span><i style="background:var(--ana-accent)"></i>Gross pay</span><span><i style="background:var(--ana-green)"></i>Net pay</span></div>
+        </div>
+    </div>
 
 </div>
 
-{{-- ── Styles ──────────────────────────────────────────────────────────────── --}}
-<style>
-/* ── Page shell ──────────────────────────────────────────────────────────── */
-.an-page { max-width: none; width: 100%; margin: 0; padding-bottom: 40px; }
-
-/* ── Page header ─────────────────────────────────────────────────────────── */
-.an-header {
-    display: flex; align-items: flex-start;
-    justify-content: space-between; flex-wrap: wrap; gap: 12px;
-    margin-bottom: 24px;
-}
-.an-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
-.an-sub   { font-size: 13.5px; color: #64748b; margin: 0; }
-.an-period-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 600; color: #2563eb;
-    background: #eff6ff; border: 1px solid #bfdbfe;
-    padding: 5px 12px; border-radius: 20px;
-}
-
-/* ── KPI grid ────────────────────────────────────────────────────────────── */
-.an-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 14px;
-    margin-bottom: 16px;
-}
-@media (max-width: 1100px) { .an-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 680px)  { .an-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-
-.an-kpi-card {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
-    padding: 18px 16px; display: flex; gap: 12px; align-items: flex-start;
-    position: relative; overflow: hidden;
-    transition: box-shadow .15s, transform .15s;
-}
-.an-kpi-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.07); transform: translateY(-1px); }
-.an-kpi-card::after {
-    content: ''; position: absolute; top: 0; left: 0; right: 0;
-    height: 3px; background: linear-gradient(90deg, #3b82f6, #3b82f6);
-    border-radius: 14px 14px 0 0;
-}
-
-.an-kpi-icon {
-    width: 40px; height: 40px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; flex-shrink: 0;
-}
-.an-kpi-body { flex: 1; min-width: 0; }
-.an-kpi-label {
-    font-size: 10px; font-weight: 700; letter-spacing: .6px;
-    text-transform: uppercase; color: #94a3b8; margin: 0 0 4px;
-}
-.an-kpi-value {
-    font-size: 1.4rem; font-weight: 800; color: #0f172a;
-    line-height: 1.1; margin: 0 0 4px; letter-spacing: -.5px;
-}
-.an-kpi-unit { font-size: 1rem; font-weight: 600; color: #94a3b8; }
-.an-kpi-sub  { font-size: 11px; color: #94a3b8; margin: 0; }
-.an-up   { color: #16a34a !important; }
-.an-down { color: #dc2626 !important; }
-
-/* Donut ring for attendance rate card */
-.an-kpi-ring {
-    position: absolute; right: 12px; top: 12px;
-    width: 44px; height: 44px; opacity: .35;
-}
-.an-kpi-ring svg { transform: rotate(-90deg); }
-.an-ring-bg  { fill: none; stroke: #e2e8f0; stroke-width: 3; }
-.an-ring-fg  { fill: none; stroke-width: 3; stroke-linecap: round; stroke-dashoffset: 0; }
-
-/* ── Cards ───────────────────────────────────────────────────────────────── */
-.an-card {
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
-    padding: 20px 22px; margin-bottom: 16px;
-}
-.an-card-full { width: 100%; }
-
-.an-row-2 {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 16px; margin-bottom: 16px;
-}
-@media (max-width: 860px) { .an-row-2 { grid-template-columns: 1fr; } }
-
-.an-card-head {
-    display: flex; align-items: flex-start;
-    justify-content: space-between; gap: 12px;
-    margin-bottom: 18px; flex-wrap: wrap;
-}
-.an-card-title { font-size: 14px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
-.an-card-sub   { font-size: 12px; color: #94a3b8; margin: 0; }
-
-.an-chart-wrap { position: relative; }
-.an-empty {
-    display: flex; align-items: center; justify-content: center;
-    height: 140px; font-size: 13px; color: #94a3b8;
-    font-style: italic;
-}
-
-/* Badges */
-.an-badge-blue   { font-size: 11px; font-weight: 700; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-.an-badge-green  { font-size: 11px; font-weight: 700; color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-.an-badge-purple { font-size: 11px; font-weight: 700; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-
-/* ── Deduction legend ─────────────────────────────────────────────────────── */
-.an-deduction-legend { flex-shrink: 0; min-width: 160px; }
-.an-dl-row {
-    display: flex; align-items: center; gap: 8px;
-    margin-bottom: 8px; font-size: 13px;
-}
-.an-dl-dot   { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.an-dl-label { flex: 1; color: #374151; }
-.an-dl-val   { font-weight: 700; color: #0f172a; }
-.an-dl-total {
-    font-size: 12px; font-weight: 700; color: #64748b;
-    border-top: 1px solid #e2e8f0; padding-top: 8px; margin-top: 4px;
-}
-
-/* ── Site bars ───────────────────────────────────────────────────────────── */
-.an-site-bars { display: flex; flex-direction: column; gap: 10px; }
-.an-site-row  { display: flex; align-items: center; gap: 12px; }
-.an-site-name { font-size: 13px; font-weight: 600; color: #374151; width: 80px; flex-shrink: 0; }
-.an-site-bar-wrap {
-    flex: 1; height: 10px; background: #f1f5f9;
-    border-radius: 6px; overflow: hidden;
-}
-.an-site-bar-fill {
-    height: 100%; background: linear-gradient(90deg, #3b82f6, #3b82f6);
-    border-radius: 6px; transition: width .6s ease;
-    min-width: 4px;
-}
-.an-site-count { font-size: 12px; color: #64748b; width: 70px; text-align: right; flex-shrink: 0; }
-
-/* ── Employee table ──────────────────────────────────────────────────────── */
-.an-table { width: 100%; border-collapse: collapse; }
-.an-table thead th {
-    font-size: 11px; font-weight: 700; letter-spacing: .5px;
-    text-transform: uppercase; color: #64748b;
-    background: #f8fafc; padding: 10px 12px;
-    border-bottom: 1px solid #e2e8f0; white-space: nowrap;
-}
-.an-table tbody td {
-    padding: 11px 12px; border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-}
-.an-table tbody tr:last-child td { border-bottom: none; }
-.an-table tbody tr:hover td { background: #f8fafc; }
-.an-tfoot td {
-    padding: 10px 12px; font-size: 13px; font-weight: 700;
-    border-top: 2px solid #e2e8f0; color: #0f172a;
-    background: #f8fafc;
-}
-
-.an-emp-cell { display: flex; align-items: center; gap: 10px; }
-.an-emp-avatar {
-    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
-    background: linear-gradient(135deg, #3b82f6, #3b82f6);
-    color: #fff; font-size: 13px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-}
-.an-emp-name { font-size: 13px; font-weight: 600; color: #0f172a; margin: 0; }
-.an-emp-pos  { font-size: 11px; color: #94a3b8; margin: 0; }
-
-.an-td-num  { font-size: 13px; color: #374151; }
-.an-td-muted { font-size: 13px; color: #cbd5e1; }
-.an-td-ded  { color: #dc2626 !important; }
-
-.an-ot-badge {
-    font-size: 12px; font-weight: 600; color: #2563eb;
-    background: #eff6ff; padding: 2px 7px; border-radius: 5px;
-}
-.an-holiday-badge {
-    font-size: 12px; font-weight: 600; color: #d97706;
-    background: #fefce8; padding: 2px 7px; border-radius: 5px;
-}
-.an-net-val {
-    font-size: 14px; font-weight: 800; color: #059669;
-}
-
-/* ── Dark mode ───────────────────────────────────────────────────────────── */
-[data-bs-theme="dark"] .an-title         { color: #e8edf5; }
-[data-bs-theme="dark"] .an-sub           { color: #6b7d96; }
-[data-bs-theme="dark"] .an-period-chip   { background: #172554; border-color: #3b82f6; color: #93c5fd; }
-[data-bs-theme="dark"] .an-kpi-card      { background: #151d2e; border-color: #283449; }
-[data-bs-theme="dark"] .an-kpi-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.3); }
-[data-bs-theme="dark"] .an-kpi-label     { color: #6b7d96; }
-[data-bs-theme="dark"] .an-kpi-value     { color: #e8edf5; }
-[data-bs-theme="dark"] .an-kpi-sub       { color: #6b7d96; }
-[data-bs-theme="dark"] .an-ring-bg       { stroke: #283449; }
-[data-bs-theme="dark"] .an-card          { background: #151d2e; border-color: #283449; }
-[data-bs-theme="dark"] .an-card-title    { color: #e8edf5; }
-[data-bs-theme="dark"] .an-card-sub      { color: #6b7d96; }
-[data-bs-theme="dark"] .an-empty         { color: #475569; }
-[data-bs-theme="dark"] .an-badge-blue    { background: #172554; border-color: #3b82f6; color: #93c5fd; }
-[data-bs-theme="dark"] .an-badge-green   { background: #052e16; border-color: #166534; color: #86efac; }
-[data-bs-theme="dark"] .an-badge-purple  { background: #172554; border-color: #2563eb; color: #93c5fd; }
-[data-bs-theme="dark"] .an-dl-label      { color: #cdd7e5; }
-[data-bs-theme="dark"] .an-dl-val        { color: #e8edf5; }
-[data-bs-theme="dark"] .an-dl-total      { color: #6b7d96; border-top-color: #283449; }
-[data-bs-theme="dark"] .an-site-name     { color: #cdd7e5; }
-[data-bs-theme="dark"] .an-site-bar-wrap { background: #1c2740; }
-[data-bs-theme="dark"] .an-site-count    { color: #6b7d96; }
-[data-bs-theme="dark"] .an-table thead th { background: #1c2740; color: #6b7d96; border-bottom-color: #283449; }
-[data-bs-theme="dark"] .an-table tbody td { border-bottom-color: #1a2336; }
-[data-bs-theme="dark"] .an-table tbody tr:hover td { background: #1a2336; }
-[data-bs-theme="dark"] .an-tfoot td      { background: #1c2740; color: #e8edf5; border-top-color: #283449; }
-[data-bs-theme="dark"] .an-emp-name      { color: #e8edf5; }
-[data-bs-theme="dark"] .an-emp-pos       { color: #6b7d96; }
-[data-bs-theme="dark"] .an-td-num        { color: #cdd7e5; }
-[data-bs-theme="dark"] .an-td-muted      { color: #283449; }
-</style>
+<script type="application/json" id="anaData">@json($analytics)</script>
+@endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 (function () {
-    const isDark    = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
-    const textColor = isDark ? '#9fb0c7' : '#64748b';
-    const tooltipBg = isDark ? '#0f1729' : '#fff';
-    const tooltipBd = isDark ? '#283449' : '#e2e8f0';
+    const root = document.getElementById('anaRoot');
+    if (!root || typeof Chart === 'undefined') return;
 
-    Chart.defaults.font.family = "'Inter', sans-serif";
-    Chart.defaults.font.size   = 12;
+    const form     = document.getElementById('anaFilters');
+    const fields   = ['range', 'site', 'shift', 'status'].map(name => form.elements[name]);
+    const defaults = { range: '30', site: 'all', shift: 'all', status: 'all' };
+    const charts   = {};
+    let data       = JSON.parse(document.getElementById('anaData').textContent);
+    let colors     = palette();
+    let paintedAt  = 0;
 
-    const tooltipPlugin = {
-        backgroundColor: tooltipBg,
-        titleColor:      isDark ? '#e8edf5' : '#0f172a',
-        bodyColor:       isDark ? '#9fb0c7' : '#64748b',
-        borderColor:     tooltipBd,
-        borderWidth:     1,
-        padding:         10,
-        cornerRadius:    8,
+    // ── Theme ────────────────────────────────────────────────────────────
+    // A canvas inherits nothing, so every colour is read off the page's own
+    // custom properties — and read again when the theme is switched.
+    function css(name) { return getComputedStyle(root).getPropertyValue(name).trim(); }
+    function palette() {
+        return {
+            accent: css('--ana-accent'), green: css('--ana-green'), amber: css('--ana-amber'),
+            red: css('--ana-red'), violet: css('--ana-violet'),
+            txt: css('--ana-txt'), txt2: css('--ana-txt-2'), grid: css('--ana-grid'),
+            tipBg: css('--ana-panel-2'), tipLine: css('--ana-line-2'),
+        };
+    }
+    function applyDefaults() {
+        Chart.defaults.color = colors.txt2;
+        Chart.defaults.font.family = "'Inter', system-ui, -apple-system, sans-serif";
+        Chart.defaults.font.size = 11;
+    }
+    applyDefaults();
+
+    const shiftColor = i => [colors.accent, colors.violet, colors.amber, colors.green, colors.red][i % 5];
+
+    // ── Cards ────────────────────────────────────────────────────────────
+    const trim1 = v => { const s = (Math.round(v * 10) / 10).toFixed(1); return s.endsWith('.0') ? s.slice(0, -2) : s; };
+    const FORMAT = {
+        totalEmp: v => Math.round(v).toString(),
+        present:  trim1,
+        absent:   trim1,
+        late:     v => Math.round(v).toString(),
+        ot:       v => v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        hours:    v => Math.round(v).toLocaleString('en-US'),
+        payroll:  v => '₱' + Math.round(v).toLocaleString('en-US'),
     };
 
-    // ── 1. Attendance Trend ────────────────────────────────────────────────
-    const trendLabels = @json($trendLabels);
-    const trendData   = @json($trendData);
-
-    new Chart(document.getElementById('attendanceTrendChart'), {
-        type: 'line',
-        data: {
-            labels: trendLabels,
-            datasets: [{
-                label: 'Employees Present',
-                data: trendData,
-                borderColor: '#3b82f6',
-                backgroundColor: isDark ? 'rgba(59,130,246,0.10)' : 'rgba(59,130,246,0.08)',
-                borderWidth: 2.5,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 3,
-                pointHoverRadius: 6,
-                pointBackgroundColor: '#3b82f6',
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: tooltipPlugin,
-            },
-            scales: {
-                x: { grid: { color: gridColor }, ticks: { color: textColor, maxTicksLimit: 10 } },
-                y: { grid: { color: gridColor }, ticks: { color: textColor, stepSize: 1, precision: 0 }, beginAtZero: true },
-            }
+    function animateVal(el, to, fmt) {
+        const from  = parseFloat(el.getAttribute('data-cur') || '0');
+        const start = performance.now();
+        const dur   = 700;
+        function tick(now) {
+            const t = Math.min(1, (now - start) / dur);
+            const e = 1 - Math.pow(1 - t, 3);
+            el.childNodes[0].nodeValue = fmt(from + (to - from) * e);
+            if (t < 1) requestAnimationFrame(tick);
+            else { el.setAttribute('data-cur', to); el.childNodes[0].nodeValue = fmt(to); }
         }
-    });
+        requestAnimationFrame(tick);
+    }
 
-    // ── 2. Weekly Payroll ──────────────────────────────────────────────────
-    const weekLabels = @json($weekLabels);
-    const weekGross  = @json($weekGross);
-    const weekNet    = @json($weekNet);
-
-    new Chart(document.getElementById('weeklyPayrollChart'), {
-        type: 'bar',
-        data: {
-            labels: weekLabels,
-            datasets: [
-                {
-                    label: 'Gross Pay',
-                    data: weekGross,
-                    backgroundColor: isDark ? 'rgba(59,130,246,0.55)' : 'rgba(59,130,246,0.65)',
-                    borderColor: '#3b82f6',
-                    borderWidth: 1.5,
-                    borderRadius: 6,
-                },
-                {
-                    label: 'Net Pay',
-                    data: weekNet,
-                    backgroundColor: isDark ? 'rgba(16,185,129,0.55)' : 'rgba(16,185,129,0.65)',
-                    borderColor: '#10b981',
-                    borderWidth: 1.5,
-                    borderRadius: 6,
-                }
-            ]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'top', labels: { color: textColor, usePointStyle: true, pointStyleWidth: 10, padding: 16 } },
-                tooltip: { ...tooltipPlugin, callbacks: { label: ctx => ' ₱' + ctx.parsed.y.toLocaleString() } },
-            },
-            scales: {
-                x: { grid: { display: false }, ticks: { color: textColor, maxTicksLimit: 4 } },
-                y: { grid: { color: gridColor }, ticks: { color: textColor, callback: v => '₱' + (v/1000).toFixed(0) + 'K' }, beginAtZero: true },
-            }
-        }
-    });
-
-    // ── 3. Labor Type Doughnut ─────────────────────────────────────────────
-    const laborLabels = @json($laborDist->keys()->values());
-    const laborData   = @json($laborDist->values()->values());
-    const PALETTE     = ['#3b82f6','#10b981','#14b8a6','#ef4444','#64748b','#06b6d4','#0ea5e9','#14b8a6'];
-
-    if (document.getElementById('laborTypeChart')) {
-        new Chart(document.getElementById('laborTypeChart'), {
-            type: 'doughnut',
-            data: {
-                labels: laborLabels,
-                datasets: [{
-                    data: laborData,
-                    backgroundColor: PALETTE,
-                    hoverOffset: 6,
-                    borderWidth: 2,
-                    borderColor: isDark ? '#151d2e' : '#fff',
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                cutout: '62%',
-                plugins: {
-                    legend: { position: 'bottom', labels: { color: textColor, usePointStyle: true, padding: 12, font: { size: 12 } } },
-                    tooltip: tooltipPlugin,
-                }
-            }
+    function setCards(a) {
+        root.querySelectorAll('[data-v]').forEach(el => {
+            const k = el.getAttribute('data-v');
+            if (k in a.cards) animateVal(el, Number(a.cards[k]) || 0, FORMAT[k]);
+        });
+        root.querySelectorAll('[data-m]').forEach(el => {
+            const k = el.getAttribute('data-m');
+            if (k in a.meta) el.textContent = a.meta[k];
         });
     }
 
-    // ── 4. Overtime Horizontal Bar ─────────────────────────────────────────
-    const otNames = @json($topOT->pluck('name'));
-    const otPay   = @json($topOT->pluck('ot'));
+    // ── Charts ───────────────────────────────────────────────────────────
+    const anim = { duration: 800, easing: 'easeOutQuart' };
+    const gridCfg = () => ({ color: colors.grid, drawBorder: false });
+    const baseScales = x => ({
+        x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: x || 10 } },
+        y: { grid: gridCfg(), beginAtZero: true, ticks: { precision: 0 } },
+    });
+    const peso = v => Math.abs(v) >= 1000
+        ? '₱' + (v / 1000).toFixed(v % 1000 === 0 ? 0 : 1) + 'k'
+        : '₱' + v;
 
-    if (document.getElementById('overtimeChart') && otNames.length) {
-        new Chart(document.getElementById('overtimeChart'), {
+    function mkGradient(ctx, color) {
+        const g = ctx.createLinearGradient(0, 0, 0, 260);
+        g.addColorStop(0, color + '55');
+        g.addColorStop(1, color + '02');
+        return g;
+    }
+    function toggleEmpty(id, isEmpty) {
+        const canvas = document.getElementById(id);
+        canvas.parentElement.querySelector('[data-empty]').style.display = isEmpty ? 'flex' : 'none';
+        canvas.style.opacity = isEmpty ? '.15' : '1';
+    }
+    function tt(unit) {
+        return {
+            backgroundColor: colors.tipBg, borderColor: colors.tipLine, borderWidth: 1,
+            titleColor: colors.txt, bodyColor: colors.txt2, padding: 10, cornerRadius: 8,
+            displayColors: true, boxPadding: 4,
+            callbacks: {
+                label: c => {
+                    let v = c.chart.options.indexAxis === 'y' ? c.parsed.x : c.parsed.y;
+                    if (unit === '₱') v = '₱' + Math.round(v).toLocaleString('en-US');
+                    else if (unit === '%') v = Math.round(v) + '%';
+                    else if (unit === 'h') v = (+v).toFixed(1) + 'h';
+                    else v = Math.round(v);
+                    return ' ' + c.dataset.label + ': ' + v;
+                },
+            },
+        };
+    }
+    function upsert(key, id, config) {
+        if (charts[key]) { charts[key].data = config.data; charts[key].update(); }
+        else charts[key] = new Chart(document.getElementById(id), config);
+    }
+
+    function renderAll(a) {
+        const t = a.trend;
+
+        // Attendance trend (area line)
+        toggleEmpty('anaTrend', t.present.every(v => !v) && t.absent.every(v => !v));
+        const ctxT = document.getElementById('anaTrend').getContext('2d');
+        upsert('t', 'anaTrend', {
+            type: 'line',
+            data: { labels: t.labels, datasets: [{
+                label: 'Present', data: t.present, borderColor: colors.accent,
+                backgroundColor: mkGradient(ctxT, colors.accent), borderWidth: 2, fill: true, tension: .4,
+                pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: colors.accent,
+                pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2,
+            }] },
+            options: { responsive: true, maintainAspectRatio: false, animation: anim,
+                plugins: { legend: { display: false }, tooltip: tt() }, scales: baseScales(12),
+                interaction: { mode: 'index', intersect: false } },
+        });
+
+        // Late / absent (grouped bars)
+        toggleEmpty('anaLateAbsent', t.late.every(v => !v) && t.absent.every(v => !v));
+        upsert('la', 'anaLateAbsent', {
             type: 'bar',
-            data: {
-                labels: otNames,
-                datasets: [{
-                    label: 'OT Pay (₱)',
-                    data: otPay,
-                    backgroundColor: isDark ? 'rgba(139,92,246,0.6)' : 'rgba(124,58,237,0.65)',
-                    borderColor: '#2563eb',
-                    borderWidth: 1.5,
-                    borderRadius: 6,
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true, maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { ...tooltipPlugin, callbacks: { label: ctx => ' ₱' + ctx.parsed.x.toLocaleString() } },
-                },
+            data: { labels: t.labels, datasets: [
+                { label: 'Late', data: t.late, backgroundColor: colors.amber, borderRadius: 3, barPercentage: .7, categoryPercentage: .6 },
+                { label: 'Absent', data: t.absent, backgroundColor: colors.red, borderRadius: 3, barPercentage: .7, categoryPercentage: .6 },
+            ] },
+            options: { responsive: true, maintainAspectRatio: false, animation: anim,
+                plugins: { legend: { display: false }, tooltip: tt() }, scales: baseScales(8) },
+        });
+
+        // Hours by shift (stacked bars), one series per shift on file
+        const sh = a.shiftHours;
+        toggleEmpty('anaShiftHours', sh.datasets.every(d => d.data.every(v => !v)));
+        upsert('hs', 'anaShiftHours', {
+            type: 'bar',
+            data: { labels: sh.labels, datasets: sh.datasets.map((d, i) => ({
+                label: d.label, data: d.data, backgroundColor: shiftColor(i),
+                borderRadius: { topLeft: 3, topRight: 3 }, stack: 'h',
+            })) },
+            options: { responsive: true, maintainAspectRatio: false, animation: anim,
+                plugins: { legend: { display: false }, tooltip: tt('h') },
                 scales: {
-                    x: { grid: { color: gridColor }, ticks: { color: textColor, callback: v => '₱' + v.toLocaleString() }, beginAtZero: true },
-                    y: { grid: { display: false }, ticks: { color: textColor } },
-                }
-            }
+                    x: { grid: { display: false }, stacked: true, ticks: { maxTicksLimit: 8, maxRotation: 0 } },
+                    y: { grid: gridCfg(), stacked: true, beginAtZero: true },
+                } },
+        });
+        document.getElementById('anaShiftLegend').replaceChildren(...sh.datasets.map((d, i) => {
+            const item = document.createElement('span');
+            const dot  = document.createElement('i');
+            dot.style.background = shiftColor(i);
+            item.append(dot, d.label);
+            return item;
+        }));
+
+        // Site performance (horizontal bars, attendance rate)
+        const rates = a.sites.map(s => s.rate);
+        toggleEmpty('anaSites', !rates.length);
+        upsert('sp', 'anaSites', {
+            type: 'bar',
+            data: { labels: a.sites.map(s => s.name), datasets: [{
+                label: 'Attendance rate', data: rates,
+                backgroundColor: rates.map(v => v >= 70 ? colors.green : v >= 40 ? colors.amber : colors.red),
+                borderRadius: 5, maxBarThickness: 26, minBarLength: 3,
+            }] },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: anim,
+                plugins: { legend: { display: false }, tooltip: tt('%') },
+                scales: {
+                    x: { grid: gridCfg(), beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+                    y: { grid: { display: false } },
+                } },
+        });
+
+        // Payroll (gross vs net, one pair per pay week)
+        const p = a.payroll;
+        toggleEmpty('anaPayroll', p.gross.every(v => !v) && p.net.every(v => !v));
+        upsert('pr', 'anaPayroll', {
+            type: 'bar',
+            data: { labels: p.labels, datasets: [
+                { label: 'Gross', data: p.gross, backgroundColor: colors.accent, borderRadius: 4, barPercentage: .7, categoryPercentage: .6 },
+                { label: 'Net', data: p.net, backgroundColor: colors.green, borderRadius: 4, barPercentage: .7, categoryPercentage: .6 },
+            ] },
+            options: { responsive: true, maintainAspectRatio: false, animation: anim,
+                plugins: { legend: { display: false }, tooltip: tt('₱') },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxRotation: 0 } },
+                    y: { grid: gridCfg(), beginAtZero: true, ticks: { callback: peso } },
+                } },
         });
     }
 
-    // ── 5. Deduction Breakdown Doughnut ────────────────────────────────────
-    const dedLabels = ['SSS', 'PhilHealth', 'Pag-IBIG', 'Withholding Tax', 'Vale', 'Other'];
-    const dedData   = [
-        {{ $sssTot }}, {{ $philTot }}, {{ $pagibigTot }},
-        {{ $taxTot }}, {{ $valeTot }}, {{ $otherTot }}
-    ].map((v, i) => v);
-    const dedColors = ['#3b82f6', '#10b981', '#14b8a6', '#a855f7', '#ef4444', '#64748b'];
+    function paint(a) {
+        data = a;
+        paintedAt = Date.now();
+        setCards(a);
+        renderAll(a);
+        document.getElementById('anaTrendTag').textContent = a.period.tag;
+        document.getElementById('anaPeriodLabel').textContent = a.period.label + (a.period.scope ? ' — ' + a.period.scope : '');
+        document.getElementById('anaLive').title = 'Updated ' + a.updated_at;
+    }
 
-    if (document.getElementById('deductionChart')) {
-        const filteredLabels = [];
-        const filteredData   = [];
-        const filteredColors = [];
-        dedData.forEach((v, i) => {
-            if (v > 0) {
-                filteredLabels.push(dedLabels[i]);
-                filteredData.push(v);
-                filteredColors.push(dedColors[i]);
-            }
-        });
+    // ── Filters ──────────────────────────────────────────────────────────
+    // Each change asks the server for the same figures under the new filters
+    // and redraws in place. The address follows, so a reload or a shared link
+    // opens on the same view. A newer request cancels one still in flight.
+    let inflight = null;
+    function refresh() {
+        const q = new URLSearchParams();
+        fields.forEach(el => q.set(el.name, el.value));
+        history.replaceState(null, '', location.pathname + '?' + q.toString());
 
-        if (filteredData.length) {
-            new Chart(document.getElementById('deductionChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: filteredLabels,
-                    datasets: [{
-                        data: filteredData,
-                        backgroundColor: filteredColors,
-                        hoverOffset: 6,
-                        borderWidth: 2,
-                        borderColor: isDark ? '#151d2e' : '#fff',
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    cutout: '65%',
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { ...tooltipPlugin, callbacks: { label: ctx => ' ₱' + ctx.parsed.toLocaleString() } },
-                    }
-                }
+        if (inflight) inflight.abort();
+        const ctrl = inflight = new AbortController();
+        root.classList.add('is-loading');
+
+        fetch(root.dataset.endpoint + '?' + q.toString(), {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+            signal: ctrl.signal,
+        })
+            .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+            .then(paint)
+            .catch(err => { if (err.name !== 'AbortError') console.warn('Analytics refresh failed:', err); })
+            .finally(() => {
+                if (inflight === ctrl) { inflight = null; root.classList.remove('is-loading'); }
             });
-        }
     }
 
+    form.addEventListener('submit', e => { e.preventDefault(); refresh(); });
+    fields.forEach(el => el.addEventListener('change', refresh));
+    document.getElementById('anaReset').addEventListener('click', e => {
+        e.preventDefault();
+        fields.forEach(el => { el.value = defaults[el.name]; });
+        refresh();
+    });
+
+    // Live: the same filters asked again every minute while the tab is in
+    // view, and at once on coming back to a tab left open.
+    setInterval(() => { if (!document.hidden && !inflight) refresh(); }, 60000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && Date.now() - paintedAt > 60000) refresh();
+    });
+
+    // Rebuild every chart in the new palette when the theme is switched.
+    new MutationObserver(() => {
+        colors = palette();
+        applyDefaults();
+        Object.keys(charts).forEach(k => { charts[k].destroy(); delete charts[k]; });
+        renderAll(data);
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
+
+    paint(data);
 })();
 </script>
 @endpush
-@endsection

@@ -2,154 +2,37 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Attendance;
-use App\Models\Employee;
+use App\Models\Shift;
 use App\Models\Site;
-use App\Services\PayrollService;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Services\AnalyticsService;
+use Illuminate\Http\Request;
 
+/**
+ * Analytics & Insights.
+ *
+ * The page is drawn with the figures for whatever filters its address
+ * carries. Changing a filter asks data() for the same figures as JSON and
+ * redraws in place, so nothing reloads and the choice survives in the URL.
+ */
 class AnalyticsController extends Controller
 {
-    public function index(PayrollService $payroll)
+    public function index(Request $request, AnalyticsService $analytics)
     {
-        $today      = Carbon::today();
-        $monthStart = $today->copy()->startOfMonth()->toDateString();
-        $monthEnd   = $today->toDateString();
-        $monthLabel = $today->format('F Y');
+        $filters = $analytics->filters($request->query());
 
-        // ── KPIs ─────────────────────────────────────────────────────────────
-        $totalEmployees = Employee::active()->count();
-        // By the workday each shift is on: the night crew's rows are dated
-        // the evening they started, so the calendar loses them after midnight.
-        $presentToday   = Attendance::onWorkday()->whereNotNull('time_in')->count();
-        $activeSites    = Site::withCount(['employees' => fn ($q) => $q->active()])->get()->where('employees_count', '>', 0)->count();
+        return view('analytics', [
+            'filters'   => $filters,
+            'ranges'    => AnalyticsService::RANGES,
+            'statuses'  => AnalyticsService::STATUSES,
+            'sites'     => Site::orderBy('name')->get(['id', 'name']),
+            'shifts'    => Shift::orderBy('id')->get(['id', 'name']),
+            'analytics' => $analytics->build($filters),
+        ]);
+    }
 
-        // Current month payroll
-        $monthly   = $payroll->computeForRange($monthStart, $monthEnd);
-        $empColl   = collect($monthly['employees']);
-
-        $monthlyNet     = round($empColl->sum(fn ($e) => $e['totals']['net']), 2);
-        $monthlyGross   = round($empColl->sum(fn ($e) => $e['totals']['gross']), 2);
-        $monthlyOTPay   = round($empColl->sum(fn ($e) => $e['totals']['overtime']), 2);
-        $monthlyHoliday = round($empColl->sum(fn ($e) => $e['totals']['holidayPay']), 2);
-
-        // Attendance rate this month. A day is one worker on one workday, not
-        // one row: a day comes in several — a morning, an afternoon after
-        // lunch, a stretch begun again after a mistaken time-out — and
-        // counting rows against a headcount put the rate over 100%, which is
-        // what the clamp below was hiding rather than fixing.
-        $totalPresent    = Attendance::ofRegistered()
-            ->whereBetween('date', [$monthStart, $monthEnd])
-            ->whereNotNull('time_in')
-            ->get(['employee_id', 'date'])
-            ->unique(fn ($r) => $r->employee_id . '|' . $r->date)
-            ->count();
-        // Days elapsed this month, today included. This read the diff
-        // backwards — Carbon answers a negative from today to the first —
-        // so it was always 1, the rate was always over 100, and the clamp
-        // below was doing the reporting.
-        $daysSoFar       = $today->day;
-        $possiblePresent = max(1, $totalEmployees * $daysSoFar);
-        $attendanceRate  = min(100, round(($totalPresent / $possiblePresent) * 100, 1));
-
-        // Overtime hours this month, taken from the payroll already computed
-        // above rather than measured again here.
-        //
-        // This used to be the stretch from clock-in to clock-out, less a
-        // hardcoded eight. That counted the hour a crew spends waiting for
-        // the gate as overtime, ignored the unpaid break, and knew nothing of
-        // what each shift's own hours are — so a worker in at six for an
-        // eight o'clock shift and out at eight reported six hours of overtime
-        // against the three they were paid.
-        $overtimeHours = round(
-            collect($monthly['days'])
-                ->flatMap(fn ($d) => $d['details'] ?? [])
-                ->sum(fn ($r) => (float) ($r['ot_hours'] ?? 0)),
-            1
-        );
-
-        // Last month comparison for net payroll
-        $lmStart    = $today->copy()->subMonthNoOverflow()->startOfMonth()->toDateString();
-        $lmEnd      = $today->copy()->subMonthNoOverflow()->endOfMonth()->toDateString();
-        $lmData     = $payroll->computeForRange($lmStart, $lmEnd);
-        $lastMonNet = round(collect($lmData['employees'])->sum(fn ($e) => $e['totals']['net']), 2);
-        $netChange  = $lastMonNet > 0 ? round((($monthlyNet - $lastMonNet) / $lastMonNet) * 100, 1) : null;
-
-        // ── Deduction breakdown (SSS, PhilHealth, Pag-IBIG, Tax, Vale, Other) ─
-        $sssTot    = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('sssDeduction')), 2);
-        $philTot   = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('philhealthDeduction')), 2);
-        $pagibigTot = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('pagibigDeduction')), 2);
-        $taxTot    = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('withholdingTax')), 2);
-        $valeTot   = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('vale')), 2);
-        $otherTot  = round($empColl->sum(fn ($e) => collect($e['periods'])->sum('manualDeductions')), 2);
-
-        // ── Attendance trend — last 30 days ───────────────────────────────────
-        $rawTrend = Attendance::selectRaw('date, COUNT(DISTINCT employee_id) as count')
-            ->where('date', '>=', $today->copy()->subDays(29)->toDateString())
-            ->whereNotNull('time_in')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->pluck('count', 'date');
-
-        $trendLabels = [];
-        $trendData   = [];
-        for ($i = 29; $i >= 0; $i--) {
-            $d             = $today->copy()->subDays($i)->toDateString();
-            $trendLabels[] = Carbon::parse($d)->format('M d');
-            $trendData[]   = (int) ($rawTrend[$d] ?? 0);
-        }
-
-        // ── Weekly payroll — last 4 complete weeks ────────────────────────────
-        $weekStart  = $today->copy()->subWeeks(3)->startOfWeek(Carbon::MONDAY)->toDateString();
-        $weeklyData = $payroll->computeForRange($weekStart, $monthEnd);
-
-        $weekLabels = [];
-        $weekGross  = [];
-        $weekNet    = [];
-        foreach ($weeklyData['weeks'] as $w) {
-            $weekLabels[] = $w['week_range'];
-            $weekGross[]  = round(collect($w['details'])->sum('gross'), 2);
-            $weekNet[]    = round(collect($w['details'])->sum('net'), 2);
-        }
-
-        // ── Labor type distribution ────────────────────────────────────────────
-        $laborDist = Employee::active()->with('laborType')
-            ->get()
-            ->groupBy(fn ($e) => $e->laborType?->name ?? 'Unassigned')
-            ->map(fn ($g) => $g->count())
-            ->sortByDesc(fn ($c) => $c);
-
-        // ── Site distribution ──────────────────────────────────────────────────
-        $siteDist = Site::withCount(['employees' => fn ($q) => $q->active()])
-            ->orderByDesc('employees_count')
-            ->get()
-            ->mapWithKeys(fn ($s) => [$s->name => $s->employees_count]);
-
-        // ── Top 5 OT employees ─────────────────────────────────────────────────
-        $topOT = $empColl
-            ->sortByDesc(fn ($e) => $e['totals']['overtime'])
-            ->take(5)
-            ->map(fn ($e) => [
-                'name' => $e['name'],
-                'ot'   => $e['totals']['overtime'],
-            ])
-            ->values();
-
-        // ── Employee performance table (this month) ────────────────────────────
-        $empTable = $empColl->sortByDesc(fn ($e) => $e['totals']['net'])->values();
-
-        return view('analytics', compact(
-            'monthLabel',
-            'totalEmployees', 'presentToday', 'activeSites',
-            'monthlyNet', 'monthlyGross', 'monthlyOTPay', 'monthlyHoliday',
-            'overtimeHours', 'attendanceRate',
-            'netChange', 'lastMonNet',
-            'sssTot', 'philTot', 'pagibigTot', 'taxTot', 'valeTot', 'otherTot',
-            'trendLabels', 'trendData',
-            'weekLabels', 'weekGross', 'weekNet',
-            'laborDist', 'siteDist',
-            'topOT', 'empTable'
-        ));
+    /** The same figures as JSON, for a filter change or the minute's refresh. */
+    public function data(Request $request, AnalyticsService $analytics)
+    {
+        return response()->json($analytics->build($analytics->filters($request->query())));
     }
 }

@@ -163,16 +163,17 @@ return [
         ]],
     ],
 
+    // English in both: the Analytics page is English-only, its guide included.
     'analytics' => [
         'en' => ['title' => 'Analytics and Insights', 'lines' => [
-            'The charts read the same records as the rest of the system. Nothing is entered here.',
-            'The figures follow the period and the filters chosen on the page.',
+            'Every card and chart is counted from attendance and read off payroll — the records payslips are built from. Nothing is entered here.',
+            'Date range, Site, Shift and Employee status redraw the whole page at once, and it refreshes itself every minute.',
             'If a number looks wrong, correct it in the section it came from and the chart follows.',
         ]],
-        'tl' => ['title' => 'Analytics at Insights', 'lines' => [
-            'Pareho ring record ang binabasa ng mga chart. Walang inilalagay dito.',
-            'Sumusunod ang mga numero sa panahon at filter na napili sa page.',
-            'Kung mali ang numero, itama sa section na pinanggalingan at susunod ang chart.',
+        'tl' => ['title' => 'Analytics and Insights', 'lines' => [
+            'Every card and chart is counted from attendance and read off payroll — the records payslips are built from. Nothing is entered here.',
+            'Date range, Site, Shift and Employee status redraw the whole page at once, and it refreshes itself every minute.',
+            'If a number looks wrong, correct it in the section it came from and the chart follows.',
         ]],
     ],
 

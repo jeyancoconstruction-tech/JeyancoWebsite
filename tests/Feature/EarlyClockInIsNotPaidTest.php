@@ -222,7 +222,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
 
         $page = $this->actingAs($admin)->get('/analytics')->assertOk();
 
-        $this->assertEqualsWithDelta(3.0, $page->viewData('overtimeHours'), 0.01,
+        $this->assertEqualsWithDelta(3.0, $page->viewData('analytics')['cards']['ot'], 0.01,
             'three hours past the eight the day buys — not six counted from six in the morning');
     }
 
@@ -247,11 +247,11 @@ class EarlyClockInIsNotPaidTest extends TestCase
 
         $page = $this->actingAs($admin)->get('/analytics')->assertOk();
 
-        // One worker, one day present out of the month so far. Two rows must
-        // not read as two days — which is what pushed the rate over 100% and
-        // left a clamp standing in for the fix.
-        $daysSoFar = Carbon::today()->day;
-        $this->assertEqualsWithDelta(round(100 / $daysSoFar, 1), $page->viewData('attendanceRate'), 0.11);
+        // One worker present today. Two rows must not read as two — which is
+        // what once pushed the attendance rate over 100% and left a clamp
+        // standing in for the fix.
+        $present = $page->viewData('analytics')['trend']['present'];
+        $this->assertSame(1, end($present), 'two rows are one worker present, not two');
     }
 
     /**

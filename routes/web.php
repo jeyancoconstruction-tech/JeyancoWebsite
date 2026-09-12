@@ -116,6 +116,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     // --- INSIGHTS & AI ROUTES ---
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics');
+    Route::get('/analytics/data', [\App\Http\Controllers\AnalyticsController::class, 'data'])->name('analytics.data');
 
     Route::get('/ai-assistant', function () {
         return view('ai-assistant');
