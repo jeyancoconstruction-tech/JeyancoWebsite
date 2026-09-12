@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\PayrollRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -9,10 +10,9 @@ use Tests\TestCase;
 /**
  * What the rail offers.
  *
- * Payroll Processing and Payslips came off it. A run is started from the
- * Dashboard and its payslips are opened from the run, so for the office they
- * were two more rows on a rail already short of room. A worker's own account
- * keeps Payslips: it has no run to open them from.
+ * Payroll Processing leads the Payroll group, above Payroll Records, and its
+ * page is empty for now while it is redrawn. Payslips are off the office rail;
+ * a worker's own account keeps them, having no payroll run to open them from.
  */
 class SidebarEntriesTest extends TestCase
 {
@@ -36,14 +36,18 @@ class SidebarEntriesTest extends TestCase
         return substr($html, $start, strpos($html, '</nav>', $start) - $start);
     }
 
-    public function test_the_office_rail_has_neither_payroll_processing_nor_payslips(): void
+    public function test_payroll_processing_leads_the_payroll_group_on_the_office_rail(): void
     {
         foreach ([User::ROLE_ADMIN, User::ROLE_STAFF, User::ROLE_PAYROLL] as $i => $role) {
             $rail = $this->rail($this->user($role, 'rail.office' . $i));
 
-            $this->assertStringNotContainsString(route('payroll-processing.index'), $rail, "{$role} still has Payroll Processing");
+            $processing = strpos($rail, 'href="' . route('payroll-processing.index') . '"');
+            $records    = strpos($rail, 'href="' . url('/payroll-records') . '"');
+
+            $this->assertNotFalse($processing, "{$role} has no Payroll Processing");
+            $this->assertNotFalse($records, "{$role} lost Payroll Records");
+            $this->assertLessThan($records, $processing, 'Payroll Processing sits above Payroll Records');
             $this->assertStringNotContainsString(route('payslips.index'), $rail, "{$role} still has Payslips");
-            $this->assertStringContainsString(url('/payroll-records'), $rail, "{$role} lost Payroll Records");
         }
     }
 
@@ -52,14 +56,33 @@ class SidebarEntriesTest extends TestCase
         $rail = $this->rail($this->user(User::ROLE_EMPLOYEE, 'rail.worker'));
 
         $this->assertStringContainsString(route('payslips.index'), $rail);
+        $this->assertStringNotContainsString(route('payroll-processing.index'), $rail);
+    }
+
+    public function test_the_payroll_processing_page_is_empty_for_now(): void
+    {
+        $admin = $this->user(User::ROLE_ADMIN, 'rail.admin');
+        $run   = PayrollRun::create([
+            'code' => PayrollRun::nextCode(), 'period_start' => now()->subWeek(),
+            'period_end' => now(), 'status' => 'calculated',
+        ]);
+
+        $this->actingAs($admin)->get(route('payroll-processing.index'))
+             ->assertOk()
+             ->assertDontSee($run->code)
+             ->assertDontSee('New Payroll Run');
+
+        // The runs themselves are untouched, and each still opens.
+        $this->actingAs($admin)->get(route('payroll-processing.show', $run))
+             ->assertOk()
+             ->assertSee($run->code);
     }
 
     /** Off the rail is not off the system. */
-    public function test_the_pages_themselves_stay_open(): void
+    public function test_payslips_still_open(): void
     {
-        $admin = $this->user(User::ROLE_ADMIN, 'rail.admin');
-
-        $this->actingAs($admin)->get(route('payroll-processing.index'))->assertOk();
-        $this->actingAs($admin)->get(route('payslips.index'))->assertOk();
+        $this->actingAs($this->user(User::ROLE_ADMIN, 'rail.admin2'))
+             ->get(route('payslips.index'))
+             ->assertOk();
     }
 }

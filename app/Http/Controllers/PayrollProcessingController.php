@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\PayrollRun;
-use App\Models\Site;
 use App\Services\PayrollRunService;
 use Illuminate\Http\Request;
 
@@ -21,23 +20,14 @@ class PayrollProcessingController extends Controller
     {
     }
 
-    public function index(Request $request)
+    /**
+     * The Payroll Processing page, empty for now while it is redrawn. Runs
+     * themselves are untouched: they are still created, calculated, approved
+     * and finalised through the routes below, and each run's own page opens.
+     */
+    public function index()
     {
-        $runs = PayrollRun::with(['site', 'creator', 'approver'])
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->latest('period_start')
-            ->paginate(15)
-            ->withQueryString();
-
-        return view('payroll-processing.index', [
-            'runs'  => $runs,
-            'sites' => Site::orderBy('name')->get(['id', 'name']),
-            'counts' => [
-                'draft'     => PayrollRun::whereIn('status', ['draft', 'calculated'])->count(),
-                'approved'  => PayrollRun::where('status', 'approved')->count(),
-                'finalized' => PayrollRun::where('status', 'finalized')->count(),
-            ],
-        ]);
+        return view('payroll-processing.index');
     }
 
     public function store(Request $request)

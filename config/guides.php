@@ -100,14 +100,14 @@ return [
 
     'payroll-processing' => [
         'en' => ['title' => 'Payroll Processing', 'lines' => [
-            'New Payroll Run picks the period; Create & Calculate works the figures out straight away.',
-            'Nothing is paid until you finalise, so Review is where you check before that happens.',
-            'Approving a run is what makes its payslips appear in the Payslips section.',
+            'This page is empty for now while Payroll Processing is being redesigned.',
+            'Payroll runs already on file are unchanged.',
+            'Pay for any period can still be read in Payroll Records.',
         ]],
         'tl' => ['title' => 'Pagproseso ng Sahod', 'lines' => [
-            'Ang New Payroll Run ang pumipili ng panahon; ang Create & Calculate ang agad kumukuwenta.',
-            'Walang binabayaran hangga\'t hindi mo tinatapos, kaya sa Review ka muna tumingin.',
-            'Ang pag-apruba ng run ang naglalabas ng payslip nito sa Payslips.',
+            'Walang laman ang page na ito habang binabago ang Payroll Processing.',
+            'Hindi nagbago ang mga payroll run na naka-file na.',
+            'Makikita pa rin ang sahod ng anumang panahon sa Payroll Records.',
         ]],
     ],
 

@@ -182,16 +182,18 @@
             @endif
 
             <div class="menu-section">{{ __('PAYROLL') }}</div>
-            {{-- Payroll Processing is not on the rail, nor on the Dashboard since
-                 its quick buttons went. A run left open is announced in the
-                 Dashboard's Needs Attention panel; the page itself stays at
-                 /payroll-processing. --}}
+            {{-- Leads the group, above Payroll Records. --}}
+            @if(auth()->user()?->canAccessModule('payroll-processing'))
+                <a class="nav-link {{ request()->is('payroll-processing*') ? 'active' : '' }}" href="{{ route('payroll-processing.index') }}">
+                    <i data-lucide="calculator"></i> <span>{{ __('Payroll Processing') }}</span>
+                </a>
+            @endif
             <a class="nav-link {{ (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*')) && ! request()->is('payroll-processing*') && ! request()->is('payroll-reports*') && ! request()->is('payslips*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
             </a>
-            {{-- The office opens payslips from their payroll run. The one account
-                 that needs them here is a worker's own: it has no run to open
-                 them from, and without this it could not reach them at all. --}}
+            {{-- Payslips are off the office rail. The one account that needs them
+                 here is a worker's own: it has no payroll run to open them from,
+                 and without this it could not reach them at all. --}}
             @if(auth()->user()?->role === \App\Models\User::ROLE_EMPLOYEE)
                 <a class="nav-link {{ request()->is('payslips*') ? 'active' : '' }}" href="{{ route('payslips.index') }}">
                     <i data-lucide="file-text"></i> <span>{{ __('Payslips') }}</span>
