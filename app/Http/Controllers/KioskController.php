@@ -641,13 +641,14 @@ class KioskController extends Controller
             ];
 
             if ($sched) {
-                $in    = WorkSchedule::moment($open->time_in, (string) $open->date);
+                // Whole minutes, as payroll counts them.
+                $in    = WorkSchedule::moment($open->time_in, (string) $open->date)->startOfMinute();
                 $day   = WorkSchedule::shiftDayFor($sched, $in);
 
                 // What the morning already took, so a worker back from lunch
                 // is not offered a second day's worth of regular hours.
                 $used  = Attendance::regularMinutesUsed($employee->id, $day, $sched, $open->id);
-                $split = WorkSchedule::split($sched, $in, $now->copy(), $day, $used);
+                $split = WorkSchedule::split($sched, $in, $now->copy()->startOfMinute(), $day, $used);
 
                 if ($split['ot'] > 0) {
                     // Where the overtime began, which is no longer always the
@@ -1157,13 +1158,14 @@ class KioskController extends Controller
                 $usedByDay = [];
 
                 foreach ($recs as $r) {
-                    $in = WorkSchedule::moment($r->time_in, (string) $r->date);
+                    // Whole minutes, as payroll counts them.
+                    $in = WorkSchedule::moment($r->time_in, (string) $r->date)->startOfMinute();
                     if ($r->time_out) {
                         [, $out] = WorkSchedule::stretch($r->time_in, $r->time_out, (string) $r->date);
                     } else {
                         $working = true;
                         $lastIn  = $r->time_in;
-                        $out     = $now->copy();
+                        $out     = $now->copy()->startOfMinute();
                     }
                     if ($out->lessThan($in)) {
                         $out = $in->copy();
@@ -1204,12 +1206,15 @@ class KioskController extends Controller
                     continue;
                 }
 
+                // Whole minutes, as payroll counts them.
+                $from = Carbon::parse($r->time_in)->startOfMinute();
+
                 if ($r->time_out) {
-                    $totalMin += abs(Carbon::parse($r->time_in)->diffInMinutes(Carbon::parse($r->time_out)));
+                    $totalMin += abs($from->diffInMinutes(Carbon::parse($r->time_out)->startOfMinute()));
                 } else {
                     $working = true;
                     $lastIn  = $r->time_in;
-                    $totalMin += max(0, Carbon::parse($r->time_in)->diffInMinutes($now, false));
+                    $totalMin += max(0, $from->diffInMinutes($now->copy()->startOfMinute(), false));
                 }
             }
 

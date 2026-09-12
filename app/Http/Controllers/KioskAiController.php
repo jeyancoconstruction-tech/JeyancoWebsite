@@ -105,8 +105,9 @@ class KioskAiController extends Controller
             ->orderBy('session')
             ->get()
             ->map(function (Attendance $a) {
-                $in  = $a->time_in  ? Carbon::parse($a->time_in)  : null;
-                $out = $a->time_out ? Carbon::parse($a->time_out) : null;
+                // Whole minutes, as payroll counts them.
+                $in  = $a->time_in  ? Carbon::parse($a->time_in)->startOfMinute()  : null;
+                $out = $a->time_out ? Carbon::parse($a->time_out)->startOfMinute() : null;
 
                 return [
                     'date'     => Carbon::parse($a->date)->toDateString(),
@@ -394,8 +395,9 @@ class KioskAiController extends Controller
         }
 
         try {
-            $timeIn  = Carbon::parse($in);
-            $timeOut = Carbon::parse($out);
+            // Whole minutes, as payroll counts them.
+            $timeIn  = Carbon::parse($in)->startOfMinute();
+            $timeOut = Carbon::parse($out)->startOfMinute();
 
             return $timeOut->lessThanOrEqualTo($timeIn)
                 ? 0.0

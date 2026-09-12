@@ -330,8 +330,13 @@ final class WorkSchedule
      */
     public static function stretch($in, $out, string $date): array
     {
-        $a = self::moment($in, $date);
-        $b = self::moment($out, $date);
+        // Counted in whole minutes. The kiosk stores the second of each scan,
+        // but every screen shows clock times to the minute, so a stretch that
+        // reads "8:00 PM – 8:01 PM" on Attendance is one minute here too, not
+        // the minute and fifty seconds its seconds would make it. moment()
+        // itself keeps the seconds: the kiosk's double-read guard needs them.
+        $a = self::moment($in, $date)->startOfMinute();
+        $b = self::moment($out, $date)->startOfMinute();
 
         if ($b->lessThan($a)) {
             $b->addDay();

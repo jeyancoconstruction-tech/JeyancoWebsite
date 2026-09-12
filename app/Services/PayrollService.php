@@ -327,8 +327,9 @@ class PayrollService
         $hours = 0;
         if ($rec->time_in && $rec->time_out) {
             try {
-                $timeIn  = is_string($rec->time_in) ? Carbon::parse($rec->time_in) : $rec->time_in;
-                $timeOut = is_string($rec->time_out) ? Carbon::parse($rec->time_out) : $rec->time_out;
+                // Whole minutes, as the screens show them; see WorkSchedule::stretch().
+                $timeIn  = Carbon::parse($rec->time_in)->startOfMinute();
+                $timeOut = Carbon::parse($rec->time_out)->startOfMinute();
 
                 // Attendance stores clock times without a date, so a shift that
                 // runs past midnight comes back with a time-out that reads as
@@ -389,7 +390,7 @@ class PayrollService
         $rates   = $this->ratesOn($dateStr, $cfg);
 
         [$nightRegularHours, $nightOtHours] = ($hours > 0 && $rec->time_in)
-            ? $this->nightHours(Carbon::parse($rec->time_in), $hours)
+            ? $this->nightHours(Carbon::parse($rec->time_in)->startOfMinute(), $hours)
             : [0.0, 0.0];
         $night_hours = round($nightRegularHours + $nightOtHours, 2);
 
