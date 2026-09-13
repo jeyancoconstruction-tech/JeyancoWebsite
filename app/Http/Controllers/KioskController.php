@@ -648,7 +648,19 @@ class KioskController extends Controller
                 // What the morning already took, so a worker back from lunch
                 // is not offered a second day's worth of regular hours.
                 $used  = Attendance::regularMinutesUsed($employee->id, $day, $sched, $open->id);
-                $split = WorkSchedule::split($sched, $in, $now->copy()->startOfMinute(), $day, $used);
+
+                // Inside the grace period the pay runs from the session's
+                // start — unless an earlier stretch already opened it.
+                $session = WorkSchedule::sessionOf($sched, $open->session, $in);
+                $first   = ! Attendance::where('employee_id', $employee->id)
+                    ->whereKeyNot($open->id)
+                    ->whereDate('date', $day)
+                    ->where('session', $session)
+                    ->where('time_in', '<', $open->time_in)
+                    ->exists();
+
+                $from  = WorkSchedule::paidFrom($sched, $in, $day, $session, $first);
+                $split = WorkSchedule::split($sched, $from, $now->copy()->startOfMinute(), $day, $used);
 
                 if ($split['ot'] > 0) {
                     // Where the overtime began, which is no longer always the
@@ -1157,7 +1169,12 @@ class KioskController extends Controller
                 // rows here can span two of them.
                 $usedByDay = [];
 
-                foreach ($recs as $r) {
+                $opened = [];   // sessions an earlier stretch already opened, by day
+
+                // In time order, so each day's regular hours are spent by the
+                // stretches that came first, and the first in each session is
+                // the one the grace period forgives.
+                foreach ($recs->sortBy(fn ($r) => (string) $r->time_in) as $r) {
                     // Whole minutes, as payroll counts them.
                     $in = WorkSchedule::moment($r->time_in, (string) $r->date)->startOfMinute();
                     if ($r->time_out) {
@@ -1172,7 +1189,11 @@ class KioskController extends Controller
                     }
 
                     $onDay    = (string) $r->date;
-                    $split    = WorkSchedule::split($sched, $in, $out, $onDay, $usedByDay[$onDay] ?? 0);
+                    $session  = WorkSchedule::sessionOf($sched, $r->session, $in);
+                    $from     = WorkSchedule::paidFrom($sched, $in, $onDay, $session, ! isset($opened[$onDay . '|' . $session]));
+                    $opened[$onDay . '|' . $session] = true;
+
+                    $split    = WorkSchedule::split($sched, $from, $out, $onDay, $usedByDay[$onDay] ?? 0);
 
                     $usedByDay[$onDay] = ($usedByDay[$onDay] ?? 0)
                                        + (int) round($split['regular'] * 60);

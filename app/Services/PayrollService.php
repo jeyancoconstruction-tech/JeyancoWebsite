@@ -285,7 +285,9 @@ class PayrollService
                 }
 
                 [$in, $out] = WorkSchedule::stretch($rec->time_in, $rec->time_out, $date);
-                $used += (int) round(WorkSchedule::split($sched, $in, $out, $date, $used)['regular'] * 60);
+                $from = WorkSchedule::paidFrom($sched, $in, $date,
+                    WorkSchedule::sessionOf($sched, $rec->session, $in), isset($cfg['firstInSession'][$rec->id]));
+                $used += (int) round(WorkSchedule::split($sched, $from, $out, $date, $used)['regular'] * 60);
             }
         }
 
@@ -421,7 +423,14 @@ class PayrollService
 
         if ($scheduled) {
             [$in, $out] = WorkSchedule::stretch($rec->time_in, $rec->time_out, $dateStr);
-            $split      = WorkSchedule::split($schedShift, $in, $out, $dateStr,
+
+            // Inside the grace period the pay runs from the session's start
+            // (WorkSchedule::paidFrom). $in stays the clock's: lateness below
+            // is measured against it.
+            $paidIn     = WorkSchedule::paidFrom($schedShift, $in, $dateStr,
+                              WorkSchedule::sessionOf($schedShift, $rec->session, $in),
+                              ! isset($cfg['firstInSession']) || isset($cfg['firstInSession'][$rec->id]));
+            $split      = WorkSchedule::split($schedShift, $paidIn, $out, $dateStr,
                               (int) ($cfg['regularUsedBefore'][$rec->id] ?? 0));
 
             // What the daily rate buys is the two sessions, so that is the divisor.

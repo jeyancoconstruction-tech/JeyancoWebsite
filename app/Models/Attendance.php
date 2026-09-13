@@ -389,11 +389,18 @@ class Attendance extends Model
             ->orderBy('time_in')
             ->get();
 
+        $opened = [];   // sessions an earlier row already opened
+
         foreach ($rows as $row) {
             [$in, $out] = \App\Support\WorkSchedule::stretch($row->time_in, $row->time_out, $shiftDay);
 
+            // Paid from the session's start inside the grace period, as payroll pays it.
+            $session = \App\Support\WorkSchedule::sessionOf($schedule, $row->session, $in);
+            $from    = \App\Support\WorkSchedule::paidFrom($schedule, $in, $shiftDay, $session, ! isset($opened[$session]));
+            $opened[$session] = true;
+
             $used += (int) round(
-                \App\Support\WorkSchedule::split($schedule, $in, $out, $shiftDay, $used)['regular'] * 60
+                \App\Support\WorkSchedule::split($schedule, $from, $out, $shiftDay, $used)['regular'] * 60
             );
         }
 

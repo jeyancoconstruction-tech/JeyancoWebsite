@@ -136,6 +136,40 @@ final class WorkSchedule
         return ($session === 'AM' ? $w['AM'][0] : $w['PM'][0])->copy();
     }
 
+    /** The session a record belongs to: the one stamped on it, or where its time-in falls. */
+    public static function sessionOf(array $s, ?string $stamped, Carbon $in): string
+    {
+        return in_array($stamped, ['AM', 'PM'], true) ? $stamped : self::sessionAt($s, $in);
+    }
+
+    /**
+     * Where pay starts for a stretch.
+     *
+     * Coming in inside the shift's grace period after a session starts is not
+     * being late — payroll has never reported it as lateness — so it is not
+     * paid as late either: the pay runs from the session's start, as if the
+     * worker had been at the gate on the minute. Past the grace, the clock
+     * stands, and so does the lateness.
+     *
+     * Only the first time-in of a session is forgiven. A worker back from a
+     * mistaken time-out a few minutes in would otherwise be paid a second
+     * time for minutes their first stretch already covered.
+     */
+    public static function paidFrom(array $s, Carbon $in, string $shiftDay, string $session, bool $firstOfSession): Carbon
+    {
+        $grace = (int) ($s['grace'] ?? 0);
+
+        if (! $firstOfSession || $grace <= 0 || ! in_array($session, ['AM', 'PM'], true)) {
+            return $in;
+        }
+
+        $start = self::sessionStart($s, $session, $shiftDay);
+
+        return $in->greaterThan($start) && $in->lessThanOrEqualTo($start->copy()->addMinutes($grace))
+            ? $start
+            : $in;
+    }
+
     /**
      * What the daily rate buys: the shift's regular hours, or both sessions
      * when it does not name a figure.
