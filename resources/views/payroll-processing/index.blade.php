@@ -168,6 +168,9 @@ html[data-bs-theme="dark"] .pp {
 .pp-ag-ico i { font-size: 16px; color: var(--pp-accent-txt); }
 .pp-ag-n { font-weight: 500; }
 .pp-ag-s { font-size: 11px; color: var(--pp-txt-3); margin-top: 1px; }
+.pp-ag-id { font-size: 11.5px; color: var(--pp-txt-2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.pp-ag-id b { color: var(--pp-txt); font-weight: 600; letter-spacing: .2px; }
+.pp-ag-id.missing { color: var(--pp-amber-txt); display: inline-flex; align-items: center; gap: 4px; }
 .pp-by { font-size: 11px; color: var(--pp-txt-3); margin-top: 4px; white-space: nowrap; }
 .pp-acts { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
 .pp-acts form { margin: 0; }
@@ -422,7 +425,15 @@ html[data-bs-theme="dark"] .pp {
                                         <td>
                                             <div class="pp-ag">
                                                 <span class="pp-ag-ico"><i class="ti {{ $t['icon'] }}"></i></span>
-                                                <div><div class="pp-ag-n">{{ $t['label'] }}</div><div class="pp-ag-s">{{ $t['sub'] }}</div></div>
+                                                <div>
+                                                    <div class="pp-ag-n">{{ $t['label'] }}</div>
+                                                    @if($t['id'])
+                                                        <div class="pp-ag-id">{{ $t['id_label'] }} <b>{{ $t['id'] }}</b></div>
+                                                    @elseif($t['id_missing'])
+                                                        <div class="pp-ag-id missing"><i class="ti ti-alert-triangle"></i>{{ $t['id_missing'] }}</div>
+                                                    @endif
+                                                    <div class="pp-ag-s">{{ $t['sub'] }}</div>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="r pp-num" style="font-weight:500">

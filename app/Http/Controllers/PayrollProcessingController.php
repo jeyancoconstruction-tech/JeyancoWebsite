@@ -422,6 +422,14 @@ class PayrollProcessingController extends Controller
             'code'             => '#' . str_pad((string) $id, 4, '0', STR_PAD_LEFT),
             'labor'            => $employee?->laborType?->name ?: ($a['position'] ?? null ?: 'No labor type'),
             'site'             => $employee?->site?->name,
+            // The worker's own number with each agency, off the employee form,
+            // for whoever files the remittance.
+            'ids'              => [
+                'sss'        => $employee?->sss_number,
+                'philhealth' => $employee?->philhealth_number,
+                'pagibig'    => $employee?->pagibig_number,
+                'bir'        => $employee?->tin_number,
+            ],
             'daily_rate'       => (float) $a['daily_rate'],
             'hourly_rate'      => (float) $a['hourly_rate'],
             'days'             => (float) $a['days_worked'],
@@ -581,6 +589,16 @@ class PayrollProcessingController extends Controller
             'net_pay'    => ['ti-wallet', 'Released to the worker'],
         ];
 
+        // What each agency calls the worker's number with it, and what to say
+        // when the employee form has none — a remittance cannot be filed
+        // without it, so it is better noticed here than at the counter.
+        $ids = [
+            'sss'        => ['SSS No.', 'No SSS number on file'],
+            'philhealth' => ['PhilHealth No.', 'No PhilHealth number on file'],
+            'pagibig'    => ['Pag-IBIG MID No.', 'No Pag-IBIG MID number on file'],
+            'bir'        => ['TIN', 'No TIN on file'],
+        ];
+
         $undo = ['action' => 'undo', 'label' => 'Undo', 'icon' => 'ti-arrow-back-up', 'primary' => false];
         $rows = [];
 
@@ -594,7 +612,12 @@ class PayrollProcessingController extends Controller
             $pay    = $kind === 'net_pay';
             $rec    = $marks->get($kind);
 
+            $number = isset($ids[$kind]) ? (trim((string) ($s['ids'][$kind] ?? '')) ?: null) : null;
+
             $row = compact('kind', 'label', 'icon', 'sub', 'amount') + [
+                'id_label'   => $ids[$kind][0] ?? null,
+                'id'         => $number,
+                'id_missing' => isset($ids[$kind]) && $number === null ? $ids[$kind][1] : null,
                 'by' => null, 'actions' => [], 'done_text' => null, 'open' => false,
                 // What the line came to when it was last moved, where the
                 // attendance has moved it since.
@@ -642,6 +665,7 @@ class PayrollProcessingController extends Controller
         $row    = [
             'kind' => 'advance', 'label' => 'Cash advance', 'icon' => 'ti-cash', 'amount' => $amount,
             'sub'  => 'Instalment taken from this pay',
+            'id_label' => null, 'id' => null, 'id_missing' => null,
             'by'   => null, 'actions' => [], 'done_text' => null, 'open' => false, 'was' => null,
         ];
 

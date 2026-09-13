@@ -374,6 +374,37 @@ class PayrollProcessingPageTest extends TestCase
         $this->assertSame('Mark paid', $this->row([], 'net_pay')['actions'][0]['label']);
     }
 
+    /** Whoever files the remittance needs the worker's number with each agency. */
+    public function test_the_tracker_shows_the_workers_agency_numbers(): void
+    {
+        $e = $this->worker();
+        $e->forceFill([
+            'sss_number'        => '34-1234567-8',
+            'philhealth_number' => '12-345678901-2',
+            'pagibig_number'    => '1234-5678-9012',
+            'tin_number'        => '123-456-789-000',
+        ])->save();
+
+        $this->page(['view' => 'tracker'])
+            ->assertSee('SSS No.')->assertSee('34-1234567-8')
+            ->assertSee('PhilHealth No.')->assertSee('12-345678901-2')
+            ->assertSee('Pag-IBIG MID No.')->assertSee('1234-5678-9012')
+            ->assertSee('TIN')->assertSee('123-456-789-000')
+            ->assertDontSee('number on file');
+    }
+
+    /** A number the form never got is flagged, not left blank. */
+    public function test_a_missing_agency_number_is_flagged(): void
+    {
+        $this->worker();
+
+        $this->page(['view' => 'tracker'])
+            ->assertSee('No SSS number on file')
+            ->assertSee('No PhilHealth number on file')
+            ->assertSee('No Pag-IBIG MID number on file')
+            ->assertSee('No TIN on file');
+    }
+
     public function test_an_unknown_line_or_period_is_not_found(): void
     {
         $e = $this->worker();
