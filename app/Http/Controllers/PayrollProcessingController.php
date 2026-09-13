@@ -7,33 +7,42 @@ use App\Models\Employee;
 use App\Models\PayrollRate;
 use App\Models\PayrollRemittance;
 use App\Models\PayrollRun;
-use App\Models\PayrollRunItem;
 use App\Models\SystemSetting;
 use App\Services\PayrollRunService;
+use App\Services\PayrollService;
 use App\Support\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
- * Payroll Processing: a period and a worker at a time — the salary
- * computation in stages, where each contribution and the net pay have got
- * to, and the payslip.
+ * Payroll Processing: a week and a worker at a time — the salary computation
+ * in stages, where each contribution and the net pay have got to, and the
+ * payslip.
  *
- * The figures are PayrollService's, through PayrollRunService and unchanged:
- * a finalised run's frozen ones where there is one for the period, and
- * otherwise what the attendance comes to now. The run routes below stay for
- * the run pages that still open; nothing here finalises on its own.
+ * It is Payroll Records looked at one worker at a time, not a payroll of its
+ * own. The figures are PayrollService::computeForRange() for the same
+ * Monday-to-Sunday week Payroll Records shows, read the way its receipt reads
+ * them. Everything Payroll Settings says — rates, multipliers, contributions,
+ * withholding, shifts and their grace, holidays, the rest day, the bonus, the
+ * vale ceiling — reaches both pages from that one place, so the two cannot
+ * disagree.
+ *
+ * The run routes below stay for the run pages that still open; nothing on
+ * this page reads a run.
  */
 class PayrollProcessingController extends Controller
 {
-    /** The three ways a worker's period can be looked at. */
+    /** The three ways a worker's week can be looked at. */
     private const VIEWS = ['workflow', 'tracker', 'payslip'];
 
     /** Avatar colours, picked by employee id so a worker keeps theirs. */
     private const COLOURS = ['#3B82F6', '#8B5CF6', '#22C55E', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
 
-    public function __construct(private PayrollRunService $runs)
+    /** How many weeks back the picker reaches. */
+    private const WEEKS = 12;
+
+    public function __construct(private PayrollRunService $runs, private PayrollService $payroll)
     {
     }
 
@@ -43,14 +52,14 @@ class PayrollProcessingController extends Controller
         $period  = $this->pick($request->query('period'), $periods) ?? reset($periods);
         $periods[$period['key']] ??= $period;
 
-        [$run, $rows] = $this->figures($period);
-
+        $rows     = $this->figures($period);
         $tracking = PayrollRemittance::available();
+
         // Open on the worker asked for, or else on somebody with pay to look at.
-        $sel      = $rows->firstWhere('employee_id', (int) $request->query('employee'))
-                 ?? $rows->firstWhere('worked', true)
-                 ?? $rows->first();
-        $view     = in_array($request->query('view'), self::VIEWS, true) ? $request->query('view') : 'workflow';
+        $sel  = $rows->firstWhere('employee_id', (int) $request->query('employee'))
+             ?? $rows->firstWhere('worked', true)
+             ?? $rows->first();
+        $view = in_array($request->query('view'), self::VIEWS, true) ? $request->query('view') : 'workflow';
 
         $marks = $tracking && $sel
             ? PayrollRemittance::with(['submitter', 'completer'])
@@ -63,24 +72,23 @@ class PayrollProcessingController extends Controller
 
         $track = $sel ? $this->trackRows($sel, $marks, $tracking) : [];
 
-        // The numbers the period was priced at, for the payslip to show its
-        // workings — resolved at the period's end, as Payroll Records does.
+        // The numbers the week was priced at, for the payslip to show its
+        // workings — resolved at the week's end, as Payroll Records does.
         $rateSet = PayrollRate::effectiveOn($period['to']);
         $rates   = $rateSet ? $rateSet->toRates() : PayrollRate::fallbackRates();
 
         return view('payroll-processing.index', [
-            'periods'  => $periods,
-            'period'   => $period,
-            'run'      => $run,
-            'rows'     => $rows,
-            'sel'      => $sel,
-            'view'     => $view,
-            'lines'    => $sel ? $this->lines($sel) : ['earn' => [], 'ded' => []],
-            'track'    => $track,
-            'open'     => count(array_filter($track, fn ($t) => $t['open'])),
-            'notice'   => $sel ? $this->trackNotice($sel, $tracking) : null,
-            'slip'     => $sel ? $this->slip($sel, $rates) : null,
-            'company'  => SystemSetting::current(),
+            'periods' => $periods,
+            'period'  => $period,
+            'rows'    => $rows,
+            'sel'     => $sel,
+            'view'    => $view,
+            'lines'   => $sel ? $this->lines($sel) : ['earn' => [], 'ded' => []],
+            'track'   => $track,
+            'open'    => count(array_filter($track, fn ($t) => $t['open'])),
+            'notice'  => $sel ? $this->trackNotice($sel, $tracking) : null,
+            'slip'    => $sel ? $this->slip($sel, $rates) : null,
+            'company' => SystemSetting::current(),
         ]);
     }
 
@@ -209,9 +217,10 @@ class PayrollProcessingController extends Controller
     }
 
     /**
-     * Move one line of a worker's pay for a period along: a contribution
+     * Move one line of a worker's pay for a week along: a contribution
      * submitted to its agency and then confirmed remitted, or the net pay
-     * handed over. The amount is worked out here, never taken from the form.
+     * handed over. The amount is Payroll Records' figure, worked out here,
+     * never taken from the form.
      */
     public function track(Request $request, Employee $employee, string $kind)
     {
@@ -227,7 +236,7 @@ class PayrollProcessingController extends Controller
         }
 
         $label  = PayrollRemittance::KINDS[$kind];
-        $row    = $this->figures($period)[1]->firstWhere('employee_id', $employee->id);
+        $row    = $this->figures($period)->firstWhere('employee_id', $employee->id);
         $amount = $row ? PayrollRemittance::amountOf($row, $kind) : 0.0;
 
         if ($amount <= 0) {
@@ -273,97 +282,195 @@ class PayrollProcessingController extends Controller
     // ── The page's pieces ───────────────────────────────────────────────────
 
     /**
-     * The period's figures: a finalised run's, frozen, where one was cut for
-     * it; otherwise what the attendance comes to now, from the computation a
-     * run would freeze. A run short of final is not shown — nothing on this
-     * page moves it on any more, so its figures could only go stale.
+     * The week's figures, one row per worker: Payroll Records' own, from the
+     * same computation for the same range — plus everyone else on the active
+     * roster at zero.
      *
-     * @return array{0: ?PayrollRun, 1: Collection<int, array>}
+     * @return Collection<int, array>
      */
-    private function figures(array $period): array
+    private function figures(array $period): Collection
     {
-        $run = PayrollRun::with('finalizer')
-            ->whereDate('period_start', $period['from'])
-            ->whereDate('period_end', $period['to'])
-            ->where('status', 'finalized')
-            ->orderBy('site_id')      // the all-sites run first, where there is one
-            ->orderByDesc('id')
-            ->first();
+        $data = $this->payroll->computeForRange($period['from'], $period['to']);
 
-        $source = $run
-            ? $run->items()->get()->map(fn (PayrollRunItem $i) => $i->toArray())
-            : collect($this->runs->preview($period['from'], $period['to']));
+        // Off the days, per worker: the rate they were priced at — read off
+        // the first of them, as the Payroll Records receipt reads it — and the
+        // overtime in whole minutes, which the totals do not carry.
+        $priced = [];
+        $otMins = [];
 
-        $people = Employee::with(['laborType', 'site'])
-            ->whereIn('id', $source->pluck('employee_id')->all())
-            ->get()
-            ->keyBy('id');
+        foreach ($data['days'] as $day) {
+            foreach ($day['details'] as $d) {
+                $id = (int) $d['employee_id'];
+
+                $priced[$id] ??= ['daily' => (float) $d['dailyRate'], 'hourly' => (float) $d['rate']];
+                $otMins[$id]  = ($otMins[$id] ?? 0) + (int) ($d['ot_minutes'] ?? round((float) $d['ot_hours'] * 60));
+            }
+        }
+
+        $paid = collect($data['employees']);
+        $ids  = $paid->pluck('employee_id')->all();
+
+        $people = Employee::with(['laborType', 'site', 'shift'])->whereIn('id', $ids)->get()->keyBy('id');
 
         // Everyone on the active roster is listed, paid or not. A worker just
         // registered, or off all week, is somebody the office comes here to
-        // look for, and "nothing this period" is an answer. Pending
+        // look for, and "nothing this week" is an answer. Pending
         // registrations stay out, as everywhere else: they are not on the
         // payroll until the finger is enrolled.
-        $idle = Employee::with(['laborType', 'site', 'shift'])
-            ->active()
-            ->whereNotIn('id', $source->pluck('employee_id')->all())
-            ->get();
+        $idle = Employee::with(['laborType', 'site', 'shift'])->active()->whereNotIn('id', $ids)->get();
 
-        $rows = $source
-            ->map(fn (array $a) => $this->row($a, $people->get($a['employee_id'])))
-            ->merge($idle->map(fn (Employee $e) => $this->row($this->nothing($e), $e)))
+        return $paid
+            ->map(fn (array $e) => $this->row(
+                $e,
+                $priced[$e['employee_id']] ?? null,
+                $otMins[$e['employee_id']] ?? 0,
+                $people->get($e['employee_id'])
+            ))
+            ->merge($idle->map(fn (Employee $e) => $this->idle($e)))
             ->sortBy(fn ($r) => mb_strtolower($r['name']))
             ->values();
-
-        return [$run, $rows];
     }
 
     /**
-     * The periods the picker offers: this week and the seven before it, this
-     * month and the two before it, and any finalised run with a range of its
-     * own. Weeks start where payroll's weeks do.
+     * One worker's week, read the way the Payroll Records receipt reads it:
+     * the period's totals, with the deductions itemised off its weeks.
+     */
+    private function row(array $e, ?array $priced, int $otMins, ?Employee $employee): array
+    {
+        $t     = $e['totals'];
+        $weeks = collect($e['periods'] ?? []);
+        $sum   = fn (string $k) => round((float) $weeks->sum($k), 2);
+
+        $minutes = (int) ($t['minutes'] ?? round((float) $t['hours'] * 60));
+        $otMins  = min($otMins, $minutes);
+        $gross   = (float) $t['gross'];
+        $otPay   = (float) $t['overtime'];
+        $night   = (float) ($t['nightDiffPay'] ?? 0);
+        $holiday = (float) ($t['holidayPay'] ?? 0);
+        $rest    = (float) ($t['restDayPay'] ?? 0);
+        $rate    = $priced ?? $this->rateOf($employee);
+
+        return array_merge($this->blank((int) $e['employee_id'], (string) $e['name'], $employee), [
+            'worked'           => $minutes > 0 || $gross > 0 || (int) $t['workdays'] > 0,
+            'daily_rate'       => $rate['daily'],
+            'hourly_rate'      => $rate['hourly'],
+            'days'             => (float) $t['workdays'],
+            'minutes'          => $minutes,
+            'ot_minutes'       => $otMins,
+            'regular_minutes'  => $minutes - $otMins,
+            'late_minutes'     => (int) $weeks->sum('late_minutes'),
+
+            // Regular pay is the gross less every premium in it, as the
+            // receipt works it out.
+            'basic'            => round($gross - $otPay - $holiday - $rest - $night, 2),
+            'overtime'         => $otPay,
+            // What an hour of overtime actually paid, so the line can say so
+            // without re-deriving a multiplier that may have changed mid-week.
+            'ot_rate'          => $otMins > 0 ? round($otPay / ($otMins / 60), 2) : 0.0,
+            'night'            => $night,
+            'holiday'          => $holiday,
+            'rest'             => $rest,
+
+            // Added to net, not to gross: a bonus is not wages.
+            'bonus'            => (float) $t['bonus'],
+
+            'sss'              => $sum('sssDeduction'),
+            'philhealth'       => $sum('philhealthDeduction'),
+            'pagibig'          => $sum('pagibigDeduction'),
+            'tax'              => $sum('withholdingTax'),
+            // The vale includes any cash advance instalment; the instalment is
+            // kept as well, so the line can say how much of it was one.
+            'vale'             => $sum('vale'),
+            'advance'          => $sum('vale_advance'),
+            'other_deductions' => $sum('manualDeductions'),
+
+            'gross'            => $gross,
+            'deductions'       => (float) $t['totalDeductions'],
+            'net'              => (float) $t['net'],
+        ]);
+    }
+
+    /** A worker on the roster with nothing this week: every figure zero but the rate. */
+    private function idle(Employee $e): array
+    {
+        $rate = $this->rateOf($e);
+
+        return array_merge($this->blank($e->id, $e->name, $e), [
+            'daily_rate'  => $rate['daily'],
+            'hourly_rate' => $rate['hourly'],
+        ]);
+    }
+
+    /**
+     * A worker's rate with no priced day to read it off: the labour type's
+     * daily rate over the paid hours of their shift, as payroll divides it.
+     *
+     * @return array{daily: float, hourly: float}
+     */
+    private function rateOf(?Employee $e): array
+    {
+        $s     = $e?->shift?->schedule();
+        $daily = (float) ($e?->laborType?->daily_rate ?? ((float) ($e?->rate_per_hour ?? 0) * 8));
+        $hours = $s && WorkSchedule::has($s) ? max(1.0, WorkSchedule::paidHours($s)) : 8.0;
+
+        return ['daily' => round($daily, 2), 'hourly' => round($daily / $hours, 2)];
+    }
+
+    /** The parts of a row that are about the worker rather than the pay — with the pay at zero. */
+    private function blank(int $id, string $name, ?Employee $employee): array
+    {
+        return [
+            'employee_id' => $id,
+            'worked'      => false,
+            'name'        => $name,
+            'initial'     => mb_strtoupper(mb_substr($name, 0, 1)),
+            'color'       => self::COLOURS[$id % count(self::COLOURS)],
+            'code'        => '#' . str_pad((string) $id, 4, '0', STR_PAD_LEFT),
+            'labor'       => $employee?->laborType?->name ?: ($employee?->position ?: 'No labor type'),
+            'site'        => $employee?->site?->name,
+            // The worker's own number with each agency, off the employee form,
+            // for whoever files the remittance.
+            'ids'         => [
+                'sss'        => $employee?->sss_number,
+                'philhealth' => $employee?->philhealth_number,
+                'pagibig'    => $employee?->pagibig_number,
+                'bir'        => $employee?->tin_number,
+            ],
+        ]
+        + array_fill_keys(['minutes', 'ot_minutes', 'regular_minutes', 'late_minutes'], 0)
+        + array_fill_keys([
+            'daily_rate', 'hourly_rate', 'days', 'basic', 'overtime', 'ot_rate', 'night', 'holiday', 'rest',
+            'bonus', 'sss', 'philhealth', 'pagibig', 'tax', 'vale', 'advance', 'other_deductions',
+            'gross', 'deductions', 'net',
+        ], 0.0);
+    }
+
+    /**
+     * The weeks the picker offers: this one and the ones before it, Monday to
+     * Sunday — the weeks Payroll Records offers, so the same week reads the
+     * same on both pages.
      *
      * @return array<string, array{key: string, label: string, span: string, from: string, to: string, group: string}>
      */
     private function periods(): array
     {
-        $out = [];
-        $add = function (Carbon $from, Carbon $to, string $label, string $group) use (&$out) {
-            $key = $from->toDateString() . '_' . $to->toDateString();
+        $out    = [];
+        $monday = now()->startOfWeek(Carbon::MONDAY)->startOfDay();
 
-            $out[$key] ??= self::entry($from, $to, $label, $group);
-        };
+        for ($i = 0; $i < self::WEEKS; $i++) {
+            $from = $monday->copy()->subWeeks($i);
+            $row  = self::week($from, 'Weekly');
 
-        $starts = (int) (SystemSetting::current()->week_starts_on ?? Carbon::MONDAY);
-        $week   = now()->startOfWeek($starts)->startOfDay();
-
-        for ($i = 0; $i < 8; $i++) {
-            $from = $week->copy()->subWeeks($i);
-            $to   = $from->copy()->addDays(6);
-
-            // Numbered by the middle of the week, which is the ISO week however
-            // the office starts its own.
-            $add($from, $to, 'Week ' . $from->copy()->addDays(3)->isoWeek() . ' · ' . self::span($from, $to), 'Weekly');
-        }
-
-        $month = now()->startOfMonth();
-
-        for ($i = 0; $i < 3; $i++) {
-            $from = $month->copy()->subMonthsNoOverflow($i);
-            $add($from, $from->copy()->endOfMonth(), $from->format('F Y') . ' (monthly)', 'Monthly');
-        }
-
-        foreach (PayrollRun::where('status', 'finalized')->orderByDesc('period_start')->limit(40)->get() as $r) {
-            $add($r->period_start, $r->period_end, $r->code . ' · ' . self::span($r->period_start, $r->period_end), 'Finalized runs');
+            $out[$row['key']] = $row;
         }
 
         return $out;
     }
 
     /**
-     * The period a "2026-09-07_2026-09-13" key names: one the picker offers,
-     * or any other real range up to two months long — a remittance can fall
-     * due after its week has dropped off the list.
+     * The week a "2026-09-07_2026-09-13" key names: one the picker offers, or
+     * an earlier Monday-to-Sunday week — a remittance can fall due after its
+     * week has dropped off the list. Any other range is not a pay week.
      */
     private function pick(?string $key, array $periods): ?array
     {
@@ -380,24 +487,28 @@ class PayrollProcessingController extends Controller
         }
 
         try {
-            $from = Carbon::parse($m[1]);
-            $to   = Carbon::parse($m[2]);
+            $from = Carbon::parse($m[1])->startOfDay();
+            $to   = Carbon::parse($m[2])->startOfDay();
         } catch (\Throwable) {
             return null;
         }
 
         $real = $from->toDateString() === $m[1] && $to->toDateString() === $m[2];
 
-        return $real && $from->lte($to) && $from->diffInDays($to) <= 62
-            ? self::entry($from, $to, self::span($from, $to), 'Other')
+        return $real && $from->isMonday() && $to->toDateString() === $from->copy()->addDays(6)->toDateString()
+            ? self::week($from, 'Earlier')
             : null;
     }
 
-    private static function entry(Carbon $from, Carbon $to, string $label, string $group): array
+    /** A Monday-to-Sunday week, starting on $monday. */
+    private static function week(Carbon $monday, string $group): array
     {
+        $from = $monday->copy()->startOfDay();
+        $to   = $from->copy()->addDays(6);
+
         return [
             'key'   => $from->toDateString() . '_' . $to->toDateString(),
-            'label' => $label,
+            'label' => 'Week ' . $from->isoWeek() . ' · ' . self::span($from, $to),
             'span'  => self::span($from, $to),
             'from'  => $from->toDateString(),
             'to'    => $to->toDateString(),
@@ -416,96 +527,8 @@ class PayrollProcessingController extends Controller
     }
 
     /**
-     * A worker with nothing in the period, in the shape of a run item: every
-     * figure zero but the rate, which is still theirs to show.
-     */
-    private function nothing(Employee $e): array
-    {
-        $s     = $e->shift?->schedule();
-        $daily = (float) ($e->laborType?->daily_rate ?? ((float) $e->rate_per_hour * 8));
-        $hours = $s && WorkSchedule::has($s) ? max(1.0, WorkSchedule::paidHours($s)) : 8.0;
-
-        return array_fill_keys([
-            'days_worked', 'regular_hours', 'ot_hours', 'late_minutes', 'basic_pay', 'overtime_pay',
-            'night_diff_pay', 'holiday_pay', 'rest_day_pay', 'leave_pay', 'paid_leave_days', 'bonus',
-            'other_earnings', 'sss', 'philhealth', 'pagibig', 'tax', 'vale', 'advance_deduction',
-            'loan_deduction', 'other_deductions', 'gross_pay', 'total_deductions', 'net_pay',
-        ], 0) + [
-            'employee_id'   => $e->id,
-            'employee_name' => $e->name,
-            'position'      => $e->position,
-            'daily_rate'    => round($daily, 2),
-            'hourly_rate'   => round($daily / $hours, 2),
-        ];
-    }
-
-    /** One worker's period, in the same shape whether it is frozen or not. */
-    private function row(array $a, ?Employee $employee): array
-    {
-        $id   = (int) $a['employee_id'];
-        $name = (string) ($a['employee_name'] ?? $employee?->name ?? 'Employee #' . $id);
-
-        // regular_hours is every hour worked, overtime included: it is the
-        // engine's "hours" (PayrollRunService::buildItem). Whole minutes are
-        // what payroll counts, so that is what is shown.
-        $minutes = (int) round((float) $a['regular_hours'] * 60);
-        $otMins  = (int) round((float) $a['ot_hours'] * 60);
-        $otPay   = (float) $a['overtime_pay'];
-
-        return [
-            'employee_id'      => $id,
-            // Whether the period has anything for this worker at all.
-            'worked'           => $minutes > 0 || (float) $a['gross_pay'] > 0 || (float) $a['paid_leave_days'] > 0,
-            'name'             => $name,
-            'initial'          => mb_strtoupper(mb_substr($name, 0, 1)),
-            'color'            => self::COLOURS[$id % count(self::COLOURS)],
-            'code'             => '#' . str_pad((string) $id, 4, '0', STR_PAD_LEFT),
-            'labor'            => $employee?->laborType?->name ?: ($a['position'] ?? null ?: 'No labor type'),
-            'site'             => $employee?->site?->name,
-            // The worker's own number with each agency, off the employee form,
-            // for whoever files the remittance.
-            'ids'              => [
-                'sss'        => $employee?->sss_number,
-                'philhealth' => $employee?->philhealth_number,
-                'pagibig'    => $employee?->pagibig_number,
-                'bir'        => $employee?->tin_number,
-            ],
-            'daily_rate'       => (float) $a['daily_rate'],
-            'hourly_rate'      => (float) $a['hourly_rate'],
-            'days'             => (float) $a['days_worked'],
-            'minutes'          => $minutes,
-            'ot_minutes'       => $otMins,
-            'regular_minutes'  => max(0, $minutes - $otMins),
-            'late_minutes'     => (int) $a['late_minutes'],
-            'basic'            => (float) $a['basic_pay'],
-            'overtime'         => $otPay,
-            // What an hour of overtime actually paid, so the line can say so
-            // without re-deriving a multiplier that may have changed mid-period.
-            'ot_rate'          => $otMins > 0 ? round($otPay / ($otMins / 60), 2) : 0.0,
-            'night'            => (float) $a['night_diff_pay'],
-            'holiday'          => (float) $a['holiday_pay'],
-            'rest'             => (float) $a['rest_day_pay'],
-            'leave'            => (float) $a['leave_pay'],
-            'leave_days'       => (float) $a['paid_leave_days'],
-            'bonus'            => (float) $a['bonus'],
-            'other_earnings'   => (float) $a['other_earnings'],
-            'sss'              => (float) $a['sss'],
-            'philhealth'       => (float) $a['philhealth'],
-            'pagibig'          => (float) $a['pagibig'],
-            'tax'              => (float) $a['tax'],
-            'vale'             => (float) $a['vale'],
-            'advance'          => (float) $a['advance_deduction'],
-            'loan'             => (float) $a['loan_deduction'],
-            'other_deductions' => (float) $a['other_deductions'],
-            'gross'            => (float) $a['gross_pay'],
-            'deductions'       => (float) $a['total_deductions'],
-            'net'              => (float) $a['net_pay'],
-        ];
-    }
-
-    /**
-     * The payslip's lines, each saying what produced it — a column of totals
-     * cannot answer "why is this 746", and that is the question that gets asked.
+     * The salary computation's lines, each saying what produced it — a column
+     * of totals cannot answer "why is this 746", and that is what gets asked.
      *
      * @return array{earn: list<array>, ded: list<array>}
      */
@@ -514,55 +537,32 @@ class PayrollProcessingController extends Controller
         $line = fn (string $label, string $icon, ?string $note, float $amount) => compact('label', 'icon', 'note', 'amount');
         $peso = fn (float $n) => '₱' . number_format($n, 2);
 
-        $earn = [
-            $line('Basic pay', 'ti-clock',
-                WorkSchedule::duration($s['regular_minutes']) . ' × ' . $peso($s['hourly_rate']) . '/hr', $s['basic']),
-            $line('Overtime', 'ti-clock-plus', $s['ot_minutes'] > 0
-                ? WorkSchedule::duration($s['ot_minutes']) . ' at ' . $peso($s['ot_rate']) . '/hr' : null, $s['overtime']),
-            $line('Night differential', 'ti-moon', '10 PM – 6 AM premium', $s['night']),
-            $line('Holiday pay', 'ti-calendar-star', 'Holiday premium', $s['holiday']),
-            $line('Rest day pay', 'ti-armchair', 'Rest day premium', $s['rest']),
+        return [
+            'earn' => [
+                $line('Basic pay', 'ti-clock',
+                    WorkSchedule::duration($s['regular_minutes']) . ' × ' . $peso($s['hourly_rate']) . '/hr', $s['basic']),
+                $line('Overtime', 'ti-clock-plus', $s['ot_minutes'] > 0
+                    ? WorkSchedule::duration($s['ot_minutes']) . ' at ' . $peso($s['ot_rate']) . '/hr' : null, $s['overtime']),
+                $line('Night differential', 'ti-moon', '10 PM – 6 AM premium', $s['night']),
+                $line('Holiday pay', 'ti-calendar-star', 'Holiday premium', $s['holiday']),
+                $line('Rest day pay', 'ti-armchair', 'Rest day premium', $s['rest']),
+            ],
+            'ded' => [
+                $line('SSS', 'ti-building-bank', 'Employee share', $s['sss']),
+                $line('PhilHealth', 'ti-heart-plus', 'Employee share', $s['philhealth']),
+                $line('Pag-IBIG', 'ti-home', 'Employee share', $s['pagibig']),
+                $line('Withholding tax', 'ti-receipt-tax', 'Per BIR table', $s['tax']),
+                $line('Vale / cash advance', 'ti-cash',
+                    $s['advance'] > 0 ? $peso($s['advance']) . ' instalment' : null, $s['vale']),
+                $line('Other deductions', 'ti-minus', $s['other_deductions'] > 0 ? 'Adjustments' : null, $s['other_deductions']),
+            ],
         ];
-
-        if ($s['leave'] > 0) {
-            $days   = rtrim(rtrim(number_format($s['leave_days'], 2), '0'), '.');
-            $earn[] = $line('Paid leave', 'ti-beach', $days . ' day' . ($days === '1' ? '' : 's') . ' approved', $s['leave']);
-        }
-
-        $earn[] = $line('Bonus', 'ti-gift', $s['bonus'] > 0 ? 'Not taxed' : null, $s['bonus']);
-
-        if ($s['other_earnings'] > 0) {
-            $earn[] = $line('Other earnings', 'ti-plus', null, $s['other_earnings']);
-        }
-
-        $ded = [
-            $line('SSS', 'ti-building-bank', 'Employee share', $s['sss']),
-            $line('PhilHealth', 'ti-heart-plus', 'Employee share', $s['philhealth']),
-            $line('Pag-IBIG', 'ti-home', 'Employee share', $s['pagibig']),
-            $line('Withholding tax', 'ti-receipt-tax', 'Per BIR table', $s['tax']),
-        ];
-
-        if ($s['vale'] > 0) {
-            $ded[] = $line('Vale', 'ti-wallet', 'Settled this period', $s['vale']);
-        }
-
-        $ded[] = $line('Cash advance', 'ti-cash', $s['advance'] > 0 ? 'Instalment' : null, $s['advance']);
-
-        // Loans are no longer issued; a run from before still shows its own.
-        if ($s['loan'] > 0) {
-            $ded[] = $line('Loan', 'ti-cash', 'Instalment', $s['loan']);
-        }
-
-        $ded[] = $line('Other deductions', 'ti-minus', $s['other_deductions'] > 0 ? 'Adjustments' : null, $s['other_deductions']);
-
-        return ['earn' => $earn, 'ded' => $ded];
     }
 
     /**
      * The payslip, laid out as the Payroll Records receipt lays its own: the
      * rate the days were priced at, each earning and deduction named with
-     * what it was worked out at, then gross − deductions + bonus. The bonus
-     * sits below the line there because it is not wages, and so it does here.
+     * what it was worked out at, then gross − deductions + bonus.
      *
      * @return array{meta: string, basis: string, earn: list<array{0: string, 1: float}>, ded: list<array{0: string, 1: float}>, gross: float, deductions: float, bonus: float, net: float}
      */
@@ -573,41 +573,27 @@ class PayrollProcessingController extends Controller
         $peso = fn (float $n) => '₱' . number_format($n, 2);
         $days = rtrim(rtrim(number_format($s['days'], 2), '0'), '.');
 
-        $earn = [
-            ['Regular pay (' . $days . 'd)', $s['basic']],
-            ['Overtime (' . $x($rates['ot_multiplier'] ?? 0) . ')', $s['overtime']],
-            ['Night differential (' . $x($rates['night_diff_multiplier'] ?? 0) . ')', $s['night']],
-            ['Holiday pay (' . $x($rates['regular_holiday_multiplier'] ?? 0) . ')', $s['holiday']],
-            ['Rest day pay (' . $x($rates['rest_day_multiplier'] ?? 0) . ')', $s['rest']],
-        ];
-
-        // Payroll Records never sees these two; a period that has them still
-        // has to add up.
-        if ($s['leave'] > 0) {
-            $earn[] = ['Paid leave', $s['leave']];
-        }
-        if ($s['other_earnings'] > 0) {
-            $earn[] = ['Other earnings', $s['other_earnings']];
-        }
-
-        $ded = [
-            ['SSS (' . $pct($rates['sss_rate'] ?? 0) . ')', $s['sss']],
-            ['PhilHealth (' . $pct($rates['philhealth_rate'] ?? 0) . ')', $s['philhealth']],
-            ['Pag-IBIG (' . $pct($rates['pagibig_rate'] ?? 0) . ')', $s['pagibig']],
-            [($rates['withholding_tax'] ?? true) ? 'Withholding tax (BIR)' : 'Withholding tax (off)', $s['tax']],
-            [$s['advance'] > 0 ? 'Vale / cash advance (' . $peso($s['advance']) . ' instalment)' : 'Vale / cash advance',
-                $s['vale'] + $s['advance']],
-            ['Other adjustments', $s['other_deductions'] + $s['loan']],
-        ];
-
         return [
             'meta'       => $s['code'] . ' · ' . $s['labor'] . ' · ' . $days . 'd / ' . WorkSchedule::duration($s['minutes']),
             'basis'      => $peso($s['daily_rate']) . '/day · ' . $peso($s['hourly_rate']) . '/hr · '
                           . $days . ' day' . ($days === '1' ? '' : 's') . ' worked'
                           . ($s['late_minutes'] > 0 ? ' · ' . $s['late_minutes'] . 'm late' : ''),
-            'earn'       => $earn,
-            'ded'        => $ded,
-            'gross'      => round($s['gross'] - $s['bonus'], 2),
+            'earn'       => [
+                ['Regular pay (' . $days . 'd)', $s['basic']],
+                ['Overtime (' . $x($rates['ot_multiplier'] ?? 0) . ')', $s['overtime']],
+                ['Night differential (' . $x($rates['night_diff_multiplier'] ?? 0) . ')', $s['night']],
+                ['Holiday pay (' . $x($rates['regular_holiday_multiplier'] ?? 0) . ')', $s['holiday']],
+                ['Rest day pay (' . $x($rates['rest_day_multiplier'] ?? 0) . ')', $s['rest']],
+            ],
+            'ded'        => [
+                ['SSS (' . $pct($rates['sss_rate'] ?? 0) . ')', $s['sss']],
+                ['PhilHealth (' . $pct($rates['philhealth_rate'] ?? 0) . ')', $s['philhealth']],
+                ['Pag-IBIG (' . $pct($rates['pagibig_rate'] ?? 0) . ')', $s['pagibig']],
+                [($rates['withholding_tax'] ?? true) ? 'Withholding tax (BIR)' : 'Withholding tax (off)', $s['tax']],
+                [$s['advance'] > 0 ? 'Vale / cash advance (' . $peso($s['advance']) . ' instalment)' : 'Vale / cash advance', $s['vale']],
+                ['Other adjustments', $s['other_deductions']],
+            ],
+            'gross'      => $s['gross'],
             'deductions' => $s['deductions'],
             'bonus'      => $s['bonus'],
             'net'        => $s['net'],
@@ -651,7 +637,6 @@ class PayrollProcessingController extends Controller
             $amount = PayrollRemittance::amountOf($s, $kind);
             $pay    = $kind === 'net_pay';
             $rec    = $marks->get($kind);
-
             $number = isset($ids[$kind]) ? (trim((string) ($s['ids'][$kind] ?? '')) ?: null) : null;
 
             $row = compact('kind', 'label', 'icon', 'sub', 'amount') + [
@@ -698,10 +683,10 @@ class PayrollProcessingController extends Controller
         return $rows;
     }
 
-    /** The cash advance instalment: taken off the pay, with nothing to remit. */
+    /** The cash advance instalment: taken off the pay inside the vale, with nothing to remit. */
     private function advanceRow(array $s): array
     {
-        $amount = $s['advance'] + $s['loan'];
+        $amount = $s['advance'];
         $row    = [
             'kind' => 'advance', 'label' => 'Cash advance', 'icon' => 'ti-cash', 'amount' => $amount,
             'sub'  => 'Instalment taken from this pay',

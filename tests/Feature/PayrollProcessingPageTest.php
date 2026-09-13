@@ -187,7 +187,7 @@ class PayrollProcessingPageTest extends TestCase
             'the earnings lines are the gross');
         $this->assertEqualsWithDelta($sel['deductions'], array_sum(array_column($lines['ded'], 'amount')), 0.011,
             'the deduction lines are the total');
-        $this->assertEqualsWithDelta($sel['net'], $sel['gross'] - $sel['deductions'], 0.011);
+        $this->assertEqualsWithDelta($sel['net'], $sel['gross'] - $sel['deductions'] + $sel['bonus'], 0.011);
 
         // Basic pay says what produced it, in hours and minutes.
         $basic = $lines['earn'][0];
@@ -223,22 +223,40 @@ class PayrollProcessingPageTest extends TestCase
         $this->assertStringStartsWith('24h 00m × ', $page->viewData('lines')['earn'][0]['note']);
     }
 
-    /** What the page shows is what a run would freeze, from one computation. */
-    public function test_the_page_shows_what_a_run_would_freeze(): void
+    /**
+     * It is Payroll Records looked at one worker at a time: the same figures
+     * for the same week, to the centavo, with Payroll Settings behind both.
+     */
+    public function test_it_shows_exactly_what_payroll_records_shows(): void
     {
-        $this->worker();
+        PayrollRate::create(array_merge(PayrollRate::DEFAULTS, [
+            'effective_from' => '2026-09-01', 'created_by' => 'test', 'bonus' => 250,
+        ]));
 
-        $before = $this->page()->viewData('sel');
-        $this->process()->assertRedirect(route('payroll-processing.index', ['period' => self::WEEK]));
-        $item = PayrollRun::sole()->items()->sole();
+        $a = $this->worker('Alpha');
+        $b = $this->worker('Bravo');
+        Attendance::where('employee_id', $b->id)->update(['time_out' => '2026-09-10 19:10:00']);   // overtime too
 
-        $this->assertEqualsWithDelta($before['gross'], $item->gross_pay, 0.001);
-        $this->assertEqualsWithDelta($before['deductions'], $item->total_deductions, 0.001);
-        $this->assertEqualsWithDelta($before['net'], $item->net_pay, 0.001);
+        $records = collect($this->actingAs($this->admin)->get('/payroll-records?mode=weekly&week=2026-W37')
+            ->assertOk()->viewData('employees'))->keyBy('employee_id');
+
+        foreach ([$a, $b] as $e) {
+            $sel = $this->page(['employee' => $e->id])->viewData('sel');
+            $t   = $records[$e->id]['totals'];
+
+            $this->assertEqualsWithDelta($t['gross'], $sel['gross'], 0.001, "{$e->name}: gross");
+            $this->assertEqualsWithDelta($t['overtime'], $sel['overtime'], 0.001, "{$e->name}: overtime");
+            $this->assertEqualsWithDelta($t['totalDeductions'], $sel['deductions'], 0.001, "{$e->name}: deductions");
+            $this->assertEqualsWithDelta($t['bonus'], $sel['bonus'], 0.001, "{$e->name}: bonus");
+            $this->assertEqualsWithDelta($t['net'], $sel['net'], 0.001, "{$e->name}: net");
+        }
     }
 
-    /** A finalised run is a fact: the page shows its figures, not today's. */
-    public function test_a_finalized_run_shows_its_frozen_figures(): void
+    /**
+     * A payroll run is not a second set of books. One cut for the week and
+     * finalised does not replace what Payroll Records says about it.
+     */
+    public function test_a_payroll_run_does_not_override_payroll_records(): void
     {
         $e = $this->worker();
         $this->process();
@@ -247,14 +265,32 @@ class PayrollProcessingPageTest extends TestCase
         $this->actingAs($this->admin)->post(route('payroll-processing.approve', $run));
         $this->actingAs($this->admin)->post(route('payroll-processing.finalize', $run), ['confirm' => 1]);
 
-        // A day added after the fact does not reach a finalised payslip.
         Attendance::create([
             'employee_id' => $e->id, 'shift_id' => $e->shift_id, 'date' => '2026-09-09', 'session' => 'AM',
             'time_in' => '2026-09-09 08:00:00', 'time_out' => '2026-09-09 17:00:00',
         ]);
 
-        $page = $this->page(['period' => self::WEEK])->assertSee('Final · ' . $run->code);
-        $this->assertEqualsWithDelta($run->items()->sole()->gross_pay, $page->viewData('sel')['gross'], 0.001);
+        $page = $this->page(['period' => self::WEEK])->assertDontSee($run->code);
+        $live = collect(app(PayrollService::class)->computeForRange('2026-09-07', '2026-09-13')['employees'])
+            ->firstWhere('employee_id', $e->id)['totals'];
+
+        $this->assertEqualsWithDelta($live['gross'], $page->viewData('sel')['gross'], 0.001);
+        $this->assertGreaterThan($run->items()->sole()->gross_pay, $page->viewData('sel')['gross']);
+    }
+
+    /** The weeks on offer are Payroll Records' weeks, Monday to Sunday, and nothing else. */
+    public function test_the_weeks_on_offer_are_payroll_records_weeks(): void
+    {
+        $periods = $this->page()->assertDontSee('(monthly)')->viewData('periods');
+
+        foreach ($periods as $p) {
+            $from = Carbon::parse($p['from']);
+            $this->assertTrue($from->isMonday(), $p['label']);
+            $this->assertSame($from->copy()->addDays(6)->toDateString(), $p['to'], $p['label']);
+        }
+
+        // A range that is not one of those weeks is not a period here.
+        $this->assertSame(self::WEEK, $this->page(['period' => '2026-09-01_2026-09-30'])->viewData('period')['key']);
     }
 
     /**
@@ -488,7 +524,7 @@ class PayrollProcessingPageTest extends TestCase
         $slip = $this->page(['view' => 'payslip'])->viewData('slip');
 
         $this->assertEqualsWithDelta(500.0, $slip['bonus'], 0.001);
-        $this->assertEqualsWithDelta($sel['gross'] - 500, $slip['gross'], 0.011);
-        $this->assertEqualsWithDelta($sel['net'], $slip['net'], 0.001);
+        $this->assertEqualsWithDelta($sel['gross'], $slip['gross'], 0.001, 'the gross is wages; the bonus is not in it');
+        $this->assertEqualsWithDelta($slip['gross'] - $slip['deductions'] + 500, $slip['net'], 0.011);
     }
 }

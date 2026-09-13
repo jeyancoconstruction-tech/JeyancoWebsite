@@ -130,6 +130,7 @@ html[data-bs-theme="dark"] .pp {
 .pp-fact span { display: block; font-size: 10.5px; font-weight: 600; color: var(--pp-txt-3); text-transform: uppercase; letter-spacing: .5px; }
 .pp-fact b { display: block; font-size: 15px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .pp-flow { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr) auto) minmax(0, 1fr); gap: 8px; margin-bottom: 16px; }
+.pp-flow.has-bonus { grid-template-columns: repeat(5, minmax(0, 1fr) auto) minmax(0, 1fr); }
 .pp-stage { background: var(--pp-panel-2); border: var(--pp-bw) solid var(--pp-line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
 .pp-stage .k { display: block; font-size: 10.5px; font-weight: 600; color: var(--pp-txt-3); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pp-stage b { display: block; font-size: 15px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -224,7 +225,7 @@ html[data-bs-theme="dark"] .pp {
 .pp-placeholder i { font-size: 36px; opacity: .5; display: block; margin-bottom: 12px; }
 
 @media (max-width: 1100px) {
-    .pp-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pp-flow, .pp-flow.has-bonus { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .pp-op { display: none; }
     .pp-stage.is-net { grid-column: 1 / -1; }
 }
@@ -347,18 +348,16 @@ html[data-bs-theme="dark"] .pp {
 
                 {{-- ── Salary computation ─────────────────────────────────── --}}
                 @php
-                    $premiums = $sel['overtime'] + $sel['night'] + $sel['holiday'] + $sel['rest']
-                              + $sel['leave'] + $sel['bonus'] + $sel['other_earnings'];
+                    $premiums = $sel['overtime'] + $sel['night'] + $sel['holiday'] + $sel['rest'];
+                    $bonus    = $sel['bonus'] > 0;
                     $days = rtrim(rtrim(number_format($sel['days'], 2), '0'), '.');
                 @endphp
                 <div class="pp-view" data-pane="workflow" @if($view !== 'workflow') hidden @endif>
                     <div class="pp-view-head">
                         <h3><i class="ti ti-calculator pp-c-accent"></i>Salary computation workflow</h3>
-                        @if($run)
-                            <span class="pp-badge pp-b-green"><i class="ti ti-lock"></i>Final · {{ $run->code }}</span>
-                        @else
-                            <span class="pp-badge pp-b-muted"><i class="ti ti-eye"></i>Live from attendance</span>
-                        @endif
+                        <span class="pp-badge pp-b-muted" title="The same figures Payroll Records shows for this week, from the same computation and Payroll Settings">
+                            <i class="ti ti-link"></i>Same as Payroll Records
+                        </span>
                     </div>
                     <div class="pp-view-body">
                         @unless($sel['worked'])
@@ -371,16 +370,22 @@ html[data-bs-theme="dark"] .pp {
                             <div class="pp-fact"><span>Late</span><b>{{ $dur($sel['late_minutes']) }}</b></div>
                         </div>
 
-                        <ol class="pp-flow" aria-label="How the net pay is reached">
+                        {{-- Gross − deductions + bonus, as Payroll Records adds
+                             it up: the bonus is not wages, so it comes after. --}}
+                        <ol class="pp-flow {{ $bonus ? 'has-bonus' : '' }}" aria-label="How the net pay is reached">
                             <li class="pp-stage"><span class="k">1 · Basic pay</span><b>{{ $peso($sel['basic']) }}</b><small>Regular time × hourly rate</small></li>
                             <li class="pp-op" aria-hidden="true">+</li>
                             <li class="pp-stage"><span class="k">2 · Premiums</span><b>{{ $peso($premiums) }}</b><small>Overtime and other premiums</small></li>
                             <li class="pp-op" aria-hidden="true">=</li>
                             <li class="pp-stage is-gross"><span class="k">3 · Gross pay</span><b>{{ $peso($sel['gross']) }}</b><small>Before deductions</small></li>
                             <li class="pp-op" aria-hidden="true">−</li>
-                            <li class="pp-stage is-ded"><span class="k">4 · Deductions</span><b>{{ $peso($sel['deductions']) }}</b><small>Contributions, tax, advances</small></li>
+                            <li class="pp-stage is-ded"><span class="k">4 · Deductions</span><b>{{ $peso($sel['deductions']) }}</b><small>Contributions, tax, vale</small></li>
+                            @if($bonus)
+                                <li class="pp-op" aria-hidden="true">+</li>
+                                <li class="pp-stage"><span class="k">5 · Bonus</span><b>{{ $peso($sel['bonus']) }}</b><small>Not wages, not taxed</small></li>
+                            @endif
                             <li class="pp-op" aria-hidden="true">=</li>
-                            <li class="pp-stage is-net"><span class="k">5 · Net pay</span><b>{{ $peso($sel['net']) }}</b><small>Take-home pay</small></li>
+                            <li class="pp-stage is-net"><span class="k">{{ $bonus ? 6 : 5 }} · Net pay</span><b>{{ $peso($sel['net']) }}</b><small>Take-home pay</small></li>
                         </ol>
 
                         <div class="pp-wf">
@@ -401,7 +406,7 @@ html[data-bs-theme="dark"] .pp {
                         </div>
 
                         <div class="pp-net-strip">
-                            <span class="k">Net pay <span>· gross − deductions</span></span>
+                            <span class="k">Net pay <span>· gross − deductions{{ $bonus ? ' + ' . $peso($sel['bonus']) . ' bonus' : '' }}</span></span>
                             <span class="v">{{ $peso($sel['net']) }}</span>
                         </div>
                     </div>
