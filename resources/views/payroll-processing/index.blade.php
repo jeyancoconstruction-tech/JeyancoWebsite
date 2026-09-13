@@ -66,6 +66,8 @@ html[data-bs-theme="dark"] .pp {
 .pp-mt { font-size: 11px; color: var(--pp-txt-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pp-chev { margin-left: auto; color: var(--pp-accent); font-size: 16px; opacity: 0; }
 .pp-pitem.sel .pp-chev { opacity: 1; }
+.pp-pitem.idle .pp-nm { color: var(--pp-txt-2); }
+.pp-pitem.idle .pp-av { opacity: .55; }
 .pp-pnone, .pp-pempty { padding: 24px; text-align: center; color: var(--pp-txt-3); font-size: 13px; }
 
 /* Right panel */
@@ -158,6 +160,7 @@ html[data-bs-theme="dark"] .pp {
 /* Remittance tracker */
 .pp-note { display: flex; align-items: flex-start; gap: 8px; margin: 14px 18px 0; padding: 10px 12px; border-radius: 9px; background: var(--pp-amber-soft); color: var(--pp-txt-2); font-size: 12.5px; }
 .pp-note i { color: var(--pp-amber-txt); font-size: 16px; margin-top: 1px; }
+.pp-note.inline { margin: 0 0 14px; }
 .pp-tablewrap { overflow-x: auto; margin-top: 14px; }
 .pp-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 0; }
 .pp-table thead th { text-align: left; padding: 10px 14px; font-size: 10.5px; font-weight: 500; color: var(--pp-txt-3); text-transform: uppercase; letter-spacing: .5px; background: var(--pp-panel-2); white-space: nowrap; border: none; }
@@ -290,14 +293,14 @@ html[data-bs-theme="dark"] .pp {
 
             <div class="pp-plist" id="ppList">
                 @foreach($rows as $r)
-                    <a class="pp-pitem {{ $sel && $sel['employee_id'] === $r['employee_id'] ? 'sel' : '' }}"
+                    <a class="pp-pitem {{ $sel && $sel['employee_id'] === $r['employee_id'] ? 'sel' : '' }} {{ $r['worked'] ? '' : 'idle' }}"
                        href="{{ $here(['employee' => $r['employee_id']]) }}"
                        data-name="{{ mb_strtolower($r['name'] . ' ' . $r['code']) }}"
                        @if($sel && $sel['employee_id'] === $r['employee_id']) aria-current="true" @endif>
                         <span class="pp-av" style="background:{{ $r['color'] }}22;color:{{ $r['color'] }}">{{ $r['initial'] }}</span>
                         <span class="pp-pmain">
                             <span class="pp-nm">{{ $r['name'] }}</span>
-                            <span class="pp-mt">{{ $r['code'] }} · {{ $r['labor'] }}</span>
+                            <span class="pp-mt">{{ $r['code'] }} · {{ $r['labor'] }}@unless($r['worked']) · no attendance @endunless</span>
                         </span>
                         <i class="ti ti-chevron-right pp-chev"></i>
                     </a>
@@ -358,6 +361,9 @@ html[data-bs-theme="dark"] .pp {
                         @endif
                     </div>
                     <div class="pp-view-body">
+                        @unless($sel['worked'])
+                            <div class="pp-note inline"><i class="ti ti-info-circle"></i><span>No attendance for {{ $sel['name'] }} in {{ $period['span'] }} yet — every figure below stays at zero until they clock in.</span></div>
+                        @endunless
                         <div class="pp-facts">
                             <div class="pp-fact"><span>Days worked</span><b>{{ $days }}</b></div>
                             <div class="pp-fact"><span>Time worked</span><b>{{ $dur($sel['minutes']) }}</b></div>

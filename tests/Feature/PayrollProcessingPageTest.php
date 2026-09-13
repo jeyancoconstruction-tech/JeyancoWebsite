@@ -124,6 +124,44 @@ class PayrollProcessingPageTest extends TestCase
             ->assertSee('there is no payroll to process');
     }
 
+    /** A worker just registered, or off all week, is listed — with nothing to pay. */
+    public function test_a_worker_with_no_attendance_is_listed_at_zero(): void
+    {
+        $this->worker('Day Crew');
+
+        $new = Employee::create([
+            'name' => 'Aaron New Hire', 'status' => Employee::STATUS_ACTIVE,
+            'employment_type' => Employee::EMPLOYMENT_DAILY,
+            'labor_type_id' => LaborType::create(['name' => 'Helper', 'daily_rate' => 640, 'ot_rate' => 125])->id,
+            'shift_id' => Shift::where('crosses_midnight', false)->firstOrFail()->id,
+            'rate_per_hour' => 80,
+        ]);
+
+        $page = $this->page()->assertSee('Aaron New Hire')->assertSee('no attendance');
+
+        // First in the list by name, but the page opens on somebody with pay.
+        $this->assertSame('Day Crew', $page->viewData('sel')['name']);
+
+        $row = $page->viewData('rows')->firstWhere('employee_id', $new->id);
+        $this->assertFalse($row['worked']);
+        $this->assertSame(0.0, $row['net']);
+        $this->assertEqualsWithDelta(640.0, $row['daily_rate'], 0.001, 'the rate is still theirs to show');
+
+        $this->page(['employee' => $new->id, 'view' => 'tracker'])
+            ->assertSee('No attendance for Aaron New Hire in this period');
+    }
+
+    /** Pending registrations stay off the payroll here as everywhere; so does somebody who has left. */
+    public function test_pending_and_archived_workers_without_pay_are_not_listed(): void
+    {
+        $this->worker();
+
+        Employee::create(['name' => 'Waiting For A Finger', 'status' => Employee::STATUS_PENDING, 'employment_type' => Employee::EMPLOYMENT_DAILY, 'rate_per_hour' => 100]);
+        Employee::create(['name' => 'Long Gone', 'status' => Employee::STATUS_ARCHIVED, 'employment_type' => Employee::EMPLOYMENT_DAILY, 'rate_per_hour' => 100]);
+
+        $this->page()->assertDontSee('Waiting For A Finger')->assertDontSee('Long Gone');
+    }
+
     /** A remittance can fall due after its week has dropped off the list. */
     public function test_an_older_range_still_opens_and_a_made_up_one_does_not(): void
     {

@@ -46,7 +46,10 @@ class PayrollProcessingController extends Controller
         [$run, $rows] = $this->figures($period);
 
         $tracking = PayrollRemittance::available();
-        $sel      = $rows->firstWhere('employee_id', (int) $request->query('employee')) ?? $rows->first();
+        // Open on the worker asked for, or else on somebody with pay to look at.
+        $sel      = $rows->firstWhere('employee_id', (int) $request->query('employee'))
+                 ?? $rows->firstWhere('worked', true)
+                 ?? $rows->first();
         $view     = in_array($request->query('view'), self::VIEWS, true) ? $request->query('view') : 'workflow';
 
         $marks = $tracking && $sel
@@ -296,8 +299,19 @@ class PayrollProcessingController extends Controller
             ->get()
             ->keyBy('id');
 
+        // Everyone on the active roster is listed, paid or not. A worker just
+        // registered, or off all week, is somebody the office comes here to
+        // look for, and "nothing this period" is an answer. Pending
+        // registrations stay out, as everywhere else: they are not on the
+        // payroll until the finger is enrolled.
+        $idle = Employee::with(['laborType', 'site', 'shift'])
+            ->active()
+            ->whereNotIn('id', $source->pluck('employee_id')->all())
+            ->get();
+
         $rows = $source
             ->map(fn (array $a) => $this->row($a, $people->get($a['employee_id'])))
+            ->merge($idle->map(fn (Employee $e) => $this->row($this->nothing($e), $e)))
             ->sortBy(fn ($r) => mb_strtolower($r['name']))
             ->values();
 
@@ -401,6 +415,30 @@ class PayrollProcessingController extends Controller
         };
     }
 
+    /**
+     * A worker with nothing in the period, in the shape of a run item: every
+     * figure zero but the rate, which is still theirs to show.
+     */
+    private function nothing(Employee $e): array
+    {
+        $s     = $e->shift?->schedule();
+        $daily = (float) ($e->laborType?->daily_rate ?? ((float) $e->rate_per_hour * 8));
+        $hours = $s && WorkSchedule::has($s) ? max(1.0, WorkSchedule::paidHours($s)) : 8.0;
+
+        return array_fill_keys([
+            'days_worked', 'regular_hours', 'ot_hours', 'late_minutes', 'basic_pay', 'overtime_pay',
+            'night_diff_pay', 'holiday_pay', 'rest_day_pay', 'leave_pay', 'paid_leave_days', 'bonus',
+            'other_earnings', 'sss', 'philhealth', 'pagibig', 'tax', 'vale', 'advance_deduction',
+            'loan_deduction', 'other_deductions', 'gross_pay', 'total_deductions', 'net_pay',
+        ], 0) + [
+            'employee_id'   => $e->id,
+            'employee_name' => $e->name,
+            'position'      => $e->position,
+            'daily_rate'    => round($daily, 2),
+            'hourly_rate'   => round($daily / $hours, 2),
+        ];
+    }
+
     /** One worker's period, in the same shape whether it is frozen or not. */
     private function row(array $a, ?Employee $employee): array
     {
@@ -416,6 +454,8 @@ class PayrollProcessingController extends Controller
 
         return [
             'employee_id'      => $id,
+            // Whether the period has anything for this worker at all.
+            'worked'           => $minutes > 0 || (float) $a['gross_pay'] > 0 || (float) $a['paid_leave_days'] > 0,
             'name'             => $name,
             'initial'          => mb_strtoupper(mb_substr($name, 0, 1)),
             'color'            => self::COLOURS[$id % count(self::COLOURS)],
@@ -679,6 +719,7 @@ class PayrollProcessingController extends Controller
     {
         return match (true) {
             ! $tracking => 'Remittance tracking is switched on by a database update that has not been run on this server yet. The amounts below are right; they can be marked once it has.',
+            ! $s['worked'] => 'No attendance for ' . $s['name'] . ' in this period, so there is nothing to remit or pay yet.',
             $s['sss'] + $s['philhealth'] + $s['pagibig'] + $s['tax'] <= 0
                 => 'No contributions or tax were taken off this pay, so there is nothing to remit for this period — only the net pay to release. If there should have been, check the contribution rates in Payroll Settings.',
             default => null,
