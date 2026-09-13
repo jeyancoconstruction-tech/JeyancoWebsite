@@ -37,30 +37,11 @@ html[data-bs-theme="dark"] .pp {
 .pp a { text-decoration: none; }
 
 /* Header */
-.pp-head { margin-bottom: 18px; }
+.pp-head { margin-bottom: 20px; }
 .pp-crumb { font-size: 12px; color: var(--pp-txt-3); margin-bottom: 5px; }
 .pp-crumb b { color: var(--pp-txt-2); font-weight: 500; }
 .pp .pp-head h1 { font-size: 21px !important; font-weight: 600 !important; letter-spacing: -.01em !important; line-height: 1.3; color: var(--pp-txt); }
 .pp-head p { font-size: 13px; color: var(--pp-txt-2); margin-top: 4px; }
-
-/* The period's run: where it stands, and the next step */
-.pp-run { background: var(--pp-panel); border: var(--pp-bw) solid var(--pp-line); border-radius: var(--pp-radius); margin-bottom: 18px; overflow: hidden; }
-.pp-run-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px; border-bottom: var(--pp-bw) solid var(--pp-line); flex-wrap: wrap; }
-.pp-run-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
-.pp-run-sub { font-size: 12.5px; color: var(--pp-txt-2); margin-top: 3px; display: flex; gap: 6px 16px; flex-wrap: wrap; }
-.pp-run-sub b { color: var(--pp-txt); font-weight: 600; font-variant-numeric: tabular-nums; }
-.pp-run-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.pp-run-actions form { margin: 0; }
-.pp-steps { list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 16px 18px; }
-.pp-step { position: relative; padding-right: 10px; min-width: 0; }
-.pp-step:not(:last-child)::after { content: ''; position: absolute; top: 13px; left: 36px; right: 8px; height: 2px; border-radius: 2px; background: var(--pp-line-2); }
-.pp-step.done:not(:last-child)::after { background: var(--pp-green-txt); opacity: .45; }
-.pp-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; background: var(--pp-panel-2); border: var(--pp-bw) solid var(--pp-line-2); color: var(--pp-txt-3); position: relative; z-index: 1; flex-shrink: 0; }
-.pp-step.done .pp-dot { background: var(--pp-green-soft); border-color: transparent; color: var(--pp-green-txt); }
-.pp-step.now .pp-dot { background: var(--pp-accent-soft); border-color: var(--pp-accent); color: var(--pp-accent-txt); }
-.pp-step-k { font-size: 12.5px; font-weight: 600; margin-top: 8px; }
-.pp-step.todo .pp-step-k { color: var(--pp-txt-2); }
-.pp-step-n { font-size: 11.5px; color: var(--pp-txt-3); margin-top: 1px; line-height: 1.4; }
 
 /* Layout */
 .pp-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 18px; align-items: start; }
@@ -194,7 +175,6 @@ html[data-bs-theme="dark"] .pp {
 
 /* Payslip — paper, in either theme */
 .pp-doc { position: relative; background: #fff; color: #1a1a1a; border-radius: 10px; overflow: hidden; }
-.pp-draft { background: #FEF3C7; color: #92400E; font-size: 11.5px; font-weight: 600; text-align: center; padding: 6px 12px; letter-spacing: .3px; }
 .pp-doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 24px; border-bottom: 2px solid #185FA5; }
 .pp-brand { display: flex; align-items: center; gap: 11px; }
 .pp-logo { width: 42px; height: 42px; border-radius: 9px; object-fit: contain; background: #fff; }
@@ -226,6 +206,7 @@ html[data-bs-theme="dark"] .pp {
 .pp-sig { display: inline-flex; align-items: center; gap: 5px; }
 .pp-sig i { color: #16a34a; }
 .pp-sig.wait i { color: #F59E0B; }
+.pp-sig.plain i { color: #999; }
 
 .pp-placeholder { background: var(--pp-panel); border: var(--pp-bw) dashed var(--pp-line-2); border-radius: var(--pp-radius); padding: 64px 24px; text-align: center; color: var(--pp-txt-3); }
 .pp-placeholder i { font-size: 36px; opacity: .5; display: block; margin-bottom: 12px; }
@@ -240,10 +221,6 @@ html[data-bs-theme="dark"] .pp {
     .pp-picker { position: static; }
     .pp-plist { max-height: 300px; }
     .pp-menu, .pp-wf { grid-template-columns: 1fr; }
-    .pp-steps { grid-template-columns: 1fr; row-gap: 12px; }
-    .pp-step { display: flex; align-items: flex-start; gap: 10px; }
-    .pp-step:not(:last-child)::after { display: none; }
-    .pp-step-k { margin-top: 3px; }
     .pp-facts, .pp-pmeta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
@@ -268,10 +245,9 @@ html[data-bs-theme="dark"] .pp {
 
 @section('content')
 @php
-    $peso   = fn ($n) => '₱' . number_format((float) $n, 2);
-    $dur    = fn ($m) => \App\Support\WorkSchedule::duration($m);
-    $status = $run?->status;
-    $views  = [
+    $peso  = fn ($n) => '₱' . number_format((float) $n, 2);
+    $dur   = fn ($m) => \App\Support\WorkSchedule::duration($m);
+    $views = [
         'workflow' => ['Salary computation', 'Earnings, deductions, and net pay breakdown.', 'ti-calculator', 'pp-i-blue'],
         'tracker'  => ['Remittance tracker', 'Deduction status per agency — SSS, PhilHealth, Pag-IBIG, BIR.', 'ti-transfer-out', 'pp-i-amber'],
         'payslip'  => ['View payslip', 'Printable official payslip for this period.', 'ti-file-text', 'pp-i-green'],
@@ -288,94 +264,7 @@ html[data-bs-theme="dark"] .pp {
         <p>Select an employee, then choose what to view — salary computation, remittance tracker, or payslip.</p>
     </div>
 
-    {{-- The period's run, as its own workflow: where it stands and the next
-         step. Every button is one of the run's existing actions. --}}
-    <section class="pp-run pp-anim" style="animation-delay:.06s" aria-label="Payroll run for this period">
-        <div class="pp-run-top">
-            <div>
-                <div class="pp-run-title">
-                    @if($processed)
-                        {{ $run->code }}
-                        <span class="pp-badge {{ ['calculated' => 'pp-b-amber', 'approved' => 'pp-b-blue', 'finalized' => 'pp-b-green'][$status] ?? 'pp-b-muted' }}">{{ $run->status_label }}</span>
-                    @else
-                        Not processed yet
-                        <span class="pp-badge pp-b-muted"><i class="ti ti-eye"></i>Live from attendance</span>
-                    @endif
-                </div>
-                <div class="pp-run-sub">
-                    <span>{{ $period['label'] }}</span>
-                    <span>Employees <b>{{ $totals['employees'] }}</b></span>
-                    <span>Gross <b>{{ $peso($totals['gross']) }}</b></span>
-                    <span>Deductions <b>{{ $peso($totals['deductions']) }}</b></span>
-                    <span>Net <b>{{ $peso($totals['net']) }}</b></span>
-                </div>
-            </div>
-
-            <div class="pp-run-actions">
-                @if(! $run)
-                    <form method="POST" action="{{ route('payroll-processing.store') }}"
-                          data-confirm="The figures for {{ $period['span'] }} are written into a payroll run. They can be recalculated until the run is approved."
-                          data-confirm-title="Process this period?"
-                          data-confirm-label="Process payroll"
-                          data-confirm-tone="brand">
-                        @csrf
-                        <input type="hidden" name="period_start" value="{{ $period['from'] }}">
-                        <input type="hidden" name="period_end" value="{{ $period['to'] }}">
-                        <button class="pp-btn primary" type="submit" @disabled($rows->isEmpty())><i class="ti ti-player-play"></i>Process payroll</button>
-                    </form>
-                @elseif($run->isEditable())
-                    <form method="POST" action="{{ route('payroll-processing.calculate', $run) }}">
-                        @csrf
-                        <button class="pp-btn" type="submit"><i class="ti ti-refresh"></i>{{ $processed ? 'Recalculate' : 'Calculate' }}</button>
-                    </form>
-                    @if($status === 'calculated')
-                        <form method="POST" action="{{ route('payroll-processing.approve', $run) }}"
-                              data-confirm="The figures can still be reopened later, until the run is finalized."
-                              data-confirm-title="Approve {{ $run->code }}?"
-                              data-confirm-label="Approve"
-                              data-confirm-tone="brand">
-                            @csrf
-                            <button class="pp-btn primary" type="submit"><i class="ti ti-circle-check"></i>Approve</button>
-                        </form>
-                    @endif
-                @elseif($status === 'approved')
-                    <form method="POST" action="{{ route('payroll-processing.reopen', $run) }}">
-                        @csrf
-                        <button class="pp-btn" type="submit"><i class="ti ti-lock-open"></i>Reopen</button>
-                    </form>
-                    <form method="POST" action="{{ route('payroll-processing.finalize', $run) }}"
-                          data-confirm="This cannot be undone. Payslips are issued, and cash advance instalments are taken off their balances now."
-                          data-confirm-title="Finalize {{ $run->code }}?"
-                          data-confirm-label="Finalize"
-                          data-confirm-tone="brand">
-                        @csrf
-                        <input type="hidden" name="confirm" value="1">
-                        <button class="pp-btn primary" type="submit"><i class="ti ti-lock"></i>Finalize</button>
-                    </form>
-                @elseif($final && auth()->user()?->canAccessModule('payslips'))
-                    <a class="pp-btn" href="{{ route('payslips.print-run', $run) }}" target="_blank" rel="noopener"><i class="ti ti-printer"></i>Print all payslips</a>
-                @endif
-
-                @if($run)
-                    <a class="pp-btn ghost" href="{{ route('payroll-processing.show', $run) }}"><i class="ti ti-list-details"></i>Run details</a>
-                @endif
-            </div>
-        </div>
-
-        <ol class="pp-steps">
-            @foreach($stages as $s)
-                <li class="pp-step {{ $s['state'] }}" @if($s['state'] === 'now') aria-current="step" @endif>
-                    <span class="pp-dot"><i class="ti {{ $s['state'] === 'done' ? 'ti-check' : $s['icon'] }}"></i></span>
-                    <div>
-                        <div class="pp-step-k">{{ $s['label'] }}</div>
-                        <div class="pp-step-n">{{ $s['note'] }}</div>
-                    </div>
-                </li>
-            @endforeach
-        </ol>
-    </section>
-
-    <div class="pp-layout pp-anim" style="animation-delay:.1s">
+    <div class="pp-layout pp-anim" style="animation-delay:.06s">
         <aside class="pp-picker">
             {{-- A real form, so a period can be picked with scripting off. --}}
             <form class="pp-top" method="GET" action="{{ route('payroll-processing.index') }}">
@@ -462,10 +351,8 @@ html[data-bs-theme="dark"] .pp {
                 <div class="pp-view" data-pane="workflow" @if($view !== 'workflow') hidden @endif>
                     <div class="pp-view-head">
                         <h3><i class="ti ti-calculator pp-c-accent"></i>Salary computation workflow</h3>
-                        @if($final)
+                        @if($run)
                             <span class="pp-badge pp-b-green"><i class="ti ti-lock"></i>Final · {{ $run->code }}</span>
-                        @elseif($processed)
-                            <span class="pp-badge pp-b-blue"><i class="ti ti-snowflake"></i>Frozen in {{ $run->code }}</span>
                         @else
                             <span class="pp-badge pp-b-muted"><i class="ti ti-eye"></i>Live from attendance</span>
                         @endif
@@ -520,7 +407,7 @@ html[data-bs-theme="dark"] .pp {
                         <h3><i class="ti ti-transfer-out pp-c-amber"></i>Deduction &amp; remittance tracker</h3>
                         @if($open > 0)
                             <span class="pp-badge pp-b-amber"><i class="ti ti-clock"></i>{{ $open }} pending</span>
-                        @elseif($final && ! $notice)
+                        @elseif(collect($track)->whereNotNull('done_text')->isNotEmpty())
                             <span class="pp-badge pp-b-green"><i class="ti ti-circle-check"></i>All settled</span>
                         @endif
                     </div>
@@ -541,7 +428,12 @@ html[data-bs-theme="dark"] .pp {
                                                 <div><div class="pp-ag-n">{{ $t['label'] }}</div><div class="pp-ag-s">{{ $t['sub'] }}</div></div>
                                             </div>
                                         </td>
-                                        <td class="r pp-num" style="font-weight:500">{{ $peso($t['amount']) }}</td>
+                                        <td class="r pp-num" style="font-weight:500">
+                                            {{ $peso($t['amount']) }}
+                                            @if($t['was'] !== null)
+                                                <div class="pp-by" title="The pay for this period has changed since this line was marked">{{ $peso($t['was']) }} when marked</div>
+                                            @endif
+                                        </td>
                                         <td class="pp-muted" style="white-space:nowrap">{{ $period['span'] }}</td>
                                         <td>
                                             <span class="pp-badge {{ $t['tone'] }}"><i class="ti {{ $t['badge'] }}"></i>{{ $t['state'] }}</span>
@@ -553,8 +445,9 @@ html[data-bs-theme="dark"] .pp {
                                                     <span class="pp-done"><i class="ti ti-checks"></i>{{ $t['done_text'] }}</span>
                                                 @endif
                                                 @foreach($t['actions'] as $a)
-                                                    <form method="POST" action="{{ route('payroll-processing.track', [$sel['item'], $t['kind']]) }}">
+                                                    <form method="POST" action="{{ route('payroll-processing.track', [$sel['employee_id'], $t['kind']]) }}">
                                                         @csrf
+                                                        <input type="hidden" name="period" value="{{ $period['key'] }}">
                                                         <input type="hidden" name="action" value="{{ $a['action'] }}">
                                                         @if($a['primary'])
                                                             <button class="pp-btn primary sm" type="submit">{{ $a['label'] }}</button>
@@ -586,16 +479,13 @@ html[data-bs-theme="dark"] .pp {
                     </div>
                     <div class="pp-view-body">
                         <div class="pp-doc" id="ppDoc">
-                            @unless($final)
-                                <div class="pp-draft">DRAFT — this payslip is final once {{ $processed ? $run->code : 'the period' }} is finalized</div>
-                            @endunless
                             <div class="pp-doc-head">
                                 <div class="pp-brand">
                                     <img class="pp-logo" src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" alt=""
                                          onerror="this.onerror=null;this.src='{{ asset('images/JeyancoLogo.png') }}'">
                                     <div>
                                         <div class="pp-t1">{{ $company?->company_name ?? 'JEYANCO CONSTRUCTION' }}</div>
-                                        <div class="pp-t2">Official Payslip{{ $processed ? ' · ' . $run->code : '' }}</div>
+                                        <div class="pp-t2">Official Payslip{{ $run ? ' · ' . $run->code : '' }}</div>
                                     </div>
                                 </div>
                                 <div class="pp-doc-per"><div class="k">Pay period</div><div class="v">{{ $period['span'] }}</div></div>
@@ -622,15 +512,11 @@ html[data-bs-theme="dark"] .pp {
                             </div>
                             <div class="pp-pnet"><span class="k">Net pay</span><span class="v">{{ $peso($sel['net']) }}</span></div>
                             <div class="pp-pfoot">
-                                @if($processed)
-                                    <span class="pp-sig"><i class="ti ti-circle-check"></i>Processed {{ $stages[1]['note'] }}</span>
+                                <span class="pp-sig {{ $run ? '' : 'plain' }}"><i class="ti {{ $run ? 'ti-circle-check' : 'ti-calculator' }}"></i>{{ $prepared }}</span>
+                                @if($paid)
+                                    <span class="pp-sig"><i class="ti ti-circle-check"></i>Paid {{ $paid }}</span>
                                 @else
-                                    <span class="pp-sig wait"><i class="ti ti-clock"></i>Not processed yet</span>
-                                @endif
-                                @if(in_array($status, ['approved', 'finalized'], true))
-                                    <span class="pp-sig"><i class="ti ti-circle-check"></i>Approved {{ $stages[2]['note'] }}</span>
-                                @else
-                                    <span class="pp-sig wait"><i class="ti ti-clock"></i>Approval pending</span>
+                                    <span class="pp-sig wait"><i class="ti ti-clock"></i>Payment pending</span>
                                 @endif
                             </div>
                         </div>

@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Employee;
-use App\Models\Loan;
-use App\Models\LoanDeduction;
 use App\Models\PayrollRemittance;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunItem;
@@ -17,12 +15,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 /**
- * Payroll runs: create, calculate, review, recalculate, approve, finalise —
- * and, once final, where each deduction went and whether the worker was paid.
+ * Payroll Processing: a period and a worker at a time — the salary
+ * computation in stages, where each contribution and the net pay have got
+ * to, and the payslip.
  *
- * The arithmetic belongs to PayrollService, which is called through
- * PayrollRunService and is not modified. Nothing here finalises on its own —
- * every state change is a deliberate POST from a button the user pressed.
+ * The figures are PayrollService's, through PayrollRunService and unchanged:
+ * a finalised run's frozen ones where there is one for the period, and
+ * otherwise what the attendance comes to now. The run routes below stay for
+ * the run pages that still open; nothing here finalises on its own.
  */
 class PayrollProcessingController extends Controller
 {
@@ -36,72 +36,47 @@ class PayrollProcessingController extends Controller
     {
     }
 
-    /**
-     * One period, one worker at a time.
-     *
-     * A period with a run shows the run's frozen figures; one without shows
-     * what processing would freeze, from the same computation. The bar at the
-     * top is the run's own workflow, with the next step in it.
-     */
     public function index(Request $request)
     {
         $periods = $this->periods();
-        $period  = $periods[(string) $request->query('period')] ?? reset($periods);
+        $period  = $this->pick($request->query('period'), $periods) ?? reset($periods);
+        $periods[$period['key']] ??= $period;
 
-        $run = PayrollRun::with(['creator', 'approver', 'finalizer'])
-            ->whereDate('period_start', $period['from'])
-            ->whereDate('period_end', $period['to'])
-            ->orderBy('site_id')      // the all-sites run first, where there is one
-            ->orderByDesc('id')
-            ->first();
+        [$run, $rows] = $this->figures($period);
 
-        $processed = $run && $run->status !== 'draft';
-        $final     = $run?->isFinal() ?? false;
-        $tracking  = PayrollRemittance::available();
+        $tracking = PayrollRemittance::available();
+        $sel      = $rows->firstWhere('employee_id', (int) $request->query('employee')) ?? $rows->first();
+        $view     = in_array($request->query('view'), self::VIEWS, true) ? $request->query('view') : 'workflow';
 
-        $items = $processed
-            ? $run->items()->with($tracking ? ['remittances.submitter', 'remittances.completer'] : [])->get()
+        $marks = $tracking && $sel
+            ? PayrollRemittance::with(['submitter', 'completer'])
+                ->where('employee_id', $sel['employee_id'])
+                ->where('period_start', $period['from'])
+                ->where('period_end', $period['to'])
+                ->get()
+                ->keyBy('kind')
             : collect();
 
-        $source = $processed
-            ? $items->map(fn (PayrollRunItem $i) => [$i->toArray(), $i])
-            : collect($this->runs->preview($period['from'], $period['to']))->map(fn (array $a) => [$a, null]);
-
-        $people = Employee::with(['laborType', 'site'])
-            ->whereIn('id', $source->map(fn ($s) => $s[0]['employee_id'])->all())
-            ->get()
-            ->keyBy('id');
-
-        $rows = $source
-            ->map(fn ($s) => $this->row($s[0], $s[1], $people->get($s[0]['employee_id'])))
-            ->sortBy(fn ($r) => mb_strtolower($r['name']))
-            ->values();
-
-        $sel   = $rows->firstWhere('employee_id', (int) $request->query('employee')) ?? $rows->first();
-        $view  = in_array($request->query('view'), self::VIEWS, true) ? $request->query('view') : 'workflow';
-        $track = $sel ? $this->trackRows($sel, $run, $tracking) : [];
+        $track = $sel ? $this->trackRows($sel, $marks, $tracking) : [];
+        $paid  = $marks->get('net_pay');
 
         return view('payroll-processing.index', [
-            'periods'   => $periods,
-            'period'    => $period,
-            'run'       => $run,
-            'processed' => $processed,
-            'final'     => $final,
-            'rows'      => $rows,
-            'sel'       => $sel,
-            'view'      => $view,
-            'totals'    => [
-                'employees'  => $rows->count(),
-                'gross'      => round($rows->sum('gross'), 2),
-                'deductions' => round($rows->sum('deductions'), 2),
-                'net'        => round($rows->sum('net'), 2),
-            ],
-            'stages'    => $this->stages($run, $processed, $items, $tracking),
-            'lines'     => $sel ? $this->lines($sel) : ['earn' => [], 'ded' => []],
-            'track'     => $track,
-            'open'      => count(array_filter($track, fn ($t) => $t['open'])),
-            'notice'    => $this->trackNotice($processed, $final, $tracking),
-            'company'   => SystemSetting::current(),
+            'periods'  => $periods,
+            'period'   => $period,
+            'run'      => $run,
+            'rows'     => $rows,
+            'sel'      => $sel,
+            'view'     => $view,
+            'lines'    => $sel ? $this->lines($sel) : ['earn' => [], 'ded' => []],
+            'track'    => $track,
+            'open'     => count(array_filter($track, fn ($t) => $t['open'])),
+            'notice'   => $sel ? $this->trackNotice($sel, $tracking) : null,
+            'paid'     => $paid?->status === PayrollRemittance::DONE
+                ? self::signed($paid->completer, $paid->completed_at) : null,
+            'prepared' => $run
+                ? 'Finalized in ' . $run->code . ' · ' . self::signed($run->finalizer, $run->finalized_at)
+                : 'Computed from attendance · ' . now()->format('M j, Y g:i A'),
+            'company'  => SystemSetting::current(),
         ]);
     }
 
@@ -128,7 +103,7 @@ class PayrollProcessingController extends Controller
         // to review, and the user's next click would be Calculate anyway.
         $this->runs->calculate($run);
 
-        // Back to the period, where the next step is.
+        // Back to the period.
         return redirect()->route('payroll-processing.index', [
             'period' => $run->period_start->toDateString() . '_' . $run->period_end->toDateString(),
         ])->with('success', 'Payroll run ' . $run->code . ' created and calculated.');
@@ -230,69 +205,108 @@ class PayrollProcessingController extends Controller
     }
 
     /**
-     * Move one payslip line along: a contribution submitted to its agency and
-     * then confirmed remitted, or the net pay handed over. Only on a finalised
-     * run — before that the figures can still change under the record.
+     * Move one line of a worker's pay for a period along: a contribution
+     * submitted to its agency and then confirmed remitted, or the net pay
+     * handed over. The amount is worked out here, never taken from the form.
      */
-    public function track(Request $request, PayrollRunItem $item, string $kind)
+    public function track(Request $request, Employee $employee, string $kind)
     {
         abort_unless(isset(PayrollRemittance::KINDS[$kind]), 404);
 
-        $action = $request->validate(['action' => 'required|in:submit,done,undo'])['action'];
+        $data   = $request->validate(['period' => 'required|string', 'action' => 'required|in:submit,done,undo']);
+        $period = $this->pick($data['period'], $this->periods());
+
+        abort_unless($period !== null, 404);
 
         if (! PayrollRemittance::available()) {
             return back()->with('error', 'Remittance tracking needs a database update first (php artisan migrate).');
         }
 
-        $run = $item->run;
-
-        if (! $run?->isFinal()) {
-            return back()->with('error', 'Remittances are tracked once the run is finalized.');
-        }
-
         $label  = PayrollRemittance::KINDS[$kind];
-        $amount = PayrollRemittance::amountFor($item, $kind);
+        $row    = $this->figures($period)[1]->firstWhere('employee_id', $employee->id);
+        $amount = $row ? PayrollRemittance::amountOf($row, $kind) : 0.0;
 
         if ($amount <= 0) {
-            return back()->with('error', "Nothing is due for {$label}.");
+            return back()->with('error', "Nothing is due for {$label} in {$period['span']}.");
         }
 
         $word = fn (string $s) => $s === PayrollRemittance::DONE ? ($kind === 'net_pay' ? 'paid' : 'remitted') : $s;
 
-        $line = PayrollRemittance::firstOrNew(['payroll_run_item_id' => $item->id, 'kind' => $kind]);
+        $line = PayrollRemittance::firstOrNew([
+            'employee_id'  => $employee->id,
+            'period_start' => $period['from'],
+            'period_end'   => $period['to'],
+            'kind'         => $kind,
+        ]);
+
         $from = $line->status ?? PayrollRemittance::PENDING;
-        $to   = PayrollRemittance::after($kind, $from, $action);
+        $to   = PayrollRemittance::after($kind, $from, $data['action']);
 
         if ($to === null) {
-            return back()->with('error', "{$label} for {$item->employee_name} is {$word($from)}; that step does not follow.");
+            return back()->with('error', "{$label} for {$employee->name} is {$word($from)}; that step does not follow.");
         }
 
         $line->fill(['status' => $to, 'amount' => $amount]);
 
         // Each step signs itself; undoing one takes its signature back off.
         match (true) {
-            $action === 'submit'               => $line->fill(['submitted_by' => auth()->id(), 'submitted_at' => now()]),
-            $action === 'done'                 => $line->fill(['completed_by' => auth()->id(), 'completed_at' => now()]),
-            $from === PayrollRemittance::DONE  => $line->fill(['completed_by' => null, 'completed_at' => null]),
-            default                            => $line->fill(['submitted_by' => null, 'submitted_at' => null]),
+            $data['action'] === 'submit'      => $line->fill(['submitted_by' => auth()->id(), 'submitted_at' => now()]),
+            $data['action'] === 'done'        => $line->fill(['completed_by' => auth()->id(), 'completed_at' => now()]),
+            $from === PayrollRemittance::DONE => $line->fill(['completed_by' => null, 'completed_at' => null]),
+            default                           => $line->fill(['submitted_by' => null, 'submitted_at' => null]),
         };
 
         $line->save();
 
         AuditLog::record('Payroll', 'remittance',
-            "{$label} for {$item->employee_name} ({$run->code}): {$word($from)} → {$word($to)}", $run);
+            "{$label} for {$employee->name} ({$period['span']}): {$word($from)} → {$word($to)}");
 
-        return back()->with('success', $action === 'undo'
-            ? "Undone — {$label} for {$item->employee_name} is {$word($to)} again."
-            : "{$label} for {$item->employee_name} marked {$word($to)}.");
+        return back()->with('success', $data['action'] === 'undo'
+            ? "Undone — {$label} for {$employee->name} is {$word($to)} again."
+            : "{$label} for {$employee->name} marked {$word($to)}.");
     }
 
     // ── The page's pieces ───────────────────────────────────────────────────
 
     /**
+     * The period's figures: a finalised run's, frozen, where one was cut for
+     * it; otherwise what the attendance comes to now, from the computation a
+     * run would freeze. A run short of final is not shown — nothing on this
+     * page moves it on any more, so its figures could only go stale.
+     *
+     * @return array{0: ?PayrollRun, 1: Collection<int, array>}
+     */
+    private function figures(array $period): array
+    {
+        $run = PayrollRun::with('finalizer')
+            ->whereDate('period_start', $period['from'])
+            ->whereDate('period_end', $period['to'])
+            ->where('status', 'finalized')
+            ->orderBy('site_id')      // the all-sites run first, where there is one
+            ->orderByDesc('id')
+            ->first();
+
+        $source = $run
+            ? $run->items()->get()->map(fn (PayrollRunItem $i) => $i->toArray())
+            : collect($this->runs->preview($period['from'], $period['to']));
+
+        $people = Employee::with(['laborType', 'site'])
+            ->whereIn('id', $source->pluck('employee_id')->all())
+            ->get()
+            ->keyBy('id');
+
+        $rows = $source
+            ->map(fn (array $a) => $this->row($a, $people->get($a['employee_id'])))
+            ->sortBy(fn ($r) => mb_strtolower($r['name']))
+            ->values();
+
+        return [$run, $rows];
+    }
+
+    /**
      * The periods the picker offers: this week and the seven before it, this
-     * month and the two before it, and any run on file for a range of its own.
-     * Weeks start where payroll's weeks do.
+     * month and the two before it, and any finalised run with a range of its
+     * own. Weeks start where payroll's weeks do.
      *
      * @return array<string, array{key: string, label: string, span: string, from: string, to: string, group: string}>
      */
@@ -302,14 +316,7 @@ class PayrollProcessingController extends Controller
         $add = function (Carbon $from, Carbon $to, string $label, string $group) use (&$out) {
             $key = $from->toDateString() . '_' . $to->toDateString();
 
-            $out[$key] ??= [
-                'key'   => $key,
-                'label' => $label,
-                'span'  => self::span($from, $to),
-                'from'  => $from->toDateString(),
-                'to'    => $to->toDateString(),
-                'group' => $group,
-            ];
+            $out[$key] ??= self::entry($from, $to, $label, $group);
         };
 
         $starts = (int) (SystemSetting::current()->week_starts_on ?? Carbon::MONDAY);
@@ -331,11 +338,56 @@ class PayrollProcessingController extends Controller
             $add($from, $from->copy()->endOfMonth(), $from->format('F Y') . ' (monthly)', 'Monthly');
         }
 
-        foreach (PayrollRun::orderByDesc('period_start')->limit(40)->get() as $r) {
-            $add($r->period_start, $r->period_end, $r->code . ' · ' . self::span($r->period_start, $r->period_end), 'Other runs');
+        foreach (PayrollRun::where('status', 'finalized')->orderByDesc('period_start')->limit(40)->get() as $r) {
+            $add($r->period_start, $r->period_end, $r->code . ' · ' . self::span($r->period_start, $r->period_end), 'Finalized runs');
         }
 
         return $out;
+    }
+
+    /**
+     * The period a "2026-09-07_2026-09-13" key names: one the picker offers,
+     * or any other real range up to two months long — a remittance can fall
+     * due after its week has dropped off the list.
+     */
+    private function pick(?string $key, array $periods): ?array
+    {
+        if ($key === null || $key === '') {
+            return null;
+        }
+
+        if (isset($periods[$key])) {
+            return $periods[$key];
+        }
+
+        if (! preg_match('/^(\d{4}-\d{2}-\d{2})_(\d{4}-\d{2}-\d{2})$/', $key, $m)) {
+            return null;
+        }
+
+        try {
+            $from = Carbon::parse($m[1]);
+            $to   = Carbon::parse($m[2]);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $real = $from->toDateString() === $m[1] && $to->toDateString() === $m[2];
+
+        return $real && $from->lte($to) && $from->diffInDays($to) <= 62
+            ? self::entry($from, $to, self::span($from, $to), 'Other')
+            : null;
+    }
+
+    private static function entry(Carbon $from, Carbon $to, string $label, string $group): array
+    {
+        return [
+            'key'   => $from->toDateString() . '_' . $to->toDateString(),
+            'label' => $label,
+            'span'  => self::span($from, $to),
+            'from'  => $from->toDateString(),
+            'to'    => $to->toDateString(),
+            'group' => $group,
+        ];
     }
 
     /** "Sep 07–13, 2026", "Aug 31–Sep 06, 2026", "Dec 28, 2025–Jan 03, 2026". */
@@ -349,7 +401,7 @@ class PayrollProcessingController extends Controller
     }
 
     /** One worker's period, in the same shape whether it is frozen or not. */
-    private function row(array $a, ?PayrollRunItem $item, ?Employee $employee): array
+    private function row(array $a, ?Employee $employee): array
     {
         $id   = (int) $a['employee_id'];
         $name = (string) ($a['employee_name'] ?? $employee?->name ?? 'Employee #' . $id);
@@ -363,7 +415,6 @@ class PayrollProcessingController extends Controller
 
         return [
             'employee_id'      => $id,
-            'item'             => $item,
             'name'             => $name,
             'initial'          => mb_strtoupper(mb_substr($name, 0, 1)),
             'color'            => self::COLOURS[$id % count(self::COLOURS)],
@@ -459,91 +510,18 @@ class PayrollProcessingController extends Controller
     }
 
     /**
-     * Where the period stands, as the run's own workflow: each step done,
-     * current, or still to come, and who took it.
-     *
-     * @return list<array{label: string, icon: string, note: string, state: string}>
-     */
-    private function stages(?PayrollRun $run, bool $processed, Collection $items, bool $tracking): array
-    {
-        $status    = $run?->status;
-        $approved  = in_array($status, ['approved', 'finalized'], true);
-        $finalized = $status === 'finalized';
-
-        [$due, $done] = $finalized && $tracking ? $this->settlement($items) : [0, 0];
-
-        $steps = [
-            ['Computed', 'ti-calculator', true, 'From attendance'],
-            ['Processed', 'ti-player-play', $processed,
-                $processed ? self::signed($run->creator, $run->calculated_at) : 'Not yet'],
-            ['Approved', 'ti-circle-check', $approved,
-                $approved ? self::signed($run->approver, $run->approved_at) : 'Waiting'],
-            ['Finalized', 'ti-lock', $finalized,
-                $finalized ? self::signed($run->finalizer, $run->finalized_at) : 'Payslips issue here'],
-            ['Remitted & paid', 'ti-transfer-out', $finalized && $tracking && $done >= $due, match (true) {
-                ! $finalized => 'After finalizing',
-                ! $tracking  => 'Awaiting setup',
-                $due === 0   => 'Nothing to remit',
-                default      => "{$done} of {$due} settled",
-            }],
-        ];
-
-        $out     = [];
-        $reached = false;
-
-        foreach ($steps as [$label, $icon, $isDone, $note]) {
-            $state = $isDone ? 'done' : ($reached ? 'todo' : 'now');
-            $reached = $reached || ! $isDone;
-            $out[] = compact('label', 'icon', 'note', 'state');
-        }
-
-        return $out;
-    }
-
-    /**
-     * Across a finalised run: the lines with money to move, and how many
-     * have moved.
-     *
-     * @return array{0: int, 1: int}
-     */
-    private function settlement(Collection $items): array
-    {
-        $due = $done = 0;
-
-        foreach ($items as $item) {
-            foreach (array_keys(PayrollRemittance::KINDS) as $kind) {
-                if (PayrollRemittance::amountFor($item, $kind) <= 0) {
-                    continue;
-                }
-
-                $due++;
-
-                if ($item->remittances->firstWhere('kind', $kind)?->status === PayrollRemittance::DONE) {
-                    $done++;
-                }
-            }
-        }
-
-        return [$due, $done];
-    }
-
-    /**
      * The tracker's rows for one worker: each contribution and the net pay,
-     * with where it has got to, and the cash advance, which settles itself
-     * when the run is finalised.
+     * with where it has got to, and the cash advance instalment, which comes
+     * off the pay and has nowhere further to go.
      */
-    private function trackRows(array $s, ?PayrollRun $run, bool $tracking): array
+    private function trackRows(array $s, Collection $marks, bool $tracking): array
     {
-        $item  = $s['item'];
-        $final = $run?->isFinal() ?? false;
-        $live  = $final && $tracking && $item;   // lines can be moved
-
         $meta = [
-            'sss'        => ['ti-building-bank', 'Employee share', $s['sss']],
-            'philhealth' => ['ti-heart-plus', 'Employee share', $s['philhealth']],
-            'pagibig'    => ['ti-home', 'Employee share', $s['pagibig']],
-            'bir'        => ['ti-receipt-tax', 'Withholding on compensation · BIR 1601-C', $s['tax']],
-            'net_pay'    => ['ti-wallet', 'Released to the worker', $s['net']],
+            'sss'        => ['ti-building-bank', 'Employee share'],
+            'philhealth' => ['ti-heart-plus', 'Employee share'],
+            'pagibig'    => ['ti-home', 'Employee share'],
+            'bir'        => ['ti-receipt-tax', 'Withholding on compensation · BIR 1601-C'],
+            'net_pay'    => ['ti-wallet', 'Released to the worker'],
         ];
 
         $undo = ['action' => 'undo', 'label' => 'Undo', 'icon' => 'ti-arrow-back-up', 'primary' => false];
@@ -551,25 +529,30 @@ class PayrollProcessingController extends Controller
 
         foreach (PayrollRemittance::KINDS as $kind => $label) {
             if ($kind === 'net_pay') {
-                $rows[] = $this->advanceRow($s, $run, $final);
+                $rows[] = $this->advanceRow($s);
             }
 
-            [$icon, $sub, $amount] = $meta[$kind];
-            $pay = $kind === 'net_pay';
-            $row = compact('kind', 'label', 'icon', 'sub', 'amount')
-                 + ['by' => null, 'actions' => [], 'done_text' => null, 'open' => false];
+            [$icon, $sub] = $meta[$kind];
+            $amount = PayrollRemittance::amountOf($s, $kind);
+            $pay    = $kind === 'net_pay';
+            $rec    = $marks->get($kind);
 
-            if ($amount <= 0) {
+            $row = compact('kind', 'label', 'icon', 'sub', 'amount') + [
+                'by' => null, 'actions' => [], 'done_text' => null, 'open' => false,
+                // What the line came to when it was last moved, where the
+                // attendance has moved it since.
+                'was' => $rec && abs($rec->amount - $amount) >= 0.01 ? $rec->amount : null,
+            ];
+
+            if ($amount <= 0 && ! $rec) {
                 $rows[] = ['state' => 'Nothing due', 'tone' => 'pp-b-muted', 'badge' => 'ti-minus'] + $row;
                 continue;
             }
 
-            if (! $live) {
-                $rows[] = ['state' => 'Awaiting finalization', 'tone' => 'pp-b-muted', 'badge' => 'ti-hourglass'] + $row;
+            if (! $tracking) {
+                $rows[] = ['state' => 'Pending', 'tone' => 'pp-b-muted', 'badge' => 'ti-clock'] + $row;
                 continue;
             }
-
-            $rec = $item->remittances->firstWhere('kind', $kind);
 
             $rows[] = match ($rec?->status ?? PayrollRemittance::PENDING) {
                 PayrollRemittance::SUBMITTED => [
@@ -595,46 +578,29 @@ class PayrollProcessingController extends Controller
         return $rows;
     }
 
-    /**
-     * The cash advance instalment. Nobody marks it: finalising the run takes
-     * it off the advance's balance, and the ledger says so.
-     */
-    private function advanceRow(array $s, ?PayrollRun $run, bool $final): array
+    /** The cash advance instalment: taken off the pay, with nothing to remit. */
+    private function advanceRow(array $s): array
     {
         $amount = $s['advance'] + $s['loan'];
         $row    = [
             'kind' => 'advance', 'label' => 'Cash advance', 'icon' => 'ti-cash', 'amount' => $amount,
-            'sub'  => 'Taken off the balance when the run is finalized',
-            'by'   => null, 'actions' => [], 'done_text' => null, 'open' => false,
+            'sub'  => 'Instalment taken from this pay',
+            'by'   => null, 'actions' => [], 'done_text' => null, 'open' => false, 'was' => null,
         ];
 
-        if ($amount <= 0) {
-            return ['state' => 'Nothing due', 'tone' => 'pp-b-muted', 'badge' => 'ti-minus'] + $row;
-        }
-
-        if (! $final) {
-            return ['state' => 'At finalization', 'tone' => 'pp-b-muted', 'badge' => 'ti-hourglass'] + $row;
-        }
-
-        $taken = (float) LoanDeduction::where('payroll_run_id', $run->id)
-            ->whereIn('loan_id', Loan::where('employee_id', $s['employee_id'])->select('id'))
-            ->sum('amount');
-
-        return [
-            'state'     => 'Collected', 'tone' => 'pp-b-green', 'badge' => 'ti-circle-check',
-            'sub'       => '₱' . number_format($taken, 2) . ' taken off the balance',
-            'by'        => self::signed($run->finalizer, $run->finalized_at),
-            'done_text' => 'Collected',
-        ] + $row;
+        return $amount <= 0
+            ? ['state' => 'Nothing due', 'tone' => 'pp-b-muted', 'badge' => 'ti-minus'] + $row
+            : ['state' => 'Deducted', 'tone' => 'pp-b-blue', 'badge' => 'ti-receipt'] + $row;
     }
 
-    private function trackNotice(bool $processed, bool $final, bool $tracking): ?string
+    /** Why the tracker has nothing to act on, when that is not obvious. */
+    private function trackNotice(array $s, bool $tracking): ?string
     {
         return match (true) {
-            ! $tracking  => 'Remittance tracking is switched on by a database update that has not been run on this server yet. The amounts below are right; they can be marked once it has.',
-            ! $processed => 'This period has not been processed yet. Remittances are tracked on the final figures, once the run is processed, approved and finalized.',
-            ! $final     => 'Remittances are tracked once this run is finalized. Until then its figures can still be recalculated.',
-            default      => null,
+            ! $tracking => 'Remittance tracking is switched on by a database update that has not been run on this server yet. The amounts below are right; they can be marked once it has.',
+            $s['sss'] + $s['philhealth'] + $s['pagibig'] + $s['tax'] <= 0
+                => 'No contributions or tax were taken off this pay, so there is nothing to remit for this period — only the net pay to release. If there should have been, check the contribution rates in Payroll Settings.',
+            default => null,
         };
     }
 

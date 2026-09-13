@@ -101,13 +101,13 @@ return [
     'payroll-processing' => [
         'en' => ['title' => 'Payroll Processing', 'lines' => [
             'Pick a period and an employee on the left; the three cards switch between the salary computation, the remittance tracker and the payslip.',
-            'The bar at the top shows where the period stands — computed, processed, approved, finalized, remitted — and holds the next step.',
-            'Contributions and net pay are marked once the run is finalized, and each step records who took it and when.',
+            'In the remittance tracker, Submit and then Mark done move each contribution along, and Mark paid records the net pay as released.',
+            'Every step records who took it and when, and Undo walks one step back.',
         ]],
         'tl' => ['title' => 'Pagproseso ng Sahod', 'lines' => [
             'Pumili ng panahon at empleyado sa kaliwa; ang tatlong card ang nagpapalit sa kuwenta ng sahod, sa remittance tracker at sa payslip.',
-            'Ipinapakita ng bar sa itaas kung nasaan na ang panahon — computed, processed, approved, finalized, remitted — at naroon ang susunod na hakbang.',
-            'Minamarkahan ang mga kontribusyon at net pay kapag finalized na ang run, at nakatala kung sino at kailan ginawa ang bawat hakbang.',
+            'Sa remittance tracker, Submit at saka Mark done ang nagpapausad sa bawat kontribusyon, at Mark paid ang nagtatala na naibigay na ang net pay.',
+            'Nakatala kung sino at kailan ginawa ang bawat hakbang, at ibinabalik ng Undo ang isang hakbang.',
         ]],
     ],
 

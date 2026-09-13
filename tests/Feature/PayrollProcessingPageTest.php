@@ -19,8 +19,8 @@ use Tests\TestCase;
 
 /**
  * Payroll Processing: one period and one worker at a time — the computation
- * in stages, where each deduction went, and the payslip — on top of the run
- * workflow that was already there.
+ * in stages, where each contribution and the net pay have got to, and the
+ * payslip.
  */
 class PayrollProcessingPageTest extends TestCase
 {
@@ -82,6 +82,17 @@ class PayrollProcessingPageTest extends TestCase
         return $this->actingAs($this->admin)->get(route('payroll-processing.index', $query))->assertOk();
     }
 
+    private function mark(Employee $e, string $kind, string $action, string $period = self::WEEK)
+    {
+        return $this->actingAs($this->admin)
+            ->post(route('payroll-processing.track', [$e, $kind]), ['period' => $period, 'action' => $action]);
+    }
+
+    private function row(array $query, string $kind): array
+    {
+        return collect($this->page($query + ['view' => 'tracker'])->viewData('track'))->firstWhere('kind', $kind);
+    }
+
     private function process()
     {
         return $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
@@ -89,35 +100,19 @@ class PayrollProcessingPageTest extends TestCase
         ]);
     }
 
-    private function mark(string $kind, string $action)
-    {
-        $item = PayrollRun::sole()->items()->sole();
+    // ── The page ─────────────────────────────────────────────────────────
 
-        return $this->actingAs($this->admin)
-            ->post(route('payroll-processing.track', [$item, $kind]), ['action' => $action]);
-    }
-
-    private function finalize(): PayrollRun
-    {
-        $run = PayrollRun::sole();
-        $this->actingAs($this->admin)->post(route('payroll-processing.approve', $run));
-        $this->actingAs($this->admin)->post(route('payroll-processing.finalize', $run), ['confirm' => 1]);
-
-        return tap($run->fresh(), fn ($r) => $this->assertSame('finalized', $r->status));
-    }
-
-    // ── The period ───────────────────────────────────────────────────────
-
-    public function test_it_opens_on_this_week(): void
+    public function test_it_opens_on_this_week_without_the_run_bar(): void
     {
         $this->worker();
 
         $page = $this->page()
             ->assertSee('Payroll processing')
             ->assertSee('Week 37 · Sep 07–13, 2026')
-            ->assertSee('Not processed yet')
-            ->assertSee('Process payroll')
-            ->assertSee('Day Crew');
+            ->assertSee('Day Crew')
+            ->assertDontSee('Not processed yet')
+            ->assertDontSee('Process payroll')
+            ->assertDontSee('Remitted & paid');
 
         $this->assertSame(self::WEEK, $page->viewData('period')['key']);
     }
@@ -129,26 +124,15 @@ class PayrollProcessingPageTest extends TestCase
             ->assertSee('there is no payroll to process');
     }
 
-    /** What the page shows before processing is what processing freezes. */
-    public function test_the_preview_is_what_gets_frozen(): void
+    /** A remittance can fall due after its week has dropped off the list. */
+    public function test_an_older_range_still_opens_and_a_made_up_one_does_not(): void
     {
-        $e = $this->worker();
+        $this->assertSame('2026-06-01_2026-06-07',
+            $this->page(['period' => '2026-06-01_2026-06-07'])->viewData('period')['key']);
 
-        $before = $this->page()->viewData('sel');
-        $this->assertSame($e->id, $before['employee_id']);
-        $this->assertNull($before['item'], 'nothing is frozen yet');
-
-        $this->process()->assertRedirect(route('payroll-processing.index', ['period' => self::WEEK]));
-
-        $run  = PayrollRun::sole();
-        $item = $run->items()->sole();
-
-        $this->assertSame('calculated', $run->status);
-        $this->assertEqualsWithDelta($before['gross'], $item->gross_pay, 0.001);
-        $this->assertEqualsWithDelta($before['deductions'], $item->total_deductions, 0.001);
-        $this->assertEqualsWithDelta($before['net'], $item->net_pay, 0.001);
-
-        $this->page()->assertSee($run->code)->assertSee('Approve')->assertDontSee('Process payroll');
+        $this->assertSame(self::WEEK,
+            $this->page(['period' => '2026-02-30_2026-03-06'])->viewData('period')['key'],
+            'the 30th of February is not a period');
     }
 
     // ── The computation ──────────────────────────────────────────────────
@@ -201,6 +185,40 @@ class PayrollProcessingPageTest extends TestCase
         $this->assertStringStartsWith('24h 00m × ', $page->viewData('lines')['earn'][0]['note']);
     }
 
+    /** What the page shows is what a run would freeze, from one computation. */
+    public function test_the_page_shows_what_a_run_would_freeze(): void
+    {
+        $this->worker();
+
+        $before = $this->page()->viewData('sel');
+        $this->process()->assertRedirect(route('payroll-processing.index', ['period' => self::WEEK]));
+        $item = PayrollRun::sole()->items()->sole();
+
+        $this->assertEqualsWithDelta($before['gross'], $item->gross_pay, 0.001);
+        $this->assertEqualsWithDelta($before['deductions'], $item->total_deductions, 0.001);
+        $this->assertEqualsWithDelta($before['net'], $item->net_pay, 0.001);
+    }
+
+    /** A finalised run is a fact: the page shows its figures, not today's. */
+    public function test_a_finalized_run_shows_its_frozen_figures(): void
+    {
+        $e = $this->worker();
+        $this->process();
+
+        $run = PayrollRun::sole();
+        $this->actingAs($this->admin)->post(route('payroll-processing.approve', $run));
+        $this->actingAs($this->admin)->post(route('payroll-processing.finalize', $run), ['confirm' => 1]);
+
+        // A day added after the fact does not reach a finalised payslip.
+        Attendance::create([
+            'employee_id' => $e->id, 'shift_id' => $e->shift_id, 'date' => '2026-09-09', 'session' => 'AM',
+            'time_in' => '2026-09-09 08:00:00', 'time_out' => '2026-09-09 17:00:00',
+        ]);
+
+        $page = $this->page(['period' => self::WEEK])->assertSee('Final · ' . $run->code);
+        $this->assertEqualsWithDelta($run->items()->sole()->gross_pay, $page->viewData('sel')['gross'], 0.001);
+    }
+
     /**
      * A run used to carry contributions and tax as one lump in "other
      * deductions", and a lump cannot be remitted to four agencies.
@@ -248,55 +266,38 @@ class PayrollProcessingPageTest extends TestCase
 
     // ── The tracker ──────────────────────────────────────────────────────
 
-    public function test_nothing_is_marked_before_the_run_is_final(): void
+    /** No run, no approval: the line moves the moment somebody presses it. */
+    public function test_a_contribution_is_submitted_then_remitted_straight_away(): void
     {
-        $this->worker();
-        $this->process();
+        $e = $this->worker();
 
-        $this->mark('sss', 'submit')->assertSessionHas('error');
-        $this->assertSame(0, PayrollRemittance::count());
-
-        $this->page(['period' => self::WEEK, 'view' => 'tracker'])
-            ->assertSee('Remittances are tracked once this run is finalized')
-            ->assertSee('Awaiting finalization');
-    }
-
-    public function test_a_contribution_is_submitted_then_remitted(): void
-    {
-        $this->worker();
-        $this->process();
-        $this->finalize();
-
-        $this->mark('sss', 'submit')->assertSessionHas('success');
+        $this->mark($e, 'sss', 'submit')->assertSessionHas('success');
 
         $line = PayrollRemittance::sole();
         $this->assertSame('submitted', $line->status);
         $this->assertSame($this->admin->id, $line->submitted_by);
-        $this->assertEqualsWithDelta(PayrollRun::sole()->items()->sole()->sss, $line->amount, 0.001);
+        $this->assertSame('2026-09-07', $line->period_start);
+        $this->assertEqualsWithDelta($this->page()->viewData('sel')['sss'], $line->amount, 0.001);
 
-        $this->mark('sss', 'done')->assertSessionHas('success');
+        $this->mark($e, 'sss', 'done')->assertSessionHas('success');
         $this->assertSame('done', $line->fresh()->status);
         $this->assertNotNull($line->fresh()->completed_at);
 
-        $this->page(['period' => self::WEEK, 'view' => 'tracker'])
-            ->assertSee('Remitted')
-            ->assertSee('by Admin');
+        $this->page(['view' => 'tracker'])->assertSee('Remitted')->assertSee('by Admin');
     }
 
     public function test_steps_follow_in_order_and_undo_walks_one_back(): void
     {
-        $this->worker();
-        $this->process();
-        $this->finalize();
+        $e = $this->worker();
 
-        $this->mark('bir', 'done')->assertSessionHas('error');   // not submitted yet
+        $this->mark($e, 'bir', 'done')->assertSessionHas('error');   // not submitted yet
         $this->assertSame(0, PayrollRemittance::count());
 
-        $this->mark('bir', 'submit');
-        $this->mark('bir', 'done');
-        $this->mark('bir', 'submit')->assertSessionHas('error');  // already remitted
+        $this->mark($e, 'bir', 'submit');
+        $this->mark($e, 'bir', 'done');
+        $this->mark($e, 'bir', 'submit')->assertSessionHas('error');  // already remitted
 
-        $this->mark('bir', 'undo');
+        $this->mark($e, 'bir', 'undo');
         $line = PayrollRemittance::sole();
         $this->assertSame('submitted', $line->status);
         $this->assertNull($line->completed_at, 'undoing takes the signature back off');
@@ -305,56 +306,95 @@ class PayrollProcessingPageTest extends TestCase
 
     public function test_net_pay_is_paid_or_not(): void
     {
-        $this->worker();
-        $this->process();
-        $this->finalize();
+        $e = $this->worker();
 
-        $this->mark('net_pay', 'submit')->assertSessionHas('error');
-        $this->mark('net_pay', 'done')->assertSessionHas('success');
+        $this->mark($e, 'net_pay', 'submit')->assertSessionHas('error');
+        $this->mark($e, 'net_pay', 'done')->assertSessionHas('success');
 
         $this->assertSame('done', PayrollRemittance::where('kind', 'net_pay')->sole()->status);
-        $this->page(['period' => self::WEEK, 'view' => 'tracker'])->assertSee('Paid');
+        $this->assertSame('Paid', $this->row([], 'net_pay')['state']);
     }
 
-    public function test_the_last_stage_counts_what_has_settled(): void
+    public function test_a_mark_belongs_to_its_worker(): void
     {
-        $this->worker();
-        $this->process();
-        $this->finalize();
+        $a = $this->worker('Alpha');
+        $b = $this->worker('Bravo');
 
-        $item = PayrollRun::sole()->items()->sole();
-        $due  = collect(array_keys(PayrollRemittance::KINDS))
-            ->filter(fn ($k) => PayrollRemittance::amountFor($item, $k) > 0)
-            ->count();
+        $this->mark($a, 'sss', 'submit');
 
-        $this->mark('net_pay', 'done');
-
-        $last = collect($this->page(['period' => self::WEEK])->viewData('stages'))->last();
-        $this->assertSame("1 of {$due} settled", $last['note']);
-        $this->assertSame('now', $last['state']);
+        $this->assertSame('Submitted', $this->row(['employee' => $a->id], 'sss')['state']);
+        $this->assertSame('Pending', $this->row(['employee' => $b->id], 'sss')['state']);
     }
 
-    public function test_an_unknown_line_is_not_found(): void
+    public function test_nothing_due_cannot_be_marked(): void
     {
-        $this->worker();
-        $this->process();
+        $e = $this->worker();
 
-        $this->mark('gcash', 'submit')->assertNotFound();
+        // Week 36: no attendance, so no pay and nothing on it to remit.
+        $this->mark($e, 'sss', 'submit', '2026-08-31_2026-09-06')->assertSessionHas('error');
+        $this->assertSame(0, PayrollRemittance::count());
+    }
+
+    /** What was remitted is kept, even when the attendance behind it moves. */
+    public function test_a_mark_keeps_what_it_came_to_when_the_pay_moves(): void
+    {
+        $e = $this->worker();
+        $this->mark($e, 'sss', 'submit');
+        $this->mark($e, 'sss', 'done');
+        $remitted = PayrollRemittance::sole()->amount;
+
+        Attendance::create([
+            'employee_id' => $e->id, 'shift_id' => $e->shift_id, 'date' => '2026-09-09', 'session' => 'AM',
+            'time_in' => '2026-09-09 08:00:00', 'time_out' => '2026-09-09 17:00:00',
+        ]);
+
+        $row = $this->row([], 'sss');
+        $this->assertSame('Remitted', $row['state']);
+        $this->assertEqualsWithDelta($remitted, $row['was'], 0.001);
+        $this->assertGreaterThan($remitted, $row['amount']);
+
+        $this->page(['view' => 'tracker'])->assertSee('when marked');
+    }
+
+    /** A tracker with nothing on it says why, rather than looking broken. */
+    public function test_no_contributions_is_explained(): void
+    {
+        PayrollRate::query()->delete();   // the rates fall back to zero
+
+        $e = $this->worker();
+        Attendance::where('employee_id', $e->id)->update(['time_out' => '2026-09-10 09:00:00']);   // under the tax line too
+
+        $this->page(['view' => 'tracker'])->assertSee('No contributions or tax were taken off this pay');
+
+        $sss = $this->row([], 'sss');
+        $this->assertSame('Nothing due', $sss['state']);
+        $this->assertSame([], $sss['actions']);
+
+        // The net pay can still be released.
+        $this->assertSame('Mark paid', $this->row([], 'net_pay')['actions'][0]['label']);
+    }
+
+    public function test_an_unknown_line_or_period_is_not_found(): void
+    {
+        $e = $this->worker();
+
+        $this->mark($e, 'gcash', 'submit')->assertNotFound();
+        $this->mark($e, 'sss', 'submit', '2026-02-30_2026-03-06')->assertNotFound();
     }
 
     // ── The payslip ──────────────────────────────────────────────────────
 
-    public function test_the_payslip_is_a_draft_until_the_run_is_final(): void
+    public function test_the_payslip_says_whether_it_was_paid(): void
     {
-        $this->worker();
+        $e = $this->worker();
 
-        $this->page(['view' => 'payslip'])->assertSee('DRAFT')->assertSee('Approval pending');
+        $this->page(['view' => 'payslip'])
+            ->assertSee('Computed from attendance')
+            ->assertSee('Payment pending')
+            ->assertDontSee('DRAFT');
 
-        $this->process();
-        $this->finalize();
+        $this->mark($e, 'net_pay', 'done');
 
-        $this->page(['period' => self::WEEK, 'view' => 'payslip'])
-            ->assertDontSee('DRAFT')
-            ->assertSee('Approved by Admin');
+        $this->page(['view' => 'payslip'])->assertSee('Paid by Admin');
     }
 }

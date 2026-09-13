@@ -7,8 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * One payslip line that leaves the company — a contribution to remit, or the
- * net pay itself — and how far it has got. The migration says why.
+ * One line of a worker's pay for a period that leaves the company — a
+ * contribution to remit, or the net pay itself — and how far it has got.
+ *
+ * Keyed by worker and period, not by a payroll run: see the migration that
+ * moved it. The period's dates are kept as plain Y-m-d strings rather than
+ * cast, so that looking a line up by them matches on SQLite as on MySQL.
  */
 class PayrollRemittance extends Model
 {
@@ -26,7 +30,7 @@ class PayrollRemittance extends Model
     public const DONE      = 'done';
 
     protected $fillable = [
-        'payroll_run_item_id', 'kind', 'status', 'amount',
+        'employee_id', 'period_start', 'period_end', 'kind', 'status', 'amount',
         'submitted_by', 'submitted_at', 'completed_by', 'completed_at',
     ];
 
@@ -36,9 +40,9 @@ class PayrollRemittance extends Model
         'completed_at' => 'datetime',
     ];
 
-    public function item(): BelongsTo
+    public function employee(): BelongsTo
     {
-        return $this->belongsTo(PayrollRunItem::class, 'payroll_run_item_id');
+        return $this->belongsTo(Employee::class);
     }
 
     public function submitter(): BelongsTo
@@ -51,15 +55,15 @@ class PayrollRemittance extends Model
         return $this->belongsTo(User::class, 'completed_by');
     }
 
-    /** What the payslip line for this kind comes to. */
-    public static function amountFor(PayrollRunItem $item, string $kind): float
+    /** What a worker's pay for the period comes to on this line. */
+    public static function amountOf(array $row, string $kind): float
     {
         return (float) match ($kind) {
-            'sss'        => $item->sss,
-            'philhealth' => $item->philhealth,
-            'pagibig'    => $item->pagibig,
-            'bir'        => $item->tax,
-            'net_pay'    => $item->net_pay,
+            'sss'        => $row['sss'] ?? 0,
+            'philhealth' => $row['philhealth'] ?? 0,
+            'pagibig'    => $row['pagibig'] ?? 0,
+            'bir'        => $row['tax'] ?? 0,
+            'net_pay'    => $row['net'] ?? 0,
             default      => 0,
         };
     }
@@ -91,13 +95,13 @@ class PayrollRemittance extends Model
     }
 
     /**
-     * Whether the table is there yet. Migrations are run by hand on this
-     * deployment, so the page has to open in the gap between a push and the
-     * migrate that follows it. Asked per request, never cached: a long-lived
-     * worker would otherwise keep answering "no" after the migrate.
+     * Whether the table is there in its current shape. Migrations are run by
+     * hand on this deployment, so the page has to open in the gap between a
+     * push and the migrate that follows it. Asked per request, never cached:
+     * a long-lived worker would otherwise keep answering "no" after it.
      */
     public static function available(): bool
     {
-        return Schema::hasTable('payroll_remittances');
+        return Schema::hasColumn('payroll_remittances', 'employee_id');
     }
 }
