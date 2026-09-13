@@ -151,6 +151,54 @@ class PayrollProcessingPageTest extends TestCase
             ->assertSee('No attendance for Aaron New Hire in this period');
     }
 
+    /**
+     * A stretch still open is not in the pay — payroll counts it when it is
+     * timed out, here as in Payroll Records — but a worker on the clock is
+     * shown as one, not as a worker with nothing.
+     */
+    public function test_a_worker_still_clocked_in_is_shown_on_the_clock(): void
+    {
+        $e = $this->worker();
+
+        // Clocked in half an hour before "now" (Saturday, 9 PM), not out yet.
+        Attendance::create([
+            'employee_id' => $e->id, 'shift_id' => $e->shift_id, 'date' => '2026-09-12', 'session' => 'AM',
+            'time_in' => '2026-09-12 20:30:00', 'time_out' => null,
+        ]);
+
+        $before = collect(app(PayrollService::class)->computeForRange('2026-09-07', '2026-09-13')['employees'])
+            ->firstWhere('employee_id', $e->id)['totals'];
+
+        $page = $this->page()
+            ->assertSee('on the clock')
+            ->assertSee('is clocked in now — since 8:30 PM');
+
+        $sel = $page->viewData('sel');
+        $this->assertSame(30, $sel['on_clock']['minutes']);
+        $this->assertEqualsWithDelta($before['gross'], $sel['gross'], 0.001, 'the open stretch is not paid until it closes');
+    }
+
+    /** Somebody clocked in with nothing closed yet is told so, not "no contributions". */
+    public function test_the_tracker_says_why_a_worker_on_the_clock_has_nothing_yet(): void
+    {
+        $e = Employee::create([
+            'name' => 'Jason On The Clock', 'status' => Employee::STATUS_ACTIVE,
+            'employment_type' => Employee::EMPLOYMENT_DAILY,
+            'labor_type_id' => LaborType::create(['name' => 'Welder', 'daily_rate' => 1200, 'ot_rate' => 125])->id,
+            'shift_id' => Shift::where('crosses_midnight', false)->firstOrFail()->id,
+            'rate_per_hour' => 150,
+        ]);
+
+        Attendance::create([
+            'employee_id' => $e->id, 'shift_id' => $e->shift_id, 'date' => '2026-09-12', 'session' => 'AM',
+            'time_in' => '2026-09-12 20:55:00', 'time_out' => null,
+        ]);
+
+        $this->page(['employee' => $e->id, 'view' => 'tracker'])
+            ->assertSee('Jason On The Clock is still clocked in, since 8:55 PM')
+            ->assertDontSee('No contributions or tax were taken off this pay');
+    }
+
     /** Pending registrations stay off the payroll here as everywhere; so does somebody who has left. */
     public function test_pending_and_archived_workers_without_pay_are_not_listed(): void
     {

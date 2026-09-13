@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attendance;
 use App\Models\AuditLog;
 use App\Models\Employee;
 use App\Models\PayrollRate;
@@ -319,14 +320,42 @@ class PayrollProcessingController extends Controller
         // payroll until the finger is enrolled.
         $idle = Employee::with(['laborType', 'site', 'shift'])->active()->whereNotIn('id', $ids)->get();
 
-        return $paid
+        $rows = $paid
             ->map(fn (array $e) => $this->row(
                 $e,
                 $priced[$e['employee_id']] ?? null,
                 $otMins[$e['employee_id']] ?? 0,
                 $people->get($e['employee_id'])
             ))
-            ->merge($idle->map(fn (Employee $e) => $this->idle($e)))
+            ->merge($idle->map(fn (Employee $e) => $this->idle($e)));
+
+        // Stretches still open: clocked in, not out yet. Payroll counts a
+        // stretch when it closes — here and in Payroll Records alike — so
+        // these are not in the figures. They are shown beside them, so that a
+        // worker on the clock does not read as a worker with nothing.
+        $open = Attendance::whereIn('employee_id', $rows->pluck('employee_id')->all())
+            ->whereNotNull('time_in')
+            ->whereNull('time_out')
+            ->whereBetween('date', [$period['from'], $period['to']])
+            ->orderBy('time_in')
+            ->get()
+            ->keyBy('employee_id');   // the latest open stretch per worker
+
+        $now = now()->startOfMinute();
+
+        return $rows
+            ->map(function (array $r) use ($open, $now) {
+                if ($o = $open->get($r['employee_id'])) {
+                    $in = WorkSchedule::moment($o->time_in, (string) $o->date)->startOfMinute();
+
+                    $r['on_clock'] = [
+                        'since'   => $in->isSameDay($now) ? $in->format('g:i A') : $in->format('M j, g:i A'),
+                        'minutes' => max(0, (int) $in->diffInMinutes($now, false)),
+                    ];
+                }
+
+                return $r;
+            })
             ->sortBy(fn ($r) => mb_strtolower($r['name']))
             ->values();
     }
@@ -422,6 +451,7 @@ class PayrollProcessingController extends Controller
         return [
             'employee_id' => $id,
             'worked'      => false,
+            'on_clock'    => null,   // ['since' => '9:56 AM', 'minutes' => 5] while a stretch is open
             'name'        => $name,
             'initial'     => mb_strtoupper(mb_substr($name, 0, 1)),
             'color'       => self::COLOURS[$id % count(self::COLOURS)],
@@ -704,6 +734,8 @@ class PayrollProcessingController extends Controller
     {
         return match (true) {
             ! $tracking => 'Remittance tracking is switched on by a database update that has not been run on this server yet. The amounts below are right; they can be marked once it has.',
+            $s['on_clock'] && $s['gross'] <= 0
+                => $s['name'] . ' is still clocked in, since ' . $s['on_clock']['since'] . '. The stretch is counted when they time out, so there is nothing to remit or pay yet.',
             ! $s['worked'] => 'No attendance for ' . $s['name'] . ' in this period, so there is nothing to remit or pay yet.',
             $s['sss'] + $s['philhealth'] + $s['pagibig'] + $s['tax'] <= 0
                 => 'No contributions or tax were taken off this pay, so there is nothing to remit for this period — only the net pay to release. If there should have been, check the contribution rates in Payroll Settings.',

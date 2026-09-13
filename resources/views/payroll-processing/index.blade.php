@@ -162,6 +162,9 @@ html[data-bs-theme="dark"] .pp {
 .pp-note { display: flex; align-items: flex-start; gap: 8px; margin: 14px 18px 0; padding: 10px 12px; border-radius: 9px; background: var(--pp-amber-soft); color: var(--pp-txt-2); font-size: 12.5px; }
 .pp-note i { color: var(--pp-amber-txt); font-size: 16px; margin-top: 1px; }
 .pp-note.inline { margin: 0 0 14px; }
+.pp-note.live { background: var(--pp-accent-soft); }
+.pp-note.live i { color: var(--pp-accent-txt); }
+.pp-live { color: var(--pp-green-txt); }
 .pp-tablewrap { overflow-x: auto; margin-top: 14px; }
 .pp-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 0; }
 .pp-table thead th { text-align: left; padding: 10px 14px; font-size: 10.5px; font-weight: 500; color: var(--pp-txt-3); text-transform: uppercase; letter-spacing: .5px; background: var(--pp-panel-2); white-space: nowrap; border: none; }
@@ -301,7 +304,7 @@ html[data-bs-theme="dark"] .pp {
                         <span class="pp-av" style="background:{{ $r['color'] }}22;color:{{ $r['color'] }}">{{ $r['initial'] }}</span>
                         <span class="pp-pmain">
                             <span class="pp-nm">{{ $r['name'] }}</span>
-                            <span class="pp-mt">{{ $r['code'] }} · {{ $r['labor'] }}@unless($r['worked']) · no attendance @endunless</span>
+                            <span class="pp-mt">{{ $r['code'] }} · {{ $r['labor'] }}@if($r['on_clock']) · <span class="pp-live">on the clock</span>@elseif(! $r['worked']) · no attendance @endif</span>
                         </span>
                         <i class="ti ti-chevron-right pp-chev"></i>
                     </a>
@@ -360,6 +363,9 @@ html[data-bs-theme="dark"] .pp {
                         </span>
                     </div>
                     <div class="pp-view-body">
+                        @if($sel['on_clock'])
+                            <div class="pp-note inline live"><i class="ti ti-clock"></i><span>{{ $sel['name'] }} is clocked in now — since {{ $sel['on_clock']['since'] }}, {{ $dur($sel['on_clock']['minutes']) }} so far. Payroll counts a stretch when it is timed out, here and in Payroll Records alike, so this one joins the figures below then.</span></div>
+                        @endif
                         @unless($sel['worked'])
                             <div class="pp-note inline"><i class="ti ti-info-circle"></i><span>No attendance for {{ $sel['name'] }} in {{ $period['span'] }} yet — every figure below stays at zero until they clock in.</span></div>
                         @endunless
