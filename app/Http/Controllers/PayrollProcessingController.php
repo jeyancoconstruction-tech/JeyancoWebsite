@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Employee;
+use App\Models\PayrollRate;
 use App\Models\PayrollRemittance;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunItem;
@@ -58,7 +59,11 @@ class PayrollProcessingController extends Controller
             : collect();
 
         $track = $sel ? $this->trackRows($sel, $marks, $tracking) : [];
-        $paid  = $marks->get('net_pay');
+
+        // The numbers the period was priced at, for the payslip to show its
+        // workings — resolved at the period's end, as Payroll Records does.
+        $rateSet = PayrollRate::effectiveOn($period['to']);
+        $rates   = $rateSet ? $rateSet->toRates() : PayrollRate::fallbackRates();
 
         return view('payroll-processing.index', [
             'periods'  => $periods,
@@ -71,11 +76,7 @@ class PayrollProcessingController extends Controller
             'track'    => $track,
             'open'     => count(array_filter($track, fn ($t) => $t['open'])),
             'notice'   => $sel ? $this->trackNotice($sel, $tracking) : null,
-            'paid'     => $paid?->status === PayrollRemittance::DONE
-                ? self::signed($paid->completer, $paid->completed_at) : null,
-            'prepared' => $run
-                ? 'Finalized in ' . $run->code . ' · ' . self::signed($run->finalizer, $run->finalized_at)
-                : 'Computed from attendance · ' . now()->format('M j, Y g:i A'),
+            'slip'     => $sel ? $this->slip($sel, $rates) : null,
             'company'  => SystemSetting::current(),
         ]);
     }
@@ -507,6 +508,62 @@ class PayrollProcessingController extends Controller
         $ded[] = $line('Other deductions', 'ti-minus', $s['other_deductions'] > 0 ? 'Adjustments' : null, $s['other_deductions']);
 
         return ['earn' => $earn, 'ded' => $ded];
+    }
+
+    /**
+     * The payslip, laid out as the Payroll Records receipt lays its own: the
+     * rate the days were priced at, each earning and deduction named with
+     * what it was worked out at, then gross − deductions + bonus. The bonus
+     * sits below the line there because it is not wages, and so it does here.
+     *
+     * @return array{meta: string, basis: string, earn: list<array{0: string, 1: float}>, ded: list<array{0: string, 1: float}>, gross: float, deductions: float, bonus: float, net: float}
+     */
+    private function slip(array $s, array $rates): array
+    {
+        $x    = fn ($m) => '×' . number_format((float) $m, 2);
+        $pct  = fn ($r) => number_format((float) $r, 2) . '%';
+        $peso = fn (float $n) => '₱' . number_format($n, 2);
+        $days = rtrim(rtrim(number_format($s['days'], 2), '0'), '.');
+
+        $earn = [
+            ['Regular pay (' . $days . 'd)', $s['basic']],
+            ['Overtime (' . $x($rates['ot_multiplier'] ?? 0) . ')', $s['overtime']],
+            ['Night differential (' . $x($rates['night_diff_multiplier'] ?? 0) . ')', $s['night']],
+            ['Holiday pay (' . $x($rates['regular_holiday_multiplier'] ?? 0) . ')', $s['holiday']],
+            ['Rest day pay (' . $x($rates['rest_day_multiplier'] ?? 0) . ')', $s['rest']],
+        ];
+
+        // Payroll Records never sees these two; a period that has them still
+        // has to add up.
+        if ($s['leave'] > 0) {
+            $earn[] = ['Paid leave', $s['leave']];
+        }
+        if ($s['other_earnings'] > 0) {
+            $earn[] = ['Other earnings', $s['other_earnings']];
+        }
+
+        $ded = [
+            ['SSS (' . $pct($rates['sss_rate'] ?? 0) . ')', $s['sss']],
+            ['PhilHealth (' . $pct($rates['philhealth_rate'] ?? 0) . ')', $s['philhealth']],
+            ['Pag-IBIG (' . $pct($rates['pagibig_rate'] ?? 0) . ')', $s['pagibig']],
+            [($rates['withholding_tax'] ?? true) ? 'Withholding tax (BIR)' : 'Withholding tax (off)', $s['tax']],
+            [$s['advance'] > 0 ? 'Vale / cash advance (' . $peso($s['advance']) . ' instalment)' : 'Vale / cash advance',
+                $s['vale'] + $s['advance']],
+            ['Other adjustments', $s['other_deductions'] + $s['loan']],
+        ];
+
+        return [
+            'meta'       => $s['code'] . ' · ' . $s['labor'] . ' · ' . $days . 'd / ' . WorkSchedule::duration($s['minutes']),
+            'basis'      => $peso($s['daily_rate']) . '/day · ' . $peso($s['hourly_rate']) . '/hr · '
+                          . $days . ' day' . ($days === '1' ? '' : 's') . ' worked'
+                          . ($s['late_minutes'] > 0 ? ' · ' . $s['late_minutes'] . 'm late' : ''),
+            'earn'       => $earn,
+            'ded'        => $ded,
+            'gross'      => round($s['gross'] - $s['bonus'], 2),
+            'deductions' => $s['deductions'],
+            'bonus'      => $s['bonus'],
+            'net'        => $s['net'],
+        ];
     }
 
     /**

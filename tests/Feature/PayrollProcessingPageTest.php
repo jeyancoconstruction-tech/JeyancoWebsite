@@ -384,17 +384,42 @@ class PayrollProcessingPageTest extends TestCase
 
     // ── The payslip ──────────────────────────────────────────────────────
 
-    public function test_the_payslip_says_whether_it_was_paid(): void
+    /** The same slip Payroll Records hands out, and the same page to print it from. */
+    public function test_the_payslip_uses_the_payroll_records_format(): void
     {
         $e = $this->worker();
 
-        $this->page(['view' => 'payslip'])
-            ->assertSee('Computed from attendance')
-            ->assertSee('Payment pending')
-            ->assertDontSee('DRAFT');
+        $page = $this->page(['view' => 'payslip'])
+            ->assertSee('PAYSLIP')
+            ->assertSee('Regular pay (1d)')
+            ->assertSee('SSS (5.00%)')
+            ->assertSee('− Deductions')
+            ->assertSee('+ Bonus')
+            ->assertSee('NET PAY')
+            ->assertSee(e(route('payslip.batch', ['from' => '2026-09-07', 'to' => '2026-09-13', 'employee' => $e->id])), false);
 
-        $this->mark($e, 'net_pay', 'done');
+        $slip = $page->viewData('slip');
 
-        $this->page(['view' => 'payslip'])->assertSee('Paid by Admin');
+        $this->assertStringStartsWith('₱800.00/day · ₱100.00/hr · 1 day worked', $slip['basis']);
+        $this->assertEqualsWithDelta($slip['gross'], array_sum(array_column($slip['earn'], 1)), 0.011, 'the earnings are the gross');
+        $this->assertEqualsWithDelta($slip['deductions'], array_sum(array_column($slip['ded'], 1)), 0.011, 'the deductions are the total');
+        $this->assertEqualsWithDelta($slip['net'], $slip['gross'] - $slip['deductions'] + $slip['bonus'], 0.011);
+    }
+
+    /** The bonus sits below the line, as Payroll Records puts it: not wages. */
+    public function test_the_payslip_adds_the_bonus_to_net_not_to_gross(): void
+    {
+        PayrollRate::create(array_merge(PayrollRate::DEFAULTS, [
+            'effective_from' => '2026-09-01', 'created_by' => 'test', 'bonus' => 500,
+        ]));
+
+        $this->worker();
+
+        $sel  = $this->page(['view' => 'payslip'])->viewData('sel');
+        $slip = $this->page(['view' => 'payslip'])->viewData('slip');
+
+        $this->assertEqualsWithDelta(500.0, $slip['bonus'], 0.001);
+        $this->assertEqualsWithDelta($sel['gross'] - 500, $slip['gross'], 0.011);
+        $this->assertEqualsWithDelta($sel['net'], $slip['net'], 0.001);
     }
 }

@@ -173,40 +173,46 @@ html[data-bs-theme="dark"] .pp {
 .pp-acts form { margin: 0; }
 .pp-done { color: var(--pp-green-txt); font-size: 12px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 
-/* Payslip — paper, in either theme */
-.pp-doc { position: relative; background: #fff; color: #1a1a1a; border-radius: 10px; overflow: hidden; }
-.pp-doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 24px; border-bottom: 2px solid #185FA5; }
-.pp-brand { display: flex; align-items: center; gap: 11px; }
-.pp-logo { width: 42px; height: 42px; border-radius: 9px; object-fit: contain; background: #fff; }
-.pp-t1 { font-size: 15px; font-weight: 700; color: #185FA5; }
-.pp-t2 { font-size: 11px; color: #777; }
-.pp-doc-per { text-align: right; }
-.pp-doc-per .k, .pp-pmeta .k { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: .5px; }
-.pp-doc-per .v { font-size: 13px; font-weight: 600; margin-top: 2px; }
-.pp-pmeta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 14px 24px; background: #f6f8fb; }
-.pp-pmeta .v { font-size: 13px; font-weight: 600; margin-top: 2px; overflow-wrap: anywhere; }
-.pp-pcols { display: grid; grid-template-columns: 1fr 1fr; }
-.pp-pcol { padding: 16px 24px; }
-.pp-pcol.l { border-right: 1px solid #eee; }
-.pp .pp-pcol h4 { font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
-.pp .pp-pcol.l h4 { color: #16a34a; }
-.pp .pp-pcol.r h4 { color: #dc2626; }
-.pp-pline { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 13px; border-bottom: 1px solid #f2f2f2; }
-.pp-pline .pl { color: #444; }
-.pp-pline .pl small { color: #aaa; font-size: 11px; margin-left: 3px; }
-.pp-pline .pa { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pp-pline.m .pl, .pp-pline.m .pa { color: #b8b8b8; }
-.pp-psub { display: flex; justify-content: space-between; padding-top: 9px; font-weight: 700; font-size: 13px; }
-.pp-psub.g span:last-child { color: #16a34a; }
-.pp-psub.r span:last-child { color: #dc2626; }
-.pp-pnet { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: #185FA5; color: #fff; }
-.pp-pnet .k { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
-.pp-pnet .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.pp-pfoot { display: flex; justify-content: space-between; padding: 12px 24px; font-size: 11px; color: #888; border-top: 1px solid #eee; flex-wrap: wrap; gap: 8px; }
-.pp-sig { display: inline-flex; align-items: center; gap: 5px; }
-.pp-sig i { color: #16a34a; }
-.pp-sig.wait i { color: #F59E0B; }
-.pp-sig.plain i { color: #999; }
+/* Payslip — the Payroll Records receipt, rule for rule, so the two pages hand
+   a worker the same slip. Its colours are the app's own tokens, which follow
+   the theme. */
+.emp-slip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; height: 100%; }
+.emp-slip-head { display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid var(--brand); padding-bottom: 8px; margin-bottom: 10px; }
+.emp-slip-logo { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
+.emp-slip-co { flex: 1; min-width: 0; }
+.emp-slip-co .co  { font-size: 12.5px; font-weight: 800; color: var(--brand); letter-spacing: .3px; line-height: 1.1; }
+.emp-slip-co .sub { font-size: 9.5px; color: var(--text-secondary); }
+.emp-slip-doc { text-align: right; }
+.emp-slip-doc .lbl { font-size: 12px; font-weight: 800; letter-spacing: 2px; color: var(--text-secondary); }
+.emp-slip-doc .per { font-size: 9px; color: var(--text-secondary); }
+.emp-slip-emp { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.emp-slip-emp .who  { font-weight: 700; color: var(--text-primary); font-size: 13px; }
+.emp-slip-emp .meta { color: var(--text-secondary); font-size: 11px; }
+.emp-slip-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.emp-slip-cols > div { display: flex; flex-direction: column; }
+.emp-slip-cols .ln.sum { margin-top: auto; }
+.emp-slip-cols h6 { margin: 0 0 5px; font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-secondary); font-weight: 800; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+.emp-slip .ln { display: flex; justify-content: space-between; font-size: 11.5px; padding: 2.5px 0; font-variant-numeric: tabular-nums; }
+.emp-slip .ln .k { color: var(--text-secondary); }
+.emp-slip .ln .v { color: var(--text-primary); font-weight: 600; }
+.emp-slip .ln.sum { border-top: 1px solid var(--border-md); margin-top: 3px; padding-top: 5px; font-weight: 800; }
+.emp-slip-net { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border: 1.5px solid var(--brand); border-radius: 6px; padding: 8px 12px; background: var(--brand-subtle); }
+.emp-slip-net .k { font-size: 11px; font-weight: 800; letter-spacing: .5px; color: var(--brand); }
+.emp-slip-net .v { font-size: 1.15rem; font-weight: 900; color: var(--brand); font-variant-numeric: tabular-nums; }
+.rc-basis {
+    margin: 0 0 12px; padding: 8px 10px; border-radius: 6px;
+    background: var(--bg-subtle); border: 1px solid var(--border);
+    font-size: 11.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums;
+}
+.rc-math {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px 14px;
+    margin-top: 12px; padding: 9px 12px; border-radius: 6px;
+    background: var(--bg-subtle); border: 1px solid var(--border);
+    font-size: 11.5px; font-variant-numeric: tabular-nums;
+}
+.rc-math-item { display: flex; justify-content: space-between; gap: 10px; min-width: 0; }
+.rc-math span { color: var(--text-secondary); }
+.rc-math b    { color: var(--text-primary); font-weight: 700; white-space: nowrap; }
 
 .pp-placeholder { background: var(--pp-panel); border: var(--pp-bw) dashed var(--pp-line-2); border-radius: var(--pp-radius); padding: 64px 24px; text-align: center; color: var(--pp-txt-3); }
 .pp-placeholder i { font-size: 36px; opacity: .5; display: block; margin-bottom: 12px; }
@@ -221,25 +227,16 @@ html[data-bs-theme="dark"] .pp {
     .pp-picker { position: static; }
     .pp-plist { max-height: 300px; }
     .pp-menu, .pp-wf { grid-template-columns: 1fr; }
-    .pp-facts, .pp-pmeta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pp-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
-    .pp-pcols { grid-template-columns: 1fr; }
-    .pp-pcol.l { border-right: none; border-bottom: 1px solid #eee; }
+    .emp-slip-cols { grid-template-columns: 1fr; }
 }
 
 /* Entrance — the calm row-level rise the other pages use */
 @keyframes pp-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .pp-anim { opacity: 0; animation: pp-rise .5s ease forwards; }
 @media (prefers-reduced-motion: reduce) { .pp-anim { animation: none; opacity: 1; } .pp-mtab:hover { transform: none; } }
-
-/* Printing prints the payslip and nothing else */
-@media print {
-    body * { visibility: hidden !important; }
-    #ppDoc, #ppDoc * { visibility: visible !important; }
-    #ppDoc { position: absolute; left: 0; top: 0; width: 100%; border-radius: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @page { margin: 14mm; }
-}
 </style>
 @endpush
 
@@ -468,56 +465,67 @@ html[data-bs-theme="dark"] .pp {
                     </div>
                 </div>
 
-                {{-- ── Payslip ────────────────────────────────────────────── --}}
+                {{-- ── Payslip ──────────────────────────────────────────────
+                     The Payroll Records receipt, and the same printable page
+                     behind its Print / Save as PDF button. --}}
                 <div class="pp-view" data-pane="payslip" @if($view !== 'payslip') hidden @endif>
                     <div class="pp-view-head">
                         <h3><i class="ti ti-file-text pp-c-green"></i>Payslip</h3>
-                        <div class="pp-acts">
-                            <button class="pp-btn" type="button" data-print><i class="ti ti-download"></i>Download PDF</button>
-                            <button class="pp-btn primary" type="button" data-print><i class="ti ti-printer"></i>Print payslip</button>
-                        </div>
+                        <a class="pp-btn primary" target="_blank" rel="noopener"
+                           href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to'], 'employee' => $sel['employee_id']]) }}">
+                            <i class="ti ti-printer"></i>Print / Save as PDF
+                        </a>
                     </div>
                     <div class="pp-view-body">
-                        <div class="pp-doc" id="ppDoc">
-                            <div class="pp-doc-head">
-                                <div class="pp-brand">
-                                    <img class="pp-logo" src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" alt=""
-                                         onerror="this.onerror=null;this.src='{{ asset('images/JeyancoLogo.png') }}'">
-                                    <div>
-                                        <div class="pp-t1">{{ $company?->company_name ?? 'JEYANCO CONSTRUCTION' }}</div>
-                                        <div class="pp-t2">Official Payslip{{ $run ? ' · ' . $run->code : '' }}</div>
-                                    </div>
+                        <div class="emp-slip" style="border:none;padding:0;background:transparent;">
+                            <div class="emp-slip-head">
+                                <img class="emp-slip-logo" src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" alt=""
+                                     onerror="this.onerror=null;this.src='{{ asset('images/JeyancoLogo.png') }}'">
+                                <div class="emp-slip-co">
+                                    <div class="co">{{ $company?->company_name ?? 'JEYANCO CONSTRUCTION' }}</div>
+                                    <div class="sub">{{ $company?->company_tagline ?? 'Payroll Dept. · Panganiban, PH' }}</div>
                                 </div>
-                                <div class="pp-doc-per"><div class="k">Pay period</div><div class="v">{{ $period['span'] }}</div></div>
+                                <div class="emp-slip-doc">
+                                    <div class="lbl">PAYSLIP</div>
+                                    <div class="per">{{ $period['span'] }}</div>
+                                </div>
                             </div>
-                            <div class="pp-pmeta">
-                                <div><div class="k">Employee</div><div class="v">{{ $sel['name'] }}</div></div>
-                                <div><div class="k">Employee ID</div><div class="v">{{ $sel['code'] }}</div></div>
-                                <div><div class="k">Labor type</div><div class="v">{{ $sel['labor'] }}</div></div>
-                                <div><div class="k">Rate / hr</div><div class="v">{{ $peso($sel['hourly_rate']) }}</div></div>
+
+                            <div class="emp-slip-emp">
+                                <span class="who">{{ $sel['name'] }}</span>
+                                <span class="meta">{{ $slip['meta'] }}</span>
                             </div>
-                            <div class="pp-pcols">
-                                @foreach(['earn' => ['l', 'Earnings', 'g', 'Gross pay', $sel['gross']], 'ded' => ['r', 'Deductions', 'r', 'Total deductions', $sel['deductions']]] as $side => [$col, $title, $subTone, $subLabel, $sub])
-                                    <div class="pp-pcol {{ $col }}">
-                                        <h4>{{ $title }}</h4>
-                                        @foreach($lines[$side] as $l)
-                                            <div class="pp-pline {{ $l['amount'] == 0 ? 'm' : '' }}">
-                                                <span class="pl">{{ $l['label'] }}@if($l['note'])<small>{{ $l['note'] }}</small>@endif</span>
-                                                <span class="pa">{{ $peso($l['amount']) }}</span>
-                                            </div>
-                                        @endforeach
-                                        <div class="pp-psub {{ $subTone }}"><span>{{ $subLabel }}</span><span>{{ $peso($sub) }}</span></div>
-                                    </div>
-                                @endforeach
+
+                            <div class="rc-basis">{{ $slip['basis'] }}</div>
+
+                            <div class="emp-slip-cols">
+                                <div>
+                                    <h6>Earnings</h6>
+                                    @foreach($slip['earn'] as [$k, $v])
+                                        <div class="ln"><span class="k">{{ $k }}</span><span class="v">{{ $peso($v) }}</span></div>
+                                    @endforeach
+                                    <div class="ln sum"><span class="k">Gross pay</span><span class="v">{{ $peso($slip['gross']) }}</span></div>
+                                </div>
+                                <div>
+                                    <h6>Deductions</h6>
+                                    @foreach($slip['ded'] as [$k, $v])
+                                        <div class="ln"><span class="k">{{ $k }}</span><span class="v">{{ $peso($v) }}</span></div>
+                                    @endforeach
+                                    <div class="ln sum"><span class="k">Total deductions</span><span class="v" style="color:var(--danger);">{{ $peso($slip['deductions']) }}</span></div>
+                                </div>
                             </div>
-                            <div class="pp-pnet"><span class="k">Net pay</span><span class="v">{{ $peso($sel['net']) }}</span></div>
-                            <div class="pp-pfoot">
-                                <span class="pp-sig {{ $run ? '' : 'plain' }}"><i class="ti {{ $run ? 'ti-circle-check' : 'ti-calculator' }}"></i>{{ $prepared }}</span>
-                                @if($paid)
-                                    <span class="pp-sig"><i class="ti ti-circle-check"></i>Paid {{ $paid }}</span>
-                                @else
-                                    <span class="pp-sig wait"><i class="ti ti-clock"></i>Payment pending</span>
-                                @endif
+
+                            {{-- The bonus is added to net, not to gross, so it
+                                 belongs in the arithmetic that reaches net. --}}
+                            <div class="rc-math">
+                                <div class="rc-math-item"><span>Gross</span><b>{{ $peso($slip['gross']) }}</b></div>
+                                <div class="rc-math-item"><span>− Deductions</span><b>{{ $peso($slip['deductions']) }}</b></div>
+                                <div class="rc-math-item"><span>+ Bonus</span><b>{{ $peso($slip['bonus']) }}</b></div>
+                            </div>
+
+                            <div class="emp-slip-net">
+                                <span class="k">NET PAY &middot; {{ $period['span'] }}</span>
+                                <span class="v">{{ $peso($slip['net']) }}</span>
                             </div>
                         </div>
                     </div>
@@ -579,8 +587,6 @@ html[data-bs-theme="dark"] .pp {
         if (field) field.value = v;
         try { const u = new URL(location.href); u.searchParams.set('view', v); history.replaceState(null, '', u); } catch (_) {}
     }));
-
-    root.querySelectorAll('[data-print]').forEach(b => b.addEventListener('click', () => window.print()));
 })();
 </script>
 @endpush
