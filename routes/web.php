@@ -157,6 +157,8 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::put('/system-settings/security', [SystemSettingsController::class, 'updateSecurity'])->name('system-settings.security.update');
     Route::get('/system-settings/appearance', [SystemSettingsController::class, 'appearance'])->name('system-settings.appearance');
     Route::put('/system-settings/appearance', [SystemSettingsController::class, 'updateAppearance'])->name('system-settings.appearance.update');
+    Route::get('/system-settings/kiosk',      [SystemSettingsController::class, 'kiosk'])->name('system-settings.kiosk');
+    Route::put('/system-settings/kiosk',      [SystemSettingsController::class, 'updateKiosk'])->name('system-settings.kiosk.update');
 
     // --- SETTINGS MODULE ---
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');

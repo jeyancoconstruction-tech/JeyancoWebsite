@@ -2,11 +2,24 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Kiosk extends Model
 {
+    /** Cache key prefix for when a kiosk last read its settings from the web. */
+    public const SETTINGS_READ_KEY = 'kiosk_settings_read_';
+
     protected $fillable = ['name', 'code', 'site_id', 'location', 'is_active', 'last_seen_at'];
+
+    /** When this kiosk last asked the web for its settings, if it ever has. */
+    public function settingsReadAt(): ?Carbon
+    {
+        $at = Cache::get(self::SETTINGS_READ_KEY . $this->code);
+
+        return $at ? Carbon::parse($at) : null;
+    }
 
     protected $casts = [
         'is_active'    => 'boolean',

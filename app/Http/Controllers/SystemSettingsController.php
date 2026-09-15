@@ -3,9 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Employee;
+use App\Models\Kiosk;
+use App\Models\Shift;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Support\WorkSchedule;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -33,13 +39,20 @@ class SystemSettingsController extends Controller
         'max_login_attempts'      => ['failed sign-ins before lockout', ''],
         'lockout_seconds'         => ['lockout length', ' s'],
         'default_theme'           => ['default theme', ''],
+        'kiosk_attendance_mode'      => ['attendance mode', ''],
+        'kiosk_repeat_guard_seconds' => ['repeat scans ignored within', ' s'],
+        'kiosk_idle_return_seconds'  => ['back to Attendance after', ' s'],
     ];
 
     private const SECTIONS = [
         'system-settings.about'      => 'Company',
         'system-settings.security'   => 'Security',
         'system-settings.appearance' => 'Appearance',
+        'system-settings.kiosk'      => 'Kiosk',
     ];
+
+    /** Any date will do for drawing a shift's day: only the times matter. */
+    private const ANY_DAY = '2026-01-05';
 
     /** An account this long without a sign-in is flagged on the Security tab. */
     private const IDLE_DAYS = 90;
@@ -70,6 +83,103 @@ class SystemSettingsController extends Controller
     public function appearance()
     {
         return view('settings.appearance', $this->common());
+    }
+
+    /**
+     * How the attendance kiosk records a scan: with TIME IN / TIME OUT
+     * buttons, or automatically from the scan alone. Shows how Automatic
+     * reads each shift, and whether each kiosk has picked the setting up.
+     */
+    public function kiosk()
+    {
+        $shifts = Shift::query()->orderBy('crosses_midnight')->orderBy('id')->get()
+            ->filter(fn (Shift $s) => $s->hasSchedule())
+            ->values();
+
+        // A worker with no shift of their own works the day crew's.
+        $default = Shift::defaultForNewHire();
+        $crew    = Employee::where('status', Employee::STATUS_ACTIVE)->get(['id', 'shift_id'])
+            ->countBy(fn (Employee $e) => $e->shift_id ?? $default);
+
+        $day = $shifts->firstWhere('crosses_midnight', false);
+
+        return view('settings.kiosk', $this->common() + [
+            'rulers'   => $shifts->map(fn (Shift $s) => $this->ruler($s, (int) ($crew[$s->id] ?? 0)))->all(),
+            'examples' => $day ? $this->examples($day) : [],
+            'cut'      => $day ? WorkSchedule::label(WorkSchedule::lunchCut($day->schedule(), self::ANY_DAY)) : '12:30 PM',
+            'kiosks'   => Kiosk::with('site')->orderBy('name')->get()->map(fn (Kiosk $k) => $this->kioskRow($k))->all(),
+            'changes'  => AuditLog::where('module', 'Settings')->where('description', 'like', 'Kiosk:%')
+                ->latest()->latest('id')->limit(3)->get(),
+        ]);
+    }
+
+    /** One shift's day as a bar: TIME IN opens · first half · break · second half · OT. */
+    private function ruler(Shift $shift, int $workers): array
+    {
+        $s    = $shift->schedule();
+        $w    = WorkSchedule::windows($s, self::ANY_DAY);
+        $from = $w['AM'][0]->copy()->subMinutes((int) $s['opens']);
+        $to   = $w['PM'][1]->copy()->addHour();
+        $span = max(1, (int) $from->diffInMinutes($to, true));
+        $pct  = fn (Carbon $at) => round($from->diffInMinutes($at, true) / $span * 100, 3);
+        $cut  = WorkSchedule::lunchCut($s, self::ANY_DAY);
+        $half = $shift->crosses_midnight ? ['FIRST', 'SECOND'] : ['AM', 'PM'];
+        $l    = fn (Carbon $at) => WorkSchedule::label($at);
+
+        return [
+            'name'     => $shift->name,
+            'workers'  => $workers,
+            'segments' => [
+                ['early', 0, $pct($w['AM'][0]), 'TIME IN opens'],
+                ['work', $pct($w['AM'][0]), $pct($w['AM'][1]), $half[0] . ' · ' . $l($w['AM'][0]) . ' – ' . $l($w['AM'][1])],
+                ['lunch', $pct($w['AM'][1]), $pct($w['PM'][0]), ''],
+                ['work', $pct($w['PM'][0]), $pct($w['PM'][1]), $half[1] . ' · ' . $l($w['PM'][0]) . ' – ' . $l($w['PM'][1])],
+                ['ot', $pct($w['PM'][1]), 100, 'OT'],
+            ],
+            'cut'   => $pct($cut),
+            'ticks' => [
+                [0, $l($from), 'first'],
+                [$pct($cut), $l($cut), 'cut'],
+                [$pct($w['PM'][1]), $l($w['PM'][1]), ''],
+            ],
+        ];
+    }
+
+    /** What a scan records at a few moments of the day shift, in Automatic. */
+    private function examples(Shift $shift): array
+    {
+        $s   = $shift->schedule();
+        $w   = WorkSchedule::windows($s, self::ANY_DAY);
+        $cut = WorkSchedule::lunchCut($s, self::ANY_DAY);
+        $l   = fn (Carbon $at) => WorkSchedule::label($at);
+        [$amS, $amE, $pmS, $pmE] = [$w['AM'][0], $w['AM'][1], $w['PM'][0], $w['PM'][1]];
+
+        return [
+            [$l($amS->copy()->subMinutes(8)), 'No open time in', [['in', 'AM IN']], 'Early — paid hours start at ' . $l($amS)],
+            [$l($amE->copy()->addMinutes(3)), 'An open AM time in', [['out', 'AM OUT']], 'Before the ' . $l($cut) . ' cut-off, so it closes the morning'],
+            [$l($pmS->copy()->subMinutes(4)), 'No open time in', [['in', 'PM IN']], 'Paid hours start at ' . $l($pmS)],
+            [$l($cut->copy()->addMinutes(11)), 'An open AM time in — forgot to scan out', [['auto', 'AM OUT ' . $l($amE) . ' · AUTO'], ['in', 'PM IN']], 'After the cut-off. The morning closes at ' . $l($amE) . ' for the office to review'],
+            [$l($pmE->copy()->addMinutes(4)), 'An open PM time in', [['out', 'PM OUT']], 'Time past ' . $l($pmE) . ' counts as overtime'],
+            [$l($pmE->copy()->addMinutes(40)), 'No open time in', [['none', 'NOTHING']], 'TIME IN closed at ' . $l($pmE) . ' for the ' . $shift->name . ' shift — the kiosk says so'],
+            [$l($amS->copy()->subMinutes(6)), 'Scanned 2 minutes ago', [['none', 'NOTHING']], '“Already recorded TIME IN” — a repeat inside the guard below'],
+        ];
+    }
+
+    /** A kiosk, and when it last read its settings. */
+    private function kioskRow(Kiosk $kiosk): array
+    {
+        $read  = $kiosk->settingsReadAt();
+        $beat  = Cache::get('kiosk_location_' . $kiosk->code)['last_seen'] ?? null;
+        $heard = collect([$kiosk->last_seen_at, $beat ? Carbon::parse($beat) : null, $read])->filter()->max();
+
+        return [
+            'name'   => $kiosk->name ?: $kiosk->code,
+            'code'   => $kiosk->code,
+            'site'   => $kiosk->site?->name,
+            'read'   => $read,
+            'heard'  => $heard,
+            'online' => $heard && $heard->greaterThan(now()->subMinutes(3)),
+        ];
     }
 
     public function updateAbout(Request $request)
@@ -144,6 +254,23 @@ class SystemSettingsController extends Controller
             ->with('theme_changed', $data['default_theme']);
     }
 
+    public function updateKiosk(Request $request)
+    {
+        $data = $request->validate([
+            'kiosk_attendance_mode'      => ['required', 'in:' . implode(',', array_keys(SystemSetting::KIOSK_MODES))],
+            // Under a minute, a finger held a moment too long can still read twice.
+            'kiosk_repeat_guard_seconds' => ['required', 'integer', 'min:60', 'max:600'],
+            'kiosk_idle_return_seconds'  => ['required', 'integer', 'min:15', 'max:600'],
+        ], [
+            'kiosk_attendance_mode.in'       => 'Choose Buttons or Automatic.',
+            'kiosk_repeat_guard_seconds.min' => 'Under a minute, a finger held a moment too long can still read twice.',
+        ]);
+
+        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
+
+        return $this->save($settings, $data, 'system-settings.kiosk');
+    }
+
     /** What every tab shows around its form: the hub's summaries and the last save. */
     private function common(): array
     {
@@ -188,6 +315,12 @@ class SystemSettingsController extends Controller
 
             if ($key === 'logo_path') {
                 $out[] = $old ? 'logo replaced' : 'logo uploaded';
+                continue;
+            }
+
+            if ($key === 'kiosk_attendance_mode') {
+                $name  = fn ($v) => SystemSetting::KIOSK_MODES[$v] ?? Str::ucfirst((string) $v);
+                $out[] = "{$label} {$name($old)} → {$name($new)}";
                 continue;
             }
 

@@ -143,6 +143,60 @@ final class WorkSchedule
     }
 
     /**
+     * Halfway through the meal period: where a kiosk with no buttons stops
+     * reading a scan as "going to lunch" and starts reading it as "back".
+     *
+     * A worker still timed in for the morning who scans at 12:05 is leaving
+     * for lunch; one who scans at 12:50 forgot to scan out and is back.
+     * Nothing but the clock tells the two apart, and halfway is the fairest
+     * guess. It is worked out from the shift, so it moves with the break.
+     */
+    public static function lunchCut(array $s, string $shiftDay): Carbon
+    {
+        $w   = self::windows($s, $shiftDay);
+        $gap = (int) $w['AM'][1]->diffInMinutes($w['PM'][0], true);
+
+        return $w['AM'][1]->copy()->addMinutes(intdiv($gap, 2));
+    }
+
+    /**
+     * What a scan means on a kiosk without buttons: 'time_in' or 'time_out'.
+     *
+     * Nothing open is a time in. Something open is a time out — unless it is
+     * the first half of the day and the clock has passed the lunch cut, or it
+     * belongs to an earlier workday. Then the worker is starting the next
+     * stretch, and the time in closes the forgotten one as AUTO.
+     *
+     * Once TIME IN has closed for the day, a scan by somebody still timed in
+     * can only be them leaving: turning it into a time in would be refused,
+     * and they could never time out at all.
+     */
+    public static function autoAction(array $s, ?string $openSession, ?Carbon $openIn, Carbon $now): string
+    {
+        if ($openIn === null) {
+            return 'time_in';
+        }
+
+        if (! self::acceptsTimeInAt($s, $now)) {
+            return 'time_out';
+        }
+
+        $day = self::shiftDayFor($s, $now);
+
+        if (self::shiftDayFor($s, $openIn) !== $day) {
+            return 'time_in';
+        }
+
+        $session = self::sessionOf($s, $openSession, $openIn);
+
+        if ($session === 'AM' && $now->greaterThanOrEqualTo(self::lunchCut($s, $day))) {
+            return 'time_in';
+        }
+
+        return 'time_out';
+    }
+
+    /**
      * Where pay starts for a stretch.
      *
      * Coming in inside the shift's grace period after a session starts is not

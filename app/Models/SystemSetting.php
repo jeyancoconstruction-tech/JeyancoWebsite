@@ -37,7 +37,29 @@ class SystemSetting extends Model
         'shift',
         // Payroll counts hours by the shift's sessions from this date on.
         'schedule_rules_from',
+        // How the attendance kiosk records a scan (System Settings → Kiosk).
+        'kiosk_attendance_mode',
+        'kiosk_repeat_guard_seconds',
+        'kiosk_idle_return_seconds',
     ];
+
+    /** The worker presses TIME IN or TIME OUT, then scans. */
+    public const KIOSK_BUTTONS = 'buttons';
+
+    /** The worker only scans; the web decides whether it is IN or OUT. */
+    public const KIOSK_AUTO = 'auto';
+
+    /** How each mode is named on screen and in the Audit Log. */
+    public const KIOSK_MODES = [
+        self::KIOSK_BUTTONS => 'Buttons',
+        self::KIOSK_AUTO    => 'Automatic',
+    ];
+
+    /** The kiosk's mode, falling back to Buttons for anything unexpected. */
+    public function kioskMode(): string
+    {
+        return $this->kiosk_attendance_mode === self::KIOSK_AUTO ? self::KIOSK_AUTO : self::KIOSK_BUTTONS;
+    }
 
     /**
      * Which day of the week is the rest day.
@@ -69,6 +91,8 @@ class SystemSetting extends Model
         'unpaid_break_minutes'    => 'integer',
         'auto_count_overtime'     => 'boolean',
         'week_starts_on'          => 'integer',
+        'kiosk_repeat_guard_seconds' => 'integer',
+        'kiosk_idle_return_seconds'  => 'integer',
     ];
 
     /**
@@ -95,6 +119,9 @@ class SystemSetting extends Model
         'default_theme'           => 'dark',
         'locale'                  => 'en',
         'shift'                   => 'day',
+        'kiosk_attendance_mode'      => self::KIOSK_BUTTONS,
+        'kiosk_repeat_guard_seconds' => 180,
+        'kiosk_idle_return_seconds'  => 60,
     ];
 
     /** The container key the resolved row is memoised under. */

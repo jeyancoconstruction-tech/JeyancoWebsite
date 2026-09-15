@@ -18,6 +18,7 @@
     $onCompany    = request()->routeIs('system-settings.about');
     $onSecurity   = request()->routeIs('system-settings.security');
     $onAppearance = request()->routeIs('system-settings.appearance');
+    $onKiosk      = request()->routeIs('system-settings.kiosk');
 @endphp
 
 <nav class="st-nav" aria-label="System Settings">
@@ -42,6 +43,11 @@
         <span class="ic"><i data-lucide="lock"></i></span>
         <span><span class="t">Security</span><span class="d">{{ $session }} sessions · {{ (int) $system->max_login_attempts }} tries</span></span>
         @if($onSecurity)<span class="dirty" data-hub-dirty hidden></span>@endif
+    </a>
+    <a class="st-item {{ $onKiosk ? 'on' : '' }}" href="{{ route('system-settings.kiosk') }}">
+        <span class="ic"><i data-lucide="fingerprint"></i></span>
+        <span><span class="t">Kiosk</span><span class="d">{{ $system->kioskMode() === \App\Models\SystemSetting::KIOSK_AUTO ? 'Automatic · scan only' : 'Buttons · TIME IN / OUT' }}</span></span>
+        @if($onKiosk)<span class="dirty" data-hub-dirty hidden></span>@endif
     </a>
 
     <div class="st-nav-foot"><i data-lucide="info"></i><span>Pay, attendance and holidays live in <a class="sx-link" href="{{ route('settings.index') }}">Payroll Settings</a>.</span></div>
