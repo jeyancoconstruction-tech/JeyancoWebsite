@@ -16,7 +16,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // One per worker. It resets itself at the start of every request, so
+        // a long-lived FrankenPHP worker never carries one request's changes
+        // into the next.
+        $this->app->singleton(\App\Support\ActivityRecorder::class);
     }
 
     /**
@@ -85,6 +88,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->ensureStorageLink();
+
+        // Every change, sign-in and write request goes into the Audit Log.
+        \App\Support\ActivityRecorder::listen();
 
         // In production (Railway) the public connection is always HTTPS, so
         // generate https:// links and form actions to avoid "not secure"

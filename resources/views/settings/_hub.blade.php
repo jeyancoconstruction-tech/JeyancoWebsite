@@ -1,78 +1,48 @@
 {{-- ── Settings hub ────────────────────────────────────────────────────────
-     One shell for every settings page: categories down the left, the chosen
-     one on the right. Each item is a link to its own URL rather than a JS
-     panel — the forms post, the accounts list paginates, and both need a real
-     address to come back to.
+     One nav for every System Settings tab: categories down the left, each
+     with its current value in a line. Each item is a link to its own URL
+     rather than a JS panel — the forms post, and need a real address to come
+     back to. "Accounts & roles" opens Users & Roles, the one people screen.
 
      Payroll and Attendance are not here: they configure pay, so they live on
      the Payroll Settings page with the multipliers they work with. --}}
-<style>
-    /* One shell for all four, so nothing moves when you change tab. They used
-       to bring their own: the accounts page had no page padding and a smaller
-       heading than the settings ones, so the nav and the title both jumped. */
-    /* No side padding here: the shell's .container-fluid already insets the
-       page, and adding another 28px on top of it was leaving the section
-       floating in the middle of the window. */
-    .hub-page { padding: 20px 0 48px; }
-    @media (max-width: 768px) { .hub-page { padding: 16px 0; } }
-
-    .hub-head { margin-bottom: 16px; }
-    .hub-head h1 {
-        margin: 0; font-size: 1.6rem; font-weight: 800;
-        letter-spacing: -0.3px; color: var(--text-primary);
-    }
-    .hub-head p { margin: 2px 0 0; font-size: 0.9rem; color: var(--text-secondary); }
-
-    .hub { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; align-items: start; }
-    @media (max-width: 860px) { .hub { grid-template-columns: 1fr; } }
-
-    .hub-nav {
-        background: var(--surface); border: 1px solid var(--border);
-        border-radius: 6px; padding: 8px; position: sticky; top: 16px;
-    }
-    @media (max-width: 860px) { .hub-nav { position: static; } }
-
-    .hub-sec {
-        font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
-        color: var(--text-muted); padding: 10px 10px 5px;
-    }
-    .hub-item {
-        display: flex; align-items: center; gap: 10px;
-        padding: 9px 10px; margin-bottom: 1px; border-radius: 6px;
-        font-size: 13px; color: var(--text-secondary); text-decoration: none;
-        border-left: 3px solid transparent;
-    }
-    .hub-item:hover { background: var(--bg-subtle); color: var(--text-primary); }
-    .hub-item.on {
-        background: var(--brand-subtle); color: var(--text-primary);
-        border-left-color: var(--brand); font-weight: 600;
-    }
-    .hub-item i { width: 16px; text-align: center; font-size: 14px; }
-</style>
-
 @php
-    // routeIs() rather than a path match: Accounts lives on its own route, and
-    // Company and Security share a path prefix.
-    $onCompany  = request()->routeIs('system-settings.about');
-    $onAccounts = request()->is('accounts*');
+    $system ??= \App\Models\SystemSetting::current();
+    $hub    ??= [
+        'accounts' => \App\Models\User::count(),
+        'admins'   => \App\Models\User::where('role', \App\Models\User::ROLE_ADMIN)->count(),
+    ];
+    $minutes = (int) $system->session_timeout_minutes;
+    $session = $minutes % 60 === 0 ? ($minutes / 60) . '-h' : $minutes . '-min';
+
+    $onCompany    = request()->routeIs('system-settings.about');
     $onSecurity   = request()->routeIs('system-settings.security');
     $onAppearance = request()->routeIs('system-settings.appearance');
 @endphp
 
-<nav class="hub-nav">
-    <div class="hub-sec">{{ __('Organization') }}</div>
-    <a class="hub-item {{ $onCompany ? 'on' : '' }}" href="{{ route('system-settings.about') }}">
-        <i class="fas fa-building"></i> {{ __('Company') }}
+<nav class="st-nav" aria-label="System Settings">
+    <span class="sx-label">Organization</span>
+    <a class="st-item {{ $onCompany ? 'on' : '' }}" href="{{ route('system-settings.about') }}">
+        <span class="ic"><i data-lucide="building-2"></i></span>
+        <span><span class="t">Company</span><span class="d">Name, logo, address</span></span>
+        @if($onCompany)<span class="dirty" data-hub-dirty hidden></span>@endif
     </a>
-    <a class="hub-item {{ $onAccounts ? 'on' : '' }}" href="{{ route('accounts.index') }}">
-        <i class="fas fa-users"></i> {{ __('Accounts & roles') }}
+    <a class="st-item" href="{{ route('users-roles.index') }}">
+        <span class="ic"><i data-lucide="users"></i></span>
+        <span><span class="t">Accounts &amp; roles</span><span class="d">{{ $hub['accounts'] }} {{ \Illuminate\Support\Str::plural('account', $hub['accounts']) }} · {{ $hub['admins'] }} {{ \Illuminate\Support\Str::plural('admin', $hub['admins']) }}</span></span>
     </a>
 
-    <div class="hub-sec">{{ __('System') }}</div>
-    <a class="hub-item {{ $onAppearance ? 'on' : '' }}" href="{{ route('system-settings.appearance') }}">
-        <i class="fas fa-palette"></i> {{ __('Appearance') }}
+    <span class="sx-label">System</span>
+    <a class="st-item {{ $onAppearance ? 'on' : '' }}" href="{{ route('system-settings.appearance') }}">
+        <span class="ic"><i data-lucide="palette"></i></span>
+        <span><span class="t">Appearance</span><span class="d">Opens in the {{ $system->default_theme === 'light' ? 'light' : 'dark' }} theme</span></span>
+        @if($onAppearance)<span class="dirty" data-hub-dirty hidden></span>@endif
     </a>
-    <a class="hub-item {{ $onSecurity ? 'on' : '' }}" href="{{ route('system-settings.security') }}">
-        <i class="fas fa-lock"></i> {{ __('Security') }}
+    <a class="st-item {{ $onSecurity ? 'on' : '' }}" href="{{ route('system-settings.security') }}">
+        <span class="ic"><i data-lucide="lock"></i></span>
+        <span><span class="t">Security</span><span class="d">{{ $session }} sessions · {{ (int) $system->max_login_attempts }} tries</span></span>
+        @if($onSecurity)<span class="dirty" data-hub-dirty hidden></span>@endif
     </a>
+
+    <div class="st-nav-foot"><i data-lucide="info"></i><span>Pay, attendance and holidays live in <a class="sx-link" href="{{ route('settings.index') }}">Payroll Settings</a>.</span></div>
 </nav>

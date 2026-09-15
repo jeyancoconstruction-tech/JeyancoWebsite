@@ -97,6 +97,22 @@ final class Modules
         return array_keys(self::labels());
     }
 
+    /** The nine modules in the three groups the access screens draw them in. */
+    public static function groups(): array
+    {
+        return [
+            'Workforce' => [self::LEAVE, self::ADVANCES, self::ASSIGNMENTS],
+            'Payroll'   => [self::PROCESSING, self::PAYSLIPS, self::REPORTS],
+            'System'    => [self::USERS, self::AUDIT, self::DEVICES],
+        ];
+    }
+
+    /** Opened by an Administrator and nobody else, whatever the matrix says. */
+    public static function isAdminOnly(string $module): bool
+    {
+        return in_array($module, self::ADMIN_ONLY, true);
+    }
+
     /**
      * Human labels. Leave and cash advances are the two tabs of the Leave &
      * Advances page, so they carry the tab names; the rest match the sidebar.

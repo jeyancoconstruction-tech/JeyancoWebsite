@@ -65,6 +65,9 @@ class AuthController extends Controller
         if (RateLimiter::tooManyAttempts($throttleKey, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($throttleKey);
 
+            // The Audit Log records the lockout; nothing else listens.
+            event(new \Illuminate\Auth\Events\Lockout($request));
+
             return $this->failed($request, "Too many failed attempts. Please try again in {$seconds} second(s).");
         }
 

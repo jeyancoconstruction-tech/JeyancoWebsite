@@ -88,7 +88,7 @@ class SystemSettingsTest extends TestCase
         $this->actingAs($this->admin())
              ->get(route('system-settings.security'))
              ->assertOk()
-             ->assertSee('Account &amp; security', false);
+             ->assertSee('Sign-in rules');
     }
 
     public function test_staff_cannot(): void
@@ -234,9 +234,12 @@ class SystemSettingsTest extends TestCase
 
     /**
      * Every settings page carries the same category nav down its left. They are
-     * links rather than panes — the forms post and the accounts list paginates,
-     * and both need a real address to come back to — so each page has to render
-     * the whole nav or the one you are on loses its way back.
+     * links rather than panes — the forms post and need a real address to come
+     * back to — so each page has to render the whole nav or the one you are on
+     * loses its way back.
+     *
+     * "Accounts & roles" opens Users & Roles, which is the one people screen
+     * now; the old accounts list forwards there.
      */
     public function test_every_settings_page_carries_the_category_nav(): void
     {
@@ -244,23 +247,27 @@ class SystemSettingsTest extends TestCase
             route('system-settings.about'),
             route('system-settings.security'),
             route('system-settings.appearance'),
-            route('accounts.index'),
         ];
+        $links = [...$pages, route('users-roles.index')];
 
         foreach ($pages as $page) {
             $response = $this->actingAs($this->admin())->get($page)->assertOk();
 
-            foreach ($pages as $link) {
+            foreach ($links as $link) {
                 $response->assertSee($link, false);
             }
         }
+
+        $this->actingAs($this->admin())
+             ->get(route('accounts.index'))
+             ->assertRedirect(route('users-roles.index'));
     }
 
     /** And the sidebar keeps one entry lit on any of them. */
     public function test_the_sidebar_entry_covers_them_all(): void
     {
         $this->actingAs($this->admin())
-             ->get(route('accounts.index'))
+             ->get(route('system-settings.about'))
              ->assertOk()
              ->assertSee('System Settings')
              ->assertDontSee('<span>Accounts</span>', false);
@@ -449,9 +456,9 @@ class SystemSettingsTest extends TestCase
              ->assertDontSee('Hitsura');
 
         $this->actingAs($this->admin())
-             ->get(route('accounts.index'))
+             ->get(route('users-roles.index'))
              ->assertOk()
-             ->assertSee('Account Management')
+             ->assertSee('Users &amp; Roles', false)
              ->assertDontSee('Pamamahala ng Account');
 
         $this->actingAs($this->admin())

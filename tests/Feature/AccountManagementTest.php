@@ -185,7 +185,9 @@ class AccountManagementTest extends TestCase
     {
         $admin = $this->admin();
 
-        $this->actingAs($admin)->get(route('accounts.index'))->assertSuccessful();
+        // The list itself is Users & Roles now; the old address forwards there.
+        $this->actingAs($admin)->get(route('accounts.index'))->assertRedirect(route('users-roles.index'));
+        $this->actingAs($admin)->get(route('users-roles.index'))->assertSuccessful();
         $this->actingAs($admin)->get(route('accounts.create'))->assertSuccessful();
     }
 

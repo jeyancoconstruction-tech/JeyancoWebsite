@@ -270,4 +270,5 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::patch('/users-roles/{user}/role', [\App\Http\Controllers\UserRoleController::class, 'updateRole'])->name('users-roles.update');
 
     Route::get('/audit-logs', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit-logs.index');
+    Route::get('/audit-logs/export', [\App\Http\Controllers\AuditLogController::class, 'export'])->name('audit-logs.export');
 });

@@ -2,28 +2,74 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\SystemSetting;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * The settings that are not payroll: who the company says it is, and how strict
  * the login is. The payroll page answers for pay.
  *
- * One row behind two tabs. They are separate actions rather than one form split
- * in half, so each validates only what it posts — a bad session timeout must not
- * refuse a corrected address.
+ * One row behind three tabs. They are separate actions rather than one form
+ * split in thirds, so each validates only what it posts — a bad session
+ * timeout must not refuse a corrected address.
+ *
+ * Every save is written to the Audit Log as old value → new value, which is
+ * what "Last saved by" and Security's "Recent changes" read.
  */
 class SystemSettingsController extends Controller
 {
+    /** How each field is named in the Audit Log, and the unit after its value. */
+    private const FIELDS = [
+        'company_name'            => ['name', ''],
+        'company_tagline'         => ['line under the name', ''],
+        'company_address'         => ['address', ''],
+        'logo_path'               => ['logo', ''],
+        'session_timeout_minutes' => ['session timeout', ' min'],
+        'password_min_length'     => ['minimum password length', ' characters'],
+        'max_login_attempts'      => ['failed sign-ins before lockout', ''],
+        'lockout_seconds'         => ['lockout length', ' s'],
+        'default_theme'           => ['default theme', ''],
+    ];
+
+    private const SECTIONS = [
+        'system-settings.about'      => 'Company',
+        'system-settings.security'   => 'Security',
+        'system-settings.appearance' => 'Appearance',
+    ];
+
+    /** An account this long without a sign-in is flagged on the Security tab. */
+    private const IDLE_DAYS = 90;
+
     public function about()
     {
-        return view('settings.about', ['system' => SystemSetting::current()]);
+        return view('settings.about', $this->common());
     }
 
     public function security()
     {
-        return view('settings.security', ['system' => SystemSetting::current()]);
+        $cut = now()->subDays(self::IDLE_DAYS);
+
+        return view('settings.security', $this->common() + [
+            'hygiene' => [
+                'admins'   => User::where('role', User::ROLE_ADMIN)->where('is_active', true)->count(),
+                'disabled' => User::where('is_active', false)->orderBy('name')->pluck('name'),
+                'idle'     => User::where('is_active', true)
+                    ->where(fn ($w) => $w->where('last_login_at', '<', $cut)
+                        ->orWhere(fn ($n) => $n->whereNull('last_login_at')->where('created_at', '<', $cut)))
+                    ->orderBy('name')->pluck('name'),
+            ],
+            'changes' => AuditLog::where('module', 'Settings')->where('description', 'like', 'Security:%')
+                ->latest()->latest('id')->limit(3)->get(),
+        ]);
+    }
+
+    public function appearance()
+    {
+        return view('settings.appearance', $this->common());
     }
 
     public function updateAbout(Request $request)
@@ -77,19 +123,6 @@ class SystemSettingsController extends Controller
 
         return $this->save($settings, $data, 'system-settings.security');
     }
-    /** Write the row and drop the memo, so the next read sees what was saved. */
-    private function save(SystemSetting $settings, array $data, string $back)
-    {
-        $settings->fill($data)->save();
-        SystemSetting::forget();
-
-        return redirect()->route($back)->with('success', 'Saved.');
-    }
-
-    public function appearance()
-    {
-        return view('settings.appearance', ['system' => SystemSetting::current()]);
-    }
 
     public function updateAppearance(Request $request)
     {
@@ -108,5 +141,64 @@ class SystemSettingsController extends Controller
         // the default is taken as choosing it for yourself as well.
         return $this->save($settings, $data, 'system-settings.appearance')
             ->with('theme_changed', $data['default_theme']);
+    }
+
+    /** What every tab shows around its form: the hub's summaries and the last save. */
+    private function common(): array
+    {
+        return [
+            'system'    => SystemSetting::current(),
+            'hub'       => [
+                'accounts' => User::count(),
+                'admins'   => User::where('role', User::ROLE_ADMIN)->count(),
+            ],
+            'lastSaved' => AuditLog::where('module', 'Settings')->latest()->latest('id')->first(),
+        ];
+    }
+
+    /** Write the row, drop the memo, and log what moved. */
+    private function save(SystemSetting $settings, array $data, string $back)
+    {
+        $changes = $this->changes($settings, $data);
+
+        $settings->fill($data)->save();
+        SystemSetting::forget();
+
+        if ($changes) {
+            AuditLog::record('Settings', 'updated', self::SECTIONS[$back] . ': ' . implode(', ', $changes), $settings);
+        }
+
+        return redirect()->route($back)->with('success', 'Saved.');
+    }
+
+    /** "session timeout 60 → 120 min" for each field that actually moved. */
+    private function changes(SystemSetting $settings, array $data): array
+    {
+        $out = [];
+
+        foreach ($data as $key => $new) {
+            $old = $settings->getAttribute($key);
+
+            if ((string) $old === (string) $new) {
+                continue;
+            }
+
+            [$label, $unit] = self::FIELDS[$key] ?? [str_replace('_', ' ', $key), ''];
+
+            if ($key === 'logo_path') {
+                $out[] = $old ? 'logo replaced' : 'logo uploaded';
+                continue;
+            }
+
+            if (is_numeric($old) && is_numeric($new)) {
+                $out[] = "{$label} {$old} → {$new}{$unit}";
+                continue;
+            }
+
+            $word  = fn ($v) => ($v === null || $v === '') ? '—' : '“' . Str::limit((string) $v, 50) . '”';
+            $out[] = $label . ' ' . $word($old) . ' → ' . $word($new);
+        }
+
+        return $out;
     }
 }

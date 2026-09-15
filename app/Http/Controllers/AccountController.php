@@ -23,43 +23,23 @@ use Illuminate\Validation\Rules\Password;
  */
 class AccountController extends Controller
 {
-    /** Listing: search by name/username/email, filter by role and status. */
+    /**
+     * The list of accounts is Users & Roles now — one people screen, with the
+     * account's edit, deactivate and delete actions in its inspector. This
+     * address stays, because every save below and every old link lands here,
+     * and passes its message and its filters along.
+     */
     public function index(Request $request)
     {
-        $search = trim((string) $request->query('q', ''));
-        $role   = $request->query('role');
-        $status = $request->query('status');
+        $request->session()->reflash();
 
-        $accounts = User::query()
-            ->with('creator:id,name')
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('username', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
-                });
-            })
-            ->when(in_array($role, [User::ROLE_ADMIN, User::ROLE_STAFF], true),
-                fn ($q) => $q->where('role', $role))
-            ->when($status === 'active',   fn ($q) => $q->where('is_active', true))
-            ->when($status === 'inactive', fn ($q) => $q->where('is_active', false))
-            ->orderByDesc('is_active')
-            ->orderBy('name')
-            ->paginate(12)
-            ->withQueryString();
-
-        return view('accounts.index', [
-            'accounts' => $accounts,
-            'search'   => $search,
-            'role'     => $role,
-            'status'   => $status,
-            'stats'    => [
-                'total'    => User::count(),
-                'admins'   => User::where('role', User::ROLE_ADMIN)->count(),
-                'staff'    => User::where('role', User::ROLE_STAFF)->count(),
-                'inactive' => User::where('is_active', false)->count(),
-            ],
+        $filters = array_filter([
+            'q'      => $request->query('q'),
+            'role'   => $request->query('role'),
+            'status' => $request->query('status') === 'inactive' ? 'disabled' : $request->query('status'),
         ]);
+
+        return redirect()->route('users-roles.index', $filters);
     }
 
     public function create()

@@ -126,7 +126,6 @@ class ModuleSmokeTest extends TestCase
             '/payroll-records',
             '/analytics',
             '/ai-assistant',
-            '/accounts',
             '/accounts/create',
             '/settings',
             '/system-settings',
