@@ -34,7 +34,7 @@
 @push('styles')
 @include('system._kit')
 <style>
-.ur-tiles { display: grid; grid-template-columns: 1.25fr repeat(6, 1fr); gap: 10px; margin-bottom: 14px; }
+.ur-tiles { display: grid; grid-template-columns: 1.25fr repeat({{ count($roles) }}, 1fr); gap: 10px; margin-bottom: 14px; }
 @media (max-width: 1200px) { .ur-tiles { grid-template-columns: repeat(4, 1fr); } }
 .ur-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; box-shadow: var(--shadow-xs); display: block; color: inherit; transition: border-color .15s; }
 .ur-tile:hover { border-color: var(--border-md); color: inherit; }

@@ -127,7 +127,8 @@ class SystemSettingsController extends Controller
     public function updateAppearance(Request $request)
     {
         $data = $request->validate([
-            'default_theme' => ['required', 'in:dark,light'],
+            // 'system' follows each device's own light or dark setting.
+            'default_theme' => ['required', 'in:dark,light,system'],
             // No 'locale' rule: the Language picker is gone and the form does
             // not post one. Requiring it here would fail every save of this
             // page over a field it no longer has.

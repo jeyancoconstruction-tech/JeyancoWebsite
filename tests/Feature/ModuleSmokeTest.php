@@ -259,24 +259,23 @@ class ModuleSmokeTest extends TestCase
     /** The permission map must actually close doors, not just decorate them. */
     public function test_module_access_is_enforced(): void
     {
-        $employee = User::create([
-            'name' => 'Worker', 'username' => 'worker1', 'password' => 'secret123',
-            'role' => User::ROLE_EMPLOYEE, 'is_active' => true,
+        // HR: leave, cash advances and assignments — nothing on the payroll side.
+        $hr = User::create([
+            'name' => 'People Office', 'username' => 'hr1', 'password' => 'secret123',
+            'role' => User::ROLE_HR, 'is_active' => true,
         ]);
 
-        // An Employee may see their payslips and leave...
-        $this->actingAs($employee)->get('/payslips')->assertOk();
-        $this->actingAs($employee)->get('/leave-advances')->assertOk();
+        foreach (['/leave-advances', '/leave-advances?tab=advances', '/project-assignments'] as $url) {
+            $this->assertSame(200, $this->actingAs($hr)->get($url)->getStatusCode(), "HR lost {$url}");
+        }
 
-        // ...and nothing else the extension added — the advances tab included.
-        foreach (['/payroll-processing', '/loans', '/leave-advances?tab=advances', '/payroll-reports',
-                  '/project-assignments'] as $url) {
-            $this->actingAs($employee)->get($url)->assertForbidden();
+        foreach (['/payroll-processing', '/payslips', '/payroll-reports', '/device-monitoring'] as $url) {
+            $this->actingAs($hr)->get($url)->assertForbidden();
         }
 
         // Users & Roles and Audit Logs stay behind the existing admin guard.
-        $this->actingAs($employee)->get('/users-roles')->assertForbidden();
-        $this->actingAs($employee)->get('/audit-logs')->assertForbidden();
+        $this->actingAs($hr)->get('/users-roles')->assertForbidden();
+        $this->actingAs($hr)->get('/audit-logs')->assertForbidden();
     }
 
     /** Existing 'staff' accounts must not lose anything they had. */

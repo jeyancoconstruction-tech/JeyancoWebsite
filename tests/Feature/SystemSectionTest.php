@@ -211,6 +211,69 @@ class SystemSectionTest extends TestCase
             ->assertSee('No heartbeat received from this kiosk yet');
     }
 
+    // ── Appearance can follow the device ────────────────────────────────────
+
+    public function test_the_default_theme_can_follow_the_device(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->put(route('system-settings.appearance.update'), ['default_theme' => 'system'])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('theme_changed', 'system');
+
+        \App\Models\SystemSetting::forget();
+        $this->assertSame('system', \App\Models\SystemSetting::current()->default_theme);
+        $this->assertTrue(AuditLog::where('description', 'Appearance: default theme “dark” → “system”')->exists());
+
+        $this->actingAs($admin)->get(route('system-settings.appearance'))
+            ->assertOk()
+            ->assertSee('var fallback = "system"', false)
+            ->assertSee('prefers-color-scheme: dark', false)
+            ->assertSee('Follows the device setting');
+    }
+
+    // ── No worker role ───────────────────────────────────────────────────────
+
+    public function test_the_employee_role_can_no_longer_be_given(): void
+    {
+        $this->assertArrayNotHasKey('employee', User::ROLES);
+
+        $admin = $this->admin();
+        $staff = $this->staff();
+
+        $this->actingAs($admin)->patch(route('users-roles.update', $staff), ['role' => 'employee'])
+            ->assertSessionHasErrors('role');
+
+        $this->assertSame(User::ROLE_STAFF, $staff->fresh()->role);
+
+        $this->actingAs($admin)->get(route('users-roles.index'))
+            ->assertOk()
+            ->assertSee('in 5 roles');
+    }
+
+    public function test_accounts_that_had_the_employee_role_are_kept_but_cannot_sign_in(): void
+    {
+        $worker = User::create([
+            'name' => 'Noel Garcia', 'username' => 'ngarcia', 'password' => Hash::make('secret123'),
+            'role' => 'employee', 'is_active' => true,
+        ]);
+
+        $migration = require database_path('migrations/2026_09_15_120000_retire_the_employee_role.php');
+        $migration->up();
+
+        $worker->refresh();
+        $this->assertSame(User::ROLE_STAFF, $worker->role, 'the account is kept, as Staff');
+        $this->assertFalse($worker->is_active, 'and it can no longer sign in');
+        $this->assertTrue(
+            AuditLog::where('description', 'like', 'Employee role retired%Noel Garcia%')->exists(),
+            'the change is written to the Audit Log'
+        );
+
+        $this->post(route('login.post'), ['username' => 'ngarcia', 'password' => 'secret123'])
+            ->assertSessionHasErrors('username');
+        $this->assertGuest();
+    }
+
     public function test_every_settings_tab_renders_the_new_hub_and_save_bar(): void
     {
         $admin = $this->admin();

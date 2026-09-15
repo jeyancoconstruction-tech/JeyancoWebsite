@@ -14,14 +14,29 @@
     {{-- Apply the theme BEFORE paint to prevent a flash of the wrong one. The
          fallback is the office's default from System Settings; a viewer who has
          used the toggle has their own choice in this browser, and it wins. --}}
+    {{-- 'system' is a preference, not a theme: it means whatever the device
+         is set to — Windows, macOS, a phone — and it follows the device when
+         that setting changes while the page is open. --}}
     <script>
         (function () {
             var fallback = @json($company?->default_theme ?? 'light');
-            try {
-                var stored = localStorage.getItem('jeyanco-theme');
-                document.documentElement.setAttribute('data-bs-theme', stored || fallback);
-            } catch (e) {
-                document.documentElement.setAttribute('data-bs-theme', fallback);
+            var html = document.documentElement;
+            var dark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+            window.jeyancoTheme = function (pref) {
+                if (pref === 'system') return dark && dark.matches ? 'dark' : 'light';
+                return pref === 'dark' ? 'dark' : 'light';
+            };
+            function preference() {
+                try { return localStorage.getItem('jeyanco-theme') || fallback; } catch (e) { return fallback; }
+            }
+
+            html.setAttribute('data-bs-theme', window.jeyancoTheme(preference()));
+
+            if (dark && dark.addEventListener) {
+                dark.addEventListener('change', function () {
+                    if (preference() === 'system') html.setAttribute('data-bs-theme', window.jeyancoTheme('system'));
+                });
             }
         })();
     </script>
@@ -34,7 +49,7 @@
             (function () {
                 var t = @json(session('force_theme'));
                 try { localStorage.setItem('jeyanco-theme', t); } catch (e) {}
-                document.documentElement.setAttribute('data-bs-theme', t);
+                document.documentElement.setAttribute('data-bs-theme', window.jeyancoTheme(t));
             })();
         </script>
     @endif
@@ -48,7 +63,7 @@
             (function () {
                 var picked = @json(session('theme_changed'));
                 try { localStorage.setItem('jeyanco-theme', picked); } catch (e) {}
-                document.documentElement.setAttribute('data-bs-theme', picked);
+                document.documentElement.setAttribute('data-bs-theme', window.jeyancoTheme(picked));
             })();
         </script>
     @endif
@@ -191,14 +206,8 @@
             <a class="nav-link {{ (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*')) && ! request()->is('payroll-processing*') && ! request()->is('payroll-reports*') && ! request()->is('payslips*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
             </a>
-            {{-- Payslips are off the office rail. The one account that needs them
-                 here is a worker's own: it has no payroll run to open them from,
-                 and without this it could not reach them at all. --}}
-            @if(auth()->user()?->role === \App\Models\User::ROLE_EMPLOYEE)
-                <a class="nav-link {{ request()->is('payslips*') ? 'active' : '' }}" href="{{ route('payslips.index') }}">
-                    <i data-lucide="file-text"></i> <span>{{ __('Payslips') }}</span>
-                </a>
-            @endif
+            {{-- Payslips are off the rail: they open from their payroll run.
+                 Workers have no web account — they use the kiosk. --}}
             {{-- Admin only, like the rest of the settings page it opens. It sits
                  under Payroll Records rather than in SYSTEM because that is what
                  it configures. --}}

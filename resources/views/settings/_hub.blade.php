@@ -35,7 +35,7 @@
     <span class="sx-label">System</span>
     <a class="st-item {{ $onAppearance ? 'on' : '' }}" href="{{ route('system-settings.appearance') }}">
         <span class="ic"><i data-lucide="palette"></i></span>
-        <span><span class="t">Appearance</span><span class="d">Opens in the {{ $system->default_theme === 'light' ? 'light' : 'dark' }} theme</span></span>
+        <span><span class="t">Appearance</span><span class="d">{{ match ($system->default_theme) { 'system' => 'Follows the device setting', 'light' => 'Opens in the light theme', default => 'Opens in the dark theme' } }}</span></span>
         @if($onAppearance)<span class="dirty" data-hub-dirty hidden></span>@endif
     </a>
     <a class="st-item {{ $onSecurity ? 'on' : '' }}" href="{{ route('system-settings.security') }}">

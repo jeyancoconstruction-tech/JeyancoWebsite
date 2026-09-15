@@ -11,8 +11,9 @@ use Tests\TestCase;
  * What the rail offers.
  *
  * Payroll Processing leads the Payroll group, above Payroll Records. Payslips
- * are off the office rail; a worker's own account keeps them, having no
- * payroll run to open them from.
+ * are off the rail for everyone: they open from their payroll run, and workers
+ * — who would have been the one reason to keep them there — have no web
+ * account at all. They use the kiosk.
  */
 class SidebarEntriesTest extends TestCase
 {
@@ -51,11 +52,14 @@ class SidebarEntriesTest extends TestCase
         }
     }
 
-    public function test_a_workers_own_account_keeps_payslips(): void
+    /** Workers use the kiosk; there is no web role to give them. */
+    public function test_workers_have_no_web_role_and_payslips_stay_off_every_rail(): void
     {
-        $rail = $this->rail($this->user(User::ROLE_EMPLOYEE, 'rail.worker'));
+        $this->assertArrayNotHasKey('employee', User::ROLES);
 
-        $this->assertStringContainsString(route('payslips.index'), $rail);
+        $rail = $this->rail($this->user(User::ROLE_HR, 'rail.hr'));
+
+        $this->assertStringNotContainsString(route('payslips.index'), $rail);
         $this->assertStringNotContainsString(route('payroll-processing.index'), $rail);
     }
 

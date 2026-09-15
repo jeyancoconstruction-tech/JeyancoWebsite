@@ -35,8 +35,10 @@ class User extends Authenticatable
     /** One site's crew: assignments, leave approval, devices. */
     public const ROLE_SUPERVISOR = 'site_supervisor';
 
-    /** A worker's own records only. */
-    public const ROLE_EMPLOYEE = 'employee';
+    // There is no role for a worker. Workers clock in and out at the kiosk
+    // and never sign in to the web; the Employee role that once gave them a
+    // login was retired, and its accounts deactivated, by the
+    // 2026_09_15_120000 migration.
 
     /** Roles the Admin may assign, with their human labels. */
     public const ROLES = [
@@ -45,7 +47,6 @@ class User extends Authenticatable
         self::ROLE_PAYROLL    => 'Payroll Officer',
         self::ROLE_HR         => 'HR',
         self::ROLE_SUPERVISOR => 'Site Supervisor',
-        self::ROLE_EMPLOYEE   => 'Employee',
     ];
 
     /**

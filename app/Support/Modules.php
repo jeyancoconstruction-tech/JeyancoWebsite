@@ -55,11 +55,7 @@ final class Modules
             self::LEAVE, self::ASSIGNMENTS, self::DEVICES,
         ],
 
-        // Sees their own records only. The controllers narrow the query; this
-        // just decides which doors open at all.
-        User::ROLE_EMPLOYEE => [
-            self::LEAVE, self::PAYSLIPS,
-        ],
+        // No worker role: workers use the kiosk, not the web.
     ];
 
     /** Modules only an Admin ever opens, whatever the matrix says. */
