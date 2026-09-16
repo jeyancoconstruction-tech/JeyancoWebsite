@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Setting;
 use App\Models\Holiday;
+use App\Models\LeaveRequest;
 use App\Models\Loan;
 use App\Models\PayrollRate;
 use App\Models\Bonus;
@@ -285,10 +286,13 @@ class PayrollService
                     continue;
                 }
 
+                // Not $from: that is the range this whole call was asked for,
+                // and overwriting it here left everything below working off a
+                // clock time instead of a date.
                 [$in, $out] = WorkSchedule::stretch($rec->time_in, $rec->time_out, $date);
-                $from = WorkSchedule::paidFrom($sched, $in, $date,
+                $paidFrom = WorkSchedule::paidFrom($sched, $in, $date,
                     WorkSchedule::sessionOf($sched, $rec->session, $in), isset($cfg['firstInSession'][$rec->id]));
-                $used += (int) round(WorkSchedule::split($sched, $from, $out, $date, $used)['regular'] * 60);
+                $used += (int) round(WorkSchedule::split($sched, $paidFrom, $out, $date, $used)['regular'] * 60);
             }
         }
 
@@ -322,6 +326,20 @@ class PayrollService
         // entered, so both land on the one advance line.
         $cfg['cashAdvances'] = $advancesTo === null ? [] : Loan::upTo($advancesTo);
 
+        // Approved leave touching the range. A paid day off is wages, so it
+        // belongs in the figures every screen reads, not only in a payroll
+        // run — and a worker on leave for a whole week has to appear at all,
+        // which is why it is loaded for the range asked for rather than for
+        // the days somebody happened to clock in on.
+        $cfg['leave'] = $from && $to
+            ? LeaveRequest::approved()
+                ->overlapping($from, $to)
+                ->whereHas('employee', fn ($q) => $q->registered())
+                ->with('employee.laborType', 'employee.shift')
+                ->get()
+                ->groupBy('employee_id')
+            : collect();
+
         $weeks = $this->groupByWeek($records, $cfg);
 
         return [
@@ -329,6 +347,38 @@ class PayrollService
             'days'      => $this->groupByDay($records, $cfg),
             'employees' => $this->pivotByEmployee($weeks),
         ];
+    }
+
+    /**
+     * What one day of this worker's is priced at.
+     *
+     * Read off a day the week already priced where there is one, so a leave
+     * day and a worked day in the same week are never worth different
+     * amounts. With no day to read — a week that is nothing but leave — it is
+     * worked out the way computeRecord() works it out: the labour type's
+     * daily rate, raised to the wage order's floor when the type is behind
+     * it, and the stored hourly rate over a standard day only when there is
+     * no labour type at all.
+     *
+     * @param  float  $priced  the rate the week already priced a day at, or 0
+     */
+    private function dayRateOf($employee, array $rates, float $priced = 0.0): float
+    {
+        if ($priced > 0) {
+            return $priced;
+        }
+
+        $configured = $employee->laborType?->daily_rate;
+        $schedule   = $employee->shift?->schedule();
+        $standard   = $schedule && WorkSchedule::has($schedule) ? max(1.0, WorkSchedule::paidHours($schedule)) : 8.0;
+
+        $daily = $configured !== null
+            ? (float) $configured
+            : ((float) ($employee->rate_per_hour ?? 0)) * $standard;
+
+        $floor = $rates['daily_rate'] ?? null;
+
+        return $floor !== null && (float) $floor > $daily ? (float) $floor : $daily;
     }
 
     /** Hours as a whole number of minutes, without the float noise of adding them up. */
@@ -716,6 +766,7 @@ class PayrollService
                 $sumVale = $sumManual = $sumNet = 0;
                 $sumLate = 0;
                 $empDates = [];
+                $pricedDaily = 0.0;
 
                 foreach ($empWeekRecords as $rec) {
                     if (!$rec->employee) continue;
@@ -724,6 +775,7 @@ class PayrollService
                         $empDates[] = Carbon::parse($rec->date)->toDateString();
                     }
                     $r = $this->computeRecord($rec, $cfg);
+                    $pricedDaily = $pricedDaily ?: (float) ($r["dailyRate"] ?? 0);
 
                     $sumHours    += $r['hours'];
                     $sumGross    += $r['gross'];
@@ -743,6 +795,28 @@ class PayrollService
                 }
 
                 if ($employee) {
+                    // Approved leave landing in this week. Paid leave is
+                    // wages: it is credited at the rate the week priced a
+                    // worked day at — which the engine has already raised to
+                    // the wage order's floor — so a day off is never worth
+                    // less than a day on, and never less than the minimum.
+                    // Unpaid leave is counted but pays nothing.
+                    $leaveDays = $paidLeaveDays = 0.0;
+
+                    foreach (($cfg['leave'][$empId] ?? []) as $filed) {
+                        $d = $filed->daysWithin($weekOpens, $weekCloses);
+                        $leaveDays += $d;
+                        $paidLeaveDays += $filed->is_paid ? $d : 0;
+                    }
+
+                    $leavePay = round($paidLeaveDays * $this->dayRateOf($employee, $weekRates, $pricedDaily), 2);
+
+                    // Into the gross, so it is taxed and remitted on like any
+                    // other wage, and into the net the worker is handed. The
+                    // statutory splits come off the days worked, as they did.
+                    $sumGross += $leavePay;
+                    $sumNet   += $leavePay;
+
                     // Cash advances being collected this period. The vale
                     // summed above came off the days themselves; this is the
                     // instalment on a sum already handed over, so it is a
@@ -807,6 +881,8 @@ class PayrollService
                         'holidayPay'          => round($sumHoliday, 2),
                         'restDayPay'          => round($sumRestDay, 2),
                         'nightDiffPay'        => round($sumNightDiff, 2),
+                        'leaveDays'           => round($leaveDays, 2),
+                        'leavePay'            => round($leavePay, 2),
                         'bonus'               => round($empBonus, 2),
                         'sssDeduction'        => round($sumSss, 2),
                         'philhealthDeduction' => round($sumPhil, 2),
@@ -824,6 +900,56 @@ class PayrollService
 
                     $weeklyTotalSalary += $sumNet;
                 }
+            }
+
+            // A worker on leave for the whole week has no attendance to group,
+            // so nothing above reaches them — and a paid week off still has to
+            // be paid. Their row is the leave and every other figure zero, so
+            // they appear in Payroll Records where the office expects them
+            // rather than vanishing from the week they were signed off for.
+            foreach (($cfg['leave'] ?? []) as $leaveEmpId => $filed) {
+                if ($employeeGroups->has($leaveEmpId)) {
+                    continue;
+                }
+
+                $onLeave = $filed->first()?->employee;
+
+                if (! $onLeave) {
+                    continue;
+                }
+
+                $days = $paidDays = 0.0;
+
+                foreach ($filed as $row) {
+                    $d = $row->daysWithin($weekOpens, $weekCloses);
+                    $days += $d;
+                    $paidDays += $row->is_paid ? $d : 0;
+                }
+
+                if ($days <= 0) {
+                    continue;
+                }
+
+                $pay = round($paidDays * $this->dayRateOf($onLeave, $weekRates), 2);
+
+                $employeeSummaries[] = [
+                    'employee_id'  => (int) $leaveEmpId,
+                    'shift'        => $onLeave->shift?->name,
+                    'name'         => $onLeave->name,
+                    'position'     => $onLeave->position ?? '',
+                    'leaveDays'    => round($days, 2),
+                    'leavePay'     => $pay,
+                    'gross'        => $pay,
+                    'net'          => $pay,
+                ] + array_fill_keys([
+                    'workdays', 'hours', 'minutes', 'overtime', 'holidayPay', 'restDayPay',
+                    'nightDiffPay', 'bonus', 'sssDeduction', 'philhealthDeduction',
+                    'pagibigDeduction', 'withholdingTax', 'autoDeductions', 'late_minutes',
+                    'vale', 'vale_advance', 'vale_advance_due', 'manualDeductions',
+                    'totalDeductions',
+                ], 0);
+
+                $weeklyTotalSalary += $pay;
             }
 
             $payrollWeeks[] = [
@@ -931,6 +1057,8 @@ class PayrollService
                             'holidayPay'      => 0,
                             'restDayPay'      => 0,
                             'nightDiffPay'    => 0,
+                            'leaveDays'       => 0,
+                            'leavePay'        => 0,
                             'bonus'           => 0,
                             'totalDeductions' => 0,
                             'net'             => 0,
@@ -950,6 +1078,8 @@ class PayrollService
                 $employees[$id]['totals']['holidayPay']      += $d['holidayPay'];
                 $employees[$id]['totals']['restDayPay']      += $d['restDayPay'];
                 $employees[$id]['totals']['nightDiffPay']    += $d['nightDiffPay'];
+                $employees[$id]['totals']['leaveDays']       += $d['leaveDays'] ?? 0;
+                $employees[$id]['totals']['leavePay']        += $d['leavePay'] ?? 0;
                 $employees[$id]['totals']['bonus']           += $d['bonus'];
                 $employees[$id]['totals']['totalDeductions'] += $d['totalDeductions'];
                 $employees[$id]['totals']['net']             += $d['net'];

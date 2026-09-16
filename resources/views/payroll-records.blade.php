@@ -390,6 +390,7 @@
                                     <div class="ln"><span class="k" id="rcNightK">{{ __('Night differential') }}</span><span class="v" id="rcNight">&mdash;</span></div>
                                     <div class="ln"><span class="k" id="rcHolidayK">{{ __('Holiday pay') }}</span><span class="v" id="rcHoliday">&mdash;</span></div>
                                     <div class="ln"><span class="k" id="rcRestK">{{ __('Rest day pay') }}</span><span class="v" id="rcRest">&mdash;</span></div>
+                                    <div class="ln"><span class="k" id="rcLeaveK">{{ __('Paid leave') }}</span><span class="v" id="rcLeave">&mdash;</span></div>
                                     <div class="ln sum"><span class="k">{{ __('Gross pay') }}</span><span class="v" id="rcGross">&mdash;</span></div>
                                 </div>
                                 <div>
@@ -534,10 +535,13 @@
             $other += $pp['manualDeductions'];
         }
 
-        // Gross is basic + overtime + holiday + rest day + night differential.
-        // The bonus is added to net, not to gross, so it is not subtracted here.
+        // Gross is basic + overtime + holiday + rest day + night differential
+        // + paid leave. The bonus is added to net, not to gross, so it is not
+        // subtracted here; the leave is, because a day off is not regular pay
+        // and gets a line of its own.
         $regular = round($t['gross'] - $t['overtime'] - $t['holidayPay']
-                       - ($t['restDayPay'] ?? 0) - ($t['nightDiffPay'] ?? 0), 2);
+                       - ($t['restDayPay'] ?? 0) - ($t['nightDiffPay'] ?? 0)
+                       - ($t['leavePay'] ?? 0), 2);
 
         $slipMap[(string) $emp['employee_id']] = [
             'name'      => $emp['name'],
@@ -548,6 +552,8 @@
             'regular'   => $regular,
             'overtime'  => $t['overtime'],
             'night'     => $t['nightDiffPay'] ?? 0,
+            'leave'     => $t['leavePay'] ?? 0,
+            'leaveDays' => $t['leaveDays'] ?? 0,
             'holiday'   => $t['holidayPay'],
             'rest'      => $t['restDayPay'] ?? 0,
             'bonus'     => $t['bonus'],
@@ -632,6 +638,11 @@
         set('rcNight',   money(s.night));
         set('rcHoliday', money(s.holiday));
         set('rcRest',    money(s.rest));
+        // Approved leave that was filed as paid, credited at the day rate.
+        set('rcLeaveK', Number(s.leaveDays) > 0
+            ? 'Paid leave (' + (Math.round(Number(s.leaveDays) * 100) / 100) + 'd)'
+            : 'Paid leave');
+        set('rcLeave',   money(s.leave));
         set('rcGross',   money(s.gross));
 
         set('rcSss',   money(s.sss));

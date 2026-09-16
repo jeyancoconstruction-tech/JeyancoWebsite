@@ -496,6 +496,7 @@ class PayrollProcessingController extends Controller
         $night   = (float) ($t['nightDiffPay'] ?? 0);
         $holiday = (float) ($t['holidayPay'] ?? 0);
         $rest    = (float) ($t['restDayPay'] ?? 0);
+        $leave   = (float) ($t['leavePay'] ?? 0);
         $rate    = $priced ?? $this->rateOf($employee);
 
         return array_merge($this->blank((int) $e['employee_id'], (string) $e['name'], $employee), [
@@ -508,9 +509,11 @@ class PayrollProcessingController extends Controller
             'regular_minutes'  => $minutes - $otMins,
             'late_minutes'     => (int) $weeks->sum('late_minutes'),
 
-            // Regular pay is the gross less every premium in it, as the
-            // receipt works it out.
-            'basic'            => round($gross - $otPay - $holiday - $rest - $night, 2),
+            // Regular pay is the gross less every premium in it, and less the
+            // paid leave, which is a day not worked and has its own line.
+            'basic'            => round($gross - $otPay - $holiday - $rest - $night - $leave, 2),
+            'leave'            => $leave,
+            'leave_days'       => (float) ($t['leaveDays'] ?? 0),
             'overtime'         => $otPay,
             // What an hour of overtime actually paid, so the line can say so
             // without re-deriving a multiplier that may have changed mid-week.
@@ -589,8 +592,8 @@ class PayrollProcessingController extends Controller
         + array_fill_keys(['minutes', 'ot_minutes', 'regular_minutes', 'late_minutes'], 0)
         + array_fill_keys([
             'daily_rate', 'hourly_rate', 'days', 'basic', 'overtime', 'ot_rate', 'night', 'holiday', 'rest',
-            'bonus', 'sss', 'philhealth', 'pagibig', 'tax', 'vale', 'advance', 'other_deductions',
-            'gross', 'deductions', 'net',
+            'leave', 'leave_days', 'bonus', 'sss', 'philhealth', 'pagibig', 'tax', 'vale', 'advance',
+            'other_deductions', 'gross', 'deductions', 'net',
         ], 0.0);
     }
 
@@ -692,6 +695,10 @@ class PayrollProcessingController extends Controller
                     WorkSchedule::duration($s['regular_minutes']) . ' × ' . $peso($s['hourly_rate']) . '/hr', $s['basic']),
                 $line('Overtime', 'ti-clock-plus', $s['ot_minutes'] > 0
                     ? WorkSchedule::duration($s['ot_minutes']) . ' at ' . $peso($s['ot_rate']) . '/hr' : null, $s['overtime']),
+                $line('Paid leave', 'ti-beach', $s['leave_days'] > 0
+                    ? rtrim(rtrim(number_format($s['leave_days'], 2), '0'), '.') . ' day'
+                        . ($s['leave_days'] == 1 ? '' : 's') . ' at ' . $peso($s['daily_rate']) . '/day'
+                    : null, $s['leave']),
                 $line('Night differential', 'ti-moon', '10 PM – 6 AM premium', $s['night']),
                 $line('Holiday pay', 'ti-calendar-star', 'Holiday premium', $s['holiday']),
                 $line('Rest day pay', 'ti-armchair', 'Rest day premium', $s['rest']),
@@ -729,6 +736,8 @@ class PayrollProcessingController extends Controller
                           . ($s['late_minutes'] > 0 ? ' · ' . $s['late_minutes'] . 'm late' : ''),
             'earn'       => [
                 ['Regular pay (' . $days . 'd)', $s['basic']],
+                ['Paid leave' . ($s['leave_days'] > 0
+                    ? ' (' . rtrim(rtrim(number_format($s['leave_days'], 2), '0'), '.') . 'd)' : ''), $s['leave']],
                 ['Overtime (' . $x($rates['ot_multiplier'] ?? 0) . ')', $s['overtime']],
                 ['Night differential (' . $x($rates['night_diff_multiplier'] ?? 0) . ')', $s['night']],
                 ['Holiday pay (' . $x($rates['regular_holiday_multiplier'] ?? 0) . ')', $s['holiday']],
