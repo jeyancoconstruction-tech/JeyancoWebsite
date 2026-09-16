@@ -43,12 +43,18 @@ html[data-bs-theme="dark"] .pp {
 .pp .pp-head h1 { font-size: 21px !important; font-weight: 600 !important; letter-spacing: -.01em !important; line-height: 1.3; color: var(--pp-txt); }
 .pp-head p { font-size: 13px; color: var(--pp-txt-2); margin-top: 4px; }
 
-/* Layout */
-.pp-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 18px; align-items: start; }
+/* The bar every step carries: the period, and the search where there is a
+   list to search. */
+.pp-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.pp-bar .pp-field { min-width: 220px; margin: 0; }
+.pp-bar .pp-field.grow { flex: 1; min-width: 240px; max-width: 420px; }
 
-/* Picker */
-.pp-picker { background: var(--pp-panel); border: var(--pp-bw) solid var(--pp-line); border-radius: var(--pp-radius); overflow: hidden; position: sticky; top: 16px; }
-.pp-top { padding: 12px; border-bottom: var(--pp-bw) solid var(--pp-line); display: flex; flex-direction: column; gap: 8px; margin: 0; }
+/* Back to the step before */
+.pp-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--pp-txt-2); margin-bottom: 12px; }
+.pp-back:hover { color: var(--pp-accent-txt); }
+.pp-back i { font-size: 15px; }
+
+/* Fields */
 .pp-field { display: flex; align-items: center; gap: 8px; background: var(--pp-panel-2); border: var(--pp-bw) solid var(--pp-line-2); border-radius: 9px; padding: 0 10px; height: 36px; margin: 0; transition: border-color .15s, box-shadow .15s; }
 .pp-field:focus-within { border-color: var(--pp-accent); box-shadow: 0 0 0 3px var(--pp-accent-soft); }
 .pp-field i { font-size: 15px; color: var(--pp-txt-3); }
@@ -56,22 +62,29 @@ html[data-bs-theme="dark"] .pp {
 .pp-field select { cursor: pointer; }
 .pp-field select option, .pp-field select optgroup { background: var(--pp-panel); color: var(--pp-txt); }
 .pp-field input::placeholder { color: var(--pp-txt-3); }
-.pp-plist { max-height: 540px; overflow-y: auto; position: relative; }
-.pp-pitem { width: 100%; border-left: 3px solid transparent; padding: 11px 14px; display: flex; align-items: center; gap: 10px; color: inherit; transition: background .12s; }
-.pp-pitem:hover { background: var(--pp-panel-2); color: inherit; }
-.pp-pitem.sel { background: var(--pp-accent-soft); border-left-color: var(--pp-accent); }
-.pp-av { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+/* Step two: who for — one card per worker on the roster. */
+.pp-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.pp-pitem { display: flex; align-items: center; gap: 11px; background: var(--pp-panel); border: var(--pp-bw) solid var(--pp-line); border-radius: var(--pp-radius); padding: 13px 14px; color: var(--pp-txt); transition: border-color .18s, transform .18s; }
+.pp-pitem:hover { border-color: var(--pp-accent); transform: translateY(-2px); color: var(--pp-txt); }
+.pp-av { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
 .pp-pmain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.pp-nm { font-size: 13px; font-weight: 500; color: var(--pp-txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-nm { font-size: 13.5px; font-weight: 500; color: var(--pp-txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pp-mt { font-size: 11px; color: var(--pp-txt-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-chev { margin-left: auto; color: var(--pp-accent); font-size: 16px; opacity: 0; }
-.pp-pitem.sel .pp-chev { opacity: 1; }
+.pp-pfig { text-align: right; white-space: nowrap; flex-shrink: 0; }
+.pp-pfig .v { font-size: 13.5px; font-weight: 600; }
+.pp-pfig .k { display: block; font-size: 10.5px; color: var(--pp-txt-3); letter-spacing: .03em; text-transform: uppercase; }
+.pp-chev { color: var(--pp-txt-3); font-size: 16px; flex-shrink: 0; }
+.pp-pitem:hover .pp-chev { color: var(--pp-accent); }
 .pp-pitem.idle .pp-nm { color: var(--pp-txt-2); }
 .pp-pitem.idle .pp-av { opacity: .55; }
-.pp-pnone, .pp-pempty { padding: 24px; text-align: center; color: var(--pp-txt-3); font-size: 13px; }
+.pp-pnone, .pp-pempty { grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--pp-txt-3); font-size: 13px; }
 
-/* Right panel */
+/* Step three: the function itself, and the way across to the other two. */
 .pp-rpanel { min-width: 0; }
+.pp-switch { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.pp-sw { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 9px; border: var(--pp-bw) solid var(--pp-line); background: var(--pp-panel); color: var(--pp-txt-2); font-size: 12.5px; font-weight: 500; }
+.pp-sw:hover { border-color: var(--pp-line-2); color: var(--pp-txt); }
+.pp-sw.on { background: var(--pp-accent-soft); border-color: var(--pp-accent); color: var(--pp-accent-txt); }
 .pp-emp { display: flex; align-items: center; gap: 14px; background: var(--pp-panel); border: var(--pp-bw) solid var(--pp-line); border-radius: var(--pp-radius); padding: 16px 18px; margin-bottom: 16px; flex-wrap: wrap; }
 .pp-big-av { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; flex-shrink: 0; }
 .pp-info { flex: 1; min-width: 0; }
@@ -85,15 +98,22 @@ html[data-bs-theme="dark"] .pp {
 .pp-menu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 .pp-mtab { position: relative; display: block; background: var(--pp-panel); border: var(--pp-bw) solid var(--pp-line); border-radius: var(--pp-radius); padding: 16px; color: var(--pp-txt); overflow: hidden; transition: border-color .18s, transform .18s, background .18s; }
 .pp-mtab:hover { border-color: var(--pp-line-2); transform: translateY(-2px); color: var(--pp-txt); }
-.pp-mtab.on { border-color: var(--pp-accent); background: linear-gradient(180deg, var(--pp-accent-soft), transparent) var(--pp-panel); }
 .pp-mi { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px; }
 .pp-mtitle { display: block; font-size: 14px; font-weight: 600; }
 .pp-md { display: block; font-size: 12px; color: var(--pp-txt-2); margin-top: 3px; line-height: 1.45; }
-.pp-go { position: absolute; top: 16px; right: 16px; color: var(--pp-accent); font-size: 18px; opacity: 0; transition: opacity .18s; }
-.pp-mtab.on .pp-go, .pp-mtab:hover .pp-go { opacity: 1; }
 .pp-i-blue  { background: var(--pp-accent-soft); color: var(--pp-accent-txt); }
 .pp-i-amber { background: var(--pp-amber-soft);  color: var(--pp-amber-txt); }
 .pp-i-green { background: var(--pp-green-soft);  color: var(--pp-green-txt); }
+
+/* The same three cards, opening the page rather than switching a pane */
+.pp-menu.lg { margin-bottom: 0; }
+.pp-menu.lg .pp-mtab { padding: 22px; }
+.pp-menu.lg .pp-mi { width: 46px; height: 46px; font-size: 24px; }
+.pp-menu.lg .pp-mtitle { font-size: 16px; }
+.pp-stat { display: flex; align-items: center; gap: 7px; margin-top: 16px; padding-top: 13px; border-top: var(--pp-bw) solid var(--pp-line); font-size: 12px; color: var(--pp-txt-2); }
+.pp-stat b { color: var(--pp-txt); font-weight: 600; }
+.pp-stat i { font-size: 14px; color: var(--pp-txt-3); }
+.pp-cta { display: inline-flex; align-items: center; gap: 5px; margin-top: 12px; font-size: 12.5px; font-weight: 500; color: var(--pp-accent-txt); }
 
 /* A view */
 .pp-view { background: var(--pp-panel); border: var(--pp-bw) solid var(--pp-line); border-radius: var(--pp-radius); overflow: hidden; }
@@ -224,8 +244,6 @@ html[data-bs-theme="dark"] .pp {
 .rc-math span { color: var(--text-secondary); }
 .rc-math b    { color: var(--text-primary); font-weight: 700; white-space: nowrap; }
 
-.pp-placeholder { background: var(--pp-panel); border: var(--pp-bw) dashed var(--pp-line-2); border-radius: var(--pp-radius); padding: 64px 24px; text-align: center; color: var(--pp-txt-3); }
-.pp-placeholder i { font-size: 36px; opacity: .5; display: block; margin-bottom: 12px; }
 
 @media (max-width: 1100px) {
     .pp-flow, .pp-flow.has-bonus { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -233,9 +251,7 @@ html[data-bs-theme="dark"] .pp {
     .pp-stage.is-net { grid-column: 1 / -1; }
 }
 @media (max-width: 860px) {
-    .pp-layout { grid-template-columns: 1fr; }
-    .pp-picker { position: static; }
-    .pp-plist { max-height: 300px; }
+    .pp-people { grid-template-columns: 1fr; }
     .pp-menu, .pp-wf { grid-template-columns: 1fr; }
     .pp-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -252,315 +268,394 @@ html[data-bs-theme="dark"] .pp {
 
 @section('content')
 @php
-    $peso  = fn ($n) => '₱' . number_format((float) $n, 2);
-    $dur   = fn ($m) => \App\Support\WorkSchedule::duration($m);
+    $peso = fn ($n) => '₱' . number_format((float) $n, 2);
+    $dur  = fn ($m) => \App\Support\WorkSchedule::duration($m);
+
+    // The three things this page does. One is chosen first, then the worker to
+    // do it for — the same two steps whichever of them it is.
     $views = [
-        'workflow' => ['Salary computation', 'Earnings, deductions, and net pay breakdown.', 'ti-calculator', 'pp-i-blue'],
-        'tracker'  => ['Remittance tracker', 'Deduction status per agency — SSS, PhilHealth, Pag-IBIG, BIR.', 'ti-transfer-out', 'pp-i-amber'],
-        'payslip'  => ['View payslip', 'Printable official payslip for this period.', 'ti-file-text', 'pp-i-green'],
+        'workflow' => ['Salary computation', 'Earnings, deductions, contributions, and final net pay.', 'ti-calculator', 'pp-i-blue'],
+        'tracker'  => ['Remittance tracker', 'Deductions and contributions, and where each has got to.', 'ti-transfer-out', 'pp-i-amber'],
+        'payslip'  => ['View payslip', 'The generated payslip for the period, ready to print.', 'ti-file-text', 'pp-i-green'],
     ];
-    $here = fn (array $q = []) => route('payroll-processing.index', array_merge([
-        'period' => $period['key'], 'employee' => $sel['employee_id'] ?? null, 'view' => $view,
-    ], $q));
+
+    $url  = fn (array $q = []) => route('payroll-processing.index', array_merge(['period' => $period['key']], $q));
+    $paid = $rows->where('worked', true);
 @endphp
 <div class="pp" id="ppRoot">
 
     <div class="pp-head pp-anim" style="animation-delay:.02s">
-        <div class="pp-crumb">Jeyanco / Payroll / <b>Payroll processing</b></div>
-        <h1>Payroll processing</h1>
-        <p>Select an employee, then choose what to view — salary computation, remittance tracker, or payslip.</p>
+        <div class="pp-crumb">
+            Jeyanco / Payroll /
+            @if($step === 'options')
+                <b>Payroll processing</b>
+            @else
+                <a href="{{ $url() }}">Payroll processing</a> /
+                @if($step === 'detail')
+                    <a href="{{ $url(['view' => $view]) }}">{{ $views[$view][0] }}</a> / <b>{{ $sel['name'] }}</b>
+                @else
+                    <b>{{ $views[$view][0] }}</b>
+                @endif
+            @endif
+        </div>
+        <h1>{{ $step === 'options' ? 'Payroll processing' : $views[$view][0] }}</h1>
+        <p>
+            @if($step === 'options')
+                Choose what to do, then the employee to do it for. Every figure is the one Payroll Records shows, on the rules set in Payroll Settings.
+            @elseif($step === 'people')
+                Select an employee to open their {{ mb_strtolower($views[$view][0]) }} for {{ $period['span'] }}.
+            @else
+                {{ $sel['name'] }} &middot; {{ $period['span'] }}
+            @endif
+        </p>
     </div>
 
-    <div class="pp-layout pp-anim" style="animation-delay:.06s">
-        <aside class="pp-picker">
-            {{-- A real form, so a period can be picked with scripting off. --}}
-            <form class="pp-top" method="GET" action="{{ route('payroll-processing.index') }}">
-                <label class="pp-field">
-                    <i class="ti ti-search"></i>
-                    <input id="ppSearch" type="search" placeholder="Search employee or ID" autocomplete="off" aria-label="Search employee or ID">
-                </label>
-                <label class="pp-field">
-                    <i class="ti ti-calendar"></i>
-                    <select name="period" id="ppPeriod" aria-label="Pay period">
-                        @foreach(collect($periods)->groupBy('group') as $group => $list)
-                            <optgroup label="{{ $group }}">
-                                @foreach($list as $p)
-                                    <option value="{{ $p['key'] }}" @selected($p['key'] === $period['key'])>{{ $p['label'] }}</option>
-                                @endforeach
-                            </optgroup>
+    {{-- A real form, so a period can be picked with scripting off. It keeps
+         whatever step the page is on rather than starting it over. --}}
+    <form class="pp-bar pp-anim" style="animation-delay:.05s" method="GET" action="{{ route('payroll-processing.index') }}">
+        @if($view)<input type="hidden" name="view" value="{{ $view }}">@endif
+        @if($step === 'detail')<input type="hidden" name="employee" value="{{ $sel['employee_id'] }}">@endif
+        <label class="pp-field">
+            <i class="ti ti-calendar"></i>
+            <select name="period" id="ppPeriod" aria-label="Pay period">
+                @foreach(collect($periods)->groupBy('group') as $group => $list)
+                    <optgroup label="{{ $group }}">
+                        @foreach($list as $p)
+                            <option value="{{ $p['key'] }}" @selected($p['key'] === $period['key'])>{{ $p['label'] }}</option>
                         @endforeach
-                    </select>
-                </label>
-                <input type="hidden" name="view" value="{{ $view }}">
-                <noscript><button class="pp-btn sm" type="submit">Show period</button></noscript>
-            </form>
+                    </optgroup>
+                @endforeach
+            </select>
+        </label>
+        @if($step === 'people')
+            <label class="pp-field grow">
+                <i class="ti ti-search"></i>
+                <input id="ppSearch" type="search" placeholder="Search employee or ID" autocomplete="off" aria-label="Search employee or ID">
+            </label>
+        @endif
+        <noscript><button class="pp-btn sm" type="submit">Show period</button></noscript>
+    </form>
 
-            <div class="pp-plist" id="ppList">
+    @if($step === 'options')
+        {{-- ── Step one: what to do ───────────────────────────────────────
+             What each card says about the period is counted off the same
+             figures the next two steps show, so the summary cannot disagree
+             with what opens underneath it. --}}
+        @php
+            $settle = $pending['total'];
+            $ready  = $paid->count();
+            $stats  = [
+                'workflow' => ['ti-users', $ready . ' of ' . $rows->count() . ' with pay this period'],
+                'tracker'  => ['ti-clock', $settle > 0
+                    ? $settle . ' line' . ($settle === 1 ? '' : 's') . ' still to settle'
+                    : 'Nothing outstanding'],
+                'payslip'  => ['ti-file-text', $ready . ' payslip' . ($ready === 1 ? '' : 's') . ' ready'],
+            ];
+        @endphp
+        <nav class="pp-menu lg pp-anim" style="animation-delay:.1s" aria-label="What to do">
+            @foreach($views as $key => [$title, $desc, $icon, $tone])
+                <a class="pp-mtab" href="{{ $url(['view' => $key]) }}">
+                    <span class="pp-mi {{ $tone }}"><i class="ti {{ $icon }}"></i></span>
+                    <span class="pp-mtitle">{{ $title }}</span>
+                    <span class="pp-md">{{ $desc }}</span>
+                    <span class="pp-stat"><i class="ti {{ $stats[$key][0] }}"></i><b>{{ $stats[$key][1] }}</b></span>
+                    <span class="pp-cta">Choose an employee <i class="ti ti-arrow-right"></i></span>
+                </a>
+            @endforeach
+        </nav>
+
+    @elseif($step === 'people')
+        {{-- ── Step two: who for ──────────────────────────────────────────
+             The whole active roster, as before: a worker with no attendance
+             is somebody the office comes here to look for, and "nothing this
+             week" is an answer. --}}
+        <div class="pp-anim" style="animation-delay:.1s">
+            <a class="pp-back" href="{{ $url() }}"><i class="ti ti-arrow-left"></i>All options</a>
+
+            <div class="pp-people" id="ppList">
                 @foreach($rows as $r)
-                    <a class="pp-pitem {{ $sel && $sel['employee_id'] === $r['employee_id'] ? 'sel' : '' }} {{ $r['worked'] ? '' : 'idle' }}"
-                       href="{{ $here(['employee' => $r['employee_id']]) }}"
-                       data-name="{{ mb_strtolower($r['name'] . ' ' . $r['code']) }}"
-                       @if($sel && $sel['employee_id'] === $r['employee_id']) aria-current="true" @endif>
+                    @php $open = $pending['by'][$r['employee_id']] ?? 0; @endphp
+                    <a class="pp-pitem {{ $r['worked'] ? '' : 'idle' }}"
+                       href="{{ $url(['view' => $view, 'employee' => $r['employee_id']]) }}"
+                       data-name="{{ mb_strtolower($r['name'] . ' ' . $r['code']) }}">
                         <span class="pp-av" style="background:{{ $r['color'] }}22;color:{{ $r['color'] }}">{{ $r['initial'] }}</span>
                         <span class="pp-pmain">
                             <span class="pp-nm">{{ $r['name'] }}</span>
                             <span class="pp-mt">{{ $r['code'] }} · {{ $r['labor'] }}@if($r['on_clock']) · <span class="pp-live">on the clock</span>@elseif(! $r['worked']) · no attendance @endif</span>
                         </span>
+                        <span class="pp-pfig">
+                            @if($view === 'tracker')
+                                @if($open > 0)
+                                    <span class="pp-badge pp-b-amber"><i class="ti ti-clock"></i>{{ $open }} pending</span>
+                                @elseif($r['worked'])
+                                    <span class="pp-badge pp-b-green"><i class="ti ti-circle-check"></i>All settled</span>
+                                @else
+                                    <span class="pp-badge pp-b-muted"><i class="ti ti-minus"></i>Nothing due</span>
+                                @endif
+                            @else
+                                <span class="v">{{ $peso($r['net']) }}</span>
+                                <span class="k">Net pay</span>
+                            @endif
+                        </span>
                         <i class="ti ti-chevron-right pp-chev"></i>
                     </a>
                 @endforeach
                 @if($rows->isEmpty())
-                    <div class="pp-pempty">No attendance in this period.</div>
+                    <div class="pp-pempty">Nobody is on the payroll for {{ $period['span'] }}.</div>
                 @endif
             </div>
             <div class="pp-pnone" id="ppNone" hidden>No employee found.</div>
-        </aside>
+        </div>
 
-        <section class="pp-rpanel">
-            @if(! $sel)
-                <div class="pp-placeholder">
-                    <i class="ti ti-user-search"></i>
-                    Nobody worked in {{ $period['span'] }}, so there is no payroll to process for it. Pick another period on the left.
-                </div>
-            @else
-                <div class="pp-emp">
-                    <div class="pp-big-av" style="background:{{ $sel['color'] }}22;color:{{ $sel['color'] }}">{{ $sel['initial'] }}</div>
-                    <div class="pp-info">
-                        <div class="pp-n">{{ $sel['name'] }}</div>
-                        <div class="pp-s">
-                            <span><i class="ti ti-id"></i>{{ $sel['code'] }}</span>
-                            <span><i class="ti ti-briefcase"></i>{{ $sel['labor'] }}</span>
-                            @if($sel['site'])<span><i class="ti ti-map-pin"></i>{{ $sel['site'] }}</span>@endif
-                            <span><i class="ti ti-cash"></i>{{ $peso($sel['hourly_rate']) }}/hr</span>
-                        </div>
-                    </div>
-                    <div class="pp-per"><i class="ti ti-calendar-event"></i>{{ $period['span'] }}</div>
-                </div>
+    @else
+        {{-- ── Step three: the function, for that one worker ──────────────
+             The three panes below are unchanged; exactly the one that was
+             chosen is shown, and the switch above moves between them without
+             going back through the list. --}}
+        <section class="pp-rpanel pp-anim" style="animation-delay:.1s">
+            <a class="pp-back" href="{{ $url(['view' => $view]) }}"><i class="ti ti-arrow-left"></i>All employees &middot; {{ $views[$view][0] }}</a>
 
-                <nav class="pp-menu" aria-label="What to view">
-                    @foreach($views as $key => [$title, $desc, $icon, $tone])
-                        <a class="pp-mtab {{ $view === $key ? 'on' : '' }}" data-v="{{ $key }}" href="{{ $here(['view' => $key]) }}"
-                           @if($view === $key) aria-current="page" @endif>
-                            <span class="pp-mi {{ $tone }}"><i class="ti {{ $icon }}"></i></span>
-                            <span class="pp-mtitle">{{ $title }}</span>
-                            <span class="pp-md">{{ $desc }}</span>
-                            <i class="ti ti-arrow-right pp-go"></i>
-                        </a>
-                    @endforeach
-                </nav>
-
-                {{-- ── Salary computation ─────────────────────────────────── --}}
-                @php
-                    $premiums = $sel['overtime'] + $sel['night'] + $sel['holiday'] + $sel['rest'];
-                    $bonus    = $sel['bonus'] > 0;
-                    $days = rtrim(rtrim(number_format($sel['days'], 2), '0'), '.');
-                @endphp
-                <div class="pp-view" data-pane="workflow" @if($view !== 'workflow') hidden @endif>
-                    <div class="pp-view-head">
-                        <h3><i class="ti ti-calculator pp-c-accent"></i>Salary computation workflow</h3>
-                        <span class="pp-badge pp-b-muted" title="The same figures Payroll Records shows for this week, from the same computation and Payroll Settings">
-                            <i class="ti ti-link"></i>Same as Payroll Records
-                        </span>
-                    </div>
-                    <div class="pp-view-body">
-                        @if($sel['on_clock'])
-                            <div class="pp-note inline live"><i class="ti ti-clock"></i><span>{{ $sel['name'] }} is clocked in now — since {{ $sel['on_clock']['since'] }}, {{ $dur($sel['on_clock']['minutes']) }} so far. Payroll counts a stretch when it is timed out, here and in Payroll Records alike, so this one joins the figures below then.</span></div>
-                        @endif
-                        @unless($sel['worked'])
-                            <div class="pp-note inline"><i class="ti ti-info-circle"></i><span>No attendance for {{ $sel['name'] }} in {{ $period['span'] }} yet — every figure below stays at zero until they clock in.</span></div>
-                        @endunless
-                        <div class="pp-facts">
-                            <div class="pp-fact"><span>Days worked</span><b>{{ $days }}</b></div>
-                            <div class="pp-fact"><span>Time worked</span><b>{{ $dur($sel['minutes']) }}</b></div>
-                            <div class="pp-fact"><span>Overtime</span><b>{{ $dur($sel['ot_minutes']) }}</b></div>
-                            <div class="pp-fact"><span>Late</span><b>{{ $dur($sel['late_minutes']) }}</b></div>
-                        </div>
-
-                        {{-- Gross − deductions + bonus, as Payroll Records adds
-                             it up: the bonus is not wages, so it comes after. --}}
-                        <ol class="pp-flow {{ $bonus ? 'has-bonus' : '' }}" aria-label="How the net pay is reached">
-                            <li class="pp-stage"><span class="k">1 · Basic pay</span><b>{{ $peso($sel['basic']) }}</b><small>Regular time × hourly rate</small></li>
-                            <li class="pp-op" aria-hidden="true">+</li>
-                            <li class="pp-stage"><span class="k">2 · Premiums</span><b>{{ $peso($premiums) }}</b><small>Overtime and other premiums</small></li>
-                            <li class="pp-op" aria-hidden="true">=</li>
-                            <li class="pp-stage is-gross"><span class="k">3 · Gross pay</span><b>{{ $peso($sel['gross']) }}</b><small>Before deductions</small></li>
-                            <li class="pp-op" aria-hidden="true">−</li>
-                            <li class="pp-stage is-ded"><span class="k">4 · Deductions</span><b>{{ $peso($sel['deductions']) }}</b><small>Contributions, tax, vale</small></li>
-                            @if($bonus)
-                                <li class="pp-op" aria-hidden="true">+</li>
-                                <li class="pp-stage"><span class="k">5 · Bonus</span><b>{{ $peso($sel['bonus']) }}</b><small>Not wages, not taxed</small></li>
-                            @endif
-                            <li class="pp-op" aria-hidden="true">=</li>
-                            <li class="pp-stage is-net"><span class="k">{{ $bonus ? 6 : 5 }} · Net pay</span><b>{{ $peso($sel['net']) }}</b><small>Take-home pay</small></li>
-                        </ol>
-
-                        <div class="pp-wf">
-                            @foreach(['earn' => ['Earnings', 'ti-plus', 'Gross pay', $sel['gross'], 'pp-c-green'], 'ded' => ['Deductions', 'ti-minus', 'Total deductions', $sel['deductions'], 'pp-c-red']] as $side => [$title, $icon, $sumLabel, $sum, $sumTone])
-                                <div class="pp-box {{ $side }}">
-                                    <div class="pp-bh"><i class="ti {{ $icon }}"></i>{{ $title }}</div>
-                                    <div class="pp-bb">
-                                        @foreach($lines[$side] as $l)
-                                            <div class="pp-row {{ $l['amount'] == 0 ? 'zero' : '' }}">
-                                                <span class="l"><i class="ti {{ $l['icon'] }}"></i><span>{{ $l['label'] }}@if($l['note'])<small>{{ $l['note'] }}</small>@endif</span></span>
-                                                <span class="a">{{ $peso($l['amount']) }}</span>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                    <div class="pp-foot"><span>{{ $sumLabel }}</span><span class="pp-num {{ $sumTone }}">{{ $peso($sum) }}</span></div>
-                                </div>
-                            @endforeach
-                        </div>
-
-                        <div class="pp-net-strip">
-                            <span class="k">Net pay <span>· gross − deductions{{ $bonus ? ' + ' . $peso($sel['bonus']) . ' bonus' : '' }}</span></span>
-                            <span class="v">{{ $peso($sel['net']) }}</span>
-                        </div>
+            <div class="pp-emp">
+                <div class="pp-big-av" style="background:{{ $sel['color'] }}22;color:{{ $sel['color'] }}">{{ $sel['initial'] }}</div>
+                <div class="pp-info">
+                    <div class="pp-n">{{ $sel['name'] }}</div>
+                    <div class="pp-s">
+                        <span><i class="ti ti-id"></i>{{ $sel['code'] }}</span>
+                        <span><i class="ti ti-briefcase"></i>{{ $sel['labor'] }}</span>
+                        @if($sel['site'])<span><i class="ti ti-map-pin"></i>{{ $sel['site'] }}</span>@endif
+                        <span><i class="ti ti-cash"></i>{{ $peso($sel['hourly_rate']) }}/hr</span>
                     </div>
                 </div>
+                <div class="pp-per"><i class="ti ti-calendar-event"></i>{{ $period['span'] }}</div>
+            </div>
 
-                {{-- ── Remittance tracker ─────────────────────────────────── --}}
-                <div class="pp-view" data-pane="tracker" @if($view !== 'tracker') hidden @endif>
-                    <div class="pp-view-head">
-                        <h3><i class="ti ti-transfer-out pp-c-amber"></i>Deduction &amp; remittance tracker</h3>
-                        @if($open > 0)
-                            <span class="pp-badge pp-b-amber"><i class="ti ti-clock"></i>{{ $open }} pending</span>
-                        @elseif(collect($track)->whereNotNull('done_text')->isNotEmpty())
-                            <span class="pp-badge pp-b-green"><i class="ti ti-circle-check"></i>All settled</span>
-                        @endif
-                    </div>
-                    @if($notice)
-                        <div class="pp-note"><i class="ti ti-info-circle"></i><span>{{ $notice }}</span></div>
+            <nav class="pp-switch" aria-label="What to view for this employee">
+                @foreach($views as $key => [$title, $desc, $icon, $tone])
+                    <a class="pp-sw {{ $view === $key ? 'on' : '' }}"
+                       href="{{ $url(['view' => $key, 'employee' => $sel['employee_id']]) }}"
+                       @if($view === $key) aria-current="page" @endif>
+                        <i class="ti {{ $icon }}"></i>{{ $title }}
+                    </a>
+                @endforeach
+            </nav>
+
+        {{-- ── Salary computation ─────────────────────────────────── --}}
+        @php
+            $premiums = $sel['overtime'] + $sel['night'] + $sel['holiday'] + $sel['rest'];
+            $bonus    = $sel['bonus'] > 0;
+            $days = rtrim(rtrim(number_format($sel['days'], 2), '0'), '.');
+        @endphp
+        @if($view === 'workflow')
+        <div class="pp-view">
+            <div class="pp-view-head">
+                <h3><i class="ti ti-calculator pp-c-accent"></i>Salary computation workflow</h3>
+                <span class="pp-badge pp-b-muted" title="The same figures Payroll Records shows for this week, from the same computation and Payroll Settings">
+                    <i class="ti ti-link"></i>Same as Payroll Records
+                </span>
+            </div>
+            <div class="pp-view-body">
+                @if($sel['on_clock'])
+                    <div class="pp-note inline live"><i class="ti ti-clock"></i><span>{{ $sel['name'] }} is clocked in now — since {{ $sel['on_clock']['since'] }}, {{ $dur($sel['on_clock']['minutes']) }} so far. Payroll counts a stretch when it is timed out, here and in Payroll Records alike, so this one joins the figures below then.</span></div>
+                @endif
+                @unless($sel['worked'])
+                    <div class="pp-note inline"><i class="ti ti-info-circle"></i><span>No attendance for {{ $sel['name'] }} in {{ $period['span'] }} yet — every figure below stays at zero until they clock in.</span></div>
+                @endunless
+                <div class="pp-facts">
+                    <div class="pp-fact"><span>Days worked</span><b>{{ $days }}</b></div>
+                    <div class="pp-fact"><span>Time worked</span><b>{{ $dur($sel['minutes']) }}</b></div>
+                    <div class="pp-fact"><span>Overtime</span><b>{{ $dur($sel['ot_minutes']) }}</b></div>
+                    <div class="pp-fact"><span>Late</span><b>{{ $dur($sel['late_minutes']) }}</b></div>
+                </div>
+
+                {{-- Gross − deductions + bonus, as Payroll Records adds
+                     it up: the bonus is not wages, so it comes after. --}}
+                <ol class="pp-flow {{ $bonus ? 'has-bonus' : '' }}" aria-label="How the net pay is reached">
+                    <li class="pp-stage"><span class="k">1 · Basic pay</span><b>{{ $peso($sel['basic']) }}</b><small>Regular time × hourly rate</small></li>
+                    <li class="pp-op" aria-hidden="true">+</li>
+                    <li class="pp-stage"><span class="k">2 · Premiums</span><b>{{ $peso($premiums) }}</b><small>Overtime and other premiums</small></li>
+                    <li class="pp-op" aria-hidden="true">=</li>
+                    <li class="pp-stage is-gross"><span class="k">3 · Gross pay</span><b>{{ $peso($sel['gross']) }}</b><small>Before deductions</small></li>
+                    <li class="pp-op" aria-hidden="true">−</li>
+                    <li class="pp-stage is-ded"><span class="k">4 · Deductions</span><b>{{ $peso($sel['deductions']) }}</b><small>Contributions, tax, vale</small></li>
+                    @if($bonus)
+                        <li class="pp-op" aria-hidden="true">+</li>
+                        <li class="pp-stage"><span class="k">5 · Bonus</span><b>{{ $peso($sel['bonus']) }}</b><small>Not wages, not taxed</small></li>
                     @endif
-                    <div class="pp-tablewrap">
-                        <table class="pp-table">
-                            <thead>
-                                <tr><th>Agency / deduction</th><th class="r">Amount</th><th>Period</th><th>Status</th><th class="r">Action</th></tr>
-                            </thead>
-                            <tbody>
-                                @foreach($track as $t)
-                                    <tr>
-                                        <td>
-                                            <div class="pp-ag">
-                                                <span class="pp-ag-ico"><i class="ti {{ $t['icon'] }}"></i></span>
-                                                <div>
-                                                    <div class="pp-ag-n">{{ $t['label'] }}</div>
-                                                    @if($t['id'])
-                                                        <div class="pp-ag-id">{{ $t['id_label'] }} <b>{{ $t['id'] }}</b></div>
-                                                    @elseif($t['id_missing'])
-                                                        <div class="pp-ag-id missing"><i class="ti ti-alert-triangle"></i>{{ $t['id_missing'] }}</div>
-                                                    @endif
-                                                    <div class="pp-ag-s">{{ $t['sub'] }}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="r pp-num" style="font-weight:500">
-                                            {{ $peso($t['amount']) }}
-                                            @if($t['was'] !== null)
-                                                <div class="pp-by" title="The pay for this period has changed since this line was marked">{{ $peso($t['was']) }} when marked</div>
-                                            @endif
-                                        </td>
-                                        <td class="pp-muted" style="white-space:nowrap">{{ $period['span'] }}</td>
-                                        <td>
-                                            <span class="pp-badge {{ $t['tone'] }}"><i class="ti {{ $t['badge'] }}"></i>{{ $t['state'] }}</span>
-                                            @if($t['by'])<div class="pp-by">{{ $t['by'] }}</div>@endif
-                                        </td>
-                                        <td class="r">
-                                            <div class="pp-acts">
-                                                @if($t['done_text'])
-                                                    <span class="pp-done"><i class="ti ti-checks"></i>{{ $t['done_text'] }}</span>
-                                                @endif
-                                                @foreach($t['actions'] as $a)
-                                                    <form method="POST" action="{{ route('payroll-processing.track', [$sel['employee_id'], $t['kind']]) }}">
-                                                        @csrf
-                                                        <input type="hidden" name="period" value="{{ $period['key'] }}">
-                                                        <input type="hidden" name="action" value="{{ $a['action'] }}">
-                                                        @if($a['primary'])
-                                                            <button class="pp-btn primary sm" type="submit">{{ $a['label'] }}</button>
-                                                        @else
-                                                            <button class="pp-btn ghost sm icon" type="submit" title="{{ $a['label'] }}" aria-label="{{ $a['label'] }} {{ $t['label'] }}"><i class="ti {{ $a['icon'] }}"></i></button>
-                                                        @endif
-                                                    </form>
-                                                @endforeach
-                                                @if(! $t['actions'] && ! $t['done_text'])
-                                                    <span class="pp-muted">—</span>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
+                    <li class="pp-op" aria-hidden="true">=</li>
+                    <li class="pp-stage is-net"><span class="k">{{ $bonus ? 6 : 5 }} · Net pay</span><b>{{ $peso($sel['net']) }}</b><small>Take-home pay</small></li>
+                </ol>
+
+                <div class="pp-wf">
+                    @foreach(['earn' => ['Earnings', 'ti-plus', 'Gross pay', $sel['gross'], 'pp-c-green'], 'ded' => ['Deductions', 'ti-minus', 'Total deductions', $sel['deductions'], 'pp-c-red']] as $side => [$title, $icon, $sumLabel, $sum, $sumTone])
+                        <div class="pp-box {{ $side }}">
+                            <div class="pp-bh"><i class="ti {{ $icon }}"></i>{{ $title }}</div>
+                            <div class="pp-bb">
+                                @foreach($lines[$side] as $l)
+                                    <div class="pp-row {{ $l['amount'] == 0 ? 'zero' : '' }}">
+                                        <span class="l"><i class="ti {{ $l['icon'] }}"></i><span>{{ $l['label'] }}@if($l['note'])<small>{{ $l['note'] }}</small>@endif</span></span>
+                                        <span class="a">{{ $peso($l['amount']) }}</span>
+                                    </div>
                                 @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                            </div>
+                            <div class="pp-foot"><span>{{ $sumLabel }}</span><span class="pp-num {{ $sumTone }}">{{ $peso($sum) }}</span></div>
+                        </div>
+                    @endforeach
                 </div>
 
-                {{-- ── Payslip ──────────────────────────────────────────────
-                     The Payroll Records receipt, and the same printable page
-                     behind its Print / Save as PDF button. --}}
-                <div class="pp-view" data-pane="payslip" @if($view !== 'payslip') hidden @endif>
-                    <div class="pp-view-head">
-                        <h3><i class="ti ti-file-text pp-c-green"></i>Payslip</h3>
-                        <a class="pp-btn primary" target="_blank" rel="noopener"
-                           href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to'], 'employee' => $sel['employee_id']]) }}">
-                            <i class="ti ti-printer"></i>Print / Save as PDF
-                        </a>
-                    </div>
-                    <div class="pp-view-body">
-                        <div class="emp-slip" style="border:none;padding:0;background:transparent;">
-                            <div class="emp-slip-head">
-                                <img class="emp-slip-logo" src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" alt=""
-                                     onerror="this.onerror=null;this.src='{{ asset('images/JeyancoLogo.png') }}'">
-                                <div class="emp-slip-co">
-                                    <div class="co">{{ $company?->company_name ?? 'JEYANCO CONSTRUCTION' }}</div>
-                                    <div class="sub">{{ $company?->company_tagline ?? 'Payroll Dept. · Panganiban, PH' }}</div>
-                                </div>
-                                <div class="emp-slip-doc">
-                                    <div class="lbl">PAYSLIP</div>
-                                    <div class="per">{{ $period['span'] }}</div>
-                                </div>
-                            </div>
+                <div class="pp-net-strip">
+                    <span class="k">Net pay <span>· gross − deductions{{ $bonus ? ' + ' . $peso($sel['bonus']) . ' bonus' : '' }}</span></span>
+                    <span class="v">{{ $peso($sel['net']) }}</span>
+                </div>
+            </div>
+        </div>
+        @endif
 
-                            <div class="emp-slip-emp">
-                                <span class="who">{{ $sel['name'] }}</span>
-                                <span class="meta">{{ $slip['meta'] }}</span>
-                            </div>
+        {{-- ── Remittance tracker ─────────────────────────────────── --}}
+        @if($view === 'tracker')
+        <div class="pp-view">
+            <div class="pp-view-head">
+                <h3><i class="ti ti-transfer-out pp-c-amber"></i>Deduction &amp; remittance tracker</h3>
+                @if($open > 0)
+                    <span class="pp-badge pp-b-amber"><i class="ti ti-clock"></i>{{ $open }} pending</span>
+                @elseif(collect($track)->whereNotNull('done_text')->isNotEmpty())
+                    <span class="pp-badge pp-b-green"><i class="ti ti-circle-check"></i>All settled</span>
+                @endif
+            </div>
+            @if($notice)
+                <div class="pp-note"><i class="ti ti-info-circle"></i><span>{{ $notice }}</span></div>
+            @endif
+            <div class="pp-tablewrap">
+                <table class="pp-table">
+                    <thead>
+                        <tr><th>Agency / deduction</th><th class="r">Amount</th><th>Period</th><th>Status</th><th class="r">Action</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach($track as $t)
+                            <tr>
+                                <td>
+                                    <div class="pp-ag">
+                                        <span class="pp-ag-ico"><i class="ti {{ $t['icon'] }}"></i></span>
+                                        <div>
+                                            <div class="pp-ag-n">{{ $t['label'] }}</div>
+                                            @if($t['id'])
+                                                <div class="pp-ag-id">{{ $t['id_label'] }} <b>{{ $t['id'] }}</b></div>
+                                            @elseif($t['id_missing'])
+                                                <div class="pp-ag-id missing"><i class="ti ti-alert-triangle"></i>{{ $t['id_missing'] }}</div>
+                                            @endif
+                                            <div class="pp-ag-s">{{ $t['sub'] }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="r pp-num" style="font-weight:500">
+                                    {{ $peso($t['amount']) }}
+                                    @if($t['was'] !== null)
+                                        <div class="pp-by" title="The pay for this period has changed since this line was marked">{{ $peso($t['was']) }} when marked</div>
+                                    @endif
+                                </td>
+                                <td class="pp-muted" style="white-space:nowrap">{{ $period['span'] }}</td>
+                                <td>
+                                    <span class="pp-badge {{ $t['tone'] }}"><i class="ti {{ $t['badge'] }}"></i>{{ $t['state'] }}</span>
+                                    @if($t['by'])<div class="pp-by">{{ $t['by'] }}</div>@endif
+                                </td>
+                                <td class="r">
+                                    <div class="pp-acts">
+                                        @if($t['done_text'])
+                                            <span class="pp-done"><i class="ti ti-checks"></i>{{ $t['done_text'] }}</span>
+                                        @endif
+                                        @foreach($t['actions'] as $a)
+                                            <form method="POST" action="{{ route('payroll-processing.track', [$sel['employee_id'], $t['kind']]) }}">
+                                                @csrf
+                                                <input type="hidden" name="period" value="{{ $period['key'] }}">
+                                                <input type="hidden" name="action" value="{{ $a['action'] }}">
+                                                @if($a['primary'])
+                                                    <button class="pp-btn primary sm" type="submit">{{ $a['label'] }}</button>
+                                                @else
+                                                    <button class="pp-btn ghost sm icon" type="submit" title="{{ $a['label'] }}" aria-label="{{ $a['label'] }} {{ $t['label'] }}"><i class="ti {{ $a['icon'] }}"></i></button>
+                                                @endif
+                                            </form>
+                                        @endforeach
+                                        @if(! $t['actions'] && ! $t['done_text'])
+                                            <span class="pp-muted">—</span>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
 
-                            <div class="rc-basis">{{ $slip['basis'] }}</div>
-
-                            <div class="emp-slip-cols">
-                                <div>
-                                    <h6>Earnings</h6>
-                                    @foreach($slip['earn'] as [$k, $v])
-                                        <div class="ln"><span class="k">{{ $k }}</span><span class="v">{{ $peso($v) }}</span></div>
-                                    @endforeach
-                                    <div class="ln sum"><span class="k">Gross pay</span><span class="v">{{ $peso($slip['gross']) }}</span></div>
-                                </div>
-                                <div>
-                                    <h6>Deductions</h6>
-                                    @foreach($slip['ded'] as [$k, $v])
-                                        <div class="ln"><span class="k">{{ $k }}</span><span class="v">{{ $peso($v) }}</span></div>
-                                    @endforeach
-                                    <div class="ln sum"><span class="k">Total deductions</span><span class="v" style="color:var(--danger);">{{ $peso($slip['deductions']) }}</span></div>
-                                </div>
-                            </div>
-
-                            {{-- The bonus is added to net, not to gross, so it
-                                 belongs in the arithmetic that reaches net. --}}
-                            <div class="rc-math">
-                                <div class="rc-math-item"><span>Gross</span><b>{{ $peso($slip['gross']) }}</b></div>
-                                <div class="rc-math-item"><span>− Deductions</span><b>{{ $peso($slip['deductions']) }}</b></div>
-                                <div class="rc-math-item"><span>+ Bonus</span><b>{{ $peso($slip['bonus']) }}</b></div>
-                            </div>
-
-                            <div class="emp-slip-net">
-                                <span class="k">NET PAY &middot; {{ $period['span'] }}</span>
-                                <span class="v">{{ $peso($slip['net']) }}</span>
-                            </div>
+        {{-- ── Payslip ──────────────────────────────────────────────
+             The Payroll Records receipt, and the same printable page
+             behind its Print / Save as PDF button. --}}
+        @if($view === 'payslip')
+        <div class="pp-view">
+            <div class="pp-view-head">
+                <h3><i class="ti ti-file-text pp-c-green"></i>Payslip</h3>
+                <a class="pp-btn primary" target="_blank" rel="noopener"
+                   href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to'], 'employee' => $sel['employee_id']]) }}">
+                    <i class="ti ti-printer"></i>Print / Save as PDF
+                </a>
+            </div>
+            <div class="pp-view-body">
+                <div class="emp-slip" style="border:none;padding:0;background:transparent;">
+                    <div class="emp-slip-head">
+                        <img class="emp-slip-logo" src="{{ $company?->logoUrl() ?? asset('images/JeyancoLogo.png') }}" alt=""
+                             onerror="this.onerror=null;this.src='{{ asset('images/JeyancoLogo.png') }}'">
+                        <div class="emp-slip-co">
+                            <div class="co">{{ $company?->company_name ?? 'JEYANCO CONSTRUCTION' }}</div>
+                            <div class="sub">{{ $company?->company_tagline ?? 'Payroll Dept. · Panganiban, PH' }}</div>
+                        </div>
+                        <div class="emp-slip-doc">
+                            <div class="lbl">PAYSLIP</div>
+                            <div class="per">{{ $period['span'] }}</div>
                         </div>
                     </div>
+
+                    <div class="emp-slip-emp">
+                        <span class="who">{{ $sel['name'] }}</span>
+                        <span class="meta">{{ $slip['meta'] }}</span>
+                    </div>
+
+                    <div class="rc-basis">{{ $slip['basis'] }}</div>
+
+                    <div class="emp-slip-cols">
+                        <div>
+                            <h6>Earnings</h6>
+                            @foreach($slip['earn'] as [$k, $v])
+                                <div class="ln"><span class="k">{{ $k }}</span><span class="v">{{ $peso($v) }}</span></div>
+                            @endforeach
+                            <div class="ln sum"><span class="k">Gross pay</span><span class="v">{{ $peso($slip['gross']) }}</span></div>
+                        </div>
+                        <div>
+                            <h6>Deductions</h6>
+                            @foreach($slip['ded'] as [$k, $v])
+                                <div class="ln"><span class="k">{{ $k }}</span><span class="v">{{ $peso($v) }}</span></div>
+                            @endforeach
+                            <div class="ln sum"><span class="k">Total deductions</span><span class="v" style="color:var(--danger);">{{ $peso($slip['deductions']) }}</span></div>
+                        </div>
+                    </div>
+
+                    {{-- The bonus is added to net, not to gross, so it
+                         belongs in the arithmetic that reaches net. --}}
+                    <div class="rc-math">
+                        <div class="rc-math-item"><span>Gross</span><b>{{ $peso($slip['gross']) }}</b></div>
+                        <div class="rc-math-item"><span>− Deductions</span><b>{{ $peso($slip['deductions']) }}</b></div>
+                        <div class="rc-math-item"><span>+ Bonus</span><b>{{ $peso($slip['bonus']) }}</b></div>
+                    </div>
+
+                    <div class="emp-slip-net">
+                        <span class="k">NET PAY &middot; {{ $period['span'] }}</span>
+                        <span class="v">{{ $peso($slip['net']) }}</span>
+                    </div>
                 </div>
-            @endif
+            </div>
+        </div>
+        @endif
         </section>
-    </div>
+    @endif
 </div>
 @endsection
 
@@ -570,7 +665,7 @@ html[data-bs-theme="dark"] .pp {
     const root = document.getElementById('ppRoot');
     if (!root) return;
 
-    // Search narrows the list in place.
+    // Search narrows the employee step in place.
     const search = document.getElementById('ppSearch');
     const none   = document.getElementById('ppNone');
     const items  = root.querySelectorAll('.pp-pitem');
@@ -585,36 +680,8 @@ html[data-bs-theme="dark"] .pp {
         if (none) none.hidden = shown > 0 || items.length === 0;
     });
 
-    // A new period is a new page.
+    // A new period is a new page, and it keeps the step the page is on.
     document.getElementById('ppPeriod')?.addEventListener('change', e => e.target.form.submit());
-
-    // In a long list, keep the chosen worker in sight without moving the page.
-    const list = document.getElementById('ppList');
-    const sel  = list?.querySelector('.pp-pitem.sel');
-    if (list && sel && sel.offsetTop + sel.offsetHeight > list.clientHeight) {
-        list.scrollTop = sel.offsetTop - list.clientHeight / 2;
-    }
-
-    // The three cards switch in place; the address and the links keep up, so a
-    // reload or another worker lands on the same card.
-    const tabs = root.querySelectorAll('.pp-mtab');
-    tabs.forEach(tab => tab.addEventListener('click', e => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-
-        const v = tab.dataset.v;
-        tabs.forEach(t => {
-            const on = t === tab;
-            t.classList.toggle('on', on);
-            on ? t.setAttribute('aria-current', 'page') : t.removeAttribute('aria-current');
-        });
-        root.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== v; });
-
-        items.forEach(a => { const u = new URL(a.href); u.searchParams.set('view', v); a.href = u.toString(); });
-        const field = root.querySelector('input[name="view"]');
-        if (field) field.value = v;
-        try { const u = new URL(location.href); u.searchParams.set('view', v); history.replaceState(null, '', u); } catch (_) {}
-    }));
 })();
 </script>
 @endpush

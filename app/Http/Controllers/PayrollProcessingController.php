@@ -56,22 +56,34 @@ class PayrollProcessingController extends Controller
         $rows     = $this->figures($period);
         $tracking = PayrollRemittance::available();
 
-        // Open on the worker asked for, or else on somebody with pay to look at.
-        $sel  = $rows->firstWhere('employee_id', (int) $request->query('employee'))
-             ?? $rows->firstWhere('worked', true)
-             ?? $rows->first();
-        $view = in_array($request->query('view'), self::VIEWS, true) ? $request->query('view') : 'workflow';
+        // The page is three steps: choose one of the three things to do,
+        // choose the worker to do it for, then the thing itself. Neither
+        // choice is made for the user — an option with no employee is the
+        // employee list, not somebody picked at random.
+        $view = in_array($request->query('view'), self::VIEWS, true) ? $request->query('view') : null;
+        $sel  = $view && $request->filled('employee')
+            ? $rows->firstWhere('employee_id', (int) $request->query('employee'))
+            : null;
 
-        $marks = $tracking && $sel
+        $step = match (true) {
+            $sel !== null  => 'detail',
+            $view !== null => 'people',
+            default        => 'options',
+        };
+
+        // Every mark in the period, read once: the options screen counts what
+        // is outstanding across the roster and the employee list says so per
+        // worker, and neither should go back to the database per row.
+        $marks = $tracking
             ? PayrollRemittance::with(['submitter', 'completer'])
-                ->where('employee_id', $sel['employee_id'])
                 ->where('period_start', $period['from'])
                 ->where('period_end', $period['to'])
                 ->get()
-                ->keyBy('kind')
+                ->groupBy('employee_id')
             : collect();
 
-        $track = $sel ? $this->trackRows($sel, $marks, $tracking) : [];
+        $mine  = $sel ? ($marks->get($sel['employee_id']) ?? collect())->keyBy('kind') : collect();
+        $track = $sel ? $this->trackRows($sel, $mine, $tracking) : [];
 
         // The numbers the week was priced at, for the payslip to show its
         // workings — resolved at the week's end, as Payroll Records does.
@@ -84,6 +96,8 @@ class PayrollProcessingController extends Controller
             'rows'    => $rows,
             'sel'     => $sel,
             'view'    => $view,
+            'step'    => $step,
+            'pending' => $this->pending($rows, $marks, $tracking),
             'lines'   => $sel ? $this->lines($sel) : ['earn' => [], 'ded' => []],
             'track'   => $track,
             'open'    => count(array_filter($track, fn ($t) => $t['open'])),
@@ -631,6 +645,44 @@ class PayrollProcessingController extends Controller
     }
 
     /**
+     * What the period still owes, per worker and in total: every contribution
+     * and the net pay that this period charged and that has not been marked
+     * done. It counts off the figures already computed for the list and the
+     * marks already read, so the options screen and the employee list can say
+     * how much is left without building a tracker for everybody.
+     *
+     * @param  Collection<int, array>  $rows
+     * @param  Collection<int, Collection>  $marks  every mark in the period, by employee
+     * @return array{by: array<int, int>, total: int}
+     */
+    private function pending(Collection $rows, Collection $marks, bool $tracking): array
+    {
+        if (! $tracking) {
+            return ['by' => [], 'total' => 0];
+        }
+
+        $by = [];
+
+        foreach ($rows as $r) {
+            $mine = ($marks->get($r['employee_id']) ?? collect())->keyBy('kind');
+            $open = 0;
+
+            foreach (array_keys(PayrollRemittance::KINDS) as $kind) {
+                $due  = PayrollRemittance::amountOf($r, $kind) > 0;
+                $done = ($mine->get($kind)?->status ?? PayrollRemittance::PENDING) === PayrollRemittance::DONE;
+
+                $open += $due && ! $done ? 1 : 0;
+            }
+
+            if ($open > 0) {
+                $by[$r['employee_id']] = $open;
+            }
+        }
+
+        return ['by' => $by, 'total' => array_sum($by)];
+    }
+
+    /**
      * The tracker's rows for one worker: each contribution and the net pay,
      * with where it has got to, and the cash advance instalment, which comes
      * off the pay and has nowhere further to go.
@@ -690,13 +742,16 @@ class PayrollProcessingController extends Controller
             }
 
             $rows[] = match ($rec?->status ?? PayrollRemittance::PENDING) {
+                // Pending → Processing → Done throughout. Which kind of done
+                // it was — remitted to the agency, or paid to the worker —
+                // stays on the line beside it rather than in the status.
                 PayrollRemittance::SUBMITTED => [
-                    'state'   => 'Submitted', 'tone' => 'pp-b-blue', 'badge' => 'ti-send', 'open' => true,
+                    'state'   => 'Processing', 'tone' => 'pp-b-blue', 'badge' => 'ti-send', 'open' => true,
                     'by'      => self::signed($rec->submitter, $rec->submitted_at),
                     'actions' => [['action' => 'done', 'label' => 'Mark done', 'icon' => null, 'primary' => true], $undo],
                 ] + $row,
                 PayrollRemittance::DONE => [
-                    'state'     => $pay ? 'Paid' : 'Remitted', 'tone' => 'pp-b-green', 'badge' => 'ti-circle-check',
+                    'state'     => 'Done', 'tone' => 'pp-b-green', 'badge' => 'ti-circle-check',
                     'by'        => self::signed($rec->completer, $rec->completed_at),
                     'done_text' => $pay ? 'Paid' : 'Remitted',
                     'actions'   => [$undo],
