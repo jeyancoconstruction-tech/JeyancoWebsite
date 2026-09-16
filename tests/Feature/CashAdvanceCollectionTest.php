@@ -416,6 +416,53 @@ class CashAdvanceCollectionTest extends TestCase
         $this->assertSame(1, $page->viewData('summary')['active']);
     }
 
+    /**
+     * Correcting the instalment re-works the schedule from the first payroll
+     * — which is the point: the two advances on file were entered at ₱5 a
+     * payroll, which would have taken a thousand of them.
+     */
+    public function test_the_instalment_can_be_corrected_and_the_schedule_follows(): void
+    {
+        $e = $this->worker();
+        $advance = $this->advance($e, 5000, 5);
+
+        $this->assertEqualsWithDelta(5.0, $this->advanceTaken($e, ...self::WEEK), 0.001);
+
+        $this->actingAs($this->admin)
+            ->put(route('loans.update', $advance), ['installment' => 500])
+            ->assertSessionHas('success');
+
+        $this->assertEqualsWithDelta(500.0, (float) $advance->fresh()->installment, 0.001);
+        $this->assertEqualsWithDelta(500.0, $this->advanceTaken($e, ...self::WEEK), 0.001,
+            'the corrected figure is what payroll takes');
+        $this->assertEqualsWithDelta(4500.0, $advance->fresh()->outstanding, 0.001);
+    }
+
+    /** An instalment bigger than the advance would collect more than was issued. */
+    public function test_the_instalment_cannot_exceed_the_advance(): void
+    {
+        $e = $this->worker();
+        $advance = $this->advance($e, 500, 200);
+
+        $this->actingAs($this->admin)
+            ->put(route('loans.update', $advance), ['installment' => 900])
+            ->assertSessionHasErrors('installment');
+
+        $this->assertEqualsWithDelta(200.0, (float) $advance->fresh()->installment, 0.001);
+    }
+
+    /** The row offers the correction, and a settled one does not. */
+    public function test_the_menu_offers_editing_the_instalment(): void
+    {
+        $e = $this->worker();
+        $this->advance($e, 500, 200);
+
+        $this->actingAs($this->admin)
+            ->get(route('leave.index', ['tab' => 'advances']))
+            ->assertOk()
+            ->assertSee('Edit instalment');
+    }
+
     /** A settled advance keeps its history but is not offered a payment. */
     public function test_a_settled_advance_shows_history_but_no_payment(): void
     {
@@ -429,6 +476,7 @@ class CashAdvanceCollectionTest extends TestCase
             ->assertOk()
             ->assertSee('Payment history')
             ->assertSee('Fully Paid')
-            ->assertDontSee('Add payment');
+            ->assertDontSee('Add payment')
+            ->assertDontSee('Edit instalment');
     }
 }

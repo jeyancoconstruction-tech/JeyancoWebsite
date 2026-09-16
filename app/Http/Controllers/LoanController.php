@@ -58,22 +58,53 @@ class LoanController extends Controller
         return back()->with('success', $loan->type_label . ' recorded.');
     }
 
+    /**
+     * Correct an advance that was entered wrongly.
+     *
+     * The instalment is the whole schedule, so changing it works the
+     * collection out again from the first payroll rather than from today —
+     * which is why it is for fixing a typo, not for re-negotiating. The
+     * before and after both go to the Audit Log.
+     */
     public function update(Request $request, Loan $loan)
     {
         $this->onlyAdvances($loan);
 
         $data = $request->validate([
-            'installment' => 'nullable|numeric|min:0',
+            'installment' => 'nullable|numeric|min:1|max:' . $loan->principal,
             'status'      => 'nullable|in:active,paid,on_hold,cancelled',
             'notes'       => 'nullable|string|max:1000',
+        ], [
+            'installment.max' => 'The instalment cannot be more than the ₱'
+                . number_format($loan->principal, 2) . ' advanced.',
         ]);
 
+        $was = (float) $loan->installment;
+
         $loan->update(array_filter($data, fn ($v) => $v !== null));
+        $loan->load(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')]);
+        $loan->syncSettlement();
 
-        AuditLog::record('Loans', 'updated', 'Updated ' . $loan->type_label
-            . ' for ' . $loan->employee->name, $loan);
+        $now = (float) $loan->installment;
 
-        return back()->with('success', 'Cash advance updated.');
+        AuditLog::record('Loans', 'updated',
+            'Updated ' . $loan->type_label . ' for ' . $loan->employee->name
+            . ($was === $now ? '' : ' — instalment ₱' . number_format($was, 2)
+                . ' → ₱' . number_format($now, 2)
+                . ', ₱' . number_format($loan->outstanding, 2) . ' left'),
+            $loan);
+
+        if ($was === $now) {
+            return back()->with('success', 'Cash advance updated.');
+        }
+
+        $payrolls = max(1, (int) ceil($loan->principal / max(0.01, $now)));
+
+        return back()->with('success',
+            'Instalment set to ₱' . number_format($now, 2) . ' — '
+            . $loan->employee->name . "'s advance now collects over {$payrolls} "
+            . ($payrolls === 1 ? 'payroll' : 'payrolls') . ', ₱'
+            . number_format($loan->outstanding, 2) . ' left.');
     }
 
     /**

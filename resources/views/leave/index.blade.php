@@ -220,8 +220,11 @@
                             </td>
                             <td>
                                 <div class="mod-row-actions dropdown">
+                                    {{-- Positioned by Popper against the viewport: the card clips
+                                         its overflow and the table scrolls, so a menu laid out
+                                         inside either is cut off when the list is short. --}}
                                     <button class="mod-btn sm mod-dots" type="button" data-bs-toggle="dropdown"
-                                            data-bs-display="static" aria-expanded="false"
+                                            data-bs-strategy="fixed" aria-expanded="false"
                                             aria-label="{{ __('Actions for') }} {{ $advance->employee->name ?? '' }}">
                                         <i class="fas fa-ellipsis-vertical"></i>
                                     </button>
@@ -231,6 +234,12 @@
                                                 <button class="dropdown-item" type="button" data-bs-toggle="modal"
                                                         data-bs-target="#payModal{{ $advance->id }}">
                                                     <i class="fas fa-peso-sign"></i> {{ __('Add payment') }}
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button class="dropdown-item" type="button" data-bs-toggle="modal"
+                                                        data-bs-target="#instModal{{ $advance->id }}">
+                                                    <i class="fas fa-pen"></i> {{ __('Edit instalment') }}
                                                 </button>
                                             </li>
                                         @endunless
@@ -396,6 +405,49 @@
     </div>
 
     @unless($advance->settled)
+    {{-- ── Correct the instalment ───────────────────────────────────────── --}}
+    <div class="modal fade" id="instModal{{ $advance->id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered emp-dialog" style="max-width:460px;">
+        <div class="modal-content emp-modal">
+          <form method="POST" action="{{ route('loans.update', $advance) }}">
+            @csrf @method('PUT')
+            <div class="emp-head">
+                <span class="emp-head-icon"><i class="fas fa-pen"></i></span>
+                <div class="emp-head-text">
+                    <h6 class="emp-head-title">{{ __('Edit instalment') }}</h6>
+                    <p class="emp-head-sub">
+                        {{ $advance->employee->name ?? '' }} &middot;
+                        ₱{{ number_format($advance->principal, 2) }} {{ __('advanced') }}
+                    </p>
+                </div>
+                <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body emp-body">
+                <div class="mod-note">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <div>{{ __('For correcting an instalment that was entered wrongly. The schedule is worked out again from the first payroll, so what earlier payrolls collected changes with it — this is not the way to re-negotiate an advance that is part paid.') }}</div>
+                </div>
+                <div class="emp-field">
+                    <label class="ep-label" for="inst{{ $advance->id }}">{{ __('Instalment per payroll') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" id="inst{{ $advance->id }}" type="number" step="0.01" min="1"
+                           max="{{ $advance->principal }}" name="installment"
+                           value="{{ number_format($advance->installment, 2, '.', '') }}" required>
+                    <div class="mod-person-sub" style="margin-top:6px;">
+                        {{ __('At the figure on file this advance takes') }}
+                        {{ max(1, (int) ceil($advance->principal / max(0.01, (float) $advance->installment))) }}
+                        {{ __('payrolls to collect.') }}
+                    </div>
+                </div>
+            </div>
+            <div class="emp-foot">
+                <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                <button type="submit" class="emp-btn-save"><i class="fas fa-check"></i> <span>{{ __('Save') }}</span></button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <div class="modal fade" id="payModal{{ $advance->id }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered emp-dialog" style="max-width:460px;">
         <div class="modal-content emp-modal">

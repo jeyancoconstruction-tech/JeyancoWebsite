@@ -168,7 +168,7 @@
 .mod-dots { width: 30px; padding: 0; justify-content: center; }
 .mod-dots::after { display: none; }        /* Bootstrap's caret */
 .mod-dropdown {
-    min-width: 200px; padding: 6px;
+    min-width: 200px; padding: 6px; z-index: 1060;   /* over the sticky table head */
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
 }
