@@ -62,10 +62,24 @@ html[data-bs-theme="dark"] .pp {
 .pp-field select { cursor: pointer; }
 .pp-field select option, .pp-field select optgroup { background: var(--pp-panel); color: var(--pp-txt); }
 .pp-field input::placeholder { color: var(--pp-txt-3); }
-/* Step two: who for — one card per worker on the roster. */
+/* Step two: who for — one card per worker on the roster. The card holds the
+   tick box; the link beside it is the rest of the card, so selecting somebody
+   and opening them are different presses. */
 .pp-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
-.pp-pitem { display: flex; align-items: center; gap: 11px; background: var(--pp-panel); border: var(--pp-bw) solid var(--pp-line); border-radius: var(--pp-radius); padding: 13px 14px; color: var(--pp-txt); transition: border-color .18s, transform .18s; }
+.pp-pitem { display: flex; align-items: center; background: var(--pp-panel); border: var(--pp-bw) solid var(--pp-line); border-radius: var(--pp-radius); color: var(--pp-txt); transition: border-color .18s, transform .18s, background .18s; }
 .pp-pitem:hover { border-color: var(--pp-accent); transform: translateY(-2px); color: var(--pp-txt); }
+.pp-pitem.picked { border-color: var(--pp-accent); background: var(--pp-accent-soft); }
+.pp-plink { flex: 1; min-width: 0; display: flex; align-items: center; gap: 11px; padding: 13px 14px; color: var(--pp-txt); }
+.pp-plink:hover { color: var(--pp-txt); }
+.pp-check { display: flex; align-items: center; padding: 13px 0 13px 14px; cursor: pointer; }
+.pp-check.off { cursor: default; opacity: .35; }
+.pp-check input { width: 17px; height: 17px; margin: 0; accent-color: var(--pp-accent); cursor: inherit; }
+
+/* Marking a whole week's worth at once */
+.pp-bulk { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--pp-panel); border: var(--pp-bw) solid var(--pp-line); border-radius: var(--pp-radius); padding: 10px 14px; margin-bottom: 12px; }
+.pp-selall { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 12.5px; font-weight: 500; color: var(--pp-txt-2); cursor: pointer; }
+.pp-selall input { width: 17px; height: 17px; margin: 0; accent-color: var(--pp-accent); cursor: pointer; }
+.pp-bulk-n { font-size: 12.5px; color: var(--pp-txt-3); margin-right: auto; }
 .pp-av { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; flex-shrink: 0; }
 .pp-pmain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .pp-nm { font-size: 13.5px; font-weight: 500; color: var(--pp-txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -346,9 +360,11 @@ html[data-bs-theme="dark"] .pp {
             $ready  = $paid->count();
             $stats  = [
                 'workflow' => ['ti-users', $ready . ' of ' . $rows->count() . ' with pay this period'],
-                'tracker'  => ['ti-clock', $settle > 0
-                    ? $settle . ' line' . ($settle === 1 ? '' : 's') . ' still to settle'
-                    : 'Nothing outstanding'],
+                'tracker'  => ['ti-clock', match (true) {
+                    ! $tracking   => 'Tracking needs a database update',
+                    $settle > 0   => $settle . ' line' . ($settle === 1 ? '' : 's') . ' still to settle',
+                    default       => 'Nothing outstanding',
+                }],
                 'payslip'  => ['ti-file-text', $ready . ' payslip' . ($ready === 1 ? '' : 's') . ' ready'],
             ];
         @endphp
@@ -369,41 +385,78 @@ html[data-bs-theme="dark"] .pp {
              The whole active roster, as before: a worker with no attendance
              is somebody the office comes here to look for, and "nothing this
              week" is an answer. --}}
+        @php
+            // On the tracker the list is also a worklist: tick the workers
+            // whose week is settled and mark them all in one press.
+            $bulk = $view === 'tracker' && $tracking && $pending['total'] > 0;
+        @endphp
         <div class="pp-anim" style="animation-delay:.1s">
             <a class="pp-back" href="{{ $url() }}"><i class="ti ti-arrow-left"></i>All options</a>
 
-            <div class="pp-people" id="ppList">
-                @foreach($rows as $r)
-                    @php $open = $pending['by'][$r['employee_id']] ?? 0; @endphp
-                    <a class="pp-pitem {{ $r['worked'] ? '' : 'idle' }}"
-                       href="{{ $url(['view' => $view, 'employee' => $r['employee_id']]) }}"
-                       data-name="{{ mb_strtolower($r['name'] . ' ' . $r['code']) }}">
-                        <span class="pp-av" style="background:{{ $r['color'] }}22;color:{{ $r['color'] }}">{{ $r['initial'] }}</span>
-                        <span class="pp-pmain">
-                            <span class="pp-nm">{{ $r['name'] }}</span>
-                            <span class="pp-mt">{{ $r['code'] }} · {{ $r['labor'] }}@if($r['on_clock']) · <span class="pp-live">on the clock</span>@elseif(! $r['worked']) · no attendance @endif</span>
-                        </span>
-                        <span class="pp-pfig">
-                            @if($view === 'tracker')
-                                @if($open > 0)
-                                    <span class="pp-badge pp-b-amber"><i class="ti ti-clock"></i>{{ $open }} pending</span>
-                                @elseif($r['worked'])
-                                    <span class="pp-badge pp-b-green"><i class="ti ti-circle-check"></i>All settled</span>
-                                @else
-                                    <span class="pp-badge pp-b-muted"><i class="ti ti-minus"></i>Nothing due</span>
-                                @endif
-                            @else
-                                <span class="v">{{ $peso($r['net']) }}</span>
-                                <span class="k">Net pay</span>
+            @if($view === 'tracker' && ! $tracking)
+                <div class="pp-note inline"><i class="ti ti-info-circle"></i><span>Remittance tracking is switched on by a database update that has not been run on this server yet. The amounts are right; they can be marked once it has.</span></div>
+            @endif
+
+            {{-- The form is only there when there is something to mark. --}}
+            @if($bulk)
+                <form method="POST" action="{{ route('payroll-processing.track-many') }}" id="ppBulkForm">
+                    @csrf
+                    <input type="hidden" name="period" value="{{ $period['key'] }}">
+                    <div class="pp-bulk" id="ppBulkBar">
+                        <label class="pp-selall">
+                            <input type="checkbox" id="ppAll">
+                            <span>Select all outstanding</span>
+                        </label>
+                        <span class="pp-bulk-n" id="ppCount">Nobody selected</span>
+                        <button class="pp-btn primary" type="submit" id="ppDone" disabled>
+                            <i class="ti ti-checks"></i><span id="ppDoneLabel">Mark done</span>
+                        </button>
+                    </div>
+            @endif
+
+                <div class="pp-people" id="ppList">
+                    @foreach($rows as $r)
+                        @php $open = $pending['by'][$r['employee_id']] ?? 0; @endphp
+                        <div class="pp-pitem {{ $r['worked'] ? '' : 'idle' }}"
+                             data-name="{{ mb_strtolower($r['name'] . ' ' . $r['code']) }}">
+                            @if($bulk)
+                                <label class="pp-check {{ $open > 0 ? '' : 'off' }}"
+                                       title="{{ $open > 0 ? 'Select ' . $r['name'] : 'Nothing outstanding for ' . $r['name'] }}">
+                                    <input type="checkbox" name="employees[]" value="{{ $r['employee_id'] }}"
+                                           aria-label="Select {{ $r['name'] }}" @disabled($open === 0)>
+                                </label>
                             @endif
-                        </span>
-                        <i class="ti ti-chevron-right pp-chev"></i>
-                    </a>
-                @endforeach
-                @if($rows->isEmpty())
-                    <div class="pp-pempty">Nobody is on the payroll for {{ $period['span'] }}.</div>
-                @endif
-            </div>
+                            <a class="pp-plink" href="{{ $url(['view' => $view, 'employee' => $r['employee_id']]) }}">
+                                <span class="pp-av" style="background:{{ $r['color'] }}22;color:{{ $r['color'] }}">{{ $r['initial'] }}</span>
+                                <span class="pp-pmain">
+                                    <span class="pp-nm">{{ $r['name'] }}</span>
+                                    <span class="pp-mt">{{ $r['code'] }} · {{ $r['labor'] }}@if($r['on_clock']) · <span class="pp-live">on the clock</span>@elseif(! $r['worked']) · no attendance @endif</span>
+                                </span>
+                                <span class="pp-pfig">
+                                    @if($view === 'tracker')
+                                        @if($open > 0)
+                                            <span class="pp-badge pp-b-amber"><i class="ti ti-clock"></i>{{ $open }} pending</span>
+                                        @elseif($r['worked'])
+                                            <span class="pp-badge pp-b-green"><i class="ti ti-circle-check"></i>All settled</span>
+                                        @else
+                                            <span class="pp-badge pp-b-muted"><i class="ti ti-minus"></i>Nothing due</span>
+                                        @endif
+                                    @else
+                                        <span class="v">{{ $peso($r['net']) }}</span>
+                                        <span class="k">Net pay</span>
+                                    @endif
+                                </span>
+                                <i class="ti ti-chevron-right pp-chev"></i>
+                            </a>
+                        </div>
+                    @endforeach
+                    @if($rows->isEmpty())
+                        <div class="pp-pempty">Nobody is on the payroll for {{ $period['span'] }}.</div>
+                    @endif
+                </div>
+            @if($bulk)
+                </form>
+            @endif
             <div class="pp-pnone" id="ppNone" hidden>No employee found.</div>
         </div>
 
@@ -682,6 +735,56 @@ html[data-bs-theme="dark"] .pp {
 
     // A new period is a new page, and it keeps the step the page is on.
     document.getElementById('ppPeriod')?.addEventListener('change', e => e.target.form.submit());
+
+    // The tracker's list is a worklist: tick the workers whose week is
+    // settled, and one press marks the lot. The button says how many it is
+    // about to mark, and stays off until there is somebody to mark.
+    const form = document.getElementById('ppBulkForm');
+    const bar  = document.getElementById('ppBulkBar');
+    if (!form || !bar) return;
+
+    const boxes = [...form.querySelectorAll('input[name="employees[]"]:not(:disabled)')];
+    const all   = document.getElementById('ppAll');
+    const count = document.getElementById('ppCount');
+    const go    = document.getElementById('ppDone');
+    const label = document.getElementById('ppDoneLabel');
+
+    // Only what the search is showing can be selected in bulk.
+    const pickable = () => boxes.filter(b => !b.closest('.pp-pitem').hidden);
+
+    function sync() {
+        const on = boxes.filter(b => b.checked);
+
+        boxes.forEach(b => b.closest('.pp-pitem').classList.toggle('picked', b.checked));
+
+        go.disabled     = on.length === 0;
+        label.textContent = on.length === 0
+            ? 'Mark done'
+            : 'Mark ' + on.length + (on.length === 1 ? ' employee done' : ' employees done');
+        count.textContent = on.length === 0
+            ? 'Nobody selected'
+            : on.length + ' of ' + boxes.length + ' selected';
+
+        const shown = pickable();
+        all.checked = shown.length > 0 && shown.every(b => b.checked);
+        all.indeterminate = !all.checked && shown.some(b => b.checked);
+    }
+
+    boxes.forEach(b => b.addEventListener('change', sync));
+    all?.addEventListener('change', () => {
+        pickable().forEach(b => { b.checked = all.checked; });
+        sync();
+    });
+    search?.addEventListener('input', sync);
+
+    // One press per selection: the button cannot be pressed twice while the
+    // marks are being saved.
+    form.addEventListener('submit', () => {
+        go.disabled = true;
+        label.textContent = 'Marking…';
+    });
+
+    sync();
 })();
 </script>
 @endpush

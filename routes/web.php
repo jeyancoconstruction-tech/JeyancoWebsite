@@ -244,6 +244,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post  ('/payroll-processing/{run}/reopen',    [\App\Http\Controllers\PayrollProcessingController::class, 'reopen'])->name('payroll-processing.reopen');
         Route::delete('/payroll-processing/{run}',        [\App\Http\Controllers\PayrollProcessingController::class, 'destroy'])->name('payroll-processing.destroy');
         Route::post  ('/payroll-processing/track/{employee}/{kind}', [\App\Http\Controllers\PayrollProcessingController::class, 'track'])->name('payroll-processing.track');
+        Route::post  ('/payroll-processing/track-many',              [\App\Http\Controllers\PayrollProcessingController::class, 'trackMany'])->name('payroll-processing.track-many');
     });
 
     // ── PAYROLL · Payslips (issued from a signed-off run) ─────────────────

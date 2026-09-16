@@ -458,49 +458,77 @@ class PayrollProcessingPageTest extends TestCase
 
     // ── The tracker ──────────────────────────────────────────────────────
 
-    /** No run, no approval: the line moves the moment somebody presses it. */
-    public function test_a_contribution_is_submitted_then_remitted_straight_away(): void
+    /** No run, no approval, and no submit step: one press settles the line. */
+    public function test_a_contribution_is_marked_done_in_one_press(): void
     {
         $e = $this->worker();
 
-        $this->mark($e, 'sss', 'submit')->assertSessionHas('success');
+        $this->mark($e, 'sss', 'done')->assertSessionHas('success');
 
         $line = PayrollRemittance::sole();
-        $this->assertSame('submitted', $line->status);
-        $this->assertSame($this->admin->id, $line->submitted_by);
+        $this->assertSame('done', $line->status);
+        $this->assertSame($this->admin->id, $line->completed_by);
+        $this->assertNotNull($line->completed_at);
         $this->assertSame('2026-09-07', $line->period_start);
         $this->assertEqualsWithDelta($this->open($e)->viewData('sel')['sss'], $line->amount, 0.001);
-
-        $this->mark($e, 'sss', 'done')->assertSessionHas('success');
-        $this->assertSame('done', $line->fresh()->status);
-        $this->assertNotNull($line->fresh()->completed_at);
 
         $this->open($e, 'tracker')->assertSee('Remitted')->assertSee('by Admin');
     }
 
-    public function test_steps_follow_in_order_and_undo_walks_one_back(): void
+    /** The Submit button is gone; a pending line offers Mark done instead. */
+    public function test_a_pending_line_offers_done_and_not_submit(): void
     {
         $e = $this->worker();
 
-        $this->mark($e, 'bir', 'done')->assertSessionHas('error');   // not submitted yet
-        $this->assertSame(0, PayrollRemittance::count());
+        $this->assertSame('Mark done', $this->row($e, 'sss')['actions'][0]['label']);
+        $this->assertSame('done', $this->row($e, 'sss')['actions'][0]['action']);
+        $this->assertSame('Mark paid', $this->row($e, 'net_pay')['actions'][0]['label']);
 
-        $this->mark($e, 'bir', 'submit');
-        $this->mark($e, 'bir', 'done');
-        $this->mark($e, 'bir', 'submit')->assertSessionHas('error');  // already remitted
+        $this->open($e, 'tracker')->assertDontSee('>Submit<', false);
+
+        // And the action itself is no longer accepted.
+        $this->mark($e, 'sss', 'submit')->assertSessionHasErrors('action');
+        $this->assertSame(0, PayrollRemittance::count());
+    }
+
+    public function test_done_cannot_repeat_and_undo_walks_it_back(): void
+    {
+        $e = $this->worker();
+
+        $this->mark($e, 'bir', 'done')->assertSessionHas('success');
+        $this->mark($e, 'bir', 'done')->assertSessionHas('error');   // already remitted
 
         $this->mark($e, 'bir', 'undo');
         $line = PayrollRemittance::sole();
-        $this->assertSame('submitted', $line->status);
+        $this->assertSame('pending', $line->status, 'undo goes back to pending, not to a middle step');
         $this->assertNull($line->completed_at, 'undoing takes the signature back off');
-        $this->assertNotNull($line->submitted_at);
+    }
+
+    /**
+     * Rows marked before the submit step was dropped still read Processing
+     * and can still be settled — the state is understood, just unreachable.
+     */
+    public function test_a_line_left_processing_can_still_be_finished(): void
+    {
+        $e = $this->worker();
+
+        PayrollRemittance::create([
+            'employee_id' => $e->id, 'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
+            'kind' => 'sss', 'status' => 'submitted', 'amount' => 1.23,
+            'submitted_by' => $this->admin->id, 'submitted_at' => now(),
+        ]);
+
+        $this->assertSame('Processing', $this->row($e, 'sss')['state']);
+
+        $this->mark($e, 'sss', 'done')->assertSessionHas('success');
+        $this->assertSame('done', PayrollRemittance::sole()->status);
     }
 
     public function test_net_pay_is_paid_or_not(): void
     {
         $e = $this->worker();
 
-        $this->mark($e, 'net_pay', 'submit')->assertSessionHas('error');
+        $this->mark($e, 'net_pay', 'submit')->assertSessionHasErrors('action');
         $this->mark($e, 'net_pay', 'done')->assertSessionHas('success');
 
         $this->assertSame('done', PayrollRemittance::where('kind', 'net_pay')->sole()->status);
@@ -514,9 +542,9 @@ class PayrollProcessingPageTest extends TestCase
         $a = $this->worker('Alpha');
         $b = $this->worker('Bravo');
 
-        $this->mark($a, 'sss', 'submit');
+        $this->mark($a, 'sss', 'done');
 
-        $this->assertSame('Processing', $this->row($a, 'sss')['state']);
+        $this->assertSame('Done', $this->row($a, 'sss')['state']);
         $this->assertSame('Pending', $this->row($b, 'sss')['state']);
     }
 
@@ -525,7 +553,141 @@ class PayrollProcessingPageTest extends TestCase
         $e = $this->worker();
 
         // Week 36: no attendance, so no pay and nothing on it to remit.
-        $this->mark($e, 'sss', 'submit', '2026-08-31_2026-09-06')->assertSessionHas('error');
+        $this->mark($e, 'sss', 'done', '2026-08-31_2026-09-06')->assertSessionHas('error');
+        $this->assertSame(0, PayrollRemittance::count());
+    }
+
+    // ── Marking several at once ──────────────────────────────────────────
+
+    private function markMany(array $employees, string $period = self::WEEK)
+    {
+        return $this->actingAs($this->admin)->post(route('payroll-processing.track-many'), [
+            'period'    => $period,
+            'employees' => collect($employees)->map(fn ($e) => $e->id)->all(),
+        ]);
+    }
+
+    /**
+     * The whole point of the tick boxes: a week's remittances for several
+     * workers settled in one press, instead of a line at a time.
+     */
+    public function test_several_workers_are_marked_done_in_one_action(): void
+    {
+        $a = $this->worker('Alpha');
+        $b = $this->worker('Bravo');
+        $c = $this->worker('Charlie');
+
+        $this->markMany([$a, $b])->assertSessionHas('success');
+
+        // Every line either of them owed — the contributions, the tax and the
+        // net pay — is done, and signed.
+        foreach ([$a, $b] as $e) {
+            $lines = PayrollRemittance::where('employee_id', $e->id)->get();
+
+            $this->assertSame(5, $lines->count(), $e->name . ': every kind was settled');
+            $this->assertTrue($lines->every(fn ($l) => $l->status === 'done'), $e->name);
+            $this->assertTrue($lines->every(fn ($l) => $l->completed_by === $this->admin->id), $e->name);
+            $this->assertTrue($lines->every(fn ($l) => $l->amount > 0), $e->name . ': the amount is kept');
+        }
+
+        // Nobody who was not ticked is touched.
+        $this->assertSame(0, PayrollRemittance::where('employee_id', $c->id)->count());
+        $this->assertSame('Pending', $this->row($c, 'sss')['state']);
+    }
+
+    /** The list stops offering the ones already settled, and says so. */
+    public function test_the_list_counts_what_is_left_to_settle(): void
+    {
+        $a = $this->worker('Alpha');
+        $b = $this->worker('Bravo');
+
+        $before = $this->people('tracker');
+        $this->assertSame(10, $before->viewData('pending')['total'], 'five lines each');
+        $before->assertSee('5 pending');
+
+        $this->markMany([$a]);
+
+        $after = $this->people('tracker');
+        $this->assertSame(5, $after->viewData('pending')['total']);
+        $this->assertSame([$b->id => 5], $after->viewData('pending')['by']);
+        $after->assertSee('All settled');
+    }
+
+    /** Marking the same selection twice does not re-sign what is already done. */
+    public function test_marking_again_changes_nothing_and_says_so(): void
+    {
+        $e = $this->worker();
+
+        $this->markMany([$e])->assertSessionHas('success');
+        $signed = PayrollRemittance::where('kind', 'sss')->sole()->completed_at;
+
+        $this->markMany([$e])->assertSessionHas('error');
+
+        $this->assertEquals($signed, PayrollRemittance::where('kind', 'sss')->sole()->completed_at);
+        $this->assertSame(5, PayrollRemittance::count(), 'no second set of lines');
+    }
+
+    /** A worker with nothing on the week has nothing to mark, and no rows are invented. */
+    public function test_a_worker_with_nothing_due_is_not_given_lines(): void
+    {
+        $idle = Employee::create([
+            'name' => 'Nothing Doing', 'status' => Employee::STATUS_ACTIVE,
+            'employment_type' => Employee::EMPLOYMENT_DAILY,
+            'labor_type_id' => LaborType::create(['name' => 'Helper', 'daily_rate' => 640, 'ot_rate' => 125])->id,
+            'shift_id' => Shift::where('crosses_midnight', false)->firstOrFail()->id,
+            'rate_per_hour' => 80,
+        ]);
+
+        $this->markMany([$idle])->assertSessionHas('error');
+        $this->assertSame(0, PayrollRemittance::count());
+    }
+
+    /** The tick boxes are the tracker's; the other two lists do not offer them. */
+    public function test_only_the_tracker_list_offers_the_tick_boxes(): void
+    {
+        $this->worker();
+
+        // The tick box itself, not the script's selector for it.
+        $box = 'type="checkbox" name="employees[]"';
+
+        $this->people('tracker')
+            ->assertSee('Select all outstanding')
+            ->assertSee($box, false);
+
+        foreach (['workflow', 'payslip'] as $view) {
+            $this->people($view)
+                ->assertDontSee('Select all outstanding')
+                ->assertDontSee($box, false);
+        }
+    }
+
+    /** Nothing left outstanding, nothing to tick. */
+    public function test_the_bulk_bar_goes_away_once_the_week_is_settled(): void
+    {
+        $e = $this->worker();
+
+        $this->people('tracker')->assertSee('Select all outstanding');
+
+        $this->markMany([$e]);
+
+        $this->people('tracker')
+            ->assertDontSee('Select all outstanding')
+            ->assertSee('All settled');
+    }
+
+    /** A selection is still checked against the period and the roster. */
+    public function test_marking_many_needs_a_real_period_and_somebody_to_mark(): void
+    {
+        $e = $this->worker();
+
+        $this->actingAs($this->admin)
+            ->post(route('payroll-processing.track-many'), ['period' => self::WEEK, 'employees' => []])
+            ->assertSessionHasErrors('employees');
+
+        $this->actingAs($this->admin)
+            ->post(route('payroll-processing.track-many'), ['period' => '2026-02-30_2026-03-06', 'employees' => [$e->id]])
+            ->assertNotFound();
+
         $this->assertSame(0, PayrollRemittance::count());
     }
 
@@ -533,7 +695,6 @@ class PayrollProcessingPageTest extends TestCase
     public function test_a_mark_keeps_what_it_came_to_when_the_pay_moves(): void
     {
         $e = $this->worker();
-        $this->mark($e, 'sss', 'submit');
         $this->mark($e, 'sss', 'done');
         $remitted = PayrollRemittance::sole()->amount;
 
@@ -604,8 +765,8 @@ class PayrollProcessingPageTest extends TestCase
     {
         $e = $this->worker();
 
-        $this->mark($e, 'gcash', 'submit')->assertNotFound();
-        $this->mark($e, 'sss', 'submit', '2026-02-30_2026-03-06')->assertNotFound();
+        $this->mark($e, 'gcash', 'done')->assertNotFound();
+        $this->mark($e, 'sss', 'done', '2026-02-30_2026-03-06')->assertNotFound();
     }
 
     // ── The payslip ──────────────────────────────────────────────────────

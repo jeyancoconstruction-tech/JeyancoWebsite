@@ -96,8 +96,9 @@ class PayrollProcessingController extends Controller
             'rows'    => $rows,
             'sel'     => $sel,
             'view'    => $view,
-            'step'    => $step,
-            'pending' => $this->pending($rows, $marks, $tracking),
+            'step'     => $step,
+            'tracking' => $tracking,
+            'pending'  => $this->pending($rows, $marks, $tracking),
             'lines'   => $sel ? $this->lines($sel) : ['earn' => [], 'ded' => []],
             'track'   => $track,
             'open'    => count(array_filter($track, fn ($t) => $t['open'])),
@@ -241,7 +242,7 @@ class PayrollProcessingController extends Controller
     {
         abort_unless(isset(PayrollRemittance::KINDS[$kind]), 404);
 
-        $data   = $request->validate(['period' => 'required|string', 'action' => 'required|in:submit,done,undo']);
+        $data   = $request->validate(['period' => 'required|string', 'action' => 'required|in:done,undo']);
         $period = $this->pick($data['period'], $this->periods());
 
         abort_unless($period !== null, 404);
@@ -268,7 +269,7 @@ class PayrollProcessingController extends Controller
         ]);
 
         $from = $line->status ?? PayrollRemittance::PENDING;
-        $to   = PayrollRemittance::after($kind, $from, $data['action']);
+        $to   = PayrollRemittance::after($from, $data['action']);
 
         if ($to === null) {
             return back()->with('error', "{$label} for {$employee->name} is {$word($from)}; that step does not follow.");
@@ -276,13 +277,11 @@ class PayrollProcessingController extends Controller
 
         $line->fill(['status' => $to, 'amount' => $amount]);
 
-        // Each step signs itself; undoing one takes its signature back off.
-        match (true) {
-            $data['action'] === 'submit'      => $line->fill(['submitted_by' => auth()->id(), 'submitted_at' => now()]),
-            $data['action'] === 'done'        => $line->fill(['completed_by' => auth()->id(), 'completed_at' => now()]),
-            $from === PayrollRemittance::DONE => $line->fill(['completed_by' => null, 'completed_at' => null]),
-            default                           => $line->fill(['submitted_by' => null, 'submitted_at' => null]),
-        };
+        // Marking signs the line; undoing takes the signature back off, the
+        // older two-step signature with it.
+        $line->fill($data['action'] === 'done'
+            ? ['completed_by' => auth()->id(), 'completed_at' => now()]
+            : ['completed_by' => null, 'completed_at' => null, 'submitted_by' => null, 'submitted_at' => null]);
 
         $line->save();
 
@@ -294,7 +293,113 @@ class PayrollProcessingController extends Controller
             : "{$label} for {$employee->name} marked {$word($to)}.");
     }
 
+    /**
+     * Mark everything several workers still owe for the period done, in one
+     * press. The tracker lists a week's remittances a worker at a time, and
+     * an office settling a week settles all of them at once; doing that line
+     * by line was the whole complaint.
+     *
+     * Only what is outstanding moves: a line already done keeps the signature
+     * it has, and a line with nothing on it is not created.
+     */
+    public function trackMany(Request $request)
+    {
+        $data = $request->validate([
+            'period'      => 'required|string',
+            'employees'   => 'required|array|min:1',
+            'employees.*' => 'integer',
+        ]);
+
+        $period = $this->pick($data['period'], $this->periods());
+
+        abort_unless($period !== null, 404);
+
+        if (! PayrollRemittance::available()) {
+            return back()->with('error', 'Remittance tracking needs a database update first (php artisan migrate).');
+        }
+
+        $wanted = array_values(array_unique($data['employees']));
+        $rows   = $this->figures($period)->whereIn('employee_id', $wanted)->keyBy('employee_id');
+
+        $marks = PayrollRemittance::where('period_start', $period['from'])
+            ->where('period_end', $period['to'])
+            ->whereIn('employee_id', $wanted)
+            ->get()
+            ->groupBy('employee_id');
+
+        $lines = 0;
+        $names = [];
+
+        foreach ($rows as $id => $row) {
+            $moved = $this->settle($row, $period, ($marks->get($id) ?? collect())->keyBy('kind'));
+
+            if ($moved > 0) {
+                $lines += $moved;
+                $names[] = $row['name'];
+            }
+        }
+
+        if ($lines === 0) {
+            return back()->with('error', count($wanted) === 1
+                ? 'Nothing was left to settle for that employee in ' . $period['span'] . '.'
+                : 'Nothing was left to settle for the ' . count($wanted) . ' employees selected in ' . $period['span'] . '.');
+        }
+
+        $people = count($names);
+        $who    = collect($names)->take(20)->implode(', ')
+                . ($people > 20 ? ' and ' . ($people - 20) . ' more' : '');
+
+        AuditLog::record('Payroll', 'remittance',
+            "Remittances for {$period['span']}: {$lines} " . ($lines === 1 ? 'line' : 'lines')
+            . " marked done for {$people} " . ($people === 1 ? 'employee' : 'employees') . ": {$who}");
+
+        return back()->with('success',
+            "Marked {$lines} " . ($lines === 1 ? 'line' : 'lines') . ' done for '
+            . "{$people} " . ($people === 1 ? 'employee' : 'employees') . " in {$period['span']}.");
+    }
+
     // ── The page's pieces ───────────────────────────────────────────────────
+
+    /**
+     * Mark one worker's outstanding lines for the period done, and say how
+     * many moved.
+     *
+     * @param  Collection<string, PayrollRemittance>  $marks  that worker's marks, by kind
+     */
+    private function settle(array $row, array $period, Collection $marks): int
+    {
+        $moved = 0;
+
+        foreach (array_keys(PayrollRemittance::KINDS) as $kind) {
+            $amount = PayrollRemittance::amountOf($row, $kind);
+
+            if ($amount <= 0) {
+                continue;
+            }
+
+            $line = $marks->get($kind) ?? PayrollRemittance::firstOrNew([
+                'employee_id'  => $row['employee_id'],
+                'period_start' => $period['from'],
+                'period_end'   => $period['to'],
+                'kind'         => $kind,
+            ]);
+
+            if (($line->status ?? PayrollRemittance::PENDING) === PayrollRemittance::DONE) {
+                continue;
+            }
+
+            $line->fill([
+                'status'       => PayrollRemittance::DONE,
+                'amount'       => $amount,
+                'completed_by' => auth()->id(),
+                'completed_at' => now(),
+            ])->save();
+
+            $moved++;
+        }
+
+        return $moved;
+    }
 
     /**
      * The week's figures, one row per worker: Payroll Records' own, from the
@@ -756,11 +861,14 @@ class PayrollProcessingController extends Controller
                     'done_text' => $pay ? 'Paid' : 'Remitted',
                     'actions'   => [$undo],
                 ] + $row,
+                // One press settles a pending line; there is no submit step
+                // in front of it any more.
                 default => [
                     'state'   => 'Pending', 'tone' => 'pp-b-amber', 'badge' => 'ti-clock', 'open' => true,
-                    'actions' => [$pay
-                        ? ['action' => 'done', 'label' => 'Mark paid', 'icon' => null, 'primary' => true]
-                        : ['action' => 'submit', 'label' => 'Submit', 'icon' => null, 'primary' => true]],
+                    'actions' => [[
+                        'action' => 'done', 'primary' => true, 'icon' => null,
+                        'label'  => $pay ? 'Mark paid' : 'Mark done',
+                    ]],
                 ] + $row,
             };
         }

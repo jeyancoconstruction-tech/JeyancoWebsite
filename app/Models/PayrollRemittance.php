@@ -71,25 +71,18 @@ class PayrollRemittance extends Model
     /**
      * The status an action moves a line to, or null when it cannot from here.
      *
-     * A contribution is submitted to its agency and then confirmed remitted.
-     * Net pay has no middle step. Undo walks back one step, for the click
-     * that landed on the wrong row.
+     * Marking is one step: a line is done, and undo puts it back to pending.
+     * Remitting used to be submitted-then-confirmed; the submitted state is
+     * still understood because rows in the database carry it, but nothing
+     * reaches it any more.
      */
-    public static function after(string $kind, string $status, string $action): ?string
+    public static function after(string $status, string $action): ?string
     {
-        if ($kind === 'net_pay') {
-            return match ([$status, $action]) {
-                [self::PENDING, 'done'] => self::DONE,
-                [self::DONE, 'undo']    => self::PENDING,
-                default                 => null,
-            };
-        }
-
         return match ([$status, $action]) {
-            [self::PENDING, 'submit']  => self::SUBMITTED,
+            [self::PENDING, 'done']    => self::DONE,
             [self::SUBMITTED, 'done']  => self::DONE,
             [self::SUBMITTED, 'undo']  => self::PENDING,
-            [self::DONE, 'undo']       => self::SUBMITTED,
+            [self::DONE, 'undo']       => self::PENDING,
             default                    => null,
         };
     }
