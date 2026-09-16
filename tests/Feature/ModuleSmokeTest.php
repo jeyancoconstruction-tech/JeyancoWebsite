@@ -226,7 +226,11 @@ class ModuleSmokeTest extends TestCase
             ->post("/payroll-processing/{$run->id}/finalize", ['confirm' => 1]);
 
         $this->assertSame('finalized', $run->fresh()->status);
-        $this->assertSame(1500.0, (float) $loan->fresh()->balance, 'the advance was not collected once');
+
+        // Finalising no longer collects a cash advance: payroll takes its
+        // instalment from the application's own schedule every period, so
+        // settling it here as well would charge the worker twice.
+        $this->assertSame(0, $loan->deductions()->count(), 'the advance was collected twice');
         $this->assertSame(3000.0, (float) $oldLoan->fresh()->balance, 'the advance was taken off an old loan');
 
         // Re-read the line: recalculating replaces a run's items wholesale, so

@@ -164,6 +164,24 @@
 
 .mod-row-actions { display: flex; gap: 6px; justify-content: flex-end; }
 
+/* ── The row's own menu ───────────────────────────────────────────────── */
+.mod-dots { width: 30px; padding: 0; justify-content: center; }
+.mod-dots::after { display: none; }        /* Bootstrap's caret */
+.mod-dropdown {
+    min-width: 200px; padding: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+}
+.mod-dropdown .dropdown-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px; border-radius: 7px;
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+    background: none; border: none; width: 100%; text-align: left;
+}
+.mod-dropdown .dropdown-item:hover,
+.mod-dropdown .dropdown-item:focus { background: var(--bg-subtle); color: var(--text-primary); }
+.mod-dropdown .dropdown-item i { width: 15px; text-align: center; color: var(--text-secondary); }
+
 /* ── Tabs · matching the Attendance page's underline ──────────────────── */
 .mod-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
 .mod-tab {

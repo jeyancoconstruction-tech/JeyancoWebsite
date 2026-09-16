@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Setting;
 use App\Models\Holiday;
+use App\Models\Loan;
 use App\Models\PayrollRate;
 use App\Models\Bonus;
 use App\Models\Shift;
@@ -307,6 +308,14 @@ class PayrollService
         $cfg['valeAdvances'] = $dates->isEmpty()
             ? []
             : ValeAdvance::upTo($dates->max());
+
+        // The cash advances issued on Leave & Advances, collected on the
+        // instalment their application asked for. Same instrument as the one
+        // above and taken the same way; the difference is only where it was
+        // entered, so both land on the one advance line.
+        $cfg['cashAdvances'] = $dates->isEmpty()
+            ? []
+            : Loan::upTo($dates->max());
 
         $weeks = $this->groupByWeek($records, $cfg);
 
@@ -737,6 +746,12 @@ class PayrollService
 
                     foreach ($cfg['valeAdvances'] ?? [] as $adv) {
                         if ($adv['all'] || in_array($empId, $adv['employees'])) {
+                            $advanceDue += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
+                        }
+                    }
+
+                    foreach ($cfg['cashAdvances'] ?? [] as $adv) {
+                        if ($adv['employee_id'] === $empId) {
                             $advanceDue += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
                         }
                     }

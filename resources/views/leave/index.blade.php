@@ -6,7 +6,7 @@
     // The subtitle and the one button follow the open tab.
     $head = $tab === 'advances'
         ? [
-            'sub'    => __('Cash handed to a worker ahead of pay and collected back over several payrolls. Payroll Processing takes the instalment due; the balance moves only when a run is finalised.'),
+            'sub'    => __('Cash handed to a worker ahead of pay and collected back over several payrolls. Payroll takes the instalment the application asked for, every payroll, until nothing is left.'),
             'modal'  => 'advanceModal',
             'button' => __('New Cash Advance'),
         ]
@@ -208,7 +208,7 @@
                             <td>@include('modules._person', ['name' => $advance->employee->name ?? '—', 'sub' => $advance->reference ?: ''])</td>
                             <td class="num">₱{{ number_format($advance->principal, 2) }}</td>
                             <td class="num strong">
-                                ₱{{ number_format($advance->balance, 2) }}
+                                ₱{{ number_format($advance->outstanding, 2) }}
                                 <div class="mod-person-sub">{{ $advance->progress }}% {{ __('paid') }}</div>
                             </td>
                             <td class="num">₱{{ number_format($advance->installment, 2) }}</td>
@@ -219,14 +219,29 @@
                                 <span class="mod-badge {{ $tone }}"><span class="dot"></span>{{ $advance->status_label }}</span>
                             </td>
                             <td>
-                                @if($advance->status === 'active')
-                                    <div class="mod-row-actions">
-                                        <button class="mod-btn sm" type="button" data-bs-toggle="modal"
-                                                data-bs-target="#payModal{{ $advance->id }}">
-                                            <i class="fas fa-peso-sign"></i> {{ __('Record payment') }}
-                                        </button>
-                                    </div>
-                                @endif
+                                <div class="mod-row-actions dropdown">
+                                    <button class="mod-btn sm mod-dots" type="button" data-bs-toggle="dropdown"
+                                            data-bs-display="static" aria-expanded="false"
+                                            aria-label="{{ __('Actions for') }} {{ $advance->employee->name ?? '' }}">
+                                        <i class="fas fa-ellipsis-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end mod-dropdown">
+                                        @unless($advance->settled)
+                                            <li>
+                                                <button class="dropdown-item" type="button" data-bs-toggle="modal"
+                                                        data-bs-target="#payModal{{ $advance->id }}">
+                                                    <i class="fas fa-peso-sign"></i> {{ __('Add payment') }}
+                                                </button>
+                                            </li>
+                                        @endunless
+                                        <li>
+                                            <button class="dropdown-item" type="button" data-bs-toggle="modal"
+                                                    data-bs-target="#histModal{{ $advance->id }}">
+                                                <i class="fas fa-clock-rotate-left"></i> {{ __('Payment history') }}
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -306,10 +321,81 @@
   </div>
 </div>
 @else
-{{-- A record-payment dialog per active advance: the amount is capped at that
-     advance's own balance, which a single shared form could not enforce. --}}
+{{-- A record-payment dialog per unsettled advance: the amount is capped at
+     that advance's own balance, which a single shared form could not enforce.
+     Alongside it, the history of everything that has come off it. --}}
 @foreach($advances as $advance)
-    @if($advance->status === 'active')
+    @php $ledger = $advance->walk(now()->toDateString(), \App\Models\Loan::payWeekStartsOn()); @endphp
+
+    {{-- ── Payment / deduction history ──────────────────────────────────── --}}
+    <div class="modal fade" id="histModal{{ $advance->id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog" style="max-width:620px;">
+        <div class="modal-content emp-modal">
+            <div class="emp-head">
+                <span class="emp-head-icon"><i class="fas fa-clock-rotate-left"></i></span>
+                <div class="emp-head-text">
+                    <h6 class="emp-head-title">{{ __('Payment history') }}</h6>
+                    <p class="emp-head-sub">
+                        {{ $advance->employee->name ?? '' }} &middot;
+                        ₱{{ number_format($advance->principal, 2) }} {{ __('advanced') }} &middot;
+                        ₱{{ number_format($advance->installment, 2) }} {{ __('per payroll') }}
+                    </p>
+                </div>
+                <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body emp-body">
+                <div class="mod-note">
+                    <i class="fas fa-circle-info"></i>
+                    <div>
+                        {{ __('Collected') }} <b>₱{{ number_format($advance->paid_amount, 2) }}</b>
+                        {{ __('of') }} ₱{{ number_format($advance->principal, 2) }} &middot;
+                        <b>₱{{ number_format($ledger['outstanding'], 2) }}</b> {{ __('still owed') }}.
+                        {{ __('Payroll instalments are the ones payroll takes for each week; payments are the ones handed in at the office.') }}
+                    </div>
+                </div>
+
+                <div class="mod-table-wrap">
+                    <table class="mod-table">
+                        <thead>
+                            <tr>
+                                <th>{{ __('Date') }}</th>
+                                <th>{{ __('Type') }}</th>
+                                <th class="num">{{ __('Amount') }}</th>
+                                <th class="num">{{ __('Balance after') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @forelse($ledger['lines'] as $line)
+                            <tr>
+                                <td class="muted">{{ \Carbon\Carbon::parse($line['date'])->format('M d, Y') }}</td>
+                                <td>
+                                    <span class="mod-badge {{ $line['type'] === 'payroll' ? 'info' : 'ok' }}">
+                                        <span class="dot"></span>{{ __($line['label']) }}
+                                    </span>
+                                </td>
+                                <td class="num">₱{{ number_format($line['amount'], 2) }}</td>
+                                <td class="num strong">₱{{ number_format($line['balance'], 2) }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="muted" style="text-align:center;padding:18px;">
+                                    {{ __('Nothing collected yet.') }}
+                                    {{ __('Collection starts') }} {{ $advance->collectionOpensOn()->format('M d, Y') }}.
+                                </td>
+                            </tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="emp-foot">
+                <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Close') }}</button>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    @unless($advance->settled)
     <div class="modal fade" id="payModal{{ $advance->id }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered emp-dialog" style="max-width:460px;">
         <div class="modal-content emp-modal">
@@ -319,19 +405,19 @@
                 <span class="emp-head-icon"><i class="fas fa-peso-sign"></i></span>
                 <div class="emp-head-text">
                     <h6 class="emp-head-title">{{ __('Record Payment') }}</h6>
-                    <p class="emp-head-sub">{{ $advance->employee->name ?? '' }} &middot; {{ __('balance') }} ₱{{ number_format($advance->balance, 2) }}</p>
+                    <p class="emp-head-sub">{{ $advance->employee->name ?? '' }} &middot; {{ __('balance') }} ₱{{ number_format($ledger["outstanding"], 2) }}</p>
                 </div>
                 <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body emp-body">
                 <div class="mod-note">
                     <i class="fas fa-circle-info"></i>
-                    <div>{{ __('For a payment made outside payroll. Payroll posts its own collections when a run is finalised.') }}</div>
+                    <div>{{ __('For a payment handed in at the office, on top of what payroll collects. It comes straight off the balance, and payroll takes less — or nothing — from then on.') }}</div>
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="amt{{ $advance->id }}">{{ __('Amount') }} <span class="ep-req">*</span></label>
                     <input class="form-control" id="amt{{ $advance->id }}" type="number" step="0.01" min="0.01"
-                           max="{{ $advance->balance }}" name="amount" required>
+                           max="{{ $ledger['outstanding'] }}" name="amount" required>
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="don{{ $advance->id }}">{{ __('Date') }} <span class="ep-req">*</span></label>
@@ -350,7 +436,7 @@
         </div>
       </div>
     </div>
-    @endif
+    @endunless
 @endforeach
 
 {{-- ── New cash advance ────────────────────────────────────────────────── --}}

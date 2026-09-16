@@ -265,7 +265,12 @@ class PayrollRunService
 
         DB::transaction(function () use ($run, &$collected) {
             foreach ($run->items as $item) {
-                $owed = ['loan' => $item->loan_deduction, Loan::ADVANCE => $item->advance_deduction];
+                // Cash advances are not settled here any more: payroll takes
+                // their instalment from the application's own schedule, every
+                // period, so posting a second collection at finalisation would
+                // charge the worker twice. Loans are not on that schedule —
+                // none is issued now, but one still open settles as it did.
+                $owed = ['loan' => $item->loan_deduction];
 
                 foreach ($owed as $type => $due) {
                     if ($due <= 0) {

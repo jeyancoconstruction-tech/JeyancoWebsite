@@ -170,11 +170,14 @@ class LeaveAdvancesPageTest extends TestCase
     }
 
     /**
-     * Finalising takes an advance's instalment from the advance, even when an
-     * older loan for the same worker is still open. Collected oldest-first
-     * regardless of kind, it would have paid the loan down instead.
+     * Finalising does not collect a cash advance any more.
+     *
+     * Payroll takes an advance's instalment from the application's own
+     * schedule now, every period — see CashAdvanceCollectionTest — so posting
+     * a second collection here would charge the worker twice. An old loan is
+     * not on that schedule, and still settles the way it did.
      */
-    public function test_finalising_takes_an_advance_instalment_from_the_advance_not_an_old_loan(): void
+    public function test_finalising_settles_an_old_loan_and_leaves_the_advance_to_the_schedule(): void
     {
         $emp     = $this->worker('Both Kinds');
         $loan    = $this->onFile($emp, 'loan', 2000, 500, '2026-08-01');
@@ -186,15 +189,16 @@ class LeaveAdvancesPageTest extends TestCase
         ]);
         PayrollRunItem::create([
             'payroll_run_id' => $run->id, 'employee_id' => $emp->id, 'employee_name' => $emp->name,
-            'advance_deduction' => 300, 'total_deductions' => 300,
+            'loan_deduction' => 500, 'advance_deduction' => 300, 'total_deductions' => 800,
         ]);
 
         $this->actingAs($this->admin())
              ->post("/payroll-processing/{$run->id}/finalize", ['confirm' => 1]);
 
         $this->assertSame('finalized', $run->fresh()->status);
-        $this->assertSame(700.0, (float) $advance->fresh()->balance, 'the advance was not collected');
-        $this->assertSame(2000.0, (float) $loan->fresh()->balance, 'the advance was taken off the old loan');
+        $this->assertSame(1500.0, (float) $loan->fresh()->balance, 'the old loan still settles here');
+        $this->assertSame(0, $advance->deductions()->count(),
+            'and the advance is left to its own schedule, so it is not collected twice');
     }
 
     public function test_the_old_addresses_land_on_the_merged_page(): void

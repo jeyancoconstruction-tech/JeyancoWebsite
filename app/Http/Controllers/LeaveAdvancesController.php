@@ -6,7 +6,6 @@ use App\Models\AuditLog;
 use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\Loan;
-use App\Models\LoanDeduction;
 use App\Support\Modules;
 use Illuminate\Http\Request;
 
@@ -48,8 +47,11 @@ class LeaveAdvancesController extends Controller
         // Only the open tab is queried. The two share filter names — status
         // and q — that mean different things on each side.
         if ($tab === 'advances') {
+            // The ledger comes with each row: the balance shown, the progress
+            // and the history are all worked out from it, and asking per row
+            // would be a query apiece.
             $view['advances'] = Loan::advances()
-                ->with('employee')
+                ->with(['employee', 'deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
                 ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
                 ->when($request->filled('q'), fn ($q) => $q->whereHas('employee',
                     fn ($e) => $e->where('name', 'like', '%' . $request->q . '%')))
@@ -57,11 +59,20 @@ class LeaveAdvancesController extends Controller
                 ->paginate(15, ['*'], 'advance_page')
                 ->withQueryString();
 
+            // An advance the schedule has finished collecting is settled
+            // whether or not anybody pressed anything, so the columns are
+            // brought up to what the schedule says before they are read.
+            $view['advances']->each(fn (Loan $l) => $l->syncSettlement());
+
+            $totals = Loan::advances()
+                ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
+                ->get();
+
             $view['summary'] = [
-                'active'      => Loan::advances()->where('status', 'active')->count(),
-                'outstanding' => (float) Loan::advances()->where('status', 'active')->sum('balance'),
-                'issued'      => (float) Loan::advances()->sum('principal'),
-                'collected'   => (float) LoanDeduction::whereHas('loan', fn ($q) => $q->advances())->sum('amount'),
+                'active'      => $totals->reject->settled->count(),
+                'outstanding' => round($totals->sum(fn (Loan $l) => $l->outstanding), 2),
+                'issued'      => round($totals->sum('principal'), 2),
+                'collected'   => round($totals->sum(fn (Loan $l) => $l->paid_amount), 2),
             ];
         } else {
             $view['leave'] = LeaveRequest::with(['employee', 'approver'])

@@ -85,11 +85,21 @@ class LoanController extends Controller
     {
         $this->onlyAdvances($loan);
 
+        // Never more than is actually left. What is left counts the payroll
+        // instalments the schedule has already taken, not just the payments
+        // made at the office, so an advance payroll has nearly finished
+        // cannot be paid twice over.
+        $left = $loan->outstanding;
+
+        if ($left <= 0) {
+            return back()->with('error', $loan->employee->name . "'s cash advance is already fully paid.");
+        }
+
         $data = $request->validate([
-            'amount'      => 'required|numeric|min:0.01|max:' . max($loan->balance, 0.01),
+            'amount'      => 'required|numeric|min:0.01|max:' . $left,
             'deducted_on' => 'required|date',
             'note'        => 'nullable|string|max:255',
-        ]);
+        ], [], ['amount' => 'payment']);
 
         LoanDeduction::create([
             'loan_id'     => $loan->id,
@@ -98,16 +108,16 @@ class LoanController extends Controller
             'note'        => $data['note'] ?? 'Recorded manually',
         ]);
 
-        $loan->balance = round(max($loan->balance - $data['amount'], 0), 2);
-        if ($loan->balance <= 0) {
-            $loan->status = 'paid';
-        }
-        $loan->save();
+        $loan->load(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')]);
+        $loan->syncSettlement();
 
         AuditLog::record('Loans', 'updated', 'Recorded ₱' . number_format($data['amount'], 2)
-            . ' against ' . $loan->employee->name . "'s " . $loan->type_label, $loan);
+            . ' against ' . $loan->employee->name . "'s " . $loan->type_label
+            . ' — ₱' . number_format($loan->outstanding, 2) . ' left', $loan);
 
-        return back()->with('success', 'Payment recorded.');
+        return back()->with('success', $loan->settled
+            ? 'Payment recorded — ' . $loan->employee->name . "'s cash advance is now fully paid."
+            : 'Payment recorded. ₱' . number_format($loan->outstanding, 2) . ' left to collect.');
     }
 
     /** A loan on file is history now; nothing here changes it. */
