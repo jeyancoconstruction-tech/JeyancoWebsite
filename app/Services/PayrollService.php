@@ -350,6 +350,42 @@ class PayrollService
     }
 
     /**
+     * What comes off a stretch of paid leave.
+     *
+     * Leave is income, so it is contributed and withheld on like any other
+     * wage. Worked out per day at the day's own rate and then multiplied,
+     * because the BIR table computeRecord() applies is the daily column — a
+     * week's leave taxed as one lump would land in the wrong band.
+     *
+     * @return array{sss: float, philhealth: float, pagibig: float, tax: float, total: float}
+     */
+    private function leaveDeductions(float $dayRate, float $paidDays, array $rates, bool $onContract): array
+    {
+        $zero = ['sss' => 0.0, 'philhealth' => 0.0, 'pagibig' => 0.0, 'tax' => 0.0, 'total' => 0.0];
+
+        if ($onContract || $dayRate <= 0 || $paidDays <= 0) {
+            return $zero;
+        }
+
+        $sss  = $dayRate * ($rates['sss_rate'] ?? 0) / 100;
+        $phil = $dayRate * ($rates['philhealth_rate'] ?? 0) / 100;
+        $pag  = $dayRate * ($rates['pagibig_rate'] ?? 0) / 100;
+
+        $tax = ($rates['withholding_tax'] ?? true)
+            ? $this->withholdingTaxOn($dayRate - ($sss + $phil + $pag))
+            : 0.0;
+
+        $out = [
+            'sss'        => round($sss  * $paidDays, 2),
+            'philhealth' => round($phil * $paidDays, 2),
+            'pagibig'    => round($pag  * $paidDays, 2),
+            'tax'        => round($tax  * $paidDays, 2),
+        ];
+
+        return $out + ['total' => round(array_sum($out), 2)];
+    }
+
+    /**
      * What one day of this worker's is priced at.
      *
      * Read off a day the week already priced where there is one, so a leave
@@ -815,13 +851,26 @@ class PayrollService
                         $paidLeaveDays += $filed->is_paid ? $d : 0;
                     }
 
-                    $leavePay = round($paidLeaveDays * $this->dayRateOf($employee, $weekRates, $pricedDaily), 2);
+                    $leaveRate = $this->dayRateOf($employee, $weekRates, $pricedDaily);
+                    $leavePay  = round($paidLeaveDays * $leaveRate, 2);
 
-                    // Into the gross, so it is taxed and remitted on like any
-                    // other wage, and into the net the worker is handed. The
-                    // statutory splits come off the days worked, as they did.
+                    // Income is income: a paid day off is contributed and
+                    // withheld on exactly as a day worked is, so the leave
+                    // carries its own share of SSS, PhilHealth, Pag-IBIG and
+                    // tax rather than reaching the worker whole.
+                    $leaveDed = $this->leaveDeductions(
+                        $leaveRate, $paidLeaveDays, $weekRates,
+                        (bool) $employee->isExcludedFromPayroll()
+                    );
+
+                    $sumSss     += $leaveDed['sss'];
+                    $sumPhil    += $leaveDed['philhealth'];
+                    $sumPagibig += $leaveDed['pagibig'];
+                    $sumTax     += $leaveDed['tax'];
+                    $sumAuto    += $leaveDed['total'];
+
                     $sumGross += $leavePay;
-                    $sumNet   += $leavePay;
+                    $sumNet   += $leavePay - $leaveDed['total'];
 
                     // Cash advances being collected this period. The vale
                     // summed above came off the days themselves; this is the
@@ -943,25 +992,36 @@ class PayrollService
                 $dayRate = $this->dayRateOf($onLeave, $weekRates);
                 $pay     = round($paidDays * $dayRate, 2);
 
+                // The same contributions a worked week would carry: the week
+                // pays them, so the week deducts on it.
+                $ded = $this->leaveDeductions(
+                    $dayRate, $paidDays, $weekRates,
+                    (bool) $onLeave->isExcludedFromPayroll()
+                );
+
                 $employeeSummaries[] = [
-                    'employee_id'  => (int) $leaveEmpId,
-                    'shift'        => $onLeave->shift?->name,
-                    'name'         => $onLeave->name,
-                    'position'     => $onLeave->position ?? '',
-                    'dailyRate'    => round($dayRate, 2),
-                    'leaveDays'    => round($days, 2),
-                    'leavePay'     => $pay,
-                    'gross'        => $pay,
-                    'net'          => $pay,
+                    'employee_id'         => (int) $leaveEmpId,
+                    'shift'               => $onLeave->shift?->name,
+                    'name'                => $onLeave->name,
+                    'position'            => $onLeave->position ?? '',
+                    'dailyRate'           => round($dayRate, 2),
+                    'leaveDays'           => round($days, 2),
+                    'leavePay'            => $pay,
+                    'gross'               => $pay,
+                    'sssDeduction'        => $ded['sss'],
+                    'philhealthDeduction' => $ded['philhealth'],
+                    'pagibigDeduction'    => $ded['pagibig'],
+                    'withholdingTax'      => $ded['tax'],
+                    'autoDeductions'      => $ded['total'],
+                    'totalDeductions'     => $ded['total'],
+                    'net'                 => round($pay - $ded['total'], 2),
                 ] + array_fill_keys([
                     'workdays', 'hours', 'minutes', 'overtime', 'holidayPay', 'restDayPay',
-                    'nightDiffPay', 'bonus', 'sssDeduction', 'philhealthDeduction',
-                    'pagibigDeduction', 'withholdingTax', 'autoDeductions', 'late_minutes',
+                    'nightDiffPay', 'bonus', 'late_minutes',
                     'vale', 'vale_advance', 'vale_advance_due', 'manualDeductions',
-                    'totalDeductions',
                 ], 0);
 
-                $weeklyTotalSalary += $pay;
+                $weeklyTotalSalary += round($pay - $ded['total'], 2);
             }
 
             $payrollWeeks[] = [

@@ -107,6 +107,15 @@ class PaidLeaveInPayrollTest extends TestCase
         return $this->figures($e, $from, $to)['totals'] ?? [];
     }
 
+    /**
+     * One itemised deduction for the range. They are carried on the weeks
+     * rather than the totals, which is how every screen reads them.
+     */
+    private function deduction(Employee $e, string $key, string $from, string $to): float
+    {
+        return round((float) collect($this->figures($e, $from, $to)['periods'] ?? [])->sum($key), 2);
+    }
+
     // ── Paid at the day rate ─────────────────────────────────────────────
 
     /** Two paid days off are two days' pay, on top of the day worked. */
@@ -122,7 +131,13 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->assertEqualsWithDelta(2.0, $t['leaveDays'], 0.001);
         $this->assertEqualsWithDelta(1600.0, $t['leavePay'], 0.001, 'two days at ₱800');
         $this->assertEqualsWithDelta($before['gross'] + 1600, $t['gross'], 0.011, 'leave is wages, so it is in the gross');
-        $this->assertEqualsWithDelta($before['net'] + 1600, $t['net'], 0.011, 'and it reaches the net');
+
+        // It reaches the net less what is contributed and withheld on it,
+        // exactly as a day worked would.
+        $onLeave = round($t['totalDeductions'] - $before['totalDeductions'], 2);
+
+        $this->assertGreaterThan(0, $onLeave, 'income is contributed on');
+        $this->assertEqualsWithDelta($before['net'] + 1600 - $onLeave, $t['net'], 0.02);
     }
 
     /** Leave filed unpaid is counted, and pays nothing. */
@@ -244,6 +259,90 @@ class PaidLeaveInPayrollTest extends TestCase
             'and the other two in week 38');
     }
 
+    // ── Contributions on it ──────────────────────────────────────────────
+
+    /**
+     * A paid day off is income, so it is contributed and withheld on exactly
+     * as a day worked is. It must not reach the worker whole.
+     */
+    public function test_leave_carries_its_own_contributions(): void
+    {
+        $e = $this->worker(['2026-09-10']);
+
+        $before = [
+            'sss'   => $this->deduction($e, 'sssDeduction', ...self::WEEK),
+            'phil'  => $this->deduction($e, 'philhealthDeduction', ...self::WEEK),
+            'pag'   => $this->deduction($e, 'pagibigDeduction', ...self::WEEK),
+            'total' => $this->totals($e, ...self::WEEK)['totalDeductions'],
+            'net'   => $this->totals($e, ...self::WEEK)['net'],
+        ];
+
+        $this->leave($e, '2026-09-08', '2026-09-09');
+        $t = $this->totals($e, ...self::WEEK);
+
+        $rates = PayrollRate::effectiveOn('2026-09-13')->toRates();
+
+        // Two days at ₱800, each contributed on at the day's own rate.
+        $this->assertEqualsWithDelta($before['sss'] + 800 * $rates['sss_rate'] / 100 * 2,
+            $this->deduction($e, 'sssDeduction', ...self::WEEK), 0.02, 'SSS');
+        $this->assertEqualsWithDelta($before['phil'] + 800 * $rates['philhealth_rate'] / 100 * 2,
+            $this->deduction($e, 'philhealthDeduction', ...self::WEEK), 0.02, 'PhilHealth');
+        $this->assertEqualsWithDelta($before['pag'] + 800 * $rates['pagibig_rate'] / 100 * 2,
+            $this->deduction($e, 'pagibigDeduction', ...self::WEEK), 0.02, 'Pag-IBIG');
+
+        $this->assertGreaterThan($before['total'], $t['totalDeductions'],
+            'the deductions grow with the leave');
+
+        // The net is the leave less what came off it, not the leave whole.
+        $onLeave = round($t['net'] - $before['net'], 2);
+        $this->assertLessThan(1600.0, $onLeave, 'the leave does not reach the worker whole');
+        $this->assertEqualsWithDelta(1600 - ($t['totalDeductions'] - $before['total']), $onLeave, 0.02);
+    }
+
+    /** Unpaid leave is not income, so nothing comes off it. */
+    public function test_unpaid_leave_carries_no_contributions(): void
+    {
+        $e = $this->worker(['2026-09-10']);
+
+        $before = $this->totals($e, ...self::WEEK);
+        $this->leave($e, '2026-09-08', '2026-09-09', paid: false);
+        $t = $this->totals($e, ...self::WEEK);
+
+        $this->assertEqualsWithDelta($before['totalDeductions'], $t['totalDeductions'], 0.001);
+    }
+
+    /** A week that is nothing but leave still remits on what it paid. */
+    public function test_a_leave_only_week_still_contributes(): void
+    {
+        $this->worker(['2026-09-10'], 'Somebody Else');
+
+        $off = $this->worker([], 'Lawrence On Leave');
+        $this->leave($off, '2026-09-07', '2026-09-09');
+
+        $t = $this->totals($off, ...self::WEEK);
+
+        $this->assertEqualsWithDelta(2400.0, $t['gross'], 0.001);
+        $this->assertGreaterThan(0, $this->deduction($off, 'sssDeduction', ...self::WEEK), 'SSS is still due');
+        $this->assertGreaterThan(0, $this->deduction($off, 'philhealthDeduction', ...self::WEEK));
+        $this->assertGreaterThan(0, $this->deduction($off, 'pagibigDeduction', ...self::WEEK));
+        $this->assertEqualsWithDelta($t['gross'] - $t['totalDeductions'], $t['net'], 0.02,
+            'and the net is what is left after them');
+        $this->assertLessThan(2400.0, $t['net']);
+    }
+
+    /** Contract workers are outside the statutory scheme, on leave as at work. */
+    public function test_a_contract_worker_on_leave_contributes_nothing(): void
+    {
+        $e = $this->worker(['2026-09-10'], 'On Contract');
+        $e->forceFill(['employment_type' => Employee::EMPLOYMENT_CONTRACTUAL])->save();
+
+        $before = $this->totals($e, ...self::WEEK);
+        $this->leave($e, '2026-09-08', '2026-09-09');
+        $t = $this->totals($e, ...self::WEEK);
+
+        $this->assertEqualsWithDelta($before['totalDeductions'], $t['totalDeductions'], 0.001);
+    }
+
     // ── A week that is nothing but leave ─────────────────────────────────
 
     /**
@@ -264,7 +363,8 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->assertEqualsWithDelta(3.0, $t['leaveDays'], 0.001);
         $this->assertEqualsWithDelta(2400.0, $t['leavePay'], 0.001, 'three days at ₱800');
         $this->assertEqualsWithDelta(2400.0, $t['gross'], 0.001);
-        $this->assertEqualsWithDelta(2400.0, $t['net'], 0.001);
+        $this->assertEqualsWithDelta(2400.0 - $t['totalDeductions'], $t['net'], 0.02,
+            'less the contributions due on it');
         $this->assertSame(0, $t['workdays'], 'and no day is counted as worked');
         $this->assertSame(0, $t['minutes']);
     }
