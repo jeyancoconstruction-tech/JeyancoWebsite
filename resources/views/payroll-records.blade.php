@@ -310,6 +310,17 @@
                                         $hourlyOf[$d['employee_id']] ??= $d['rate'];
                                     }
                                 }
+
+                                // A worker on leave all week worked no day to
+                                // read a rate or a shift off, so the week's own
+                                // figures fill the gap — otherwise they show at
+                                // ₱0.00 a day while being paid for the week.
+                                foreach ($employees as $empRow) {
+                                    foreach ($empRow['periods'] as $p) {
+                                        $rateOf[$empRow['employee_id']]  ??= $p['dailyRate'] ?? null;
+                                        $shiftOf[$empRow['employee_id']] ??= $p['shift'] ?? null;
+                                    }
+                                }
                             @endphp
                             @forelse($employees as $emp)
                                 @php

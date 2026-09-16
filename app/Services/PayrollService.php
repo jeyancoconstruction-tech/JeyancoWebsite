@@ -751,6 +751,12 @@ class PayrollService
             $weekOpens  = Carbon::parse($weekGroup->first()->date)->startOfWeek($weekStart)->toDateString();
             $weekCloses = Carbon::parse($weekGroup->first()->date)->endOfWeek($weekEnd)->toDateString();
 
+            // Leave is credited only as far as the week has actually got.
+            // A day worked is paid when it is worked; a day off has to be the
+            // same, or a week still running shows the whole of a leave signed
+            // off to the Friday as already paid on the Wednesday.
+            $leaveThrough = min($weekCloses, Carbon::now('Asia/Manila')->toDateString());
+
             $grants = array_filter(
                 $cfg['bonusGrants'] ?? [],
                 fn ($g) => $g['on'] >= $weekOpens && $g['on'] <= $weekCloses
@@ -804,7 +810,7 @@ class PayrollService
                     $leaveDays = $paidLeaveDays = 0.0;
 
                     foreach (($cfg['leave'][$empId] ?? []) as $filed) {
-                        $d = $filed->daysWithin($weekOpens, $weekCloses);
+                        $d = $filed->daysWithin($weekOpens, $leaveThrough);
                         $leaveDays += $d;
                         $paidLeaveDays += $filed->is_paid ? $d : 0;
                     }
@@ -881,6 +887,10 @@ class PayrollService
                         'holidayPay'          => round($sumHoliday, 2),
                         'restDayPay'          => round($sumRestDay, 2),
                         'nightDiffPay'        => round($sumNightDiff, 2),
+                        // What the week priced a day of theirs at. The weekly
+                        // tables read this off a day worked; a week that is
+                        // all leave has none, so the week carries it too.
+                        'dailyRate'           => round($this->dayRateOf($employee, $weekRates, $pricedDaily), 2),
                         'leaveDays'           => round($leaveDays, 2),
                         'leavePay'            => round($leavePay, 2),
                         'bonus'               => round($empBonus, 2),
@@ -921,7 +931,7 @@ class PayrollService
                 $days = $paidDays = 0.0;
 
                 foreach ($filed as $row) {
-                    $d = $row->daysWithin($weekOpens, $weekCloses);
+                    $d = $row->daysWithin($weekOpens, $leaveThrough);
                     $days += $d;
                     $paidDays += $row->is_paid ? $d : 0;
                 }
@@ -930,13 +940,15 @@ class PayrollService
                     continue;
                 }
 
-                $pay = round($paidDays * $this->dayRateOf($onLeave, $weekRates), 2);
+                $dayRate = $this->dayRateOf($onLeave, $weekRates);
+                $pay     = round($paidDays * $dayRate, 2);
 
                 $employeeSummaries[] = [
                     'employee_id'  => (int) $leaveEmpId,
                     'shift'        => $onLeave->shift?->name,
                     'name'         => $onLeave->name,
                     'position'     => $onLeave->position ?? '',
+                    'dailyRate'    => round($dayRate, 2),
                     'leaveDays'    => round($days, 2),
                     'leavePay'     => $pay,
                     'gross'        => $pay,

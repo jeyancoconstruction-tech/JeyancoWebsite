@@ -169,9 +169,69 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->assertEqualsWithDelta(645.0, $t['leavePay'], 0.001, 'the day off is paid at the floor');
     }
 
+    /**
+     * A day off is paid when it comes round, not the moment it is approved.
+     *
+     * A week still running counts the days worked so far; leave signed off to
+     * the Friday must not already be paid in full on the Wednesday, or the
+     * week's pay reads as far bigger than it is.
+     */
+    public function test_leave_still_to_come_is_not_paid_yet(): void
+    {
+        // Wednesday of week 38, with leave signed off Wednesday to Friday.
+        Carbon::setTestNow(Carbon::parse('2026-09-16 09:00:00', 'Asia/Manila'));
+
+        $this->worker(['2026-09-14'], 'Somebody Else');
+
+        $off = $this->worker([], 'Lawrence On Leave');
+        $this->leave($off, '2026-09-16', '2026-09-18');
+
+        $t = $this->totals($off, '2026-09-14', '2026-09-20');
+
+        $this->assertEqualsWithDelta(1.0, $t['leaveDays'], 0.001, 'only the day that has come round');
+        $this->assertEqualsWithDelta(800.0, $t['leavePay'], 0.001);
+
+        // By the Friday the whole of it has been reached.
+        Carbon::setTestNow(Carbon::parse('2026-09-18 18:00:00', 'Asia/Manila'));
+
+        $this->assertEqualsWithDelta(2400.0,
+            $this->totals($off, '2026-09-14', '2026-09-20')['leavePay'], 0.001);
+    }
+
+    /**
+     * Leave wholly in a week still ahead pays nothing yet.
+     *
+     * Note the crew mate: a week exists in the figures because somebody
+     * clocked in during it. A week nobody worked at all is not a week payroll
+     * has anything to say about.
+     */
+    public function test_leave_in_a_later_week_is_not_paid_in_this_one(): void
+    {
+        $this->worker(['2026-09-10', '2026-09-15'], 'Crew Mate');
+
+        $e = $this->worker(['2026-09-10']);
+        $this->leave($e, '2026-09-20', '2026-09-23');   // starts on the last day of week 38
+
+        $this->assertEqualsWithDelta(0.0, $this->totals($e, ...self::WEEK)['leavePay'], 0.001,
+            'the leave is not in this week at all');
+
+        // Nothing worked and nothing reached in week 38, so there is no row
+        // for them yet — it appears when the 20th comes round.
+        $this->assertSame([], $this->totals($e, '2026-09-14', '2026-09-20'));
+
+        Carbon::setTestNow(Carbon::parse('2026-09-20 18:00:00', 'Asia/Manila'));
+
+        $this->assertEqualsWithDelta(800.0,
+            $this->totals($e, '2026-09-14', '2026-09-20')['leavePay'], 0.001,
+            'and on the day itself, one day of it is paid');
+    }
+
     /** Only the days inside the period are paid, not the whole filing. */
     public function test_only_the_days_inside_the_period_are_paid(): void
     {
+        // Looking back at both weeks once they have gone by.
+        Carbon::setTestNow(Carbon::parse('2026-09-30 09:00:00', 'Asia/Manila'));
+
         $e = $this->worker(['2026-09-10', '2026-09-17']);
 
         // Filed Friday the 11th to Tuesday the 15th: the 11th, 12th and 13th
@@ -207,6 +267,29 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->assertEqualsWithDelta(2400.0, $t['net'], 0.001);
         $this->assertSame(0, $t['workdays'], 'and no day is counted as worked');
         $this->assertSame(0, $t['minutes']);
+    }
+
+    /**
+     * The weekly table reads the rate and the shift off a day worked, and a
+     * week that is all leave has none — so the week carries them itself,
+     * rather than showing a worker paid ₱2,400 at ₱0.00 a day.
+     */
+    public function test_a_leave_only_week_still_says_what_a_day_is_worth(): void
+    {
+        $this->worker(['2026-09-10'], 'Somebody Else');
+
+        $off = $this->worker([], 'Lawrence On Leave');
+        $this->leave($off, '2026-09-07', '2026-09-09');
+
+        $week = collect($this->figures($off, ...self::WEEK)['periods'])->first();
+
+        $this->assertEqualsWithDelta(800.0, $week['dailyRate'], 0.001);
+
+        $this->actingAs($this->admin)
+            ->get('/payroll-records?mode=weekly&week=2026-W37')
+            ->assertOk()
+            ->assertSee('Lawrence On Leave')
+            ->assertSee('2,400.00');
     }
 
     /** A pending registration is not on the payroll, leave or no leave. */

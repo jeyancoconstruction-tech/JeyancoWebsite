@@ -63,9 +63,18 @@ class LeaveRequest extends Model
     }
 
     /** Leave that touches the range at all, not only leave contained by it. */
+    /**
+     * Leave touching a range, either end of it counted.
+     *
+     * whereDate rather than a bare comparison: the columns are dates, but the
+     * date cast writes "Y-m-d 00:00:00", and a plain string compare then reads
+     * a leave starting on the last day of the range as *after* it and drops
+     * it. MySQL matched it and SQLite did not, so the tests and production
+     * disagreed about the boundary.
+     */
     public function scopeOverlapping(Builder $q, string $from, string $to): Builder
     {
-        return $q->where('starts_on', '<=', $to)->where('ends_on', '>=', $from);
+        return $q->whereDate('starts_on', '<=', $to)->whereDate('ends_on', '>=', $from);
     }
 
     public function getTypeLabelAttribute(): string
