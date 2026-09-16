@@ -305,17 +305,22 @@ class PayrollService
         // Advances are filtered on where their schedule begins rather than on
         // the range: one started months ago may still have instalments left to
         // collect inside it. A week outside an advance's run is answered zero.
-        $cfg['valeAdvances'] = $dates->isEmpty()
-            ? []
-            : ValeAdvance::upTo($dates->max());
+        //
+        // The cut-off is the end of the week the last worked day falls in, not
+        // that day itself. Payroll collects by the week, so an advance that
+        // starts on the Wednesday belongs to a week whose attendance may well
+        // stop on the Tuesday — asked only up to the Tuesday, it was never
+        // loaded, and that week collected nothing while the balance on Leave &
+        // Advances counted it as taken.
+        $advancesTo = $dates->isEmpty() ? null : Carbon::parse($dates->max())->addDays(6)->toDateString();
+
+        $cfg['valeAdvances'] = $advancesTo === null ? [] : ValeAdvance::upTo($advancesTo);
 
         // The cash advances issued on Leave & Advances, collected on the
         // instalment their application asked for. Same instrument as the one
         // above and taken the same way; the difference is only where it was
         // entered, so both land on the one advance line.
-        $cfg['cashAdvances'] = $dates->isEmpty()
-            ? []
-            : Loan::upTo($dates->max());
+        $cfg['cashAdvances'] = $advancesTo === null ? [] : Loan::upTo($advancesTo);
 
         $weeks = $this->groupByWeek($records, $cfg);
 

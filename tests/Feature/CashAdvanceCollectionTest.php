@@ -233,6 +233,105 @@ class CashAdvanceCollectionTest extends TestCase
         $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, ...self::WEEK), 0.001);
     }
 
+    /**
+     * Collection starts with the payroll the application named, even when the
+     * date falls mid-week and the worker's days that week are all before it.
+     *
+     * The advances were loaded by the last date anybody worked, so a week
+     * whose attendance stopped on the Tuesday never saw an advance starting
+     * on the Wednesday — payroll took nothing while the balance on Leave &
+     * Advances counted the week as collected.
+     */
+    public function test_it_starts_on_the_named_payroll_even_when_the_week_ends_early(): void
+    {
+        // Week 38 is Mon 14th to Sun 20th; this worker is in on the Monday
+        // and Tuesday only, and collection is set to start on the Wednesday.
+        Carbon::setTestNow(Carbon::parse('2026-09-18 12:00:00', 'Asia/Manila'));
+
+        $e = $this->worker(['2026-09-14', '2026-09-15']);
+        $advance = $this->advance($e, 5000, 750, '2026-09-16');
+
+        $this->assertEqualsWithDelta(750.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001,
+            'the payroll for the week the advance starts in must collect it');
+
+        $this->assertEqualsWithDelta(750.0, $advance->fresh()->paid_amount, 0.001,
+            'and the balance must agree with what payroll took');
+    }
+
+    /** The payroll before the starting date still collects nothing. */
+    public function test_the_payroll_before_the_starting_one_collects_nothing(): void
+    {
+        $e = $this->worker(['2026-09-10', '2026-09-16']);
+        $this->advance($e, 5000, 750, '2026-09-16');
+
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, '2026-09-07', '2026-09-13'), 0.001);
+        $this->assertEqualsWithDelta(750.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001);
+    }
+
+    /** With no starting date given, it collects from the payroll it was issued in. */
+    public function test_with_no_starting_date_it_starts_from_the_payroll_it_was_issued_in(): void
+    {
+        $e = $this->worker(['2026-09-10']);
+
+        Loan::create([
+            'employee_id' => $e->id, 'type' => Loan::ADVANCE,
+            'principal' => 5000, 'balance' => 5000, 'installment' => 750,
+            'schedule' => 'per_payroll', 'issued_on' => '2026-09-09', 'starts_on' => null,
+            'status' => 'active', 'created_by' => $this->admin->id,
+        ]);
+
+        $this->assertEqualsWithDelta(750.0, $this->advanceTaken($e, ...self::WEEK), 0.001);
+    }
+
+    // ── Where it has to show ─────────────────────────────────────────────
+
+    /** Payroll Records itemises it on the vale line, with the instalment named. */
+    public function test_it_shows_on_payroll_records(): void
+    {
+        $e = $this->worker(['2026-09-10']);
+        $this->advance($e, 5000, 750);
+
+        $row = collect($this->actingAs($this->admin)
+            ->get('/payroll-records?mode=weekly&week=2026-W37')
+            ->assertOk()
+            ->viewData('employees'))->firstWhere('employee_id', $e->id);
+
+        $this->assertEqualsWithDelta(750.0, collect($row['periods'])->sum('vale_advance'), 0.001);
+        $this->assertEqualsWithDelta(750.0, collect($row['periods'])->sum('vale'), 0.001);
+    }
+
+    /** And on the payslip, in the deductions and in the net. */
+    public function test_it_shows_on_the_payslip(): void
+    {
+        $e = $this->worker(['2026-09-10']);
+
+        $clean = $this->totals($e, ...self::WEEK)['net'];
+        $this->advance($e, 5000, 750);
+
+        $this->actingAs($this->admin)
+            ->get(route('payslip.batch', ['from' => '2026-09-07', 'to' => '2026-09-13', 'employee' => $e->id]))
+            ->assertOk()
+            ->assertSee('750.00');
+
+        $this->assertEqualsWithDelta($clean - 750, $this->totals($e, ...self::WEEK)['net'], 0.011,
+            'and it comes off the net the worker is handed');
+    }
+
+    /** One payroll period takes one instalment, however often the page is opened. */
+    public function test_a_period_collects_the_instalment_once(): void
+    {
+        $e = $this->worker(['2026-09-08', '2026-09-09', '2026-09-10']);
+        $this->advance($e, 5000, 750);
+
+        // Three days in the week, and the week still collects one instalment.
+        $this->assertEqualsWithDelta(750.0, $this->advanceTaken($e, ...self::WEEK), 0.001);
+
+        // Reading it again does not collect again.
+        $this->assertEqualsWithDelta(750.0, $this->advanceTaken($e, ...self::WEEK), 0.001);
+        $this->assertEqualsWithDelta(750.0, $this->advanceTaken($e, ...self::WEEK), 0.001);
+        $this->assertSame(0, LoanDeduction::count(), 'reading payroll writes nothing');
+    }
+
     // ── The balance, and what settles it ─────────────────────────────────
 
     /** The balance follows what payroll has taken, without anybody pressing anything. */
