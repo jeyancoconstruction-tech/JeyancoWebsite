@@ -220,11 +220,13 @@
                             </td>
                             <td>
                                 <div class="mod-row-actions dropdown">
-                                    {{-- Positioned by Popper against the viewport: the card clips
-                                         its overflow and the table scrolls, so a menu laid out
-                                         inside either is cut off when the list is short. --}}
+                                    {{-- Measured against the viewport, and taken out of the
+                                         card's overflow by the script at the foot of the page:
+                                         the card hides what spills out of it and the table
+                                         scrolls, so a menu laid out inside either is cut off
+                                         whenever the list is short. --}}
                                     <button class="mod-btn sm mod-dots" type="button" data-bs-toggle="dropdown"
-                                            data-bs-strategy="fixed" aria-expanded="false"
+                                            aria-expanded="false"
                                             aria-label="{{ __('Actions for') }} {{ $advance->employee->name ?? '' }}">
                                         <i class="fas fa-ellipsis-vertical"></i>
                                     </button>
@@ -564,3 +566,27 @@
 @include('employees._profile_styles')
 @include('employees._modal_styles')
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    // A row's menu is laid out inside a table that scrolls sideways, inside a
+    // card that hides whatever spills out of it. Either one cuts the menu off
+    // when it opens past the last row — which is every time the list is short.
+    //
+    // Popper's fixed strategy is what gets it out: the menu is positioned
+    // against the viewport instead, and an element positioned that way is not
+    // clipped by an ancestor's overflow. Bootstrap has no attribute for it, so
+    // each menu is built here rather than left to the click handler. The
+    // function form is handed Bootstrap's own defaults and only adds to them,
+    // so the placement and the flip it already does are kept.
+    if (typeof bootstrap === 'undefined') return;
+
+    document.querySelectorAll('.mod-dots[data-bs-toggle="dropdown"]').forEach(function (toggle) {
+        bootstrap.Dropdown.getOrCreateInstance(toggle, {
+            popperConfig: function () { return { strategy: 'fixed' }; },
+        });
+    });
+})();
+</script>
+@endpush
