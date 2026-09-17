@@ -222,7 +222,9 @@
                             <td class="muted">{{ $advance->schedule === 'monthly' ? __('Monthly') : __('Per payroll') }}</td>
                             <td class="muted">{{ $advance->issued_on->format('M d, Y') }}</td>
                             <td>
-                                @php $tone = ['paid' => 'ok', 'cancelled' => 'muted', 'on_hold' => 'warn'][$advance->status] ?? 'info'; @endphp
+                                {{-- Coloured from what the label says, not from the
+                                     stored column, so the two cannot disagree. --}}
+                                @php $tone = ['paid' => 'ok', 'cancelled' => 'muted', 'on_hold' => 'warn'][$advance->settled ? 'paid' : $advance->status] ?? 'info'; @endphp
                                 <span class="mod-badge {{ $tone }}"><span class="dot"></span>{{ $advance->status_label }}</span>
                             </td>
                             <td>
@@ -522,11 +524,21 @@
 @endforeach
 
 {{-- ── New cash advance ────────────────────────────────────────────────── --}}
-<div class="modal fade" id="advanceModal" tabindex="-1" aria-hidden="true" aria-labelledby="advanceModalTitle">
+<div class="modal fade" id="advanceModal" tabindex="-1" aria-hidden="true" aria-labelledby="advanceModalTitle"
+     @if(old('_form') === 'advance' && $errors->any()) data-reopen @endif>
   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog">
     <div class="modal-content emp-modal">
-      <form method="POST" action="{{ route('loans.store') }}">
+      <form method="POST" action="{{ route('loans.store') }}" id="advanceForm">
         @csrf
+        {{-- Which form was sent, so a refusal reopens this one with what was
+             typed — and only this one. Edit instalment posts an "installment"
+             too, and must not leave its value or its error in here. --}}
+        <input type="hidden" name="_form" value="advance">
+        @php
+            $sent = old('_form') === 'advance';
+            $was  = fn (string $k, $fallback = null) => $sent ? old($k, $fallback) : $fallback;
+            $err  = fn (string $k) => $sent ? $errors->first($k) : null;
+        @endphp
         <div class="emp-head">
             <span class="emp-head-icon"><i class="fas fa-hand-holding-dollar"></i></span>
             <div class="emp-head-text">
@@ -539,49 +551,58 @@
             <div class="mod-form-grid">
                 <div class="emp-field full">
                     <label class="ep-label" for="ca_emp">{{ __('Employee') }} <span class="ep-req">*</span></label>
-                    <select class="form-select" id="ca_emp" name="employee_id" required>
+                    <select class="form-select {{ $err('employee_id') ? 'is-invalid' : '' }}" id="ca_emp" name="employee_id" required>
                         <option value="">{{ __('— Select —') }}</option>
-                        @foreach($employees as $e)<option value="{{ $e->id }}">{{ $e->name }}</option>@endforeach
+                        @foreach($employees as $e)<option value="{{ $e->id }}" @selected((string) $was('employee_id') === (string) $e->id)>{{ $e->name }}</option>@endforeach
                     </select>
+                    @if($err('employee_id'))<span class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $err('employee_id') }}</span>@endif
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="ca_amt">{{ __('Amount') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="ca_amt" type="number" step="0.01" min="1"
-                           max="{{ \App\Models\Loan::LIMIT_PER_EMPLOYEE }}" name="principal" required>
+                    <input class="form-control {{ $err('principal') ? 'is-invalid' : '' }}" id="ca_amt" type="number" step="0.01" min="1"
+                           max="{{ \App\Models\Loan::LIMIT_PER_EMPLOYEE }}" name="principal" value="{{ $was('principal') }}" required>
                     <span class="ep-hint" id="ca_amt_hint"
                           data-limit="{{ \App\Models\Loan::LIMIT_PER_EMPLOYEE }}"
                           data-owed="{{ json_encode((object) ($owed ?? [])) }}">
                         {{ __('Up to') }} ₱{{ number_format(\App\Models\Loan::LIMIT_PER_EMPLOYEE, 2) }} {{ __('per employee, less what they still owe.') }}
                     </span>
+                    @if($err('principal'))<span class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $err('principal') }}</span>@endif
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="ca_inst">{{ __('Instalment') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="ca_inst" type="number" step="0.01" min="1" name="installment" required>
-                    <span class="ep-hint">{{ __('Taken each payroll until the balance is nil.') }}</span>
+                    <input class="form-control {{ $err('installment') ? 'is-invalid' : '' }}" id="ca_inst" type="number" step="0.01" min="1"
+                           name="installment" value="{{ $was('installment') }}" required>
+                    <span class="ep-hint">{{ __('Taken each payroll until the balance is nil — no more than the amount.') }}</span>
+                    {{-- Filled by the page as the two figures are typed, and by
+                         the server when it refuses them. --}}
+                    <span class="emp-err" id="ca_inst_err" role="alert" @if(! $err('installment')) hidden @endif><i class="fas fa-circle-exclamation" aria-hidden="true"></i><span id="ca_inst_err_text">{{ $err('installment') }}</span></span>
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="ca_sched">{{ __('Schedule') }} <span class="ep-req">*</span></label>
                     <select class="form-select" id="ca_sched" name="schedule" required>
-                        <option value="per_payroll">{{ __('Every payroll') }}</option>
-                        <option value="monthly">{{ __('Monthly') }}</option>
+                        <option value="per_payroll" @selected($was('schedule', 'per_payroll') === 'per_payroll')>{{ __('Every payroll') }}</option>
+                        <option value="monthly" @selected($was('schedule') === 'monthly')>{{ __('Monthly') }}</option>
                     </select>
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="ca_ref">{{ __('Reference') }}</label>
-                    <input class="form-control" id="ca_ref" type="text" name="reference" maxlength="40">
+                    <input class="form-control" id="ca_ref" type="text" name="reference" maxlength="40" value="{{ $was('reference') }}">
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="ca_issued">{{ __('Date Issued') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="ca_issued" type="date" name="issued_on" value="{{ now()->toDateString() }}" required>
+                    <input class="form-control {{ $err('issued_on') ? 'is-invalid' : '' }}" id="ca_issued" type="date" name="issued_on"
+                           value="{{ $was('issued_on', now()->toDateString()) }}" required>
+                    @if($err('issued_on'))<span class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $err('issued_on') }}</span>@endif
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="ca_starts">{{ __('Start Collecting') }}</label>
-                    <input class="form-control" id="ca_starts" type="date" name="starts_on">
+                    <input class="form-control {{ $err('starts_on') ? 'is-invalid' : '' }}" id="ca_starts" type="date" name="starts_on" value="{{ $was('starts_on') }}">
                     <span class="ep-hint">{{ __('Blank collects from the next payroll.') }}</span>
+                    @if($err('starts_on'))<span class="emp-err" role="alert"><i class="fas fa-circle-exclamation" aria-hidden="true"></i>{{ $err('starts_on') }}</span>@endif
                 </div>
                 <div class="emp-field full">
                     <label class="ep-label" for="ca_notes">{{ __('Notes') }}</label>
-                    <textarea class="form-control" id="ca_notes" name="notes" rows="2" style="height:auto;padding:9px 13px;"></textarea>
+                    <textarea class="form-control" id="ca_notes" name="notes" rows="2" style="height:auto;padding:9px 13px;">{{ $was('notes') }}</textarea>
                 </div>
             </div>
         </div>
@@ -643,6 +664,64 @@
                 ? name + ' still owes ' + peso(owed) + ' — nothing more until it is paid down.'
                 : 'Up to ' + peso(room) + ' — ' + name + ' still owes ' + peso(owed) + ' of the ' + peso(limit) + ' limit.';
     });
+})();
+
+// ── The instalment is never more than the amount ───────────────────────────
+// Checked as either figure is typed, with the same words the server uses, and
+// held on the field as its validity — so the browser will not send the form
+// while it is wrong, and says why beside the box rather than in a tooltip.
+(function () {
+    const amt  = document.getElementById('ca_amt');
+    const inst = document.getElementById('ca_inst');
+    const box  = document.getElementById('ca_inst_err');
+    const text = document.getElementById('ca_inst_err_text');
+    if (!amt || !inst || !box || !text) return;
+
+    const peso = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function check(typed) {
+        const a = parseFloat(amt.value);
+        const i = parseFloat(inst.value);
+        const over = !isNaN(a) && !isNaN(i) && i > a;
+        const msg  = over
+            ? 'The instalment cannot be more than the amount borrowed (' + peso(a) + '). Enter an instalment equal to or lower than it.'
+            : '';
+
+        inst.setCustomValidity(msg);
+
+        // A message the server sent stays until one of the figures is typed
+        // over; from then on this check owns the box.
+        if (typed === true) box.dataset.live = '1';
+
+        if (over || box.dataset.live) {
+            inst.classList.toggle('is-invalid', over);
+            text.textContent = msg;
+            box.hidden = !over;
+        }
+        return !over;
+    }
+
+    amt.addEventListener('input', () => check(true));
+    inst.addEventListener('input', () => check(true));
+
+    // Pressing Record on a wrong pair: stop, and put the reader on the box.
+    inst.form?.addEventListener('submit', e => {
+        if (!check()) { e.preventDefault(); inst.focus(); }
+    }, true);
+
+    check();
+})();
+
+// ── A refused advance reopens with what was typed ──────────────────────────
+// The server said no — the instalment over the amount, the limit, a date.
+// The form comes back open, filled in, with the reason under the field, so
+// only the figure that was wrong has to be touched.
+(function () {
+    const modal = document.querySelector('#advanceModal[data-reopen]');
+    if (!modal || !window.bootstrap) return;
+
+    document.getElementById('ca_emp')?.dispatchEvent(new Event('change'));
+    bootstrap.Modal.getOrCreateInstance(modal).show();
 })();
 
 // ── A payment is sent once ─────────────────────────────────────────────────

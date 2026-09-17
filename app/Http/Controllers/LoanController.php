@@ -46,22 +46,28 @@ class LoanController extends Controller
                           . number_format($owed, 2) . ', so at most ₱' . number_format($room, 2) . ' more can be advanced.',
         };
 
+        // The amount as typed, for the instalment's message to name.
+        $borrowed = is_numeric($request->input('principal'))
+            ? '₱' . number_format((float) $request->input('principal'), 2)
+            : 'the amount borrowed';
+
         $data = $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'principal'   => 'required|numeric|min:1|max:' . $room,
-            'installment' => 'required|numeric|min:1',
+            // Never more than was borrowed. It used to be lowered to the amount
+            // without a word and saved, so the office entered one figure and
+            // the advance collected another; it is refused now, and says why.
+            'installment' => 'required|numeric|min:1|lte:principal',
             'schedule'    => 'required|in:per_payroll,monthly',
             'issued_on'   => 'required|date',
             'starts_on'   => 'nullable|date|after_or_equal:issued_on',
             'reference'   => 'nullable|string|max:40',
             'notes'       => 'nullable|string|max:1000',
         ], [
-            'principal.max' => $overLimit,
-        ], ['principal' => 'amount']);
-
-        // An instalment larger than the advance would collect more than was
-        // ever issued. Cap it so the first collection simply settles the sum.
-        $data['installment'] = min($data['installment'], $data['principal']);
+            'principal.max'   => $overLimit,
+            'installment.lte' => "The instalment cannot be more than the amount borrowed ({$borrowed}). "
+                               . 'Enter an instalment equal to or lower than it.',
+        ], ['principal' => 'amount', 'installment' => 'instalment']);
 
         $data['type']       = Loan::ADVANCE;
         $data['balance']    = $data['principal'];
@@ -184,6 +190,10 @@ class LoanController extends Controller
             'deducted_on' => $data['deducted_on'],
             'note'        => filled($data['note'] ?? null) ? $data['note'] : null,
         ]);
+
+        // A payment is a change to the advance as the office sees it, so it
+        // moves to the top of the list like any other edit.
+        $loan->touch();
 
         $loan->load(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')]);
         $loan->syncSettlement();

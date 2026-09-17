@@ -1034,4 +1034,203 @@ class CashAdvanceCollectionTest extends TestCase
         $this->assertEqualsWithDelta(2500.0, $this->advanceTaken($e, '2026-09-07', '2026-10-04'), 0.001,
             'all of it, and not a peso more');
     }
+
+    // ── The instalment on a new advance ──────────────────────────────────
+
+    /** The New Cash Advance form, as the browser sends it. */
+    private function applyFor(Employee $e, $amount, $instalment)
+    {
+        return $this->actingAs($this->admin)
+            ->from(route('leave.index', ['tab' => 'advances']))
+            ->post(route('loans.store'), [
+                '_form' => 'advance', 'employee_id' => $e->id, 'principal' => $amount, 'installment' => $instalment,
+                'schedule' => 'per_payroll', 'issued_on' => '2026-09-12', 'reference' => 'CA-7', 'notes' => 'Tuition',
+            ]);
+    }
+
+    /**
+     * An instalment above the amount borrowed is refused, and says why.
+     *
+     * It used to be lowered to the amount without a word and saved, so the
+     * office typed one figure and the advance collected another.
+     */
+    public function test_an_instalment_above_the_amount_is_refused_not_quietly_lowered(): void
+    {
+        $e = $this->worker([], 'Lawrence Bernas');
+
+        $this->applyFor($e, 5000, 6000)
+            ->assertRedirect(route('leave.index', ['tab' => 'advances']))
+            ->assertSessionHasErrors(['installment' =>
+                'The instalment cannot be more than the amount borrowed (₱5,000.00). Enter an instalment equal to or lower than it.']);
+
+        $this->applyFor($e, 5000, 5000.01)->assertSessionHasErrors('installment');
+
+        $this->assertSame(0, Loan::count(), 'nothing is saved until the instalment is corrected');
+
+        // Equal to the amount is allowed, and saved as typed.
+        $this->applyFor($e, 5000, 5000)->assertSessionHasNoErrors();
+        $this->assertEqualsWithDelta(5000.0, (float) Loan::sole()->installment, 0.001);
+
+        // And lower, of course.
+        $this->applyFor($this->worker([], 'Aldrin Sapugay'), 5000, 750)->assertSessionHasNoErrors();
+        $this->assertEqualsWithDelta(750.0, (float) Loan::latest('id')->first()->installment, 0.001);
+    }
+
+    /**
+     * Refused, the form comes back open with everything typed and the reason
+     * under the instalment — only the wrong figure needs touching.
+     */
+    public function test_a_refused_advance_reopens_the_form_with_what_was_typed(): void
+    {
+        $e = $this->worker([], 'Lawrence Bernas');
+
+        $this->applyFor($e, 5000, 6000);
+
+        $html = $this->actingAs($this->admin)
+            ->withSession(['_old_input' => session('_old_input'), 'errors' => session('errors')])
+            ->get(route('leave.index', ['tab' => 'advances']))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/id="advanceModal"[^>]*data-reopen/', $html, 'the form opens again');
+
+        $at   = strpos($html, 'id="advanceForm"');
+        $form = substr($html, $at, strpos($html, '</' . 'form>', $at) - $at);
+
+        $this->assertStringContainsString('value="5000"', $form, 'the amount is kept');
+        $this->assertStringContainsString('value="6000"', $form, 'and the instalment');
+        $this->assertStringContainsString('value="CA-7"', $form);
+        $this->assertStringContainsString('Tuition', $form);
+        $this->assertMatchesRegularExpression('/<option value="' . $e->id . '"\s+selected/', $form, 'and the worker');
+        $this->assertStringContainsString(
+            'The instalment cannot be more than the amount borrowed (₱5,000.00). Enter an instalment equal to or lower than it.', $form);
+        $this->assertDoesNotMatchRegularExpression('/id="ca_inst_err" role="alert"\s+hidden/', $form, 'the reason is showing');
+    }
+
+    /**
+     * A refused Edit instalment is its own form's business: it posts an
+     * "installment" too, and must not open New Cash Advance or leave its
+     * figure and its error in there.
+     */
+    public function test_a_refused_edit_does_not_spill_into_the_new_advance_form(): void
+    {
+        $advance = $this->advance($this->worker([], 'Lawrence Bernas'), 500, 200);
+
+        $this->actingAs($this->admin)
+            ->from(route('leave.index', ['tab' => 'advances']))
+            ->put(route('loans.update', $advance), ['installment' => 900])
+            ->assertSessionHasErrors('installment');
+
+        $html = $this->actingAs($this->admin)
+            ->withSession(['_old_input' => session('_old_input'), 'errors' => session('errors')])
+            ->get(route('leave.index', ['tab' => 'advances']))->assertOk()->getContent();
+
+        $this->assertDoesNotMatchRegularExpression('/id="advanceModal"[^>]*data-reopen/', $html);
+
+        $at   = strpos($html, 'id="advanceForm"');
+        $form = substr($html, $at, strpos($html, '</' . 'form>', $at) - $at);
+
+        $this->assertStringNotContainsString('value="900"', $form);
+        $this->assertMatchesRegularExpression('/id="ca_inst_err" role="alert"\s+hidden/', $form, 'no error of its own showing');
+    }
+
+    // ── The order of the list ────────────────────────────────────────────
+
+    /** The advances as the list shows them, by worker name. */
+    private function listed(): array
+    {
+        return $this->actingAs($this->admin)
+            ->get(route('leave.index', ['tab' => 'advances']))->assertOk()
+            ->viewData('advances')->map(fn (Loan $l) => $l->employee->name)->all();
+    }
+
+    /**
+     * The most recently added or changed advance is at the top: a new one, an
+     * edited instalment, a payment recorded — not wherever its issue date
+     * happens to sort it.
+     */
+    public function test_the_most_recently_added_or_changed_advance_is_listed_first(): void
+    {
+        $at = fn (string $when) => Carbon::setTestNow(Carbon::parse("2026-09-12 {$when}", 'Asia/Manila'));
+
+        $at('09:00:00');
+        $first = $this->advance($this->worker([], 'Aldrin Sapugay'), 5000, 500, '2026-09-10');
+        $at('10:00:00');
+        $second = $this->advance($this->worker([], 'Mark Adrian Gulbe De Leon'), 5000, 500, '2026-09-01');
+        $at('11:00:00');
+        $this->advance($this->worker([], 'Lawrence Bernas'), 5000, 500, '2026-08-20');   // issued earliest, added last
+
+        $this->assertSame(['Lawrence Bernas', 'Mark Adrian Gulbe De Leon', 'Aldrin Sapugay'], $this->listed(),
+            'newest added first, whatever the issue date');
+
+        // Editing the oldest brings it to the top.
+        $at('12:00:00');
+        $this->actingAs($this->admin)->put(route('loans.update', $first), ['installment' => 400])->assertSessionHasNoErrors();
+
+        $this->assertSame('Aldrin Sapugay', $this->listed()[0]);
+
+        // So does a payment.
+        $at('13:00:00');
+        $this->actingAs($this->admin)
+            ->post(route('loans.payment', $second), ['amount' => 100, 'deducted_on' => '2026-09-12'])
+            ->assertSessionHas('success');
+
+        $this->assertSame(['Mark Adrian Gulbe De Leon', 'Aldrin Sapugay', 'Lawrence Bernas'], $this->listed());
+    }
+
+    /**
+     * The page keeping balances in step with the calendar is not a change to
+     * an advance, and does not reorder the list. A week passing and a day
+     * worked move a balance; neither is somebody editing the advance.
+     */
+    public function test_a_balance_moving_on_its_own_does_not_reorder_the_list(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-12 09:00:00', 'Asia/Manila'));
+        $older = $this->advance($this->worker(['2026-09-10', '2026-09-17'], 'Aldrin Sapugay'), 5000, 500, '2026-09-07');
+
+        Carbon::setTestNow(Carbon::parse('2026-09-12 10:00:00', 'Asia/Manila'));
+        $this->advance($this->worker([], 'Lawrence Bernas'), 5000, 500, '2026-09-07');
+
+        $this->assertSame(['Lawrence Bernas', 'Aldrin Sapugay'], $this->listed());
+
+        // A week on: Aldrin's second instalment comes round and the page
+        // writes his balance down — without stamping it as changed.
+        Carbon::setTestNow(Carbon::parse('2026-09-20 09:00:00', 'Asia/Manila'));
+
+        $this->assertSame(['Lawrence Bernas', 'Aldrin Sapugay'], $this->listed());
+        $this->assertEqualsWithDelta(4000.0, (float) $older->fresh()->balance, 0.001, 'the balance did move');
+        $this->assertSame('2026-09-12 09:00:00', $older->fresh()->updated_at->format('Y-m-d H:i:s'));
+    }
+    /**
+     * Every row on the page is brought up to date, not only the rows before
+     * the first one that already was.
+     *
+     * The list synced balances with each() and an arrow function, and each()
+     * stops at the first callback that returns false — which syncSettlement()
+     * does for a row with nothing to write. Every row after it kept a stale
+     * balance and status: an advance read "Fully Paid" in the blue of an
+     * active one, because the label is worked out live and the colour read
+     * the column.
+     */
+    public function test_every_row_on_the_page_is_brought_up_to_date(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-12 09:00:00', 'Asia/Manila'));
+        $settled = $this->advance($this->worker([], 'Aldrin Sapugay'), 500, 500, '2026-09-07');
+
+        Carbon::setTestNow(Carbon::parse('2026-09-12 10:00:00', 'Asia/Manila'));
+        $current = $this->advance($this->worker([], 'Lawrence Bernas'), 5000, 500, '2026-09-07');   // listed first, nothing to write
+
+        // Aldrin paid it all at the office, written straight to the ledger —
+        // as older payments were — so nothing has synced his row yet.
+        LoanDeduction::create(['loan_id' => $settled->id, 'amount' => 500, 'deducted_on' => '2026-09-11']);
+
+        $html = $this->actingAs($this->admin)
+            ->get(route('leave.index', ['tab' => 'advances']))->assertOk()->getContent();
+
+        $this->assertSame('paid', $settled->fresh()->status, 'the second row was synced too');
+        $this->assertEqualsWithDelta(0.0, (float) $settled->fresh()->balance, 0.001);
+        $this->assertSame('active', $current->fresh()->status);
+
+        $this->assertStringContainsString('mod-badge ok"><span class="dot"></span>Fully Paid', $html,
+            'Fully Paid in the green of a settled advance');
+        $this->assertStringNotContainsString('mod-badge info"><span class="dot"></span>Fully Paid', $html);
+    }
 }

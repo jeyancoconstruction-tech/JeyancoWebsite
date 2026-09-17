@@ -55,15 +55,31 @@ class LeaveAdvancesController extends Controller
                 ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
                 ->when($request->filled('q'), fn ($q) => $q->whereHas('employee',
                     fn ($e) => $e->where('name', 'like', '%' . $request->q . '%')))
-                ->latest('issued_on')
+                // The most recently added or changed first — a new advance, an
+                // edited instalment, a payment recorded. The row the office
+                // just worked on is the one at the top, not wherever its issue
+                // date happens to sort it.
+                ->orderByDesc('updated_at')
+                ->orderByDesc('id')
                 ->paginate(15, ['*'], 'advance_page')
                 ->withQueryString();
 
             // An advance the schedule has finished collecting is settled
             // whether or not anybody pressed anything, so the columns are
             // brought up to what the schedule says before they are read.
+            //
+            // A loop, not each() with an arrow function: each() stops at the
+            // first callback that returns false, and syncSettlement() returns
+            // false for a row with nothing to write. So every row after the
+            // first one already up to date was never brought up to date —
+            // which is how an advance read "Fully Paid" in the blue of an
+            // active one: the label is worked out live, the colour reads the
+            // status column nobody had written.
             Loan::loadPayDates($view['advances']->getCollection());
-            $view['advances']->each(fn (Loan $l) => $l->syncSettlement());
+
+            foreach ($view['advances'] as $advance) {
+                $advance->syncSettlement();
+            }
 
             $totals = Loan::advances()
                 ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])

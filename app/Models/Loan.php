@@ -159,7 +159,18 @@ class Loan extends Model
             return false;
         }
 
-        return $this->forceFill(['balance' => $left, 'status' => $status])->save();
+        // Without touching updated_at. This is the page keeping a cache in
+        // step with the calendar — a week passing, a day clocked in — not
+        // anybody changing the advance, and the list is ordered by what was
+        // last added or changed. Stamped, every advance would jump to the top
+        // the first time the page was opened after its instalment came round.
+        $this->timestamps = false;
+
+        try {
+            return $this->forceFill(['balance' => $left, 'status' => $status])->save();
+        } finally {
+            $this->timestamps = true;
+        }
     }
 
     /**
