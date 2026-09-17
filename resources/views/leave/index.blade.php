@@ -646,10 +646,12 @@
 
 @push('scripts')
 <script>
-// ── Only the list scrolls ───────────────────────────────────────────────────
+// ── Only the list scrolls, and its card reaches the bottom ─────────────────
 // The heading, the tabs, the totals and the filters stay where they are; the
-// list takes whatever height is left on the screen and scrolls inside it,
-// with its column heads pinned. Measured rather than written as a fixed
+// list's card runs down to the bottom of the screen, and the list scrolls
+// inside it with its column heads pinned and its pager at the foot. The card
+// goes all the way down however few rows there are, so the page ends in the
+// same place whatever is in it. Measured rather than written as a fixed
 // calc(), because what sits above the list is not one height — the totals
 // wrap on a narrower window, and a validation alert can appear above them.
 // On a phone the page scrolls as a whole: a list boxed into what is left of
@@ -660,50 +662,45 @@
 
     const MIN  = 200;                                   // never less than about three rows
     const wide = window.matchMedia('(min-width: 768px)');
-
-    // What has to stay on screen under the list: the rest of its card (the
-    // pager, the card's edge) and the margins and padding that close the page
-    // below it. Not the document's height less the list's bottom — the layout
-    // holds the page at least a screen tall, and that filler is not content.
-    function spaceBelow(wrap, rect) {
-        const card = wrap.closest('.mod-card');
-        let space  = card.getBoundingClientRect().bottom - rect.bottom;
-
-        for (let el = card; el && el !== document.body; el = el.parentElement) {
-            const cs = getComputedStyle(el);
-            space += (parseFloat(cs.marginBottom) || 0)
-                   + (el === card ? 0 : (parseFloat(cs.paddingBottom) || 0) + (parseFloat(cs.borderBottomWidth) || 0));
-        }
-        return space;
-    }
+    const root = document.documentElement;
 
     function fit() {
+        root.classList.remove('fills-screen');
         wraps.forEach(wrap => {
-            wrap.style.maxHeight = '';
+            wrap.style.height = '';
             wrap.classList.remove('is-fitted');
         });
 
         if (!wide.matches) return;
 
+        // The layout's own padding and the card's margin under the list are
+        // what kept the card short of the bottom; this page does without them.
+        root.classList.add('fills-screen');
+
         wraps.forEach(wrap => {
-            const rect  = wrap.getBoundingClientRect();
-            const top   = rect.top + window.scrollY;
-            const room  = Math.floor(window.innerHeight - top - spaceBelow(wrap, rect));
+            const rect = wrap.getBoundingClientRect();
+            const top  = rect.top + window.scrollY;
+            const card = wrap.closest('.mod-card');
+            // The rest of the card under the list — its pager and its edge.
+            const foot = card.getBoundingClientRect().bottom - rect.bottom;
+            // Under the card, the same gap the page leaves above it, so the
+            // bottom reads as part of the page's own spacing.
+            const prev = card.previousElementSibling;
+            const gap  = prev ? Math.max(0, card.getBoundingClientRect().top - prev.getBoundingClientRect().bottom) : 13;
+            const room = Math.floor(window.innerHeight - top - foot - gap);
 
-            if (rect.height <= room) return;            // it already fits
-
-            wrap.style.maxHeight = Math.max(MIN, room) + 'px';
+            wrap.style.height = Math.max(MIN, room) + 'px';
             wrap.classList.add('is-fitted');
         });
 
         // Once more, by what is left over. Fitting the list can move what sits
         // above it — the page's scrollbar goes, the width changes, a line of
         // text rewraps — so the first measurement can be a few pixels out.
-        const over = document.documentElement.scrollHeight - window.innerHeight;
+        const over = root.scrollHeight - window.innerHeight;
 
         if (over > 0) {
-            wraps.filter(w => w.classList.contains('is-fitted')).forEach(wrap => {
-                wrap.style.maxHeight = Math.max(MIN, wrap.clientHeight - over) + 'px';
+            wraps.forEach(wrap => {
+                wrap.style.height = Math.max(MIN, wrap.clientHeight - over) + 'px';
             });
         }
     }
@@ -726,12 +723,6 @@
     fit();
 })();
 
-// ── Filters apply themselves ────────────────────────────────────────────────
-// There is no Apply button. Picking a status, a type or a date reloads the
-// list at once. A name reloads once typing pauses — on every keystroke the
-// page would reload under the reader mid-word — or at once on Enter, and the
-// cursor is put back at the end of what was typed, so the search reads as
-// one continuous box rather than one that throws you out after each letter.
 // ── The cash advance limit, as the worker is picked ─────────────────────────
 // ₱30,000 a worker, on what they owe. Choosing somebody sets the Amount box's
 // ceiling to what is left of it and says so, so the limit is met while the
@@ -839,6 +830,12 @@ document.querySelectorAll('form[data-once]').forEach(form => {
     });
 });
 
+// ── Filters apply themselves ────────────────────────────────────────────────
+// There is no Apply button. Picking a status, a type or a date reloads the
+// list at once. A name reloads once typing pauses — on every keystroke the
+// page would reload under the reader mid-word — or at once on Enter, and the
+// cursor is put back at the end of what was typed, so the search reads as
+// one continuous box rather than one that throws you out after each letter.
 (function () {
     const KEY = 'leaveFilterFocus';
 
