@@ -290,4 +290,43 @@ class LeaveAdvancesPageTest extends TestCase
         $this->assertEqualsWithDelta(1000.0, $rows[0]['gross'], 0.001);
         $this->assertEqualsWithDelta(600.0, $rows[0]['net'], 0.001);
     }
+
+    /**
+     * Every form on this page is laid out the same way.
+     *
+     * Michael pointed at the New Cash Advance modal: "kung ano yung format
+     * kapag nag a-add ng cash advances, same format din dapat kapag mag
+     * e-edit ng installment." The two forms behind a row's menu were built
+     * narrower, hinted with a different class and missing the required-field
+     * note in the footer, so the same instalment looked like a different kind
+     * of thing depending on which way you reached it.
+     */
+    public function test_the_advance_forms_share_one_layout(): void
+    {
+        $e    = $this->worker('Lawrence Bernas');
+        $loan = $this->onFile($e, Loan::ADVANCE, 3000, 500, '2026-09-14');
+
+        $html = $this->actingAs($this->admin())->get($this->advanceTab())->assertOk()->getContent();
+
+        // One form's markup, from its id to the end of it.
+        $form = function (string $id) use ($html): string {
+            $at = strpos($html, 'id="' . $id . '"');
+            $this->assertNotFalse($at, $id . ' is on the page');
+
+            return substr($html, $at, strpos($html, '</' . 'form>', $at) - $at);
+        };
+
+        // Recording an advance, correcting its instalment, and handing a
+        // payment in at the office: one layout between the three of them.
+        foreach (['advanceModal', 'instModal' . $loan->id, 'payModal' . $loan->id] as $id) {
+            $markup = $form($id);
+
+            $this->assertStringContainsString('mod-form-grid', $markup, $id . ' lays its fields on the grid');
+            $this->assertStringContainsString('emp-foot-note', $markup, $id . ' says which fields are required');
+            $this->assertStringNotContainsString('max-width:460px', $markup, $id . ' is not sized by hand');
+            $this->assertStringNotContainsString('mod-person-sub', $markup, $id . ' hints with the field style');
+        }
+
+        $this->assertStringContainsString('payrolls to collect.', $form('instModal' . $loan->id));
+    }
 }

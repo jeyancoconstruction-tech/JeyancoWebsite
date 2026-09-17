@@ -409,7 +409,7 @@
     @unless($advance->settled)
     {{-- ── Correct the instalment ───────────────────────────────────────── --}}
     <div class="modal fade" id="instModal{{ $advance->id }}" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered emp-dialog" style="max-width:460px;">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog">
         <div class="modal-content emp-modal">
           <form method="POST" action="{{ route('loans.update', $advance) }}">
             @csrf @method('PUT')
@@ -429,19 +429,31 @@
                     <i class="fas fa-triangle-exclamation"></i>
                     <div>{{ __('For correcting an instalment that was entered wrongly. The schedule is worked out again from the first payroll, so what earlier payrolls collected changes with it — this is not the way to re-negotiate an advance that is part paid.') }}</div>
                 </div>
-                <div class="emp-field">
-                    <label class="ep-label" for="inst{{ $advance->id }}">{{ __('Instalment per payroll') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="inst{{ $advance->id }}" type="number" step="0.01" min="1"
-                           max="{{ $advance->principal }}" name="installment"
-                           value="{{ number_format($advance->installment, 2, '.', '') }}" required>
-                    <div class="mod-person-sub" style="margin-top:6px;">
-                        {{ __('At the figure on file this advance takes') }}
-                        {{ max(1, (int) ceil($advance->principal / max(0.01, (float) $advance->installment))) }}
-                        {{ __('payrolls to collect.') }}
+                {{-- Laid out as the form that recorded the advance is: the
+                     same grid, the same hint under the field, the same note
+                     in the footer. It is the same instalment being entered. --}}
+                <div class="mod-form-grid">
+                    <div class="emp-field">
+                        <label class="ep-label" for="amt-of{{ $advance->id }}">{{ __('Amount') }}</label>
+                        <input class="form-control" id="amt-of{{ $advance->id }}" type="text"
+                               value="₱{{ number_format($advance->principal, 2) }}" readonly>
+                        <span class="ep-hint">{{ __('What was handed over. Not editable here.') }}</span>
+                    </div>
+                    <div class="emp-field">
+                        <label class="ep-label" for="inst{{ $advance->id }}">{{ __('Instalment') }} <span class="ep-req">*</span></label>
+                        <input class="form-control" id="inst{{ $advance->id }}" type="number" step="0.01" min="1"
+                               max="{{ $advance->principal }}" name="installment"
+                               value="{{ number_format($advance->installment, 2, '.', '') }}" required>
+                        <span class="ep-hint">
+                            {{ __('At the figure on file this advance takes') }}
+                            {{ max(1, (int) ceil($advance->principal / max(0.01, (float) $advance->installment))) }}
+                            {{ __('payrolls to collect.') }}
+                        </span>
                     </div>
                 </div>
             </div>
             <div class="emp-foot">
+                <p class="emp-foot-note"><span class="ep-req">*</span> {{ __('Required') }}</p>
                 <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                 <button type="submit" class="emp-btn-save"><i class="fas fa-check"></i> <span>{{ __('Save') }}</span></button>
             </div>
@@ -451,7 +463,7 @@
     </div>
 
     <div class="modal fade" id="payModal{{ $advance->id }}" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered emp-dialog" style="max-width:460px;">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog">
         <div class="modal-content emp-modal">
           <form method="POST" action="{{ route('loans.payment', $advance) }}">
             @csrf
@@ -468,21 +480,25 @@
                     <i class="fas fa-circle-info"></i>
                     <div>{{ __('For a payment handed in at the office, on top of what payroll collects. It comes straight off the balance, and payroll takes less — or nothing — from then on.') }}</div>
                 </div>
-                <div class="emp-field">
-                    <label class="ep-label" for="amt{{ $advance->id }}">{{ __('Amount') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="amt{{ $advance->id }}" type="number" step="0.01" min="0.01"
-                           max="{{ $ledger['outstanding'] }}" name="amount" required>
-                </div>
-                <div class="emp-field">
-                    <label class="ep-label" for="don{{ $advance->id }}">{{ __('Date') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="don{{ $advance->id }}" type="date" name="deducted_on" value="{{ now()->toDateString() }}" required>
-                </div>
-                <div class="emp-field">
-                    <label class="ep-label" for="nt{{ $advance->id }}">{{ __('Note') }}</label>
-                    <input class="form-control" id="nt{{ $advance->id }}" type="text" name="note" maxlength="255">
+                <div class="mod-form-grid">
+                    <div class="emp-field">
+                        <label class="ep-label" for="amt{{ $advance->id }}">{{ __('Amount') }} <span class="ep-req">*</span></label>
+                        <input class="form-control" id="amt{{ $advance->id }}" type="number" step="0.01" min="0.01"
+                               max="{{ $ledger['outstanding'] }}" name="amount" required>
+                        <span class="ep-hint">{{ __('At most the') }} ₱{{ number_format($ledger['outstanding'], 2) }} {{ __('still outstanding.') }}</span>
+                    </div>
+                    <div class="emp-field">
+                        <label class="ep-label" for="don{{ $advance->id }}">{{ __('Date') }} <span class="ep-req">*</span></label>
+                        <input class="form-control" id="don{{ $advance->id }}" type="date" name="deducted_on" value="{{ now()->toDateString() }}" required>
+                    </div>
+                    <div class="emp-field full">
+                        <label class="ep-label" for="nt{{ $advance->id }}">{{ __('Note') }}</label>
+                        <input class="form-control" id="nt{{ $advance->id }}" type="text" name="note" maxlength="255">
+                    </div>
                 </div>
             </div>
             <div class="emp-foot">
+                <p class="emp-foot-note"><span class="ep-req">*</span> {{ __('Required') }}</p>
                 <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                 <button type="submit" class="emp-btn-save"><i class="fas fa-check"></i> <span>{{ __('Record') }}</span></button>
             </div>
