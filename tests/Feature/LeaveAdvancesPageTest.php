@@ -520,4 +520,60 @@ class LeaveAdvancesPageTest extends TestCase
 
         $this->assertSame('completed', $lastDay->fresh()->display_status);
     }
+
+    /**
+     * The filters apply themselves: no Apply, no Reset.
+     *
+     * Michael: "remove apply and reset button after putting the sorting
+     * option it automatically load." His screenshot had Completed picked in
+     * the Status box over a list still showing Approved leave — the filter
+     * chosen and not applied, which is exactly what a separate button invites.
+     */
+    public function test_the_filters_apply_themselves_on_both_tabs(): void
+    {
+        foreach (['leave', 'advances'] as $tab) {
+            $html = $this->actingAs($this->admin())
+                ->get(route('leave.index', ['tab' => $tab]))->assertOk()->getContent();
+
+            $at   = strpos($html, '<form method="GET" class="mod-filters"');
+            $this->assertNotFalse($at, "{$tab} has its filter bar");
+            $form = substr($html, $at, strpos($html, '</' . 'form>', $at) - $at);
+
+            $this->assertStringContainsString('data-autoload', $form, "{$tab} filters load on their own");
+            $this->assertStringNotContainsString('>Reset<', $form, "{$tab} has no Reset");
+
+            // Apply survives only for a browser with scripting off, where
+            // nothing else could send the form.
+            $withoutFallback = preg_replace('#<noscript>.*?</noscript>#s', '', $form);
+            $this->assertStringNotContainsString('Apply', $withoutFallback, "{$tab} has no Apply");
+            $this->assertStringContainsString('<noscript>', $form);
+        }
+
+        $this->assertStringContainsString("form.mod-filters[data-autoload]",
+            $this->actingAs($this->admin())->get(route('leave.index'))->getContent(),
+            'and the page carries the script that sends them');
+    }
+
+    /** The filters still filter: what the boxes send is what the list shows. */
+    public function test_a_filter_sent_without_a_button_still_narrows_the_list(): void
+    {
+        $filed = fn (string $name, string $type) => LeaveRequest::create([
+            'employee_id' => $this->worker($name)->id, 'leave_type' => $type,
+            'starts_on' => now()->addDay()->toDateString(), 'ends_on' => now()->addDays(2)->toDateString(),
+            'days' => 2, 'is_paid' => true,
+        ]);
+
+        $sick     = $filed('Lawrence Bernas', 'sick');
+        $vacation = $filed('Jeyanco Dela Cruz', 'vacation');
+
+        $ids = fn (array $query) => $this->actingAs($this->admin())
+            ->get(route('leave.index', ['tab' => 'leave'] + $query))->assertOk()
+            ->viewData('leave')->pluck('id')->all();
+
+        // Exactly the query string the form sends, empty boxes included.
+        $this->assertSame([$sick->id], $ids(['q' => 'Lawr', 'status' => '', 'type' => '', 'from' => '', 'to' => '']));
+        $this->assertSame([$vacation->id], $ids(['q' => '', 'status' => '', 'type' => 'vacation', 'from' => '', 'to' => '']));
+        $this->assertCount(2, $ids(['q' => '', 'status' => '', 'type' => '', 'from' => '', 'to' => '']),
+            'every box back on All is the whole list — the way back that Reset was');
+    }
 }

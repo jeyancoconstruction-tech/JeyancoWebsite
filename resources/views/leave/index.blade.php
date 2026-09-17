@@ -40,7 +40,7 @@
 
     @if($tab === 'leave')
         <div class="mod-card">
-            <form method="GET" class="mod-filters">
+            <form method="GET" class="mod-filters" data-autoload>
                 <input type="hidden" name="tab" value="leave">
                 <div class="mod-filter mod-filter-grow">
                     <label for="lq">{{ __('Employee') }}</label>
@@ -72,10 +72,10 @@
                     <label for="lto">{{ __('To') }}</label>
                     <input id="lto" class="form-control" type="date" name="to" value="{{ request('to') }}">
                 </div>
-                <div class="mod-filter-actions">
-                    <button class="mod-btn primary" type="submit"><i class="fas fa-magnifying-glass"></i> {{ __('Apply') }}</button>
-                    <a class="mod-btn" href="{{ route('leave.index', ['tab' => 'leave']) }}">{{ __('Reset') }}</a>
-                </div>
+                {{-- No Apply and no Reset: the list follows the filters as
+                     they change. Every control already has its own way back
+                     — All, or an empty box — the same as on Attendance. --}}
+                <noscript><div class="mod-filter-actions"><button class="mod-btn primary" type="submit">{{ __('Apply') }}</button></div></noscript>
             </form>
 
             <div class="mod-table-wrap">
@@ -177,7 +177,7 @@
         </div>
 
         <div class="mod-card">
-            <form method="GET" class="mod-filters">
+            <form method="GET" class="mod-filters" data-autoload>
                 <input type="hidden" name="tab" value="advances">
                 <div class="mod-filter mod-filter-grow">
                     <label for="fq">{{ __('Employee') }}</label>
@@ -192,10 +192,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="mod-filter-actions">
-                    <button class="mod-btn primary" type="submit"><i class="fas fa-magnifying-glass"></i> {{ __('Apply') }}</button>
-                    <a class="mod-btn" href="{{ route('leave.index', ['tab' => 'advances']) }}">{{ __('Reset') }}</a>
-                </div>
+                <noscript><div class="mod-filter-actions"><button class="mod-btn primary" type="submit">{{ __('Apply') }}</button></div></noscript>
             </form>
 
             <div class="mod-table-wrap">
@@ -595,6 +592,71 @@
 
 @push('scripts')
 <script>
+// ── Filters apply themselves ────────────────────────────────────────────────
+// There is no Apply button. Picking a status, a type or a date reloads the
+// list at once. A name reloads once typing pauses — on every keystroke the
+// page would reload under the reader mid-word — or at once on Enter, and the
+// cursor is put back at the end of what was typed, so the search reads as
+// one continuous box rather than one that throws you out after each letter.
+(function () {
+    const KEY = 'leaveFilterFocus';
+
+    document.querySelectorAll('form.mod-filters[data-autoload]').forEach(form => {
+        const go = () => (form.requestSubmit ? form.requestSubmit() : form.submit());
+
+        form.querySelectorAll('select').forEach(el => {
+            el.addEventListener('change', go);
+        });
+
+        // A date picked from the calendar is one change. A date typed by hand
+        // is several: Chrome reports each digit of the year as a whole valid
+        // date — 0002, 0020, 0202 — and sending the first would reload the
+        // page three keystrokes early. So a date waits for a real year, or
+        // for an empty box, and for the typing to settle.
+        form.querySelectorAll('input[type="date"]').forEach(el => {
+            let timer = null;
+
+            el.addEventListener('change', () => {
+                clearTimeout(timer);
+                if (el.value !== '' && el.value.slice(0, 4) < '1900') return;
+                timer = setTimeout(go, 400);
+            });
+        });
+
+        form.querySelectorAll('input[type="text"]').forEach(el => {
+            let timer = null;
+            const sent = el.value;
+
+            const send = () => {
+                clearTimeout(timer);
+                if (el.value.trim() === sent.trim()) return;
+                try { sessionStorage.setItem(KEY, el.id); } catch (e) {}
+                go();
+            };
+
+            el.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(send, 600);
+            });
+
+            el.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); send(); }
+            });
+        });
+    });
+
+    // Back where the reader was typing, caret at the end.
+    let id = null;
+    try { id = sessionStorage.getItem(KEY); sessionStorage.removeItem(KEY); } catch (e) {}
+
+    const box = id && document.getElementById(id);
+    if (box) {
+        box.focus();
+        const end = box.value.length;
+        try { box.setSelectionRange(end, end); } catch (e) {}
+    }
+})();
+
 (function () {
     // A row's menu is laid out inside a table that scrolls sideways, inside a
     // card that hides whatever spills out of it. Either one cuts the menu off
