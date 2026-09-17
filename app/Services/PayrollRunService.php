@@ -19,8 +19,9 @@ use Illuminate\Support\Facades\DB;
  * this adds is everything around it:
  *
  *   1. asks PayrollService for the period,
- *   2. layers on the things it has no way to know about: approved paid
- *      leave and cash advance instalments due,
+ *   2. splits the lines a payslip itemises out of the figures it carries
+ *      as one — basic pay from paid leave, the vale from the cash advance
+ *      instalment inside it,
  *   3. writes the result down, so the numbers stop moving.
  *
  * Recalculating replaces a run's items wholesale. Collecting against advances
@@ -91,7 +92,6 @@ class PayrollRunService
         $otHours  = $this->overtimeHours($computed['days'] ?? []);
         $rates    = $this->ratesPriced($computed['days'] ?? []);
         $leave    = $this->approvedLeave($from, $to);
-        $advances = $this->collectibleAdvances($to);
 
         // Everyone the period touches: worked, or has approved leave. A worker
         // with only leave still needs a payslip.
@@ -115,8 +115,7 @@ class PayrollRunService
                 $byEmployee->get($id),
                 $otHours[$id] ?? 0.0,
                 $rates[$id] ?? null,
-                $leave->get($id, collect()),
-                $advances->get($id, collect())
+                $leave->get($id, collect())
             );
         }
 
@@ -125,8 +124,9 @@ class PayrollRunService
 
     /**
      * One worker's row. Everything PayrollService produced is carried across
-     * verbatim; only the two things it cannot see — leave and cash advances —
-     * are added on top.
+     * verbatim — cash advance instalments included, split out of the vale they
+     * are carried in. Leave is counted here only for a worker the engine
+     * returned nothing for.
      */
     private function buildItem(
         PayrollRun $run,
@@ -134,8 +134,7 @@ class PayrollRunService
         ?array $computed,
         float $otHours,
         ?array $rate,
-        $leaveRows,
-        $advanceRows
+        $leaveRows
     ): array {
         $t     = $computed['totals'] ?? [];
         $weeks = collect($computed['periods'] ?? []);
@@ -209,14 +208,19 @@ class PayrollRunService
         $phil  = round((float) $weeks->sum('philhealthDeduction'), 2);
         $pag   = round((float) $weeks->sum('pagibigDeduction'), 2);
         $tax   = round((float) $weeks->sum('withholdingTax'), 2);
-        $vale  = round((float) $weeks->sum('vale'), 2);
         $other = round((float) $weeks->sum('manualDeductions'), 2);
 
-        // ── Cash advance instalments due this period ──────────────────────
-        $advanceDue = 0.0;
-        foreach ($advanceRows as $advance) {
-            $advanceDue += $advance->installmentFor($run->period_end->toDateString());
-        }
+        // ── Cash advance instalments, as the engine took them ─────────────
+        //
+        // The engine's vale already carries each week's advance instalment —
+        // worked out by Loan::walk(), so payments handed in at the office
+        // count — and it says how much of the vale that was. The run used to
+        // work the instalment out again from the stored balance and add it on
+        // top: every finalised payslip charged the advance twice, once inside
+        // "Vale" and again as "Cash Advance", and never saw a payment made at
+        // the office. It is split out of the vale now, not added to it.
+        $advanceDue = round((float) $weeks->sum('vale_advance'), 2);
+        $vale       = round((float) $weeks->sum('vale') - $advanceDue, 2);
 
         $grossPay = round(
             $basicOnly + $engineOt + $holiday + $restDay
@@ -393,18 +397,6 @@ class PayrollRunService
     {
         return LeaveRequest::approved()
             ->overlapping($from, $to)
-            ->get()
-            ->groupBy('employee_id');
-    }
-
-    /** Cash advances still owed, grouped per employee. Old loans are not charged. */
-    private function collectibleAdvances(string $periodEnd)
-    {
-        return Loan::advances()->collectible()
-            ->where(function ($q) use ($periodEnd) {
-                $q->whereNull('starts_on')->orWhere('starts_on', '<=', $periodEnd);
-            })
-            ->orderBy('issued_on')
             ->get()
             ->groupBy('employee_id');
     }

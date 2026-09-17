@@ -578,4 +578,205 @@ class CashAdvanceCollectionTest extends TestCase
             ->assertDontSee('Add payment')
             ->assertDontSee('Edit instalment');
     }
+
+    // ── Payments made before collection starts ───────────────────────────
+
+    /**
+     * An advance set to start collecting at a later payroll, with ₱3,000
+     * issued this week — the shape Aldrin Sapugay's was in.
+     */
+    private function startsLater(Employee $e): Loan
+    {
+        return Loan::create([
+            'employee_id' => $e->id, 'type' => Loan::ADVANCE,
+            'principal' => 3000, 'balance' => 3000, 'installment' => 500, 'schedule' => 'per_payroll',
+            'issued_on' => '2026-09-08', 'starts_on' => '2026-09-21',
+            'status' => 'active', 'created_by' => $this->admin->id,
+        ]);
+    }
+
+    /**
+     * A payment handed in before the first collecting payroll comes off the
+     * balance straight away.
+     *
+     * Reported for Aldrin Sapugay: adding a payment "was not working". It was
+     * saved — and then never reached. Payments before collection started were
+     * moved forward into the first collecting week, and the walk stops at
+     * today's; so the balance did not move, the history stayed empty, and the
+     * page said "Payment recorded. ₱3,000.00 left" over a row that would sit
+     * unread until the 21st.
+     */
+    public function test_a_payment_before_collection_starts_comes_off_the_balance_at_once(): void
+    {
+        $e       = $this->worker(['2026-09-10', '2026-09-15', '2026-09-22'], 'Aldrin Sapugay');
+        $advance = $this->startsLater($e);
+
+        $this->actingAs($this->admin)
+            ->from(route('leave.index', ['tab' => 'advances']))
+            ->post(route('loans.payment', $advance), [
+                'amount' => 1000, 'deducted_on' => '2026-09-11', 'note' => 'OR #1042, cash at the office',
+            ])
+            ->assertSessionHas('success', 'Payment recorded. ₱2,000.00 left to collect.');
+
+        $advance->refresh();
+
+        $this->assertEqualsWithDelta(2000.0, $advance->outstanding, 0.001, 'the balance moves the moment it is paid');
+        $this->assertEqualsWithDelta(2000.0, $advance->balance, 0.001, 'and so does the stored figure');
+        $this->assertSame('active', $advance->status);
+
+        // In the history, on the day it was handed in, with what it was.
+        $lines = $advance->walk('2026-09-12', Carbon::MONDAY)['lines'];
+
+        $this->assertSame(
+            [['2026-09-11', 'payment', 1000.0, 2000.0, 'OR #1042, cash at the office']],
+            array_map(fn ($l) => [$l['date'], $l['type'], $l['amount'], $l['balance'], $l['note']], $lines)
+        );
+
+        $this->actingAs($this->admin)->get(route('leave.index', ['tab' => 'advances']))
+            ->assertOk()
+            ->assertSee('OR #1042, cash at the office')
+            ->assertSee('₱2,000.00');
+
+        // Payroll: nothing before the payroll it was set to start on, then the
+        // instalment against what is left.
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, ...self::WEEK), 0.001);
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001);
+        $this->assertEqualsWithDelta(500.0, $this->advanceTaken($e, '2026-09-21', '2026-09-27'), 0.001);
+
+        Carbon::setTestNow(Carbon::parse('2026-09-27 12:00:00', 'Asia/Manila'));
+        $this->assertEqualsWithDelta(1500.0, $advance->fresh()->outstanding, 0.001, 'one instalment on from the payment');
+    }
+
+    /** Paying the whole sum before collection starts settles it: Fully Paid, and payroll never takes a peso. */
+    public function test_paying_it_all_before_collection_starts_marks_it_fully_paid(): void
+    {
+        $e       = $this->worker(['2026-09-10', '2026-09-22'], 'Aldrin Sapugay');
+        $advance = $this->startsLater($e);
+
+        $this->actingAs($this->admin)
+            ->post(route('loans.payment', $advance), ['amount' => 3000, 'deducted_on' => '2026-09-12'])
+            ->assertSessionHas('success', 'Payment recorded — Aldrin Sapugay\'s cash advance is now fully paid.');
+
+        $advance->refresh();
+
+        $this->assertSame('paid', $advance->status);
+        $this->assertSame('Fully Paid', $advance->status_label);
+        $this->assertEqualsWithDelta(0.0, $advance->outstanding, 0.001);
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, '2026-09-21', '2026-09-27'), 0.001,
+            'payroll takes nothing from a settled advance');
+
+        $this->actingAs($this->admin)->get(route('leave.index', ['tab' => 'advances']))
+            ->assertOk()
+            ->assertSee('Fully Paid')
+            ->assertDontSee('Add payment');
+    }
+
+    // ── The payment itself ───────────────────────────────────────────────
+
+    /**
+     * A payment is dated between the day the advance was issued and today.
+     * One dated ahead used to be saved and then ignored until its week came.
+     */
+    public function test_a_payment_cannot_be_dated_ahead_or_before_the_advance(): void
+    {
+        $e       = $this->worker();
+        $advance = $this->advance($e, 3000, 500);   // issued the 7th; today is the 12th
+
+        $this->actingAs($this->admin)
+            ->post(route('loans.payment', $advance), ['amount' => 500, 'deducted_on' => '2026-09-15'])
+            ->assertSessionHasErrors(['deducted_on' => 'The payment date cannot be in the future.']);
+
+        $this->actingAs($this->admin)
+            ->post(route('loans.payment', $advance), ['amount' => 500, 'deducted_on' => '2026-09-06'])
+            ->assertSessionHasErrors('deducted_on');
+
+        $this->assertSame(0, LoanDeduction::count());
+
+        // Both ends are allowed.
+        foreach (['2026-09-07', '2026-09-12'] as $on) {
+            $this->actingAs($this->admin)
+                ->post(route('loans.payment', $advance->fresh()), ['amount' => 100, 'deducted_on' => $on])
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->assertSame(2, LoanDeduction::count());
+    }
+
+    /**
+     * The same payment sent twice in a moment — a double click, a refresh that
+     * resubmits — is written once. The same amount paid again later is a
+     * second payment, and is written.
+     */
+    public function test_the_same_payment_sent_twice_is_recorded_once(): void
+    {
+        $e       = $this->worker();
+        $advance = $this->advance($e, 3000, 500);
+        $pay     = fn () => $this->actingAs($this->admin)
+            ->post(route('loans.payment', $advance->fresh()), ['amount' => 400, 'deducted_on' => '2026-09-12']);
+
+        $pay()->assertSessionHas('success');
+        $pay()->assertSessionHas('error', 'That payment was already recorded a moment ago — it was not added twice.');
+
+        $this->assertSame(1, LoanDeduction::count());
+        $this->assertEqualsWithDelta(2100.0, $advance->fresh()->outstanding, 0.001, 'taken off once');
+
+        Carbon::setTestNow(Carbon::parse('2026-09-12 21:05:00', 'Asia/Manila'));
+
+        $pay()->assertSessionHas('success');
+
+        $this->assertSame(2, LoanDeduction::count());
+        $this->assertEqualsWithDelta(1700.0, $advance->fresh()->outstanding, 0.001);
+    }
+
+    // ── A finalised run ──────────────────────────────────────────────────
+
+    /**
+     * A payroll run takes the instalment once, and sees payments.
+     *
+     * The engine's vale already carries the week's instalment. The run worked
+     * it out again from the stored balance and added it on top, so every
+     * finalised payslip charged the advance twice — ₱500 under "Vale" and
+     * ₱500 more under "Cash Advance" — and never saw a payment made at the
+     * office.
+     */
+    public function test_a_payroll_run_charges_the_instalment_once(): void
+    {
+        $e = $this->worker(['2026-09-08', '2026-09-09', '2026-09-10']);
+        $this->advance($e, 3000, 500);
+
+        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
+            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
+        ]);
+
+        $item   = \App\Models\PayrollRun::sole()->items()->sole();
+        $engine = $this->totals($e, ...self::WEEK);
+
+        $this->assertEqualsWithDelta(500.0, (float) $item->advance_deduction, 0.001, 'the instalment, on its own line');
+        $this->assertEqualsWithDelta(0.0, (float) $item->vale, 0.001, 'and not in the vale as well');
+        $this->assertEqualsWithDelta($engine['totalDeductions'], (float) $item->total_deductions, 0.011);
+        $this->assertEqualsWithDelta($engine['net'], (float) $item->net_pay, 0.011, 'the run pays what Payroll Records says');
+    }
+
+    /** A run for a week after the advance was paid off at the office takes nothing for it. */
+    public function test_a_payroll_run_after_a_payment_in_full_takes_nothing(): void
+    {
+        $e       = $this->worker(['2026-09-10', '2026-09-22'], 'Aldrin Sapugay');
+        $advance = $this->startsLater($e);
+
+        $this->actingAs($this->admin)
+            ->post(route('loans.payment', $advance), ['amount' => 3000, 'deducted_on' => '2026-09-12']);
+
+        Carbon::setTestNow(Carbon::parse('2026-09-27 21:00:00', 'Asia/Manila'));
+
+        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
+            'period_start' => '2026-09-21', 'period_end' => '2026-09-27',
+        ]);
+
+        $item = \App\Models\PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
+
+        $this->assertEqualsWithDelta(0.0, (float) $item->advance_deduction, 0.001);
+        $this->assertEqualsWithDelta(0.0, (float) $item->vale, 0.001);
+        $this->assertEqualsWithDelta(3000.0, (float) LoanDeduction::sum('amount'), 0.001,
+            'the one payment, and nothing collected on top of it');
+    }
 }

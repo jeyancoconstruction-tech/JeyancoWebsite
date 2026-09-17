@@ -190,7 +190,7 @@ class Loan extends Model
      * takes afterwards, and collection stops the moment nothing is left — so
      * the advance can never collect more than was handed over.
      *
-     * @return array{lines: list<array{date: string, week: ?string, type: string, label: string, amount: float, balance: float}>, outstanding: float}
+     * @return array{lines: list<array{date: string, week: ?string, type: string, label: string, amount: float, balance: float, note: ?string}>, outstanding: float}
      */
     public function walk(string $throughWeekOpening, int $weekStartsOn): array
     {
@@ -207,17 +207,28 @@ class Loan extends Model
         // Payments by the week they fall in, so each is credited before the
         // payroll of the week it was made in — otherwise settling an advance
         // at the counter on Friday would still be deducted on the Sunday.
-        $paid = [];
+        //
+        // In their own week, even one before collection starts. They used to
+        // be moved forward into the first collecting week, and the walk stops
+        // at today's — so on an advance set to start collecting next payroll,
+        // a payment handed in this week was saved and then never reached:
+        // the balance did not move, the history stayed empty, and a payment
+        // of the whole sum left it Active. Nothing on screen said it had
+        // worked, so the obvious thing was to record it again.
+        $paid  = [];
+        $opens = $first->copy();
 
         foreach ($this->deductions as $d) {
-            $on   = Carbon::parse($d->deducted_on);
-            $week = $on->copy()->startOfWeek($weekStartsOn);
-            $key  = $week->lessThan($first) ? $first->toDateString() : $week->toDateString();
+            $week = Carbon::parse($d->deducted_on)->startOfWeek($weekStartsOn);
 
-            $paid[$key][] = $d;
+            $paid[$week->toDateString()][] = $d;
+
+            if ($week->lessThan($opens)) {
+                $opens = $week->copy();
+            }
         }
 
-        for ($week = $first->copy(); $week->lessThanOrEqualTo($last) && $left > 0; $week->addWeek()) {
+        for ($week = $opens; $week->lessThanOrEqualTo($last) && $left > 0; $week->addWeek()) {
             $key     = $week->toDateString();
             $byRun   = 0.0;
 
@@ -241,7 +252,14 @@ class Loan extends Model
                     'label'   => $d->payroll_run_id ? 'Payroll deduction' : 'Payment',
                     'amount'  => $take,
                     'balance' => $left,
+                    'note'    => $d->note,
                 ];
+            }
+
+            // A week before collection starts takes the payments made in it
+            // and nothing else.
+            if ($week->lessThan($first)) {
+                continue;
             }
 
             // Whatever a payment did not cover, the payroll of that week takes
@@ -260,6 +278,7 @@ class Loan extends Model
                     'label'   => 'Payroll deduction',
                     'amount'  => $take,
                     'balance' => $left,
+                    'note'    => null,
                 ];
             }
         }

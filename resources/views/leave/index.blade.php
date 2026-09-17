@@ -390,6 +390,9 @@
                                     <span class="mod-badge {{ $line['type'] === 'payroll' ? 'info' : 'ok' }}">
                                         <span class="dot"></span>{{ __($line['label']) }}
                                     </span>
+                                    @if(filled($line['note'] ?? null))
+                                        <div class="mod-person-sub">{{ $line['note'] }}</div>
+                                    @endif
                                 </td>
                                 <td class="num">₱{{ number_format($line['amount'], 2) }}</td>
                                 <td class="num strong">₱{{ number_format($line['balance'], 2) }}</td>
@@ -472,7 +475,7 @@
     <div class="modal fade" id="payModal{{ $advance->id }}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog">
         <div class="modal-content emp-modal">
-          <form method="POST" action="{{ route('loans.payment', $advance) }}">
+          <form method="POST" action="{{ route('loans.payment', $advance) }}" data-once>
             @csrf
             <div class="emp-head">
                 <span class="emp-head-icon"><i class="fas fa-peso-sign"></i></span>
@@ -496,7 +499,9 @@
                     </div>
                     <div class="emp-field">
                         <label class="ep-label" for="don{{ $advance->id }}">{{ __('Date') }} <span class="ep-req">*</span></label>
-                        <input class="form-control" id="don{{ $advance->id }}" type="date" name="deducted_on" value="{{ now()->toDateString() }}" required>
+                        <input class="form-control" id="don{{ $advance->id }}" type="date" name="deducted_on" value="{{ now()->toDateString() }}"
+                               min="{{ $advance->issued_on->toDateString() }}" max="{{ now()->toDateString() }}" required>
+                        <span class="ep-hint">{{ __('The day it was handed in — not before') }} {{ $advance->issued_on->format('M d, Y') }}.</span>
                     </div>
                     <div class="emp-field full">
                         <label class="ep-label" for="nt{{ $advance->id }}">{{ __('Note') }}</label>
@@ -598,6 +603,19 @@
 // page would reload under the reader mid-word — or at once on Enter, and the
 // cursor is put back at the end of what was typed, so the search reads as
 // one continuous box rather than one that throws you out after each letter.
+// ── A payment is sent once ─────────────────────────────────────────────────
+// A double click on Record sent the form twice and wrote the payment twice.
+// The button goes quiet the moment the form is on its way. (The server
+// refuses an identical payment seconds apart as well, for whatever gets past
+// this — a resubmitted refresh, say.)
+document.querySelectorAll('form[data-once]').forEach(form => {
+    form.addEventListener('submit', e => {
+        if (form.dataset.sent) { e.preventDefault(); return; }
+        form.dataset.sent = '1';
+        form.querySelectorAll('button[type="submit"]').forEach(b => { b.disabled = true; });
+    });
+});
+
 (function () {
     const KEY = 'leaveFilterFocus';
 
