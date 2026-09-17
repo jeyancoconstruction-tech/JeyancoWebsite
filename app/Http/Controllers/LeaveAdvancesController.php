@@ -68,6 +68,15 @@ class LeaveAdvancesController extends Controller
                 ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
                 ->get();
 
+            // What each worker still owes, so the New Cash Advance form can say
+            // how much more they may be advanced the moment they are picked —
+            // rather than only after Record is pressed. Read off the rows
+            // already loaded for the summary below; no query per worker.
+            $view['owed'] = $totals->groupBy('employee_id')
+                ->map(fn ($rows) => round($rows->sum(fn (Loan $l) => $l->outstanding), 2))
+                ->filter(fn (float $v) => $v > 0)
+                ->all();
+
             $view['summary'] = [
                 'active'      => $totals->reject->settled->count(),
                 'outstanding' => round($totals->sum(fn (Loan $l) => $l->outstanding), 2),

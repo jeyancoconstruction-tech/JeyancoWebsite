@@ -24,6 +24,16 @@ class Loan extends Model
     /** The only kind issued now. */
     public const ADVANCE = 'advance';
 
+    /**
+     * The most the company advances one worker: ₱30,000, by company policy.
+     *
+     * A limit on what the worker owes, not on one application — someone
+     * still paying back ₱20,000 can be advanced ₱10,000 more, and a balance
+     * paid down makes room again. Change the figure here; the form, its hint
+     * and the check on saving all read it.
+     */
+    public const LIMIT_PER_EMPLOYEE = 30000.00;
+
     /** Labels for every kind on file, the retired one included. */
     public const TYPES = [
         'loan'    => 'Loan',
@@ -302,6 +312,26 @@ class Loan extends Model
         }
 
         return 0.0;
+    }
+
+    /**
+     * What one worker still owes on cash advances today, every advance of
+     * theirs counted — payroll instalments and office payments both taken off.
+     */
+    public static function owedBy(int $employeeId): float
+    {
+        return round(static::advances()
+            ->where('employee_id', $employeeId)
+            ->where('status', '!=', 'cancelled')
+            ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
+            ->get()
+            ->sum(fn (self $l) => $l->outstanding), 2);
+    }
+
+    /** How much more one worker may be advanced before reaching the limit. */
+    public static function roomFor(int $employeeId): float
+    {
+        return max(0.0, round(self::LIMIT_PER_EMPLOYEE - static::owedBy($employeeId), 2));
     }
 
     /** What is still owed as at a date, payments and instalments both counted. */

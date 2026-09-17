@@ -779,4 +779,121 @@ class CashAdvanceCollectionTest extends TestCase
         $this->assertEqualsWithDelta(3000.0, (float) LoanDeduction::sum('amount'), 0.001,
             'the one payment, and nothing collected on top of it');
     }
+
+    // ── The ₱30,000 limit ────────────────────────────────────────────────
+
+    /** Record a new advance through the form's own route. */
+    private function issue(Employee $e, float $amount)
+    {
+        return $this->actingAs($this->admin)
+            ->from(route('leave.index', ['tab' => 'advances']))
+            ->post(route('loans.store'), [
+                'employee_id' => $e->id, 'principal' => $amount, 'installment' => 1000,
+                'schedule' => 'per_payroll', 'issued_on' => '2026-09-12',
+            ]);
+    }
+
+    /**
+     * Michael: "the limit amount we offer in employee for cash advance is only
+     * 30,000."
+     */
+    public function test_one_advance_is_at_most_thirty_thousand(): void
+    {
+        $e = $this->worker([], 'Mark Adrian Gulbe De Leon');
+
+        $this->issue($e, 30000.01)
+            ->assertSessionHasErrors(['principal' => 'A cash advance cannot be more than ₱30,000.00.']);
+
+        $this->assertSame(0, Loan::count());
+
+        $this->issue($e, 30000)->assertSessionHasNoErrors();
+
+        $this->assertEqualsWithDelta(30000.0, (float) Loan::sole()->principal, 0.001, 'the limit itself is allowed');
+    }
+
+    /**
+     * The limit is on what a worker owes, not on one application. Someone
+     * still paying back ₱20,000 can be advanced ₱10,000 more — and nobody
+     * else's balance comes into it.
+     */
+    public function test_the_limit_counts_what_the_worker_still_owes(): void
+    {
+        $e = $this->worker([], 'Mark Adrian Gulbe De Leon');
+        $this->advance($e, 20000, 2000, '2026-09-21');   // nothing collected yet
+
+        $this->assertEqualsWithDelta(20000.0, Loan::owedBy($e->id), 0.001);
+        $this->assertEqualsWithDelta(10000.0, Loan::roomFor($e->id), 0.001);
+
+        $this->issue($e, 10000.01)->assertSessionHasErrors(['principal' =>
+            'Cash advances are limited to ₱30,000.00 per employee. Mark Adrian Gulbe De Leon still owes ₱20,000.00, '
+            . 'so at most ₱10,000.00 more can be advanced.']);
+
+        $this->issue($e, 10000)->assertSessionHasNoErrors();
+        $this->assertSame(2, Loan::where('employee_id', $e->id)->count());
+
+        // Another worker starts from the whole ₱30,000.
+        $this->issue($this->worker([], 'Aldrin Sapugay'), 30000)->assertSessionHasNoErrors();
+    }
+
+    /** At the limit, nothing more — until a payment makes room, and then only that much. */
+    public function test_paying_down_makes_room_again(): void
+    {
+        $e = $this->worker([], 'Mark Adrian Gulbe De Leon');
+
+        $owed = Loan::create([
+            'employee_id' => $e->id, 'type' => Loan::ADVANCE, 'principal' => 30000, 'balance' => 30000,
+            'installment' => 2000, 'schedule' => 'per_payroll', 'issued_on' => '2026-09-08', 'starts_on' => '2026-09-21',
+            'status' => 'active', 'created_by' => $this->admin->id,
+        ]);
+
+        $this->issue($e, 1)->assertSessionHasErrors(['principal' =>
+            'Cash advances are limited to ₱30,000.00 per employee. Mark Adrian Gulbe De Leon still owes ₱30,000.00, '
+            . 'so nothing more can be advanced until it is paid down.']);
+
+        $this->actingAs($this->admin)
+            ->post(route('loans.payment', $owed), ['amount' => 5000, 'deducted_on' => '2026-09-12'])
+            ->assertSessionHas('success');
+
+        $this->assertEqualsWithDelta(5000.0, Loan::roomFor($e->id), 0.001);
+
+        $this->issue($e, 5000.01)->assertSessionHasErrors('principal');
+        $this->issue($e, 5000)->assertSessionHasNoErrors();
+    }
+
+    /** A cancelled advance is owed by nobody, and takes none of the limit. */
+    public function test_a_cancelled_advance_takes_none_of_the_limit(): void
+    {
+        $e = $this->worker([], 'Mark Adrian Gulbe De Leon');
+        $this->advance($e, 30000, 2000, '2026-09-21')->forceFill(['status' => 'cancelled'])->save();
+
+        $this->assertEqualsWithDelta(0.0, Loan::owedBy($e->id), 0.001);
+        $this->issue($e, 30000)->assertSessionHasNoErrors();
+    }
+
+    /**
+     * The form meets the limit while it is being filled in: the Amount box is
+     * capped at ₱30,000, and it knows what each worker already owes, so
+     * choosing one can say how much is left for them.
+     */
+    public function test_the_form_knows_the_limit_and_what_each_worker_owes(): void
+    {
+        $owing = $this->worker([], 'Mark Adrian Gulbe De Leon');
+        $clear = $this->worker([], 'Aldrin Sapugay');
+        $this->advance($owing, 20000, 2000, '2026-09-21');
+
+        $html = $this->actingAs($this->admin)
+            ->get(route('leave.index', ['tab' => 'advances']))->assertOk()->getContent();
+
+        $at    = strpos($html, 'id="ca_amt"');
+        $field = substr($html, $at, strpos($html, '</' . 'span>', $at) - $at);
+
+        $this->assertStringContainsString('max="30000"', $field);
+        $this->assertStringContainsString('Up to ₱30,000.00 per employee, less what they still owe.', $field);
+
+        preg_match('/data-owed="([^"]*)"/', $field, $m);
+        $owed = json_decode(html_entity_decode($m[1] ?? ''), true);
+
+        $this->assertEqualsWithDelta(20000.0, (float) ($owed[(string) $owing->id] ?? 0), 0.001);
+        $this->assertArrayNotHasKey((string) $clear->id, $owed, 'a worker owing nothing has the whole limit');
+    }
 }

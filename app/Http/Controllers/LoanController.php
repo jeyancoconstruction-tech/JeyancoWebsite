@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Employee;
 use App\Models\Loan;
 use App\Models\LoanDeduction;
 use Illuminate\Http\Request;
@@ -29,16 +30,34 @@ class LoanController extends Controller
 
     public function store(Request $request)
     {
+        // The company advances one worker ₱30,000 at most — on what they owe,
+        // so the room is the limit less every advance of theirs still being
+        // paid back. Worked out before validating so the message can say why.
+        $worker = Employee::find((int) $request->input('employee_id'));
+        $owed   = $worker ? Loan::owedBy($worker->id) : 0.0;
+        $room   = max(0.0, round(Loan::LIMIT_PER_EMPLOYEE - $owed, 2));
+        $limit  = '₱' . number_format(Loan::LIMIT_PER_EMPLOYEE, 2);
+
+        $overLimit = match (true) {
+            $owed <= 0   => "A cash advance cannot be more than {$limit}.",
+            $room <= 0   => "Cash advances are limited to {$limit} per employee. {$worker->name} still owes ₱"
+                          . number_format($owed, 2) . ', so nothing more can be advanced until it is paid down.',
+            default      => "Cash advances are limited to {$limit} per employee. {$worker->name} still owes ₱"
+                          . number_format($owed, 2) . ', so at most ₱' . number_format($room, 2) . ' more can be advanced.',
+        };
+
         $data = $request->validate([
             'employee_id' => 'required|exists:employees,id',
-            'principal'   => 'required|numeric|min:1',
+            'principal'   => 'required|numeric|min:1|max:' . $room,
             'installment' => 'required|numeric|min:1',
             'schedule'    => 'required|in:per_payroll,monthly',
             'issued_on'   => 'required|date',
             'starts_on'   => 'nullable|date|after_or_equal:issued_on',
             'reference'   => 'nullable|string|max:40',
             'notes'       => 'nullable|string|max:1000',
-        ]);
+        ], [
+            'principal.max' => $overLimit,
+        ], ['principal' => 'amount']);
 
         // An instalment larger than the advance would collect more than was
         // ever issued. Cap it so the first collection simply settles the sum.

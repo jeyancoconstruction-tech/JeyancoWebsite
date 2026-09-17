@@ -546,7 +546,13 @@
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="ca_amt">{{ __('Amount') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="ca_amt" type="number" step="0.01" min="1" name="principal" required>
+                    <input class="form-control" id="ca_amt" type="number" step="0.01" min="1"
+                           max="{{ \App\Models\Loan::LIMIT_PER_EMPLOYEE }}" name="principal" required>
+                    <span class="ep-hint" id="ca_amt_hint"
+                          data-limit="{{ \App\Models\Loan::LIMIT_PER_EMPLOYEE }}"
+                          data-owed="{{ json_encode((object) ($owed ?? [])) }}">
+                        {{ __('Up to') }} ₱{{ number_format(\App\Models\Loan::LIMIT_PER_EMPLOYEE, 2) }} {{ __('per employee, less what they still owe.') }}
+                    </span>
                 </div>
                 <div class="emp-field">
                     <label class="ep-label" for="ca_inst">{{ __('Instalment') }} <span class="ep-req">*</span></label>
@@ -603,6 +609,42 @@
 // page would reload under the reader mid-word — or at once on Enter, and the
 // cursor is put back at the end of what was typed, so the search reads as
 // one continuous box rather than one that throws you out after each letter.
+// ── The cash advance limit, as the worker is picked ─────────────────────────
+// ₱30,000 a worker, on what they owe. Choosing somebody sets the Amount box's
+// ceiling to what is left of it and says so, so the limit is met while the
+// form is being filled in rather than as an error after Record. The server
+// checks the same figure whatever this does.
+(function () {
+    const pick = document.getElementById('ca_emp');
+    const amt  = document.getElementById('ca_amt');
+    const hint = document.getElementById('ca_amt_hint');
+    if (!pick || !amt || !hint) return;
+
+    const limit  = Number(hint.dataset.limit) || 0;
+    const owedBy = (() => { try { return JSON.parse(hint.dataset.owed || '{}'); } catch (e) { return {}; } })();
+    const peso   = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const first  = hint.textContent.trim();
+
+    pick.addEventListener('change', () => {
+        if (!pick.value) {
+            amt.max = limit;
+            hint.textContent = first;
+            return;
+        }
+
+        const name = pick.options[pick.selectedIndex].text;
+        const owed = Number(owedBy[pick.value] || 0);
+        const room = Math.max(0, Math.round((limit - owed) * 100) / 100);
+
+        amt.max = room;
+        hint.textContent = owed <= 0
+            ? 'Up to ' + peso(limit) + '.'
+            : room <= 0
+                ? name + ' still owes ' + peso(owed) + ' — nothing more until it is paid down.'
+                : 'Up to ' + peso(room) + ' — ' + name + ' still owes ' + peso(owed) + ' of the ' + peso(limit) + ' limit.';
+    });
+})();
+
 // ── A payment is sent once ─────────────────────────────────────────────────
 // A double click on Record sent the form twice and wrote the payment twice.
 // The button goes quiet the moment the form is on its way. (The server
