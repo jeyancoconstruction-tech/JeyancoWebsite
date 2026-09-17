@@ -555,7 +555,7 @@
     $slipMap = [];
     foreach ($employees as $emp) {
         $t = $emp['totals'];
-        $sss = $phil = $pag = $tax = $vale = $other = $adv = 0;
+        $sss = $phil = $pag = $tax = $vale = $other = $adv = $defer = 0;
         foreach ($emp['periods'] as $pp) {
             $sss   += $pp['sssDeduction'];
             $phil  += $pp['philhealthDeduction'];
@@ -563,6 +563,7 @@
             $tax   += $pp['withholdingTax'];
             $vale  += $pp['vale'];
             $adv   += $pp['vale_advance'] ?? 0;
+            $defer += $pp['cash_advance_deferred'] ?? 0;
             $other += $pp['manualDeductions'];
         }
 
@@ -595,6 +596,7 @@
             'tax'       => round($tax, 2),
             'vale'      => round($vale, 2),
             'advance'   => round($adv, 2),
+            'deferred'  => round($defer, 2),
             'other'     => round($other, 2),
             'late'      => $t['late_minutes'] ?? 0,
             'ded'       => $t['totalDeductions'],
@@ -683,9 +685,12 @@
         // Ang bahagi ng vale na hulog sa isang advance. Nasa loob na ito ng
         // kabuuan sa tabi; ang pangalan lang ang idinadagdag, dahil ang tanong
         // ng manggagawa ay hindi kung magkano kundi kung bakit.
-        set('rcValeK', Number(s.advance) > 0
-            ? 'Vale / cash advance (' + money(s.advance) + ' instalment)'
-            : 'Vale / cash advance');
+        // A cash advance instalment this period's pay could not cover is not
+        // taken; the line says so, so a smaller vale does not look like a
+        // forgotten deduction.
+        set('rcValeK', 'Vale / cash advance'
+            + (Number(s.advance) > 0 ? ' (' + money(s.advance) + ' instalment)' : '')
+            + (Number(s.deferred) > 0 ? ' — ' + money(s.deferred) + ' deferred, pay too low' : ''));
         set('rcVale',  money(s.vale));
         set('rcOther', money(s.other));
         set('rcDed',   money(s.ded));

@@ -140,6 +140,11 @@
                             <div class="ln"><span class="k">{{ __('PAG-IBIG') }}</span><span class="v">&#8369;{{ number_format($s['ded']['pagibig'], 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('Withholding Tax') }}</span><span class="v">&#8369;{{ number_format($s['ded']['tax'], 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('Vale / Advance') }}</span><span class="v">&#8369;{{ number_format($s['ded']['vale'], 2) }}</span></div>
+                            @if(($s['advanceDeferred'] ?? 0) > 0)
+                                {{-- Not taken: this pay could not cover the instalment.
+                                     Carried forward, and still owed. --}}
+                                <div class="ln" style="opacity:.75;"><span class="k">{{ __('Cash advance deferred') }}</span><span class="v">&#8369;{{ number_format($s['advanceDeferred'], 2) }}</span></div>
+                            @endif
                             <div class="ln"><span class="k">{{ __('Other') }}</span><span class="v">&#8369;{{ number_format($s['ded']['other'], 2) }}</span></div>
                             <div class="ln sum"><span class="k">{{ __('Total') }}</span><span class="v">&#8369;{{ number_format($s['totalDeductions'], 2) }}</span></div>
                         </div>

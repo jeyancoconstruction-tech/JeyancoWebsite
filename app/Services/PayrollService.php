@@ -225,11 +225,20 @@ class PayrollService
      * Compute payroll for a date range (inclusive). Null bounds mean "no limit"
      * on that side, preserving the original "all records" behaviour.
      *
+     * Options, both for cashAdvanceRoom() and nothing else:
+     *   employees     only these workers (ids), for speed
+     *   cashAdvances  false to leave cash advances out altogether — what a
+     *                 week can pay before them is what decides whether they
+     *                 are taken, so that figure cannot be asked of a
+     *                 computation that already took them
+     *
+     * @param  array{employees?: list<int>, cashAdvances?: bool}  $options
      * @return array{weeks: array, days: array, employees: array}
      */
-    public function computeForRange(?string $from = null, ?string $to = null): array
+    public function computeForRange(?string $from = null, ?string $to = null, array $options = []): array
     {
-        $cfg = $this->config();
+        $cfg  = $this->config();
+        $only = $options['employees'] ?? null;
 
         // A day nobody closed is closed at the end of its session before it is
         // paid — at a guessed time, flagged for review, never with overtime.
@@ -238,7 +247,8 @@ class PayrollService
         // A pending registration is not on the payroll. Their rows are left
         // out here rather than zeroed later, so they cannot reach a payslip,
         // a report or a weekly total by any route.
-        $query = Attendance::with(['employee', 'shift'])->ofRegistered();
+        $query = Attendance::with(['employee', 'shift'])->ofRegistered()
+            ->when($only !== null, fn ($q) => $q->whereIn('employee_id', $only));
         if ($from && $to) {
             $query->whereBetween('date', [$from, $to]);
         } elseif ($from) {
@@ -332,7 +342,9 @@ class PayrollService
         // instalment their application asked for. Same instrument as the one
         // above and taken the same way; the difference is only where it was
         // entered, so both land on the one advance line.
-        $cfg['cashAdvances'] = $advancesTo === null ? [] : Loan::upTo($advancesTo);
+        $cfg['cashAdvances'] = $advancesTo === null || ! ($options['cashAdvances'] ?? true)
+            ? []
+            : Loan::upTo($advancesTo);
 
         // Approved leave touching the range. A paid day off is wages, so it
         // belongs in the figures every screen reads, not only in a payroll
@@ -343,6 +355,7 @@ class PayrollService
             ? LeaveRequest::approved()
                 ->overlapping($from, $to)
                 ->whereHas('employee', fn ($q) => $q->registered())
+                ->when($only !== null, fn ($q) => $q->whereIn('employee_id', $only))
                 ->with('employee.laborType', 'employee.shift')
                 ->get()
                 ->groupBy('employee_id')
@@ -775,34 +788,102 @@ class PayrollService
      * collect differently from the other or from the schedule the Cash
      * Advances tab shows.
      *
-     * @return array{0: float, 1: float}
+     * A cash advance is taken whole or not at all: when the week's pay after
+     * every other deduction cannot cover the instalment, it is deferred and
+     * carried forward (see Loan::walk()). $netSoFar is that pay before the
+     * advances — gross less contributions, tax, day vale and manual
+     * deductions, without the bonus.
+     *
+     * @return array{due: float, taken: float, deferred: float, room: float}
      */
     private function advancesFor(int $empId, string $weekOpens, int $weekStart, array $cfg, array $weekRates,
-                                 float $gross, float $auto, float $valeSoFar): array
+                                 float $gross, float $auto, float $valeSoFar, float $netSoFar): array
     {
-        $due = 0.0;
+        // ── The Payroll Settings vale advance: exactly as it always was ──────
+        $valeDue = 0.0;
 
         foreach ($cfg['valeAdvances'] ?? [] as $adv) {
             if ($adv['all'] || in_array($empId, $adv['employees'])) {
-                $due += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
+                $valeDue += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
             }
         }
+
+        $valeTaken = $valeDue;
+        $ceiling   = (int) ($weekRates['vale_ceiling_percent'] ?? 100);
+        $allowance = round(max(0, $gross - $auto) * $ceiling / 100, 2);
+
+        if ($ceiling < 100 && $valeDue > 0) {
+            $valeTaken = max(0, min($valeDue, round($allowance - $valeSoFar, 2)));
+        }
+
+        // ── What the week can pay a cash advance out of ─────────────────────
+        //
+        // The pay left once every other deduction is off — contributions, tax,
+        // the day vale, manual deductions and the vale advance above — and not
+        // counting the bonus, which is not salary. Under the vale ceiling too,
+        // when one is set. A cash advance instalment is taken only when this
+        // covers it; that decision is the advance's own schedule's
+        // (Loan::walk()), which reads this same figure, so the Cash Advances
+        // tab and payroll cannot come apart.
+        $room = round($netSoFar - $valeTaken, 2);
+
+        if ($ceiling < 100) {
+            $room = min($room, round($allowance - $valeSoFar - $valeTaken, 2));
+        }
+
+        // ── Cash advances: as their schedule takes or defers them ───────────
+        $cashDue = $cashTaken = $cashDeferred = 0.0;
 
         foreach ($cfg['cashAdvances'] ?? [] as $adv) {
             if ($adv['employee_id'] === $empId) {
-                $due += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
+                $week          = $adv['advance']->weekFor($weekOpens, $weekStart);
+                $cashDue      += $week['due'];
+                $cashTaken    += $week['taken'];
+                $cashDeferred += $week['deferred'];
             }
         }
 
-        $taken   = $due;
-        $ceiling = (int) ($weekRates['vale_ceiling_percent'] ?? 100);
+        return [
+            'due'      => round($valeDue + $cashDue, 2),
+            'taken'    => round($valeTaken + $cashTaken, 2),
+            'deferred' => round($cashDeferred, 2),
+            'room'     => $room,
+        ];
+    }
 
-        if ($ceiling < 100 && $due > 0) {
-            $allowance = round(max(0, $gross - $auto) * $ceiling / 100, 2);
-            $taken     = max(0, min($due, round($allowance - $valeSoFar, 2)));
+    /**
+     * What each worker's pay could give a cash advance, week by week — the
+     * figure a cash advance instalment is weighed against before it is taken.
+     *
+     * The payroll engine itself, for just these workers, with cash advances
+     * left out: whether an advance is taken cannot be decided by a
+     * computation that has already taken it. A week the worker has no payroll
+     * row in is absent from the answer, which is not the same as a week that
+     * paid nothing.
+     *
+     * @param  list<int>  $employeeIds
+     * @return array<int, array<string, float>>  employee id => [week opening Y-m-d => room]
+     */
+    public function cashAdvanceRoom(array $employeeIds, string $from, string $to): array
+    {
+        if ($employeeIds === []) {
+            return [];
         }
 
-        return [$due, $taken];
+        $weeks = $this->computeForRange($from, $to, [
+            'employees'    => array_values(array_unique(array_map('intval', $employeeIds))),
+            'cashAdvances' => false,
+        ])['weeks'];
+
+        $room = [];
+
+        foreach ($weeks as $week) {
+            foreach ($week['details'] as $d) {
+                $room[(int) $d['employee_id']][$week['week_opens']] = (float) ($d['cash_advance_room'] ?? 0);
+            }
+        }
+
+        return $room;
     }
 
     /**
@@ -1033,9 +1114,11 @@ class PayrollService
                     // summed above came off the days themselves; this is the
                     // instalment on a sum already handed over, so it is a
                     // figure for the week rather than for any one day.
-                    [$advanceDue, $advanceTaken] = $this->advancesFor(
-                        (int) $empId, $weekOpens, $weekStart, $cfg, $weekRates, $sumGross, $sumAuto, $sumVale
+                    $advances = $this->advancesFor(
+                        (int) $empId, $weekOpens, $weekStart, $cfg, $weekRates, $sumGross, $sumAuto, $sumVale, $sumNet
                     );
+                    $advanceDue   = $advances['due'];
+                    $advanceTaken = $advances['taken'];
 
                     $sumVale += $advanceTaken;
                     $sumNet  -= $advanceTaken;
@@ -1088,6 +1171,11 @@ class PayrollService
                         'vale'                => round($sumVale, 2),
                         'vale_advance'        => round($advanceTaken, 2),
                         'vale_advance_due'    => round($advanceDue, 2),
+                        // A cash advance instalment the week's pay could not
+                        // cover, deferred and carried forward — and what the
+                        // pay left could have given one.
+                        'cash_advance_deferred' => $advances['deferred'],
+                        'cash_advance_room'   => $advances['room'],
                         'manualDeductions'    => round($sumManual, 2),
                         'totalDeductions'     => round($totalDeductions, 2),
                         'net'                 => round($sumNet, 2),
@@ -1141,9 +1229,12 @@ class PayrollService
                 // instalment as taken — so Leave & Advances showed a deduction
                 // that Payroll Records, Payroll Processing and the payslip never
                 // made. Both ask the same schedule now.
-                [$advanceDue, $advanceTaken] = $this->advancesFor(
-                    (int) $leaveEmpId, $weekOpens, $weekStart, $cfg, $weekRates, $pay, $ded['total'], 0.0
+                $advances = $this->advancesFor(
+                    (int) $leaveEmpId, $weekOpens, $weekStart, $cfg, $weekRates, $pay, $ded['total'], 0.0,
+                    round($pay - $ded['total'], 2)
                 );
+                $advanceDue   = $advances['due'];
+                $advanceTaken = $advances['taken'];
 
                 $net = round($pay - $ded['total'] - $advanceTaken, 2);
 
@@ -1165,6 +1256,8 @@ class PayrollService
                     'vale'                => round($advanceTaken, 2),
                     'vale_advance'        => round($advanceTaken, 2),
                     'vale_advance_due'    => round($advanceDue, 2),
+                    'cash_advance_deferred' => $advances['deferred'],
+                    'cash_advance_room'   => $advances['room'],
                     'totalDeductions'     => round($ded['total'] + $advanceTaken, 2),
                     'net'                 => $net,
                 ] + array_fill_keys([
@@ -1177,6 +1270,7 @@ class PayrollService
 
             $payrollWeeks[] = [
                 'week_range'     => $weekRange,
+                'week_opens'     => $weekOpens,
                 'total_payroll'  => round($weeklyTotalSalary, 2),
                 'working_days'   => $empWeekRecords ? $empWeekRecords->count() : 0,
                 'employee_count' => count($employeeSummaries),

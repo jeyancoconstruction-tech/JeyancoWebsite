@@ -209,79 +209,138 @@ class Loan extends Model
     }
 
     /**
-     * The days this worker has pay an instalment can come out of: days clocked
-     * in, and days of approved paid leave that have come round. Y-m-d, from
-     * the week collection opens.
+     * What this worker's pay could give a cash advance, payroll week by
+     * payroll week: week opening (Y-m-d) => the pay left once every other
+     * deduction is off. A week they have no payroll row in is not in it.
      *
-     * @var list<string>|null  null until loaded
+     * @var array<string, float>|null  null until loaded
      */
-    private ?array $payDates = null;
+    private ?array $payRoom = null;
 
-    /** @return list<string> */
-    public function payDates(): array
+    /**
+     * This worker's other advances that come first — issued earlier, or the
+     * same day and entered first. A week's pay goes to them before this one.
+     *
+     * @var list<self>
+     */
+    private array $olderAdvances = [];
+
+    /** The last day $payRoom reaches (Y-m-d). */
+    private ?string $payRoomThrough = null;
+
+    /**
+     * @param  string|null  $through  the last day the answer has to reach;
+     *                                 the end of this week when not given
+     * @return array<string, float>
+     */
+    public function payRoom(?string $through = null): array
     {
-        if ($this->payDates === null) {
-            static::loadPayDates(collect([$this]));
+        if ($this->payRoom === null || ($through !== null && $through > $this->payRoomThrough)) {
+            $this->payRoom = null;
+            static::loadPayRoom(collect([$this]), $through);
         }
 
-        return $this->payDates;
+        return $this->payRoom;
+    }
+
+    /** Reloaded from the table, so what was worked out from it is dropped too. */
+    public function refresh()
+    {
+        $this->payRoom        = null;
+        $this->payRoomThrough = null;
+        $this->olderAdvances  = [];
+
+        return parent::refresh();
     }
 
     /**
-     * Load payDates() for many advances in two queries rather than two each.
-     * Payroll asks every advance about every week, so it must not query per
-     * question.
+     * Load payRoom() for many advances with one payroll computation between
+     * them. Payroll asks every advance about every week, so it must not
+     * compute per question.
+     *
+     * The pay is worked out by the payroll engine itself with cash advances
+     * left out (PayrollService::cashAdvanceRoom()), for just these workers,
+     * from the week the earliest of their advances starts collecting to the
+     * end of this week.
      *
      * @param  iterable<self>  $advances
+     * @param  string|null      $through  the last day it has to reach, when that is past this week
      */
-    public static function loadPayDates(iterable $advances): void
+    public static function loadPayRoom(iterable $advances, ?string $through = null): void
     {
-        $advances = collect($advances)->filter(fn ($l) => $l instanceof self && $l->payDates === null);
+        $advances = collect($advances)->filter(fn ($l) => $l instanceof self && $l->payRoom === null)->values();
 
         if ($advances->isEmpty()) {
             return;
         }
 
-        $ids   = $advances->pluck('employee_id')->unique()->values()->all();
-        $from  = $advances->map(fn (self $l) => $l->collectionOpensOn()->subDays(6)->toDateString())->min();
-        $today = now()->toDateString();
-        $dates = [];
+        $ids = $advances->pluck('employee_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
 
-        Attendance::whereIn('employee_id', $ids)
-            ->whereNotNull('time_in')
-            ->whereDate('date', '>=', $from)
-            ->get(['employee_id', 'date'])
-            ->each(function ($a) use (&$dates) {
-                $dates[(int) $a->employee_id][Carbon::parse($a->date)->toDateString()] = true;
-            });
-
-        LeaveRequest::approved()
+        // Every advance these workers have, not only the ones asked about: an
+        // older one that is not on this page still comes out of the same pay
+        // first. The instances asked about stand in for their own rows.
+        $all = static::advances()
             ->whereIn('employee_id', $ids)
-            ->where('is_paid', true)
-            ->where('days', '>', 0)
-            ->whereDate('ends_on', '>=', $from)
-            ->whereDate('starts_on', '<=', $today)
-            ->get(['employee_id', 'starts_on', 'ends_on'])
-            ->each(function (LeaveRequest $l) use (&$dates, $from, $today) {
-                $day  = Carbon::parse(max($l->starts_on->toDateString(), $from));
-                $last = min($l->ends_on->toDateString(), $today);
-
-                for (; $day->toDateString() <= $last; $day->addDay()) {
-                    $dates[(int) $l->employee_id][$day->toDateString()] = true;
-                }
-            });
+            ->where('status', '!=', 'cancelled')
+            ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
+            ->get()
+            ->keyBy('id');
 
         foreach ($advances as $advance) {
-            $mine = array_keys($dates[(int) $advance->employee_id] ?? []);
-            sort($mine);
-            $advance->payDates = $mine;
+            $all[$advance->id] = $advance;
+        }
+
+        $weekStartsOn = static::payWeekStartsOn();
+        $from = $all->map(fn (self $l) => $l->collectionOpensOn()->startOfWeek($weekStartsOn)->toDateString())->min();
+        $to   = max(
+            now()->startOfWeek($weekStartsOn)->addDays(6)->toDateString(),
+            $through ? Carbon::parse($through)->startOfWeek($weekStartsOn)->addDays(6)->toDateString() : ''
+        );
+
+        $room = $from <= $to
+            ? app(\App\Services\PayrollService::class)->cashAdvanceRoom($ids, $from, $to)
+            : [];
+
+        foreach ($all->groupBy('employee_id') as $employeeId => $theirs) {
+            $ordered = $theirs
+                ->sort(fn (self $a, self $b) => [$a->issued_on->toDateString(), $a->id] <=> [$b->issued_on->toDateString(), $b->id])
+                ->values();
+
+            foreach ($ordered as $i => $advance) {
+                $advance->payRoom        = $room[(int) $employeeId] ?? [];
+                $advance->payRoomThrough = $to;
+                $advance->olderAdvances  = $ordered->slice(0, $i)->values()->all();
+            }
+        }
+    }
+
+    /**
+     * Give instances what other instances of the same rows already loaded —
+     * so a page holding a list and its totals does not compute payroll twice.
+     *
+     * @param  iterable<self>  $loaded
+     * @param  iterable<self>  $into
+     */
+    public static function sharePayRoom(iterable $loaded, iterable $into): void
+    {
+        $byId = collect($loaded)->keyBy('id');
+
+        foreach ($into as $advance) {
+            $source = $byId->get($advance->id);
+
+            if ($source !== null && $source->payRoom !== null) {
+                $advance->payRoom        = $source->payRoom;
+                $advance->payRoomThrough = $source->payRoomThrough;
+                $advance->olderAdvances  = $source->olderAdvances;
+            }
         }
     }
 
     /**
      * Every peso taken off this advance up to and including the week that
      * `$throughWeekOpening` falls in, in the order it came off, with what was
-     * left after each.
+     * left after each — and every instalment deferred because the pay was too
+     * low.
      *
      * One walk serves both the payroll deduction and the history the office
      * is shown, so the figure a worker is quoted and the figure payroll takes
@@ -289,7 +348,18 @@ class Loan extends Model
      * takes afterwards, and collection stops the moment nothing is left — so
      * the advance can never collect more than was handed over.
      *
-     * @return array{lines: list<array{date: string, week: ?string, type: string, label: string, amount: float, balance: float, note: ?string}>, outstanding: float}
+     * An instalment is taken only from a payroll whose pay, after every other
+     * deduction, covers it — whole, never in part. When it does not, the week
+     * takes nothing, the instalment is deferred and carried forward, and it
+     * stays in the balance. The next payroll with pay takes the instalment
+     * and everything carried when its pay covers both; when it covers only
+     * the instalment, it takes that and the carried amount waits for a
+     * payroll that can; when it covers neither, it defers again. Offering the
+     * instalment alone matters: carried amounts only grow, and a worker whose
+     * pay covers one instalment but never two would otherwise never pay off
+     * the advance at all.
+     *
+     * @return array{lines: list<array{date: string, week: ?string, type: string, label: string, amount: float, deferred: float, balance: float, note: ?string}>, outstanding: float}
      */
     public function walk(string $throughWeekOpening, int $weekStartsOn): array
     {
@@ -302,6 +372,7 @@ class Loan extends Model
 
         $first = $this->collectionOpensOn()->startOfWeek($weekStartsOn);
         $last  = Carbon::parse($throughWeekOpening)->startOfWeek($weekStartsOn);
+        $peso  = fn (float $n) => '₱' . number_format($n, 2);
 
         // Payments by the week they fall in, so each is credited before the
         // payroll of the week it was made in — otherwise settling an advance
@@ -310,10 +381,7 @@ class Loan extends Model
         // In their own week, even one before collection starts. They used to
         // be moved forward into the first collecting week, and the walk stops
         // at today's — so on an advance set to start collecting next payroll,
-        // a payment handed in this week was saved and then never reached:
-        // the balance did not move, the history stayed empty, and a payment
-        // of the whole sum left it Active. Nothing on screen said it had
-        // worked, so the obvious thing was to record it again.
+        // a payment handed in this week was saved and then never reached.
         $paid  = [];
         $opens = $first->copy();
 
@@ -327,22 +395,28 @@ class Loan extends Model
             }
         }
 
-        // The weeks the worker has pay in. An instalment comes out of a payroll,
-        // and a week with no attendance and no paid leave has none: payroll
-        // takes nothing from it. The schedule used to charge it anyway, so
-        // this tab showed a deduction — "20% paid" — that Payroll Records,
-        // Payroll Processing and the payslip had never made. It charges only
-        // the weeks payroll can collect in now, and payroll asks it what each
-        // week takes, so the two cannot come apart.
-        $payWeeks = [];
+        // What each payroll week could pay, and how much of it this worker's
+        // older advances took first. A week with no payroll row for the worker
+        // is not in $room at all: payroll has nothing to take an instalment
+        // from, so the schedule charges nothing there — this tab once showed
+        // deductions no payroll had made because it charged such weeks anyway.
+        $room  = $this->payRoom($last->copy()->addDays(6)->toDateString());
+        $older = [];
 
-        foreach ($this->payDates() as $day) {
-            $payWeeks[Carbon::parse($day)->startOfWeek($weekStartsOn)->toDateString()] = true;
+        foreach ($this->olderAdvances as $advance) {
+            foreach ($advance->walk($throughWeekOpening, $weekStartsOn)['lines'] as $line) {
+                if ($line['type'] === 'payroll' && $line['week'] !== null) {
+                    $older[$line['week']] = round(($older[$line['week']] ?? 0) + $line['amount'], 2);
+                }
+            }
         }
 
+        $carried = 0.0;
+        $today   = now()->toDateString();
+
         for ($week = $opens; $week->lessThanOrEqualTo($last) && $left > 0; $week->addWeek()) {
-            $key     = $week->toDateString();
-            $byRun   = 0.0;
+            $key   = $week->toDateString();
+            $byRun = 0.0;
 
             foreach ($paid[$key] ?? [] as $d) {
                 $take = round(min((float) $d->amount, $left), 2);
@@ -356,66 +430,120 @@ class Loan extends Model
                 // wrote those before payroll took the instalment itself.
                 $byRun += $d->payroll_run_id ? $take : 0;
 
-                $left   = round($left - $take, 2);
+                $left    = round($left - $take, 2);
+                $carried = min($carried, $left);
                 $lines[] = [
-                    'date'    => Carbon::parse($d->deducted_on)->toDateString(),
-                    'week'    => null,
-                    'type'    => $d->payroll_run_id ? 'payroll' : 'payment',
-                    'label'   => $d->payroll_run_id ? 'Payroll deduction' : 'Payment',
-                    'amount'  => $take,
-                    'balance' => $left,
-                    'note'    => $d->note,
+                    'date'     => Carbon::parse($d->deducted_on)->toDateString(),
+                    'week'     => null,
+                    'type'     => $d->payroll_run_id ? 'payroll' : 'payment',
+                    'label'    => $d->payroll_run_id ? 'Payroll deduction' : 'Payment',
+                    'amount'   => $take,
+                    'deferred' => 0.0,
+                    'balance'  => $left,
+                    'note'     => $d->note,
                 ];
             }
 
-            // A week before collection starts takes the payments made in it
-            // and nothing else — and so does a week with no pay to take an
-            // instalment out of. What it did not take is still owed, and the
-            // next week with pay takes its instalment then.
-            if ($week->lessThan($first) || ! isset($payWeeks[$key])) {
+            // Before collection starts a week takes only the payments made in
+            // it, and a week with no payroll takes nothing at all.
+            if ($week->lessThan($first) || ! array_key_exists($key, $room) || $left <= 0) {
                 continue;
             }
 
-            // Whatever a payment did not cover, the payroll of that week takes
-            // — the instalment the application asked for, or the remainder
-            // when that is all there is left to collect.
-            $take = round(min(max(0, (float) $this->installment - $byRun), $left), 2);
+            // The instalment the application asked for, or the remainder when
+            // that is all there is left.
+            $regular = round(min(max(0, (float) $this->installment - $byRun), $left), 2);
 
-            if ($left > 0 && $take > 0) {
-                $left   = round($left - $take, 2);
-                $lines[] = [
-                    // Dated to the payroll that takes it: the last day of the
-                    // week, six days on from the day it opened.
-                    'date'    => $week->copy()->addDays(6)->toDateString(),
-                    'week'    => $key,
-                    'type'    => 'payroll',
-                    'label'   => 'Payroll deduction',
-                    'amount'  => $take,
-                    'balance' => $left,
-                    'note'    => null,
-                ];
+            if ($regular <= 0) {
+                continue;
             }
+
+            $avail   = round($room[$key] - ($older[$key] ?? 0), 2);
+            $catchUp = round(min($regular + $carried, $left), 2);
+            $closes  = $week->copy()->addDays(6)->toDateString();
+
+            if ($avail >= $catchUp) {
+                $take = $catchUp;
+            } elseif ($avail >= $regular) {
+                $take = $regular;
+            } else {
+                // The pay cannot cover it: nothing is taken, and it is carried.
+                $carried = round(min($carried + $regular, $left), 2);
+                $lines[] = [
+                    'date'     => $closes,
+                    'week'     => $key,
+                    'type'     => 'deferred',
+                    'label'    => 'Deferred',
+                    'amount'   => 0.0,
+                    'deferred' => $regular,
+                    'balance'  => $left,
+                    // A week still running may yet earn enough.
+                    'note'     => $closes >= $today
+                        ? 'Pay so far this week is too low for the ' . $peso($regular) . " instalment — it is taken if the week's pay covers it."
+                        : 'Pay too low for the ' . $peso($regular) . ' instalment — ' . $peso($carried) . ' carried forward.',
+                ];
+
+                continue;
+            }
+
+            $caughtUp = round($take - $regular, 2);
+            $left     = round($left - $take, 2);
+            $carried  = round(min(max(0, $carried - $caughtUp), $left), 2);
+
+            $lines[] = [
+                // Dated to the payroll that takes it: the last day of the
+                // week, six days on from the day it opened.
+                'date'     => $closes,
+                'week'     => $key,
+                'type'     => 'payroll',
+                'label'    => 'Payroll deduction',
+                'amount'   => $take,
+                'deferred' => 0.0,
+                'balance'  => $left,
+                'note'     => $caughtUp > 0
+                    ? 'Includes ' . $peso($caughtUp) . ' carried forward.'
+                    : ($carried > 0 ? $peso($carried) . ' still carried forward — this pay covered the instalment, not both.' : null),
+            ];
         }
 
         return ['lines' => $lines, 'outstanding' => max(0.0, $left)];
     }
 
     /**
-     * What the week opening on a date collects — nothing before the advance
-     * starts, and nothing once it is settled, which is what lets payroll ask
-     * every advance about every week without knowing which are still running.
+     * What the payroll week opening on a date does with this advance: what it
+     * takes, what it defers because the pay was too low, and what was due —
+     * the one or the other. Nothing before the advance starts and nothing
+     * once it is settled, which is what lets payroll ask every advance about
+     * every week without knowing which are still running.
+     *
+     * @return array{due: float, taken: float, deferred: float}
      */
-    public function dueForWeekOpening(string $weekOpens, int $weekStartsOn): float
+    public function weekFor(string $weekOpens, int $weekStartsOn): array
     {
         $key = Carbon::parse($weekOpens)->startOfWeek($weekStartsOn)->toDateString();
+        $out = ['due' => 0.0, 'taken' => 0.0, 'deferred' => 0.0];
 
         foreach ($this->walk($weekOpens, $weekStartsOn)['lines'] as $line) {
-            if ($line['week'] === $key) {
-                return $line['amount'];
+            if ($line['week'] !== $key) {
+                continue;
+            }
+
+            if ($line['type'] === 'payroll') {
+                $out['taken'] += $line['amount'];
+                $out['due']   += $line['amount'];
+            } elseif ($line['type'] === 'deferred') {
+                $out['deferred'] += $line['deferred'];
+                $out['due']      += $line['deferred'];
             }
         }
 
-        return 0.0;
+        return array_map(fn (float $v) => round($v, 2), $out);
+    }
+
+    /** What the week opening on a date takes off this advance. */
+    public function dueForWeekOpening(string $weekOpens, int $weekStartsOn): float
+    {
+        return $this->weekFor($weekOpens, $weekStartsOn)['taken'];
     }
 
     /**
@@ -429,7 +557,7 @@ class Loan extends Model
             ->where('status', '!=', 'cancelled')
             ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
             ->get()
-            ->tap(fn ($all) => static::loadPayDates($all))
+            ->tap(fn ($all) => static::loadPayRoom($all))
             ->sum(fn (self $l) => $l->outstanding), 2);
     }
 
@@ -466,7 +594,7 @@ class Loan extends Model
             })
             ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
             ->get()
-            ->tap(fn ($all) => static::loadPayDates($all))
+            ->tap(fn ($all) => static::loadPayRoom($all, $to))
             ->map(fn (self $l) => ['advance' => $l, 'employee_id' => (int) $l->employee_id])
             ->all();
     }

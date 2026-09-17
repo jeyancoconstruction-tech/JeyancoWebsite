@@ -82,6 +82,7 @@ class PayslipController extends Controller
             $t = $e['totals'];
 
             $ded = ['sss' => 0, 'philhealth' => 0, 'pagibig' => 0, 'tax' => 0, 'vale' => 0, 'other' => 0];
+            $deferred = 0.0;
             foreach ($e['periods'] as $p) {
                 $ded['sss']        += $p['sssDeduction'];
                 $ded['philhealth'] += $p['philhealthDeduction'];
@@ -89,6 +90,7 @@ class PayslipController extends Controller
                 $ded['tax']        += $p['withholdingTax'];
                 $ded['vale']       += $p['vale'];
                 $ded['other']      += $p['manualDeductions'];
+                $deferred          += $p['cash_advance_deferred'] ?? 0;
             }
             $ded = array_map(fn ($v) => round($v, 2), $ded);
 
@@ -119,6 +121,9 @@ class PayslipController extends Controller
                 'ded'             => $ded,
                 'totalDeductions' => $t['totalDeductions'],
                 'net'             => $t['net'],
+                // Not a deduction: an instalment this pay could not cover,
+                // carried forward. Printed so the worker is told.
+                'advanceDeferred' => round($deferred, 2),
             ];
         })->values();
 

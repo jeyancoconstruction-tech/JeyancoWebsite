@@ -75,17 +75,21 @@ class LeaveAdvancesController extends Controller
             // which is how an advance read "Fully Paid" in the blue of an
             // active one: the label is worked out live, the colour reads the
             // status column nobody had written.
-            Loan::loadPayDates($view['advances']->getCollection());
-
-            foreach ($view['advances'] as $advance) {
-                $advance->syncSettlement();
-            }
-
+            //
+            // Every advance is loaded for the totals anyway, and whether an
+            // instalment was taken depends on each week's pay — a payroll
+            // computation. It is done once, for all of them, and the rows on
+            // this page borrow it.
             $totals = Loan::advances()
                 ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
                 ->get();
 
-            Loan::loadPayDates($totals);
+            Loan::loadPayRoom($totals);
+            Loan::sharePayRoom($totals, $view['advances']->getCollection());
+
+            foreach ($view['advances'] as $advance) {
+                $advance->syncSettlement();
+            }
 
             // What each worker still owes, so the New Cash Advance form can say
             // how much more they may be advanced the moment they are picked —

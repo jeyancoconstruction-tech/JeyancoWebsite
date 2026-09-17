@@ -62,16 +62,24 @@ class CashAdvanceCollectionTest extends TestCase
         parent::tearDown();
     }
 
-    /** A worker who puts in one ordinary day in each of the weeks given. */
-    private function worker(array $days = ['2026-09-10'], string $name = 'Day Crew'): Employee
+    /**
+     * A worker who puts in one ordinary day in each of the weeks given, at
+     * ₱1,500 a day.
+     *
+     * One day's pay has to cover an instalment for these tests to be about
+     * collecting one: an instalment the week's pay cannot cover is deferred
+     * now. At ₱800 a day, what was left after contributions (₱718.15) was
+     * short of the ₱750 and ₱1,000 instalments most of them use.
+     */
+    private function worker(array $days = ['2026-09-10'], string $name = 'Day Crew', float $daily = 1500): Employee
     {
         $e = Employee::create([
             'name'            => $name,
             'status'          => Employee::STATUS_ACTIVE,
             'employment_type' => Employee::EMPLOYMENT_DAILY,
-            'labor_type_id'   => LaborType::create(['name' => 'Mason ' . $name, 'daily_rate' => 800, 'ot_rate' => 125])->id,
+            'labor_type_id'   => LaborType::create(['name' => 'Mason ' . $name, 'daily_rate' => $daily, 'ot_rate' => 125])->id,
             'shift_id'        => Shift::where('crosses_midnight', false)->firstOrFail()->id,
-            'rate_per_hour'   => 100,
+            'rate_per_hour'   => $daily / 8,
         ]);
 
         foreach ($days as $d) {
@@ -1334,5 +1342,201 @@ class CashAdvanceCollectionTest extends TestCase
 
         $this->actingAs($supervisor)->delete(route('loans.destroy', $advance))->assertForbidden();
         $this->assertNotNull(Loan::find($advance->id));
+    }
+
+    // ── Deferred when the pay cannot cover it ────────────────────────────
+
+    /** What the range deferred of cash advance instalments. */
+    private function deferred(Employee $e, string $from, string $to): float
+    {
+        return round((float) collect($this->figures($e, $from, $to)['periods'] ?? [])->sum('cash_advance_deferred'), 2);
+    }
+
+    /** Every other deduction the range carries, itemised — none of which the rule may touch. */
+    private function otherDeductions(Employee $e, string $from, string $to): array
+    {
+        $weeks = collect($this->figures($e, $from, $to)['periods'] ?? []);
+
+        return array_map(fn ($k) => round((float) $weeks->sum($k), 2), [
+            'sss' => 'sssDeduction', 'philhealth' => 'philhealthDeduction', 'pagibig' => 'pagibigDeduction',
+            'tax' => 'withholdingTax', 'manual' => 'manualDeductions', 'gross' => 'gross',
+        ]);
+    }
+
+    /**
+     * An instalment the week's pay cannot cover is not taken: it is deferred,
+     * carried forward, and still owed — and nothing else on the payroll moves.
+     *
+     * Michael: "If the salary is too low for the configured cash advance
+     * installment, do not force the deduction." One ₱800 day leaves ₱718.15
+     * once contributions and tax are off; a ₱1,000 instalment would put the
+     * week's pay below nothing.
+     */
+    public function test_an_instalment_the_pay_cannot_cover_is_deferred_not_taken(): void
+    {
+        $e     = $this->worker(['2026-09-10'], 'Lawrence Bernas', 800);
+        $clean = ['net' => $this->totals($e, ...self::WEEK)['net'], 'other' => $this->otherDeductions($e, ...self::WEEK)];
+
+        $advance = $this->advance($e, 5000, 1000);
+
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'not forced');
+        $this->assertEqualsWithDelta(1000.0, $this->deferred($e, ...self::WEEK), 0.001, 'deferred instead');
+        $this->assertEqualsWithDelta($clean['net'], $this->totals($e, ...self::WEEK)['net'], 0.001, 'the pay is left whole');
+        $this->assertSame($clean['other'], $this->otherDeductions($e, ...self::WEEK),
+            'contributions, tax, manual deductions and the gross are exactly what they were');
+
+        // Still owed, and the schedule says why.
+        $advance = $advance->fresh();
+        $this->assertEqualsWithDelta(5000.0, $advance->outstanding, 0.001);
+
+        $line = collect($advance->walk('2026-09-12', Carbon::MONDAY)['lines'])->sole();
+        $this->assertSame('deferred', $line['type']);
+        $this->assertSame('Deferred', $line['label']);
+        $this->assertEqualsWithDelta(0.0, $line['amount'], 0.001);
+        $this->assertEqualsWithDelta(1000.0, $line['deferred'], 0.001);
+        $this->assertStringContainsString('too low for the ₱1,000.00 instalment', $line['note']);
+    }
+
+    /** The next payroll whose pay covers it takes the instalment and what was carried. */
+    public function test_what_was_carried_is_taken_when_the_pay_covers_it(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-20 21:00:00', 'Asia/Manila'));
+
+        // One day in week 37, too little; three in week 38, plenty.
+        $e       = $this->worker(['2026-09-10', '2026-09-15', '2026-09-16', '2026-09-17'], 'Lawrence Bernas', 800);
+        $advance = $this->advance($e, 5000, 1000);
+
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, ...self::WEEK), 0.001);
+        $this->assertEqualsWithDelta(2000.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001,
+            "week 38's instalment and week 37's, carried");
+        $this->assertEqualsWithDelta(0.0, $this->deferred($e, '2026-09-14', '2026-09-20'), 0.001);
+
+        $lines = $advance->fresh()->walk('2026-09-20', Carbon::MONDAY)['lines'];
+
+        $this->assertSame(
+            [['2026-09-13', 'deferred', 0.0, 5000.0], ['2026-09-20', 'payroll', 2000.0, 3000.0]],
+            array_map(fn ($l) => [$l['date'], $l['type'], $l['amount'], $l['balance']], $lines)
+        );
+        $this->assertSame('Pay too low for the ₱1,000.00 instalment — ₱1,000.00 carried forward.', $lines[0]['note'],
+            'a week that has closed says it was carried');
+        $this->assertSame('Includes ₱1,000.00 carried forward.', $lines[1]['note']);
+        $this->assertEqualsWithDelta(3000.0, $advance->fresh()->outstanding, 0.001);
+    }
+
+    /**
+     * Pay that covers the instalment but not what is carried takes the
+     * instalment, and the carried amount waits for a payroll that can.
+     *
+     * Asking for both or nothing would never collect from a worker whose pay
+     * covers one instalment a week but never two: the carried amount only
+     * grows.
+     */
+    public function test_pay_that_covers_only_the_instalment_takes_the_instalment(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-27 21:00:00', 'Asia/Manila'));
+
+        $e = $this->worker([
+            '2026-09-10',                                // week 37: one day, too little
+            '2026-09-15', '2026-09-16',                  // week 38: covers ₱1,000, not ₱2,000
+            '2026-09-22', '2026-09-23', '2026-09-24',    // week 39: covers ₱2,000
+        ], 'Lawrence Bernas', 800);
+        $advance = $this->advance($e, 5000, 1000);
+
+        $weeks = [
+            ['2026-09-07', '2026-09-13', 0.0,    1000.0],
+            ['2026-09-14', '2026-09-20', 1000.0, 0.0],
+            ['2026-09-21', '2026-09-27', 2000.0, 0.0],
+        ];
+
+        foreach ($weeks as [$from, $to, $taken, $deferred]) {
+            $this->assertEqualsWithDelta($taken, $this->advanceTaken($e, $from, $to), 0.001, "taken, week of {$from}");
+            $this->assertEqualsWithDelta($deferred, $this->deferred($e, $from, $to), 0.001, "deferred, week of {$from}");
+        }
+
+        $lines = collect($advance->fresh()->walk('2026-09-27', Carbon::MONDAY)['lines'])->keyBy('week');
+
+        $this->assertSame('₱1,000.00 still carried forward — this pay covered the instalment, not both.',
+            $lines['2026-09-14']['note']);
+        $this->assertSame('Includes ₱1,000.00 carried forward.', $lines['2026-09-21']['note']);
+        $this->assertEqualsWithDelta(2000.0, $advance->fresh()->outstanding, 0.001, 'three thousand collected, none of it twice');
+    }
+
+    /** A worker's older advance comes out of the pay first; the next one waits for what is left. */
+    public function test_an_older_advance_is_taken_first_and_the_next_waits(): void
+    {
+        $e = $this->worker(['2026-09-09', '2026-09-10'], 'Lawrence Bernas', 800);   // ₱1,436.30 to go round
+
+        $older = Loan::create([
+            'employee_id' => $e->id, 'type' => Loan::ADVANCE, 'principal' => 5000, 'balance' => 5000, 'installment' => 1000,
+            'schedule' => 'per_payroll', 'issued_on' => '2026-09-07', 'status' => 'active', 'created_by' => $this->admin->id,
+        ]);
+        $newer = Loan::create([
+            'employee_id' => $e->id, 'type' => Loan::ADVANCE, 'principal' => 3000, 'balance' => 3000, 'installment' => 1000,
+            'schedule' => 'per_payroll', 'issued_on' => '2026-09-08', 'status' => 'active', 'created_by' => $this->admin->id,
+        ]);
+
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'one instalment fits');
+        $this->assertEqualsWithDelta(1000.0, $this->deferred($e, ...self::WEEK), 0.001, 'the other does not');
+
+        $this->assertEqualsWithDelta(4000.0, $older->fresh()->outstanding, 0.001, 'the older advance was taken');
+        $this->assertEqualsWithDelta(3000.0, $newer->fresh()->outstanding, 0.001, 'the newer one waits');
+        $this->assertSame('deferred', collect($newer->fresh()->walk('2026-09-12', Carbon::MONDAY)['lines'])->sole()['type']);
+    }
+
+    /**
+     * Only cash advances are deferred. The Payroll Settings vale advance is
+     * collected exactly as before, even in a week too thin for a cash advance.
+     */
+    public function test_the_payroll_settings_vale_advance_is_not_deferred(): void
+    {
+        $e = $this->worker(['2026-09-10'], 'Lawrence Bernas', 800);
+
+        \App\Models\ValeAdvance::create([
+            'amount' => 4000, 'weeks' => 4, 'starts_on' => '2026-09-07', 'all_employees' => true,
+        ]);
+
+        $this->advance($e, 5000, 1000);
+
+        $week = collect($this->figures($e, ...self::WEEK)['periods'])->sole();
+
+        $this->assertEqualsWithDelta(1000.0, $week['vale_advance'], 0.001, "the vale advance's ₱1,000 is taken as it always was");
+        $this->assertEqualsWithDelta(1000.0, $week['cash_advance_deferred'], 0.001, 'the cash advance, with nothing left for it, is deferred');
+    }
+
+    /** Payroll Processing, the payslip and a payroll run all say it was deferred, and none of them take it. */
+    public function test_every_payroll_screen_shows_the_deferral(): void
+    {
+        $e     = $this->worker(['2026-09-10'], 'Lawrence Bernas', 800);
+        $clean = $this->totals($e, ...self::WEEK)['net'];
+        $this->advance($e, 5000, 1000);
+
+        $page = $this->actingAs($this->admin)->get(route('payroll-processing.index', [
+            'period' => '2026-09-07_2026-09-13', 'view' => 'workflow', 'employee' => $e->id,
+        ]))->assertOk();
+
+        $sel = $page->viewData('sel');
+        $this->assertEqualsWithDelta(1000.0, $sel['advance_deferred'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $sel['advance'], 0.001);
+        $this->assertEqualsWithDelta($clean, $sel['net'], 0.001);
+        $page->assertSee('₱1,000.00 cash advance deferred — pay too low, carried forward');
+
+        $slip = $this->actingAs($this->admin)
+            ->get(route('payslip.batch', ['from' => '2026-09-07', 'to' => '2026-09-13', 'employee' => $e->id]))
+            ->assertOk()
+            ->assertSee('Cash advance deferred');
+        $this->assertEqualsWithDelta(1000.0, $slip->viewData('slips')->first()['advanceDeferred'], 0.001);
+
+        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
+            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
+        ]);
+        $item = \App\Models\PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
+        $this->assertEqualsWithDelta(0.0, (float) $item->advance_deduction, 0.001);
+        $this->assertEqualsWithDelta($clean, (float) $item->net_pay, 0.011);
+
+        // And the Cash Advances history.
+        $this->actingAs($this->admin)->get(route('leave.index', ['tab' => 'advances']))
+            ->assertOk()
+            ->assertSee('Deferred')
+            ->assertSee('₱1,000.00 not taken');
     }
 }

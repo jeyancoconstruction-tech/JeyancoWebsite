@@ -411,14 +411,23 @@
                             <tr>
                                 <td class="muted">{{ \Carbon\Carbon::parse($line['date'])->format('M d, Y') }}</td>
                                 <td>
-                                    <span class="mod-badge {{ $line['type'] === 'payroll' ? 'info' : 'ok' }}">
+                                    {{-- A deferred instalment is a week payroll took nothing
+                                         in, because the pay could not cover it: amber, and
+                                         the amount carried rather than an amount taken. --}}
+                                    <span class="mod-badge {{ ['payroll' => 'info', 'deferred' => 'warn'][$line['type']] ?? 'ok' }}">
                                         <span class="dot"></span>{{ __($line['label']) }}
                                     </span>
                                     @if(filled($line['note'] ?? null))
                                         <div class="mod-person-sub">{{ $line['note'] }}</div>
                                     @endif
                                 </td>
-                                <td class="num">₱{{ number_format($line['amount'], 2) }}</td>
+                                <td class="num">
+                                    @if($line['type'] === 'deferred')
+                                        <span class="muted">₱{{ number_format($line['deferred'], 2) }} {{ __('not taken') }}</span>
+                                    @else
+                                        ₱{{ number_format($line['amount'], 2) }}
+                                    @endif
+                                </td>
                                 <td class="num strong">₱{{ number_format($line['balance'], 2) }}</td>
                             </tr>
                         @empty

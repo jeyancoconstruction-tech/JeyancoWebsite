@@ -533,6 +533,9 @@ class PayrollProcessingController extends Controller
             // kept as well, so the line can say how much of it was one.
             'vale'             => $sum('vale'),
             'advance'          => $sum('vale_advance'),
+            // A cash advance instalment this period's pay could not cover:
+            // not taken, carried forward, and said so beside the vale line.
+            'advance_deferred' => $sum('cash_advance_deferred'),
             'other_deductions' => $sum('manualDeductions'),
 
             'gross'            => $gross,
@@ -592,7 +595,7 @@ class PayrollProcessingController extends Controller
         + array_fill_keys(['minutes', 'ot_minutes', 'regular_minutes', 'late_minutes'], 0)
         + array_fill_keys([
             'daily_rate', 'hourly_rate', 'days', 'basic', 'overtime', 'ot_rate', 'night', 'holiday', 'rest',
-            'leave', 'leave_days', 'bonus', 'sss', 'philhealth', 'pagibig', 'tax', 'vale', 'advance',
+            'leave', 'leave_days', 'bonus', 'sss', 'philhealth', 'pagibig', 'tax', 'vale', 'advance', 'advance_deferred',
             'other_deductions', 'gross', 'deductions', 'net',
         ], 0.0);
     }
@@ -709,7 +712,12 @@ class PayrollProcessingController extends Controller
                 $line('Pag-IBIG', 'ti-home', 'Employee share', $s['pagibig']),
                 $line('Withholding tax', 'ti-receipt-tax', 'Per BIR table', $s['tax']),
                 $line('Vale / cash advance', 'ti-cash',
-                    $s['advance'] > 0 ? $peso($s['advance']) . ' instalment' : null, $s['vale']),
+                    trim(implode(' · ', array_filter([
+                        $s['advance'] > 0 ? $peso($s['advance']) . ' instalment' : null,
+                        $s['advance_deferred'] > 0
+                            ? $peso($s['advance_deferred']) . ' cash advance deferred — pay too low, carried forward'
+                            : null,
+                    ]))) ?: null, $s['vale']),
                 $line('Other deductions', 'ti-minus', $s['other_deductions'] > 0 ? 'Adjustments' : null, $s['other_deductions']),
             ],
         ];
@@ -748,7 +756,9 @@ class PayrollProcessingController extends Controller
                 ['PhilHealth (' . $pct($rates['philhealth_rate'] ?? 0) . ')', $s['philhealth']],
                 ['Pag-IBIG (' . $pct($rates['pagibig_rate'] ?? 0) . ')', $s['pagibig']],
                 [($rates['withholding_tax'] ?? true) ? 'Withholding tax (BIR)' : 'Withholding tax (off)', $s['tax']],
-                [$s['advance'] > 0 ? 'Vale / cash advance (' . $peso($s['advance']) . ' instalment)' : 'Vale / cash advance', $s['vale']],
+                ['Vale / cash advance'
+                    . ($s['advance'] > 0 ? ' (' . $peso($s['advance']) . ' instalment)' : '')
+                    . ($s['advance_deferred'] > 0 ? ' — ' . $peso($s['advance_deferred']) . ' deferred, pay too low' : ''), $s['vale']],
                 ['Other adjustments', $s['other_deductions']],
             ],
             'gross'      => $s['gross'],
