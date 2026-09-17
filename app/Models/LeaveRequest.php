@@ -28,8 +28,24 @@ class LeaveRequest extends Model
         'unpaid'      => 'Leave Without Pay',
     ];
 
+    /** What is stored. Payroll reads "approved"; nothing else is written. */
     public const STATUSES = [
         'approved'  => 'Approved',
+        'cancelled' => 'Cancelled',
+    ];
+
+    /**
+     * What a row shows, and what the Status filter offers.
+     *
+     * Completed is read off the calendar, never written: an approved leave
+     * whose last day has gone by. Stored, it would need something to move
+     * every row across at midnight — and payroll pays leave by its stored
+     * "approved", so a finished leave written as "completed" would drop
+     * straight out of the weeks it was paid in.
+     */
+    public const DISPLAY_STATUSES = [
+        'approved'  => 'Approved',
+        'completed' => 'Completed',
         'cancelled' => 'Cancelled',
     ];
 
@@ -71,9 +87,28 @@ class LeaveRequest extends Model
         return $this->belongsTo(User::class, 'filed_by');
     }
 
+    /** Leave that stands — running, still to come, or already over. What payroll pays. */
     public function scopeApproved(Builder $q): Builder
     {
         return $q->where('status', 'approved');
+    }
+
+    /**
+     * Rows under one of DISPLAY_STATUSES.
+     *
+     * Approved and Completed split the stored "approved" on the last day, so
+     * a row is under exactly one of them. The last day itself is still
+     * Approved: the leave is not over until that day is.
+     */
+    public function scopeShowing(Builder $q, string $status): Builder
+    {
+        $today = now()->toDateString();
+
+        return match ($status) {
+            'completed' => $q->approved()->whereDate('ends_on', '<', $today),
+            'approved'  => $q->approved()->whereDate('ends_on', '>=', $today),
+            default     => $q->where('status', $status),
+        };
     }
 
     /** Leave that touches the range at all, not only leave contained by it. */
@@ -96,9 +131,21 @@ class LeaveRequest extends Model
         return self::TYPES[$this->leave_type] ?? ucfirst((string) $this->leave_type);
     }
 
+    /** approved, completed or cancelled — see DISPLAY_STATUSES. */
+    public function getDisplayStatusAttribute(): string
+    {
+        if ($this->status !== 'approved') {
+            return (string) $this->status;
+        }
+
+        return $this->ends_on && $this->ends_on->toDateString() < now()->toDateString()
+            ? 'completed'
+            : 'approved';
+    }
+
     public function getStatusLabelAttribute(): string
     {
-        return self::STATUSES[$this->status] ?? ucfirst((string) $this->status);
+        return self::DISPLAY_STATUSES[$this->display_status] ?? ucfirst((string) $this->status);
     }
 
     /**

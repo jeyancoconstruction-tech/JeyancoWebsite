@@ -76,7 +76,9 @@ class LeaveAdvancesController extends Controller
             ];
         } else {
             $view['leave'] = LeaveRequest::with(['employee', 'filer', 'approver'])
-                ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+                // Completed is read off the calendar rather than stored, so the
+                // filter asks the dates, not the column.
+                ->when($request->filled('status'), fn ($q) => $q->showing((string) $request->status))
                 ->when($request->filled('type'), fn ($q) => $q->where('leave_type', $request->type))
                 ->when($request->filled('q'), fn ($q) => $q->whereHas('employee',
                     fn ($e) => $e->where('name', 'like', '%' . $request->q . '%')))

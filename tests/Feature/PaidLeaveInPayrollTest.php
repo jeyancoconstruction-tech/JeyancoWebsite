@@ -681,4 +681,18 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->assertEqualsWithDelta(0.0, (float) $item->basic_pay, 0.011);
         $this->assertEqualsWithDelta(1600.0, (float) $item->gross_pay, 0.011);
     }
+
+    /**
+     * Completed is only what the row shows. A leave that is over is still
+     * paid for the week it fell in — it has to be, or last week's payroll
+     * would shrink the morning after someone's leave ended.
+     */
+    public function test_a_completed_leave_is_still_paid(): void
+    {
+        $e     = $this->worker(['2026-09-10']);
+        $leave = $this->leave($e, '2026-09-08', '2026-09-09');   // it is the 12th: over
+
+        $this->assertSame('completed', $leave->display_status);
+        $this->assertEqualsWithDelta(1600.0, $this->totals($e, ...self::WEEK)['leavePay'], 0.001);
+    }
 }

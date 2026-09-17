@@ -9,6 +9,7 @@ use App\Models\Loan;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunItem;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -460,5 +461,63 @@ class LeaveAdvancesPageTest extends TestCase
 
         $this->assertSame('cancelled', $status($rejected), 'rejected is cancelled — it still pays nothing');
         $this->assertSame('cancelled', $status($cancelled), 'and what was already settled is left alone');
+    }
+
+    /**
+     * A leave whose days have all gone by reads Completed.
+     *
+     * Michael: "after matapos ang leave sa calendar like lahat ng araw ng
+     * leave nya dapat may option den sa status like tapos na."
+     *
+     * Read off the calendar, never written. Payroll pays leave by its stored
+     * "approved", so a finished leave written as anything else would drop out
+     * of the weeks it was paid in.
+     */
+    public function test_a_leave_whose_days_have_all_passed_reads_completed(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-17 14:00:00', 'Asia/Manila'));
+
+        $emp   = $this->worker('Lawrence Bernas');
+        $filed = fn (string $from, string $to, string $status = 'approved') => LeaveRequest::create([
+            'employee_id' => $emp->id, 'leave_type' => 'sick', 'starts_on' => $from, 'ends_on' => $to,
+            'days' => 1, 'is_paid' => true, 'status' => $status,
+        ]);
+
+        $over      = $filed('2026-09-14', '2026-09-16');   // ended yesterday
+        $lastDay   = $filed('2026-09-15', '2026-09-17');   // today is its last day
+        $running   = $filed('2026-09-16', '2026-09-18');
+        $ahead     = $filed('2026-09-21', '2026-09-22');
+        $calledOff = $filed('2026-09-01', '2026-09-02', 'cancelled');
+
+        $this->assertSame('completed', $over->display_status);
+        $this->assertSame('Completed', $over->status_label);
+        $this->assertSame('approved', $lastDay->display_status, 'not over until its last day is');
+        $this->assertSame('approved', $running->display_status);
+        $this->assertSame('approved', $ahead->display_status);
+        $this->assertSame('cancelled', $calledOff->display_status, 'called off stays called off, however long ago');
+
+        $this->assertSame('approved', $over->fresh()->status, 'nothing is written');
+
+        // Each row is under exactly one option of the filter.
+        $ids = fn (string $status) => $this->actingAs($this->admin())
+            ->get(route('leave.index', ['tab' => 'leave', 'status' => $status]))->assertOk()
+            ->viewData('leave')->pluck('id')->sort()->values()->all();
+
+        $this->assertSame([$over->id], $ids('completed'));
+        $this->assertSame([$lastDay->id, $running->id, $ahead->id], $ids('approved'));
+        $this->assertSame([$calledOff->id], $ids('cancelled'));
+
+        $html = $this->actingAs($this->admin())->get(route('leave.index'))->assertOk()->getContent();
+        $at   = strpos($html, 'id="lstatus"');
+
+        $this->assertStringContainsString('Completed',
+            substr($html, $at, strpos($html, '</' . 'select>', $at) - $at), 'it is an option in the filter');
+        $this->assertStringContainsString('mod-badge ok"><span class="dot"></span>Completed', $html,
+            'and the row says so, in the colour a settled advance uses');
+
+        // Come the next day, the one that ended today is over too.
+        Carbon::setTestNow(Carbon::parse('2026-09-18 00:05:00', 'Asia/Manila'));
+
+        $this->assertSame('completed', $lastDay->fresh()->display_status);
     }
 }

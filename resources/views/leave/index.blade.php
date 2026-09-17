@@ -50,7 +50,7 @@
                     <label for="lstatus">{{ __('Status') }}</label>
                     <select id="lstatus" class="form-select" name="status">
                         <option value="">{{ __('All') }}</option>
-                        @foreach(\App\Models\LeaveRequest::STATUSES as $k => $v)
+                        @foreach(\App\Models\LeaveRequest::DISPLAY_STATUSES as $k => $v)
                             <option value="{{ $k }}" @selected(request('status') === $k)>{{ $v }}</option>
                         @endforeach
                     </select>
@@ -105,7 +105,9 @@
                                 </span>
                             </td>
                             <td>
-                                @php $tone = $row->status === 'cancelled' ? 'muted' : 'ok'; @endphp
+                                {{-- The Cash Advances tab's colours: blue while it
+                                     runs, green once it is over, grey if called off. --}}
+                                @php $tone = ['completed' => 'ok', 'cancelled' => 'muted'][$row->display_status] ?? 'info'; @endphp
                                 <span class="mod-badge {{ $tone }}"><span class="dot"></span>{{ $row->status_label }}</span>
                             </td>
                             <td class="muted">
