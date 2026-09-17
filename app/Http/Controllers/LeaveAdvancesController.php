@@ -50,7 +50,10 @@ class LeaveAdvancesController extends Controller
             // The ledger comes with each row: the balance shown, the progress
             // and the history are all worked out from it, and asking per row
             // would be a query apiece.
-            $view['advances'] = Loan::advances()
+            //
+            // Listed, not every advance: a deleted one is kept only so that
+            // the payroll weeks it was deducted in stay as they were paid.
+            $view['advances'] = Loan::listed()
                 ->with(['employee', 'deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
                 ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
                 ->when($request->filled('q'), fn ($q) => $q->whereHas('employee',
@@ -80,7 +83,7 @@ class LeaveAdvancesController extends Controller
             // instalment was taken depends on each week's pay — a payroll
             // computation. It is done once, for all of them, and the rows on
             // this page borrow it.
-            $totals = Loan::advances()
+            $totals = Loan::listed()
                 ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
                 ->get();
 

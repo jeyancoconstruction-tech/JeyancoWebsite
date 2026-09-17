@@ -209,15 +209,19 @@ class LoanController extends Controller
     }
 
     /**
-     * Delete a cash advance, and the payments recorded against it.
+     * Delete a cash advance.
      *
-     * Gone for good, and from every screen that reads it: payroll works an
-     * advance's instalments out from the advance itself, so without it no
-     * week deducts it any more — including weeks Payroll Records already
-     * showed it taken from. A payroll run already finalised keeps the figures
-     * it froze. The page says as much before it is pressed, and what was
-     * deleted is written to the Audit Log in full, since the row cannot say
-     * so afterwards.
+     * Only the pay week it is deleted in gets its deduction back. That week's
+     * payroll is still being worked out, so its instalment comes off and the
+     * pay is whole again. A week that has already closed was paid with the
+     * deduction in it, and keeps it: Payroll Records, Payroll Processing and
+     * the payslip show every closed week exactly as it was.
+     *
+     * So the advance is kept and marked deleted rather than removed — payroll
+     * works every instalment out from the advance itself, and a closed week
+     * could not show a deduction worked out from a row that no longer exists.
+     * It is gone from Leave & Advances, owes nothing, and counts against no
+     * limit (see Loan::DELETED).
      */
     public function destroy(Loan $loan)
     {
@@ -225,31 +229,32 @@ class LoanController extends Controller
 
         $loan->load(['employee', 'deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')]);
 
-        $name     = $loan->employee->name ?? 'the worker';
-        $amount   = '₱' . number_format($loan->principal, 2);
-        $lines    = collect($loan->walk(now()->toDateString(), Loan::payWeekStartsOn())['lines']);
-        $byPay    = round((float) $lines->where('type', 'payroll')->sum('amount'), 2);
-        $payments = $loan->deductions->whereNull('payroll_run_id')->count();
+        $name   = $loan->employee->name ?? 'the worker';
+        $amount = '₱' . number_format($loan->principal, 2);
+        $taken  = $loan->takenAround(now()->toDateString());
 
-        DB::transaction(function () use ($loan, $name, $amount, $byPay, $payments) {
-            $loan->deductions()->delete();
-            $loan->delete();
+        DB::transaction(function () use ($loan, $name, $amount, $taken) {
+            $loan->forceFill(['status' => Loan::DELETED])->save();
 
             AuditLog::record('Loans', 'deleted',
                 "Deleted {$name}'s cash advance of {$amount} — issued " . $loan->issued_on->format('M d, Y')
                 . ', ₱' . number_format($loan->installment, 2) . ' per payroll'
                 . ($loan->reference ? ", ref {$loan->reference}" : '')
-                . '; payroll had taken ₱' . number_format($byPay, 2)
-                . ($payments ? ", and {$payments} " . ($payments === 1 ? 'payment recorded at the office was' : 'payments recorded at the office were') . ' removed with it' : '')
-                . '.', $loan);
+                . '; ₱' . number_format($taken['this_week'], 2) . " restored to this week's payroll"
+                . '; closed payroll weeks keep the ₱' . number_format($taken['closed_weeks'], 2) . ' already deducted.', $loan);
         });
 
-        return back()->with('success', "{$name}'s cash advance of {$amount} was deleted.");
+        return back()->with('success', $taken['this_week'] > 0
+            ? "{$name}'s cash advance of {$amount} was deleted — ₱" . number_format($taken['this_week'], 2) . " back in this week's pay."
+            : "{$name}'s cash advance of {$amount} was deleted. Nothing was deducted from this week's pay.");
     }
 
-    /** A loan on file is history now; nothing here changes it. */
+    /**
+     * A loan on file is history now; nothing here changes it. Nor does
+     * anything change a deleted advance: it is fixed as it was deleted.
+     */
     private function onlyAdvances(Loan $loan): void
     {
-        abort_unless($loan->type === Loan::ADVANCE, 404);
+        abort_unless($loan->type === Loan::ADVANCE && ! $loan->isDeleted(), 404);
     }
 }

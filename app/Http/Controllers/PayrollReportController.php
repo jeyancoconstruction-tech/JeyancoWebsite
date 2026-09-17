@@ -131,7 +131,8 @@ class PayrollReportController extends Controller
 
             // Cash advances only. Loans are no longer issued, and the ones on
             // file are history rather than a balance anybody is collecting.
-            'advances' => Loan::advances()->with(['employee', 'deductions'])->get()->map(fn ($l) => [
+            // A deleted advance is not listed either.
+            'advances' => Loan::listed()->with(['employee', 'deductions'])->get()->map(fn ($l) => [
                 'label'      => $l->employee->name ?? '—',
                 'sub'        => $l->status_label,
                 'count'      => $l->deductions->count(),

@@ -47,6 +47,33 @@ class Loan extends Model
         'cancelled' => 'Cancelled',
     ];
 
+    /**
+     * A cash advance deleted from Leave & Advances.
+     *
+     * Kept, not removed, because payroll works every instalment out from the
+     * advance itself: without the row, weeks already paid out would lose the
+     * deductions they showed. A deleted advance still collects in the pay
+     * weeks that had closed before it was deleted, and nothing from the week
+     * it was deleted in onwards — so that week's pay gets its instalment back
+     * and every closed week stays exactly as it was paid. It is listed
+     * nowhere and cannot be paid against, edited or deleted again.
+     *
+     * Not in STATUSES, so no filter offers it. The moment it was deleted is
+     * its updated_at — a deleted row refuses every later update, so nothing
+     * can move that stamp (see booted()). A column of its own would need a
+     * migration, and migrations do not run on deploy here: until one was run,
+     * every query on this table would have failed.
+     */
+    public const DELETED = 'deleted';
+
+    protected static function booted(): void
+    {
+        // Once deleted, the row is fixed: its updated_at is when it was
+        // deleted, and the payroll weeks that keep its deductions are read
+        // off that.
+        static::updating(fn (self $loan) => $loan->getOriginal('status') === self::DELETED ? false : null);
+    }
+
     protected $fillable = [
         'employee_id', 'type', 'reference', 'principal', 'balance', 'installment',
         'schedule', 'issued_on', 'starts_on', 'status', 'notes', 'created_by',
@@ -81,10 +108,33 @@ class Loan extends Model
         return $q->where('type', self::ADVANCE);
     }
 
+    /**
+     * Cash advances as Leave & Advances shows them — everything but a deleted
+     * one. Payroll does not use this: a deleted advance still deducts in the
+     * pay weeks that closed before it was deleted.
+     */
+    public function scopeListed(Builder $q): Builder
+    {
+        return $q->where('type', self::ADVANCE)->where('status', '!=', self::DELETED);
+    }
+
     /** Rows a payroll run should look at: still owed, and not paused. */
     public function scopeCollectible(Builder $q): Builder
     {
         return $q->where('status', 'active')->where('balance', '>', 0);
+    }
+
+    public function isDeleted(): bool
+    {
+        return $this->status === self::DELETED;
+    }
+
+    /** The first day of the pay week it was deleted in — the first week it takes nothing from. */
+    public function deletedWeekOpens(int $weekStartsOn): ?Carbon
+    {
+        return $this->isDeleted() && $this->updated_at
+            ? $this->updated_at->copy()->startOfWeek($weekStartsOn)->startOfDay()
+            : null;
     }
 
     public function getTypeLabelAttribute(): string
@@ -374,6 +424,15 @@ class Loan extends Model
         $last  = Carbon::parse($throughWeekOpening)->startOfWeek($weekStartsOn);
         $peso  = fn (float $n) => '₱' . number_format($n, 2);
 
+        // Deleted: it stops before the pay week it was deleted in. The weeks
+        // that had already closed walk exactly as they did — same sum, same
+        // payments, same pay — so they keep the deductions they were paid
+        // with; that week and every one after take nothing, which is what
+        // gives the week it was deleted in its instalment back.
+        if ($deletedWeek = $this->deletedWeekOpens($weekStartsOn)) {
+            $last = $last->min($deletedWeek->copy()->subWeek());
+        }
+
         // Payments by the week they fall in, so each is credited before the
         // payroll of the week it was made in — otherwise settling an advance
         // at the counter on Friday would still be deducted on the Sunday.
@@ -540,6 +599,28 @@ class Loan extends Model
         return array_map(fn (float $v) => round($v, 2), $out);
     }
 
+    /**
+     * What payroll has taken off this advance, split at the pay week a day
+     * falls in: that week's, which deleting the advance that day gives back,
+     * and what the weeks already closed took, which they keep.
+     *
+     * @return array{this_week: float, closed_weeks: float}
+     */
+    public function takenAround(?string $on = null): array
+    {
+        $on ??= now()->toDateString();
+
+        $weekStartsOn = static::payWeekStartsOn();
+        $thisWeek     = Carbon::parse($on)->startOfWeek($weekStartsOn)->toDateString();
+        $taken        = collect($this->walk($on, $weekStartsOn)['lines'])->where('type', 'payroll');
+
+        return [
+            'this_week'    => round((float) $taken->where('week', $thisWeek)->sum('amount'), 2),
+            // An old run's collection has no week of its own; its date says which.
+            'closed_weeks' => round((float) $taken->filter(fn ($l) => ($l['week'] ?? $l['date']) < $thisWeek)->sum('amount'), 2),
+        ];
+    }
+
     /** What the week opening on a date takes off this advance. */
     public function dueForWeekOpening(string $weekOpens, int $weekStartsOn): float
     {
@@ -552,7 +633,8 @@ class Loan extends Model
      */
     public static function owedBy(int $employeeId): float
     {
-        return round(static::advances()
+        // Not a deleted advance: nothing is owed on it any more.
+        return round(static::listed()
             ->where('employee_id', $employeeId)
             ->where('status', '!=', 'cancelled')
             ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])

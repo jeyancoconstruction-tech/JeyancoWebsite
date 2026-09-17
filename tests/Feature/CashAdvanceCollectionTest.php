@@ -1244,13 +1244,30 @@ class CashAdvanceCollectionTest extends TestCase
 
     // ── Deleting an advance ──────────────────────────────────────────────
 
-    /**
-     * Deleting an advance removes it and its payments, payroll stops
-     * deducting it, and the Audit Log keeps what it was.
-     */
-    public function test_an_advance_can_be_deleted_with_everything_recorded_against_it(): void
+    /** Delete an advance from the row menu, as the office does. */
+    private function deleteAdvance(Loan $advance)
     {
-        $e       = $this->worker(['2026-09-10'], 'Lawrence Bernas');
+        return $this->actingAs($this->admin)
+            ->from(route('leave.index', ['tab' => 'advances']))
+            ->delete(route('loans.destroy', $advance));
+    }
+
+    /**
+     * Deleting gives the pay week it is deleted in its instalment back, and
+     * leaves every week that has already closed exactly as it was paid.
+     *
+     * Michael: "restore the deducted amount only if the deletion happens
+     * within the current ongoing weekly payroll period ... If the weekly
+     * payroll period has already ended, deleting the Cash Advance must not
+     * restore, recalculate, or modify any deduction from that completed
+     * payroll period."
+     */
+    public function test_deleting_gives_this_week_its_instalment_back_and_closed_weeks_keep_theirs(): void
+    {
+        // Wednesday of week 38. Week 37 has closed; week 38 is running.
+        Carbon::setTestNow(Carbon::parse('2026-09-16 10:00:00', 'Asia/Manila'));
+
+        $e       = $this->worker(['2026-09-10', '2026-09-15'], 'Lawrence Bernas');
         $advance = $this->advance($e, 5000, 1000);
         $advance->forceFill(['reference' => 'CA-7'])->save();
 
@@ -1258,37 +1275,147 @@ class CashAdvanceCollectionTest extends TestCase
             ->post(route('loans.payment', $advance), ['amount' => 500, 'deducted_on' => '2026-09-11'])
             ->assertSessionHas('success');
 
-        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'payroll was deducting it');
+        $closed  = $this->figures($e, ...self::WEEK);
+        $running = $this->totals($e, '2026-09-14', '2026-09-20');
 
-        $this->actingAs($this->admin)
-            ->from(route('leave.index', ['tab' => 'advances']))
-            ->delete(route('loans.destroy', $advance))
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'week 37 took its instalment');
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001, 'and week 38 is taking one');
+
+        $this->deleteAdvance($advance)
             ->assertRedirect(route('leave.index', ['tab' => 'advances']))
-            ->assertSessionHas('success', "Lawrence Bernas's cash advance of ₱5,000.00 was deleted.");
+            ->assertSessionHas('success', "Lawrence Bernas's cash advance of ₱5,000.00 was deleted — ₱1,000.00 back in this week's pay.");
 
-        $this->assertNull(Loan::find($advance->id));
-        $this->assertSame(0, LoanDeduction::where('loan_id', $advance->id)->count(), 'its payments went with it');
+        // Week 38, the week it was deleted in: the instalment is back in the pay.
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001);
+        $this->assertEqualsWithDelta($running['net'] + 1000, $this->totals($e, '2026-09-14', '2026-09-20')['net'], 0.011);
 
-        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'and payroll no longer deducts it');
+        // Week 37, closed: exactly as it was paid.
+        $this->assertSame($closed, $this->figures($e, ...self::WEEK), 'not a figure of the closed week moves');
+
+        // A payroll run for the closed week, worked out afresh after the delete, still charges it.
+        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
+            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
+        ]);
+        $item = \App\Models\PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
+        $this->assertEqualsWithDelta(1000.0, (float) $item->advance_deduction, 0.001);
+        $this->assertEqualsWithDelta($closed['totals']['net'], (float) $item->net_pay, 0.011);
+
+        // Kept, so the closed week can still be worked out — but marked, and its payment kept with it.
+        $this->assertSame(Loan::DELETED, $advance->fresh()->status);
+        $this->assertSame(1, LoanDeduction::where('loan_id', $advance->id)->count());
+
+        // Weeks later, both stay as they were when they closed.
+        Carbon::setTestNow(Carbon::parse('2026-10-01 10:00:00', 'Asia/Manila'));
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'week 37 still has it');
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001, 'week 38 still has not');
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, '2026-09-28', '2026-10-04'), 0.001, 'and nothing after');
 
         $log = \App\Models\AuditLog::where('module', 'Loans')->where('action', 'deleted')->sole();
-
         $this->assertSame(
             "Deleted Lawrence Bernas's cash advance of ₱5,000.00 — issued Sep 07, 2026, ₱1,000.00 per payroll, ref CA-7; "
-            . 'payroll had taken ₱1,000.00, and 1 payment recorded at the office was removed with it.',
+            . "₱1,000.00 restored to this week's payroll; closed payroll weeks keep the ₱1,000.00 already deducted.",
             $log->description
         );
         $this->assertSame($this->admin->id, $log->user_id);
-
-        $this->actingAs($this->admin)->get(route('leave.index', ['tab' => 'advances']))
-            ->assertOk()
-            ->assertDontSee('₱5,000.00');
     }
 
-    /** The menu offers Delete on every advance, and warns what it does to payroll first. */
+    /**
+     * The line is the pay week, not the calendar. Deleted in the first minutes
+     * of a Monday, the week that ended the night before has closed and keeps
+     * its deduction — and the new week has had nothing taken yet to give back.
+     */
+    public function test_a_week_that_closed_last_night_keeps_its_deduction(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-21 00:05:00', 'Asia/Manila'));   // Monday, week 39
+
+        $e       = $this->worker(['2026-09-10', '2026-09-15'], 'Lawrence Bernas');
+        $advance = $this->advance($e, 5000, 1000);
+
+        $this->deleteAdvance($advance)
+            ->assertSessionHas('success', "Lawrence Bernas's cash advance of ₱5,000.00 was deleted. Nothing was deducted from this week's pay.");
+
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'week 37');
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001, 'week 38, closed hours ago');
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, '2026-09-21', '2026-09-27'), 0.001, 'week 39');
+    }
+
+    /**
+     * A worker's older advance, deleted, still came out of the closed weeks'
+     * pay first — so the newer advance's closed weeks are untouched too. In
+     * the week it is deleted in, its pay is free again, and goes to the next.
+     */
+    public function test_a_deleted_older_advance_still_comes_first_in_closed_weeks(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-16 18:00:00', 'Asia/Manila'));
+
+        // ₱1,436.30 a week to go round: one ₱1,000 instalment fits, two do not.
+        $e = $this->worker(['2026-09-09', '2026-09-10', '2026-09-15', '2026-09-16'], 'Lawrence Bernas', 800);
+
+        $older = Loan::create([
+            'employee_id' => $e->id, 'type' => Loan::ADVANCE, 'principal' => 5000, 'balance' => 5000, 'installment' => 1000,
+            'schedule' => 'per_payroll', 'issued_on' => '2026-09-07', 'status' => 'active', 'created_by' => $this->admin->id,
+        ]);
+        $newer = Loan::create([
+            'employee_id' => $e->id, 'type' => Loan::ADVANCE, 'principal' => 3000, 'balance' => 3000, 'installment' => 1000,
+            'schedule' => 'per_payroll', 'issued_on' => '2026-09-08', 'status' => 'active', 'created_by' => $this->admin->id,
+        ]);
+
+        $newerClosedWeek = collect($newer->fresh()->walk('2026-09-13', Carbon::MONDAY)['lines'])->all();
+        $this->assertSame('deferred', $newerClosedWeek[0]['type'], 'the older one took week 37');
+
+        $this->deleteAdvance($older)->assertSessionHas('success');
+
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'week 37 still takes the older one');
+        $this->assertEqualsWithDelta(1000.0, $this->deferred($e, ...self::WEEK), 0.001, 'and still defers the newer one');
+        $this->assertSame($newerClosedWeek, collect($newer->fresh()->walk('2026-09-13', Carbon::MONDAY)['lines'])->all());
+
+        // Week 38: the older one's ₱1,000 is free, and the newer one's instalment fits in it.
+        $week38 = collect($newer->fresh()->walk('2026-09-16', Carbon::MONDAY)['lines'])->firstWhere('week', '2026-09-14');
+        $this->assertSame('payroll', $week38['type']);
+        $this->assertEqualsWithDelta(1000.0, $week38['amount'], 0.001);
+    }
+
+    /**
+     * Deleted is gone from Leave & Advances: not listed, not in the totals or
+     * the reports, owes nothing towards the limit, and cannot be paid against,
+     * edited or deleted again — nor changed underneath, since when it was
+     * deleted is what decides which weeks keep its deductions.
+     */
+    public function test_a_deleted_advance_is_gone_from_the_module_and_fixed_as_it_was(): void
+    {
+        $e       = $this->worker(['2026-09-10'], 'Lawrence Bernas');
+        $advance = $this->advance($e, 30000, 1000);
+
+        $this->deleteAdvance($advance)->assertSessionHas('success');
+        $deletedAt = $advance->fresh()->updated_at->toDateTimeString();
+
+        $page = $this->actingAs($this->admin)->get(route('leave.index', ['tab' => 'advances']))->assertOk();
+        $this->assertCount(0, $page->viewData('advances'));
+        $this->assertSame(0, $page->viewData('summary')['active']);
+        $this->assertEqualsWithDelta(0.0, $page->viewData('summary')['issued'], 0.001);
+        $this->assertSame([], $page->viewData('owed'));
+
+        $this->assertSame([], $this->actingAs($this->admin)
+            ->get(route('payroll-reports.index', ['report' => 'advances']))->assertOk()->viewData('rows'));
+
+        $this->assertEqualsWithDelta(0.0, Loan::owedBy($e->id), 0.001, 'nothing owed towards the limit');
+
+        $this->actingAs($this->admin)->post(route('loans.payment', $advance), ['amount' => 100, 'deducted_on' => '2026-09-12'])->assertNotFound();
+        $this->actingAs($this->admin)->put(route('loans.update', $advance), ['installment' => 500])->assertNotFound();
+        $this->deleteAdvance($advance)->assertNotFound();
+
+        Carbon::setTestNow(Carbon::parse('2026-09-30 10:00:00', 'Asia/Manila'));
+        $this->assertFalse($advance->fresh()->forceFill(['status' => 'active'])->save(), 'a deleted row refuses changes');
+        $this->assertSame(Loan::DELETED, $advance->fresh()->status);
+        $this->assertSame($deletedAt, $advance->fresh()->updated_at->toDateTimeString(), 'so when it was deleted cannot move');
+    }
+
+    /** The menu offers Delete on every advance, and says first what it does to this week and to closed weeks. */
     public function test_the_menu_offers_delete_and_says_what_it_does_to_payroll(): void
     {
-        $running = $this->advance($this->worker(['2026-09-10'], 'Lawrence Bernas'), 5000, 1000);
+        Carbon::setTestNow(Carbon::parse('2026-09-16 10:00:00', 'Asia/Manila'));
+
+        $running = $this->advance($this->worker(['2026-09-10', '2026-09-15'], 'Lawrence Bernas'), 5000, 1000);
         $unpaid  = $this->advance($this->worker([], 'Aldrin Sapugay'), 3000, 500, '2026-09-21');
 
         $html = $this->actingAs($this->admin)
@@ -1303,10 +1430,13 @@ class CashAdvanceCollectionTest extends TestCase
 
         $this->assertStringContainsString('data-confirm-tone="danger"', $form($running));
         $this->assertStringContainsString(
-            "Lawrence Bernas's ₱5,000.00 cash advance and its payment history are removed for good. Payroll stops deducting it, "
-            . "and the ₱1,000.00 it has already taken goes back into those weeks' net pay in Payroll Records.",
+            "Lawrence Bernas's ₱5,000.00 cash advance is removed from Cash Advances. "
+            . "This week's ₱1,000.00 instalment comes off this week's payroll. "
+            . 'Payroll weeks already closed keep the ₱1,000.00 they deducted.',
             $form($running));
-        $this->assertStringContainsString('Payroll has not deducted anything from it yet.', $form($unpaid));
+        $this->assertStringContainsString(
+            "Aldrin Sapugay's ₱3,000.00 cash advance is removed from Cash Advances. Nothing has been deducted from this week's payroll.",
+            $form($unpaid));
 
         // Settled advances can be deleted too.
         Carbon::setTestNow(Carbon::parse('2026-09-26 12:00:00', 'Asia/Manila'));

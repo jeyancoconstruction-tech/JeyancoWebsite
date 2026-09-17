@@ -262,17 +262,24 @@
                                         </li>
                                         {{-- Last, and set apart: the one thing on this menu
                                              that cannot be taken back. The dialog says what
-                                             it does to payroll before anything happens. --}}
+                                             it does to payroll before anything happens —
+                                             this week's instalment comes back, and weeks
+                                             already closed keep theirs. --}}
                                         @php
-                                            $takenByPayroll = round((float) collect($advance->walk(now()->toDateString(), \App\Models\Loan::payWeekStartsOn())['lines'])
-                                                ->where('type', 'payroll')->sum('amount'), 2);
+                                            $taken   = $advance->takenAround(now()->toDateString());
+                                            $confirm = ($advance->employee->name ?? __('This worker')) . "'s ₱" . number_format($advance->principal, 2)
+                                                . ' ' . __('cash advance is removed from Cash Advances.') . ' '
+                                                . ($taken['this_week'] > 0
+                                                    ? __("This week's") . ' ₱' . number_format($taken['this_week'], 2) . ' ' . __("instalment comes off this week's payroll.")
+                                                    : __('Nothing has been deducted from this week\'s payroll.'))
+                                                . ($taken['closed_weeks'] > 0
+                                                    ? ' ' . __('Payroll weeks already closed keep the') . ' ₱' . number_format($taken['closed_weeks'], 2) . ' ' . __('they deducted.')
+                                                    : '');
                                         @endphp
                                         <li><hr class="dropdown-divider"></li>
                                         <li>
                                             <form method="POST" action="{{ route('loans.destroy', $advance) }}"
-                                                  data-confirm="{{ ($advance->employee->name ?? __('This worker')) . "'s " }}₱{{ number_format($advance->principal, 2) }} {{ __('cash advance and its payment history are removed for good.') }}{{ $takenByPayroll > 0
-                                                      ? ' ' . __('Payroll stops deducting it, and the') . ' ₱' . number_format($takenByPayroll, 2) . ' ' . __('it has already taken goes back into those weeks\' net pay in Payroll Records. A payroll run already finalised keeps what it deducted.')
-                                                      : ' ' . __('Payroll has not deducted anything from it yet.') }}"
+                                                  data-confirm="{{ $confirm }}"
                                                   data-confirm-title="{{ __('Delete this cash advance?') }}"
                                                   data-confirm-label="{{ __('Delete') }}"
                                                   data-confirm-tone="danger">
