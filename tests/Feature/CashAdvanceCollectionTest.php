@@ -1233,4 +1233,106 @@ class CashAdvanceCollectionTest extends TestCase
             'Fully Paid in the green of a settled advance');
         $this->assertStringNotContainsString('mod-badge info"><span class="dot"></span>Fully Paid', $html);
     }
+
+    // ── Deleting an advance ──────────────────────────────────────────────
+
+    /**
+     * Deleting an advance removes it and its payments, payroll stops
+     * deducting it, and the Audit Log keeps what it was.
+     */
+    public function test_an_advance_can_be_deleted_with_everything_recorded_against_it(): void
+    {
+        $e       = $this->worker(['2026-09-10'], 'Lawrence Bernas');
+        $advance = $this->advance($e, 5000, 1000);
+        $advance->forceFill(['reference' => 'CA-7'])->save();
+
+        $this->actingAs($this->admin)
+            ->post(route('loans.payment', $advance), ['amount' => 500, 'deducted_on' => '2026-09-11'])
+            ->assertSessionHas('success');
+
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'payroll was deducting it');
+
+        $this->actingAs($this->admin)
+            ->from(route('leave.index', ['tab' => 'advances']))
+            ->delete(route('loans.destroy', $advance))
+            ->assertRedirect(route('leave.index', ['tab' => 'advances']))
+            ->assertSessionHas('success', "Lawrence Bernas's cash advance of ₱5,000.00 was deleted.");
+
+        $this->assertNull(Loan::find($advance->id));
+        $this->assertSame(0, LoanDeduction::where('loan_id', $advance->id)->count(), 'its payments went with it');
+
+        $this->assertEqualsWithDelta(0.0, $this->advanceTaken($e, ...self::WEEK), 0.001, 'and payroll no longer deducts it');
+
+        $log = \App\Models\AuditLog::where('module', 'Loans')->where('action', 'deleted')->sole();
+
+        $this->assertSame(
+            "Deleted Lawrence Bernas's cash advance of ₱5,000.00 — issued Sep 07, 2026, ₱1,000.00 per payroll, ref CA-7; "
+            . 'payroll had taken ₱1,000.00, and 1 payment recorded at the office was removed with it.',
+            $log->description
+        );
+        $this->assertSame($this->admin->id, $log->user_id);
+
+        $this->actingAs($this->admin)->get(route('leave.index', ['tab' => 'advances']))
+            ->assertOk()
+            ->assertDontSee('₱5,000.00');
+    }
+
+    /** The menu offers Delete on every advance, and warns what it does to payroll first. */
+    public function test_the_menu_offers_delete_and_says_what_it_does_to_payroll(): void
+    {
+        $running = $this->advance($this->worker(['2026-09-10'], 'Lawrence Bernas'), 5000, 1000);
+        $unpaid  = $this->advance($this->worker([], 'Aldrin Sapugay'), 3000, 500, '2026-09-21');
+
+        $html = $this->actingAs($this->admin)
+            ->get(route('leave.index', ['tab' => 'advances']))->assertOk()->getContent();
+
+        $form = function (Loan $l) use ($html): string {
+            $at = strpos($html, 'action="' . route('loans.destroy', $l) . '"');
+            $this->assertNotFalse($at, 'Delete is offered');
+
+            return html_entity_decode(substr($html, $at, strpos($html, '</' . 'form>', $at) - $at), ENT_QUOTES);
+        };
+
+        $this->assertStringContainsString('data-confirm-tone="danger"', $form($running));
+        $this->assertStringContainsString(
+            "Lawrence Bernas's ₱5,000.00 cash advance and its payment history are removed for good. Payroll stops deducting it, "
+            . "and the ₱1,000.00 it has already taken goes back into those weeks' net pay in Payroll Records.",
+            $form($running));
+        $this->assertStringContainsString('Payroll has not deducted anything from it yet.', $form($unpaid));
+
+        // Settled advances can be deleted too.
+        Carbon::setTestNow(Carbon::parse('2026-09-26 12:00:00', 'Asia/Manila'));
+        $settled = $this->advance($this->worker(['2026-09-24'], 'Mark Adrian Gulbe De Leon'), 500, 500, '2026-09-21');
+
+        $html = $this->actingAs($this->admin)
+            ->get(route('leave.index', ['tab' => 'advances']))->assertOk()->getContent();
+
+        $this->assertStringContainsString('action="' . route('loans.destroy', $settled) . '"', $html);
+    }
+
+    /** An old loan on file is history, and is not deleted from here. */
+    public function test_an_old_loan_cannot_be_deleted(): void
+    {
+        $loan = Loan::create([
+            'employee_id' => $this->worker()->id, 'type' => 'loan', 'principal' => 2000, 'balance' => 2000,
+            'installment' => 500, 'schedule' => 'per_payroll', 'issued_on' => '2026-09-01', 'status' => 'active',
+        ]);
+
+        $this->actingAs($this->admin)->delete(route('loans.destroy', $loan))->assertNotFound();
+        $this->assertNotNull(Loan::find($loan->id));
+    }
+
+    /** A role without the advances module cannot delete one. */
+    public function test_a_role_without_advances_cannot_delete_one(): void
+    {
+        $advance = $this->advance($this->worker(), 5000, 1000);
+
+        $supervisor = User::create([
+            'name' => 'Supervisor', 'username' => 'sup.cashadvance', 'password' => 'secret123',
+            'role' => User::ROLE_SUPERVISOR, 'is_active' => true,
+        ]);
+
+        $this->actingAs($supervisor)->delete(route('loans.destroy', $advance))->assertForbidden();
+        $this->assertNotNull(Loan::find($advance->id));
+    }
 }

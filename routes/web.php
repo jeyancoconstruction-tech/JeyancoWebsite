@@ -224,6 +224,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/loans',              [\App\Http\Controllers\LoanController::class, 'store'])->name('loans.store');
         Route::put ('/loans/{loan}',       [\App\Http\Controllers\LoanController::class, 'update'])->name('loans.update');
         Route::post('/loans/{loan}/payment', [\App\Http\Controllers\LoanController::class, 'recordPayment'])->name('loans.payment');
+        Route::delete('/loans/{loan}',   [\App\Http\Controllers\LoanController::class, 'destroy'])->name('loans.destroy');
     });
 
     // ── PROJECT · Assignment ──────────────────────────────────────────────

@@ -260,6 +260,28 @@
                                                 <i class="fas fa-clock-rotate-left"></i> {{ __('Payment history') }}
                                             </button>
                                         </li>
+                                        {{-- Last, and set apart: the one thing on this menu
+                                             that cannot be taken back. The dialog says what
+                                             it does to payroll before anything happens. --}}
+                                        @php
+                                            $takenByPayroll = round((float) collect($advance->walk(now()->toDateString(), \App\Models\Loan::payWeekStartsOn())['lines'])
+                                                ->where('type', 'payroll')->sum('amount'), 2);
+                                        @endphp
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form method="POST" action="{{ route('loans.destroy', $advance) }}"
+                                                  data-confirm="{{ ($advance->employee->name ?? __('This worker')) . "'s " }}₱{{ number_format($advance->principal, 2) }} {{ __('cash advance and its payment history are removed for good.') }}{{ $takenByPayroll > 0
+                                                      ? ' ' . __('Payroll stops deducting it, and the') . ' ₱' . number_format($takenByPayroll, 2) . ' ' . __('it has already taken goes back into those weeks\' net pay in Payroll Records. A payroll run already finalised keeps what it deducted.')
+                                                      : ' ' . __('Payroll has not deducted anything from it yet.') }}"
+                                                  data-confirm-title="{{ __('Delete this cash advance?') }}"
+                                                  data-confirm-label="{{ __('Delete') }}"
+                                                  data-confirm-tone="danger">
+                                                @csrf @method('DELETE')
+                                                <button class="dropdown-item text-danger" type="submit">
+                                                    <i class="fas fa-trash"></i> {{ __('Delete') }}
+                                                </button>
+                                            </form>
+                                        </li>
                                     </ul>
                                 </div>
                             </td>

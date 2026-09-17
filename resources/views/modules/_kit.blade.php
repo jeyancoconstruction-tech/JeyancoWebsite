@@ -181,6 +181,13 @@
 .mod-dropdown .dropdown-item:hover,
 .mod-dropdown .dropdown-item:focus { background: var(--bg-subtle); color: var(--text-primary); }
 .mod-dropdown .dropdown-item i { width: 15px; text-align: center; color: var(--text-secondary); }
+/* The destructive item, set apart below a rule, in the app's own red — both
+   themes define --danger and --danger-soft. */
+.mod-dropdown .dropdown-divider { margin: 6px 4px; border-top-color: var(--border); opacity: 1; }
+.mod-dropdown .dropdown-item.text-danger,
+.mod-dropdown .dropdown-item.text-danger i { color: var(--danger) !important; }
+.mod-dropdown .dropdown-item.text-danger:hover,
+.mod-dropdown .dropdown-item.text-danger:focus { background: var(--danger-soft); }
 
 /* ── Tabs · matching the Attendance page's underline ──────────────────── */
 .mod-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
