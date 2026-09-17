@@ -165,20 +165,40 @@ class PayrollRunService
         // not being wages — so it is not taken out. It used to be, which cut
         // basic pay by the bonus and then added it back as a line of its own:
         // the payslip showed a bonus that the net never paid.
-        $basicOnly = round($basic - $engineOt - $holiday - $restDay - $nightDiff, 2);
-        $basicOnly = max($basicOnly, 0);
+        // ── Approved paid leave, as the engine credited it ────────────────
+        //
+        // The engine's gross carries the leave too, and has since paid leave
+        // reached Payroll Records. Taken out of basic here, it is one line;
+        // left in, the run paid it twice — once inside basic pay and again as
+        // its own line below — and the payslip said the worker had earned it
+        // by the hour on a day they were not there.
+        //
+        // The figures are the engine's rather than this service's own,
+        // because they are what every screen already shows: credited at the
+        // rate the week priced a worked day at, raised to the wage order's
+        // floor, and only as far as the period has actually got. The count
+        // underneath them is worked out here only for a worker the engine
+        // returned nothing for at all.
+        $leavePay      = (float) ($t['leavePay'] ?? 0);
+        $leaveDays     = (float) ($t['leaveDays'] ?? 0);
+        $paidLeaveDays = (float) ($t['paidLeaveDays'] ?? 0);
 
-        // ── Approved paid leave, credited at the daily rate ───────────────
-        $paidLeaveDays = 0.0;
-        $leaveDays     = 0.0;
-        foreach ($leaveRows as $row) {
-            $d = $row->daysWithin($run->period_start->toDateString(), $run->period_end->toDateString());
-            $leaveDays += $d;
-            if ($row->is_paid) {
-                $paidLeaveDays += $d;
+        if ($computed === null) {
+            $leaveDays = $paidLeaveDays = 0.0;
+
+            foreach ($leaveRows as $row) {
+                $d = $row->daysWithin($run->period_start->toDateString(), $run->period_end->toDateString());
+                $leaveDays += $d;
+                if ($row->is_paid) {
+                    $paidLeaveDays += $d;
+                }
             }
+
+            $leavePay = round($paidLeaveDays * $dailyRate, 2);
         }
-        $leavePay = round($paidLeaveDays * $dailyRate, 2);
+
+        $basicOnly = round($basic - $engineOt - $holiday - $restDay - $nightDiff - $leavePay, 2);
+        $basicOnly = max($basicOnly, 0);
 
         // ── Deductions the engine already applied, line by line ───────────
         // Each week of its answer carries the statutory split, so the run adds

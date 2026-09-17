@@ -49,6 +49,22 @@
         border: 1px solid color-mix(in srgb, var(--warning, #d98324) 35%, transparent);
     }
 
+    /* A day of approved leave is a paid day with no hours on it. Without a
+       word on the row it reads as somebody paid for doing nothing — so the
+       row says what it is, and says it in the money colour, not the warning
+       one: a signed-off day off is not a problem. */
+    .pr-leave {
+        display: inline-block; margin-left: 6px;
+        padding: 1px 7px; border-radius: 999px;
+        font-size: 11px; font-weight: 600;
+        color: var(--brand);
+        background: color-mix(in srgb, var(--brand) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+    }
+    .pr-leave.unpaid { color: var(--text-muted);
+        background: color-mix(in srgb, var(--text-muted) 10%, transparent);
+        border-color: color-mix(in srgb, var(--text-muted) 30%, transparent); }
+
     /* ── The receipt: a payslip laid out inside the modal ─────────────────── */
     .emp-slip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; height: 100%; }
     .emp-slip-head { display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid var(--brand); padding-bottom: 8px; margin-bottom: 10px; }
@@ -277,8 +293,12 @@
                                         @if(($d['late_minutes'] ?? 0) > 0)
                                             <span class="pr-late" title="{{ __('Past the grace period for this shift') }}">{{ $d['late_minutes'] }}m {{ __('late') }}</span>
                                         @endif
+                                        @if($d['leave'] ?? false)
+                                            <span class="pr-leave {{ ($d['leave_paid'] ?? false) ? '' : 'unpaid' }}"
+                                                  title="{{ ($d['leave_paid'] ?? false) ? __('Approved leave, filed as paid — credited at the daily rate') : __('Approved leave, filed unpaid') }}">{{ $d['leave_type'] }}</span>
+                                        @endif
                                     </td>
-                                    <td class="text-end">{{ \App\Support\WorkSchedule::duration($d['minutes']) }}</td>
+                                    <td class="text-end">{{ ($d['leave'] ?? false) ? '—' : \App\Support\WorkSchedule::duration($d['minutes']) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['dailyRate'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['restDayPay'], 2) }}</td>
                                     <td class="text-end" style="color:var(--text-primary);">&#8369;{{ number_format($d['bonus'], 2) }}</td>

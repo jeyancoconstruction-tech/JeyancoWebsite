@@ -38,6 +38,8 @@ class PayslipController extends Controller
             fputcsv($out, ['Overtime Pay', $p['overtime']]);
             fputcsv($out, ['Holiday Pay', $p['holidayPay']]);
             fputcsv($out, ['Rest Day Pay (Sun)', $p['restDayPay'] ?? 0]);
+            fputcsv($out, ['Night Differential', $p['nightDiffPay'] ?? 0]);
+            fputcsv($out, ['Paid Leave', $p['leavePay'] ?? 0]);
             fputcsv($out, ['Bonus', $p['bonus']]);
             fputcsv($out, ['Gross Pay', $p['gross']]);
             fputcsv($out, []);
@@ -90,7 +92,13 @@ class PayslipController extends Controller
             }
             $ded = array_map(fn ($v) => round($v, 2), $ded);
 
-            $regular = round($t['gross'] - $t['overtime'] - $t['holidayPay'] - ($t['restDayPay'] ?? 0), 2);
+            // Regular pay is the gross less every premium inside it, and less
+            // the paid leave — a day off is not a day worked, and it gets a
+            // line of its own below. Left in, it read as regular pay, and the
+            // slip owed the worker no explanation for a figure that had grown.
+            $regular = round($t['gross'] - $t['overtime'] - $t['holidayPay']
+                           - ($t['restDayPay'] ?? 0) - ($t['nightDiffPay'] ?? 0)
+                           - ($t['leavePay'] ?? 0), 2);
 
             return [
                 'employee_id'     => $e['employee_id'],
@@ -103,6 +111,9 @@ class PayslipController extends Controller
                 'overtime'        => $t['overtime'],
                 'holidayPay'      => $t['holidayPay'],
                 'restDayPay'      => $t['restDayPay'] ?? 0,
+                'nightDiffPay'    => $t['nightDiffPay'] ?? 0,
+                'leavePay'        => $t['leavePay'] ?? 0,
+                'leaveDays'       => $t['leaveDays'] ?? 0,
                 'bonus'           => $t['bonus'],
                 'gross'           => $t['gross'],
                 'ded'             => $ded,
@@ -175,8 +186,11 @@ class PayslipController extends Controller
             }
         }
 
-        // Regular pay = gross minus the OT, holiday, and rest day premium portions
-        $regular = round($totals['gross'] - $totals['overtime'] - $totals['holidayPay'] - ($totals['restDayPay'] ?? 0), 2);
+        // Regular pay = the gross less every premium inside it, and less the
+        // paid leave, which is a day not worked and carries its own line.
+        $regular = round($totals['gross'] - $totals['overtime'] - $totals['holidayPay']
+                       - ($totals['restDayPay'] ?? 0) - ($totals['nightDiffPay'] ?? 0)
+                       - ($totals['leavePay'] ?? 0), 2);
 
         // Daily rate from labor type (source of truth) or fall back to stored hourly × 8
         $dailyRate = $emp->laborType?->daily_rate ?? round(($emp->rate_per_hour ?? 0) * 8, 2);

@@ -164,7 +164,9 @@ html[data-bs-theme="dark"] .pp {
 .pp-fact span { display: block; font-size: 10.5px; font-weight: 600; color: var(--pp-txt-3); text-transform: uppercase; letter-spacing: .5px; }
 .pp-fact b { display: block; font-size: 15px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .pp-flow { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr) auto) minmax(0, 1fr); gap: 8px; margin-bottom: 16px; }
-.pp-flow.has-bonus { grid-template-columns: repeat(5, minmax(0, 1fr) auto) minmax(0, 1fr); }
+.pp-flow.has-bonus,
+.pp-flow.has-leave            { grid-template-columns: repeat(5, minmax(0, 1fr) auto) minmax(0, 1fr); }
+.pp-flow.has-bonus.has-leave  { grid-template-columns: repeat(6, minmax(0, 1fr) auto) minmax(0, 1fr); }
 .pp-stage { background: var(--pp-panel-2); border: var(--pp-bw) solid var(--pp-line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
 .pp-stage .k { display: block; font-size: 10.5px; font-weight: 600; color: var(--pp-txt-3); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pp-stage b { display: block; font-size: 15px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -260,7 +262,7 @@ html[data-bs-theme="dark"] .pp {
 
 
 @media (max-width: 1100px) {
-    .pp-flow, .pp-flow.has-bonus { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pp-flow, .pp-flow.has-bonus, .pp-flow.has-leave, .pp-flow.has-bonus.has-leave { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .pp-op { display: none; }
     .pp-stage.is-net { grid-column: 1 / -1; }
 }
@@ -496,6 +498,12 @@ html[data-bs-theme="dark"] .pp {
         @php
             $premiums = $sel['overtime'] + $sel['night'] + $sel['holiday'] + $sel['rest'];
             $bonus    = $sel['bonus'] > 0;
+            // A paid day off is wages, but it is not a premium on a day
+            // worked and not basic pay either. Left out of both, the chain
+            // below stopped adding up the moment anybody was on leave:
+            // basic + premiums came to less than the gross beside it.
+            $leave     = $sel['leave'] > 0;
+            $leaveDays = rtrim(rtrim(number_format($sel['leave_days'], 2), '0'), '.');
             $days = rtrim(rtrim(number_format($sel['days'], 2), '0'), '.');
         @endphp
         @if($view === 'workflow')
@@ -522,20 +530,25 @@ html[data-bs-theme="dark"] .pp {
 
                 {{-- Gross − deductions + bonus, as Payroll Records adds
                      it up: the bonus is not wages, so it comes after. --}}
-                <ol class="pp-flow {{ $bonus ? 'has-bonus' : '' }}" aria-label="How the net pay is reached">
-                    <li class="pp-stage"><span class="k">1 · Basic pay</span><b>{{ $peso($sel['basic']) }}</b><small>Regular time × hourly rate</small></li>
+                @php $n = 0; @endphp
+                <ol class="pp-flow {{ $bonus ? 'has-bonus' : '' }} {{ $leave ? 'has-leave' : '' }}" aria-label="How the net pay is reached">
+                    <li class="pp-stage"><span class="k">{{ ++$n }} · Basic pay</span><b>{{ $peso($sel['basic']) }}</b><small>Regular time × hourly rate</small></li>
                     <li class="pp-op" aria-hidden="true">+</li>
-                    <li class="pp-stage"><span class="k">2 · Premiums</span><b>{{ $peso($premiums) }}</b><small>Overtime and other premiums</small></li>
-                    <li class="pp-op" aria-hidden="true">=</li>
-                    <li class="pp-stage is-gross"><span class="k">3 · Gross pay</span><b>{{ $peso($sel['gross']) }}</b><small>Before deductions</small></li>
-                    <li class="pp-op" aria-hidden="true">−</li>
-                    <li class="pp-stage is-ded"><span class="k">4 · Deductions</span><b>{{ $peso($sel['deductions']) }}</b><small>Contributions, tax, vale</small></li>
-                    @if($bonus)
+                    <li class="pp-stage"><span class="k">{{ ++$n }} · Premiums</span><b>{{ $peso($premiums) }}</b><small>Overtime and other premiums</small></li>
+                    @if($leave)
                         <li class="pp-op" aria-hidden="true">+</li>
-                        <li class="pp-stage"><span class="k">5 · Bonus</span><b>{{ $peso($sel['bonus']) }}</b><small>Not wages, not taxed</small></li>
+                        <li class="pp-stage"><span class="k">{{ ++$n }} · Paid leave</span><b>{{ $peso($sel['leave']) }}</b><small>{{ $leaveDays }} approved day{{ $leaveDays === '1' ? '' : 's' }} off</small></li>
                     @endif
                     <li class="pp-op" aria-hidden="true">=</li>
-                    <li class="pp-stage is-net"><span class="k">{{ $bonus ? 6 : 5 }} · Net pay</span><b>{{ $peso($sel['net']) }}</b><small>Take-home pay</small></li>
+                    <li class="pp-stage is-gross"><span class="k">{{ ++$n }} · Gross pay</span><b>{{ $peso($sel['gross']) }}</b><small>Before deductions</small></li>
+                    <li class="pp-op" aria-hidden="true">−</li>
+                    <li class="pp-stage is-ded"><span class="k">{{ ++$n }} · Deductions</span><b>{{ $peso($sel['deductions']) }}</b><small>Contributions, tax, vale</small></li>
+                    @if($bonus)
+                        <li class="pp-op" aria-hidden="true">+</li>
+                        <li class="pp-stage"><span class="k">{{ ++$n }} · Bonus</span><b>{{ $peso($sel['bonus']) }}</b><small>Not wages, not taxed</small></li>
+                    @endif
+                    <li class="pp-op" aria-hidden="true">=</li>
+                    <li class="pp-stage is-net"><span class="k">{{ ++$n }} · Net pay</span><b>{{ $peso($sel['net']) }}</b><small>Take-home pay</small></li>
                 </ol>
 
                 <div class="pp-wf">

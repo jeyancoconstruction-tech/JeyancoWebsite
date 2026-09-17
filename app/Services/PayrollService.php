@@ -340,6 +340,12 @@ class PayrollService
                 ->groupBy('employee_id')
             : collect();
 
+        // The range as it was asked for. Leave is grouped by the pay week, but
+        // it may only ever be credited for the days actually asked about — a
+        // single day's view of a week-long leave showed the whole week's pay
+        // against that one day, because the week was the only bound on it.
+        $cfg['range'] = ['from' => $from, 'to' => $to];
+
         $weeks = $this->groupByWeek($records, $cfg);
 
         return [
@@ -747,6 +753,79 @@ class PayrollService
     }
 
     /**
+     * The stretch of a week that leave may be credited for.
+     *
+     * Three bounds, and the narrowest of them wins. The week, because pay is
+     * grouped by the week. Today, because a day off is paid when it comes
+     * round and not when it is signed off. And the range that was asked for,
+     * because a day's view of a week-long leave must answer for that day —
+     * missing that bound, one date asked about was answered with every day of
+     * the leave the week had reached.
+     *
+     * @return array{0: string, 1: string}  [first day, last day]; first > last means none
+     */
+    private function leaveWindow(array $cfg, string $weekOpens, string $weekCloses): array
+    {
+        $from = (string) ($cfg['range']['from'] ?? '');
+        $to   = (string) ($cfg['range']['to'] ?? '');
+
+        return [
+            $from !== '' ? max($weekOpens, $from) : $weekOpens,
+            min(
+                $to !== '' ? min($weekCloses, $to) : $weekCloses,
+                Carbon::now('Asia/Manila')->toDateString()
+            ),
+        ];
+    }
+
+    /**
+     * The weeks approved leave falls in, keyed and bounded exactly as the
+     * weeks attendance produces — so a week that has both is one week.
+     *
+     * Only the leave that has come round is counted, or a leave filed for
+     * next month would raise an empty week now.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    private function weeksWithLeave(array $cfg, int $weekStart, int $weekEnd): array
+    {
+        $from = (string) ($cfg['range']['from'] ?? '');
+        $to   = (string) ($cfg['range']['to'] ?? '');
+
+        if ($from === '' || $to === '') {
+            return [];
+        }
+
+        $today = Carbon::now('Asia/Manila')->toDateString();
+        $weeks = [];
+
+        foreach (($cfg['leave'] ?? []) as $filed) {
+            foreach ($filed as $row) {
+                $first = max($row->starts_on->toDateString(), $from);
+                $last  = min($row->ends_on->toDateString(), $to, $today);
+
+                if ($first > $last) {
+                    continue;
+                }
+
+                $cursor = Carbon::parse($first)->startOfWeek($weekStart);
+                $end    = Carbon::parse($last);
+
+                while ($cursor->lessThanOrEqualTo($end)) {
+                    $closes = $cursor->copy()->endOfWeek($weekEnd);
+
+                    $weeks[$cursor->format('m/d/Y') . ' - ' . $closes->format('m/d/Y')]
+                        = [$cursor->toDateString(), $closes->toDateString()];
+
+                    $cursor->addWeek();
+                }
+            }
+        }
+
+        return $weeks;
+    }
+
+    /**
      * Group records by week, then by employee within the week. The week opens
      * on the day System Settings names.
      * Output shape matches the original $payrollWeeks exactly.
@@ -765,9 +844,36 @@ class PayrollService
             return "$start - $end";
         });
 
-        $payrollWeeks = [];
+        // Which weeks payroll has something to say about.
+        //
+        // They came off attendance alone, so a week nobody clocked in on did
+        // not exist — and a worker signed off for approved leave through such
+        // a week was not paid for it, nor even listed. That is not an edge
+        // case: one day's view of a day nobody worked is exactly the screen
+        // the office opens to ask where somebody on leave has gone. Leave
+        // makes a week of its own now, and the weeks are in date order
+        // whichever of the two put them there.
+        $weekBounds = [];
 
         foreach ($recordsByWeek as $weekRange => $weekGroup) {
+            $on = Carbon::parse($weekGroup->first()->date);
+
+            $weekBounds[$weekRange] = [
+                $on->copy()->startOfWeek($weekStart)->toDateString(),
+                $on->copy()->endOfWeek($weekEnd)->toDateString(),
+            ];
+        }
+
+        foreach ($this->weeksWithLeave($cfg, $weekStart, $weekEnd) as $weekRange => $bounds) {
+            $weekBounds[$weekRange] ??= $bounds;
+        }
+
+        uasort($weekBounds, fn (array $a, array $b) => $a[0] <=> $b[0]);
+
+        $payrollWeeks = [];
+
+        foreach ($weekBounds as $weekRange => [$weekOpens, $weekCloses]) {
+            $weekGroup         = $recordsByWeek->get($weekRange, collect());
             $weeklyTotalSalary = 0;
             $employeeSummaries = [];
 
@@ -775,24 +881,22 @@ class PayrollService
             // resolves once — on the last day of the week, the day the period
             // is paid. A bonus raised mid-week takes effect on the period that
             // ends after it, and never on one already paid.
-            $weekRates = $this->ratesOn(
-                Carbon::parse($weekGroup->first()->date)->endOfWeek($weekEnd)->toDateString(),
-                $cfg
-            );
+            $weekRates = $this->ratesOn($weekCloses, $cfg);
             $weekBonus = $weekRates['bonus'] ?? 0;
+
+            // Leave is credited only as far as the week has actually got, and
+            // only for the days that were asked about.
+            //
+            // A day worked is paid when it is worked; a day off has to be the
+            // same, or a week still running shows the whole of a leave signed
+            // off to the Friday as already paid on the Wednesday. And the
+            // range bounds it as well as the week does: asked for one day, a
+            // week-long leave answered with the week's pay against that day.
+            [$leaveOpens, $leaveThrough] = $this->leaveWindow($cfg, $weekOpens, $weekCloses);
 
             // The one-off grants that land inside this week. A grant names its
             // people, or says everybody — which is not the same as listing them,
             // because a list goes stale the day somebody is hired.
-            $weekOpens  = Carbon::parse($weekGroup->first()->date)->startOfWeek($weekStart)->toDateString();
-            $weekCloses = Carbon::parse($weekGroup->first()->date)->endOfWeek($weekEnd)->toDateString();
-
-            // Leave is credited only as far as the week has actually got.
-            // A day worked is paid when it is worked; a day off has to be the
-            // same, or a week still running shows the whole of a leave signed
-            // off to the Friday as already paid on the Wednesday.
-            $leaveThrough = min($weekCloses, Carbon::now('Asia/Manila')->toDateString());
-
             $grants = array_filter(
                 $cfg['bonusGrants'] ?? [],
                 fn ($g) => $g['on'] >= $weekOpens && $g['on'] <= $weekCloses
@@ -846,7 +950,7 @@ class PayrollService
                     $leaveDays = $paidLeaveDays = 0.0;
 
                     foreach (($cfg['leave'][$empId] ?? []) as $filed) {
-                        $d = $filed->daysWithin($weekOpens, $leaveThrough);
+                        $d = $filed->daysWithin($leaveOpens, $leaveThrough);
                         $leaveDays += $d;
                         $paidLeaveDays += $filed->is_paid ? $d : 0;
                     }
@@ -941,6 +1045,7 @@ class PayrollService
                         // all leave has none, so the week carries it too.
                         'dailyRate'           => round($this->dayRateOf($employee, $weekRates, $pricedDaily), 2),
                         'leaveDays'           => round($leaveDays, 2),
+                        'paidLeaveDays'       => round($paidLeaveDays, 2),
                         'leavePay'            => round($leavePay, 2),
                         'bonus'               => round($empBonus, 2),
                         'sssDeduction'        => round($sumSss, 2),
@@ -980,7 +1085,7 @@ class PayrollService
                 $days = $paidDays = 0.0;
 
                 foreach ($filed as $row) {
-                    $d = $row->daysWithin($weekOpens, $leaveThrough);
+                    $d = $row->daysWithin($leaveOpens, $leaveThrough);
                     $days += $d;
                     $paidDays += $row->is_paid ? $d : 0;
                 }
@@ -1006,6 +1111,7 @@ class PayrollService
                     'position'            => $onLeave->position ?? '',
                     'dailyRate'           => round($dayRate, 2),
                     'leaveDays'           => round($days, 2),
+                    'paidLeaveDays'       => round($paidDays, 2),
                     'leavePay'            => $pay,
                     'gross'               => $pay,
                     'sssDeduction'        => $ded['sss'],
@@ -1038,11 +1144,21 @@ class PayrollService
 
     /**
      * Group records by day. Output shape matches the original $dailyPayroll exactly.
+     *
+     * A day of approved paid leave is a day on this list too. It is not an
+     * attendance row and never will be — nothing writes one — so a worker
+     * signed off for today simply had no row for today, which is the screen
+     * the office opens when it asks why somebody is missing from the payroll.
      */
     private function groupByDay($records, array $cfg): array
     {
         $payrollByDay = $records->where('time_in', '!=', null)->groupBy('date');
         $dailyPayroll = [];
+
+        // The rate each worker's days were priced at, so a leave day in the
+        // same range is worth what a worked one was. Filled as the days are
+        // walked and read afterwards, when the leave rows are added.
+        $pricedDaily = [];
 
         foreach ($payrollByDay as $date => $dayRecords) {
             $dailyTotal = 0;
@@ -1088,10 +1204,11 @@ class PayrollService
                     'net'                 => round($r['net'], 2),
                 ];
 
+                $pricedDaily[$detail->employee_id] ??= (float) ($r['dailyRate'] ?? 0);
                 $dailyTotal += $r['net'];
             }
 
-            $dailyPayroll[] = [
+            $dailyPayroll[$date] = [
                 'date'           => $date,
                 'formatted_date' => Carbon::parse($date)->format('m/d/Y (l)'),
                 'total'          => round($dailyTotal, 2),
@@ -1099,7 +1216,135 @@ class PayrollService
             ];
         }
 
-        return $dailyPayroll;
+        foreach ($this->leaveByDay($cfg, $pricedDaily) as $date => $leaveRows) {
+            $dailyPayroll[$date] ??= [
+                'date'           => $date,
+                'formatted_date' => Carbon::parse($date)->format('m/d/Y (l)'),
+                'total'          => 0.0,
+                'details'        => [],
+            ];
+
+            // After the days worked, not before: the weekly table reads a
+            // worker's rate off the first row it finds for them, and a day
+            // actually worked is the better answer where there is one.
+            $dailyPayroll[$date]['details'] = array_merge($dailyPayroll[$date]['details'], $leaveRows);
+            $dailyPayroll[$date]['total']   = round(
+                $dailyPayroll[$date]['total'] + array_sum(array_column($leaveRows, 'net')), 2
+            );
+        }
+
+        ksort($dailyPayroll);
+
+        return array_values($dailyPayroll);
+    }
+
+    /**
+     * Approved leave as day rows, keyed by date.
+     *
+     * One row per worker per day off, priced and deducted exactly as the week
+     * prices it — the same day rate, the same contributions worked out on
+     * that rate — so the day view and the week view cannot disagree. Days
+     * still to come are left out: leave is paid as it comes round.
+     *
+     * @param  array<int, float>  $pricedDaily  what a worked day cost, per employee
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    private function leaveByDay(array $cfg, array $pricedDaily): array
+    {
+        $from = (string) ($cfg['range']['from'] ?? '');
+        $to   = (string) ($cfg['range']['to'] ?? '');
+
+        if ($from === '' || $to === '') {
+            return [];
+        }
+
+        $through = min($to, Carbon::now('Asia/Manila')->toDateString());
+        $byDate  = [];
+
+        foreach (($cfg['leave'] ?? []) as $empId => $filed) {
+            $employee = $filed->first()?->employee;
+
+            if (! $employee) {
+                continue;
+            }
+
+            foreach ($filed as $row) {
+                $first  = max($row->starts_on->toDateString(), $from);
+                $last   = min($row->ends_on->toDateString(), $through);
+                $cursor = Carbon::parse($first);
+
+                while ($cursor->toDateString() <= $last) {
+                    $date = $cursor->toDateString();
+                    $days = $row->daysWithin($date, $date);
+
+                    if ($days > 0) {
+                        $byDate[$date][] = $this->leaveDayRow(
+                            $employee, $row, $date, $days, $cfg, $pricedDaily[$empId] ?? 0.0
+                        );
+                    }
+
+                    $cursor->addDay();
+                }
+            }
+        }
+
+        return $byDate;
+    }
+
+    /**
+     * One day of leave, in the shape every other day row has.
+     *
+     * Every figure a worked day carries is here and at zero, because the
+     * screens reading this list index straight into them. What the day is
+     * worth sits on its own keys, so nothing mistakes a day off for hours.
+     *
+     * @return array<string, mixed>
+     */
+    private function leaveDayRow($employee, LeaveRequest $filed, string $date, float $days, array $cfg, float $priced): array
+    {
+        $rates = $this->ratesOn($date, $cfg);
+        $rate  = $this->dayRateOf($employee, $rates, $priced);
+        $paid  = $filed->is_paid ? $days : 0.0;
+        $pay   = round($paid * $rate, 2);
+
+        $ded = $this->leaveDeductions($rate, $paid, $rates, (bool) $employee->isExcludedFromPayroll());
+
+        // The hourly the day rate works out at over this shift. Zero would be
+        // a lie the receipt repeats: it reads the hourly off whichever row it
+        // finds for a worker, and that may well be this one.
+        $schedule = $employee->shift?->schedule();
+        $hours    = $schedule && WorkSchedule::has($schedule) ? max(1.0, WorkSchedule::paidHours($schedule)) : 8.0;
+
+        return [
+            // Not an attendance row and never keyed as one: the callers that
+            // index these by id are matching them back to attendance.
+            'id'                  => 'leave-' . $filed->id . '-' . $date,
+            'employee_id'         => (int) $employee->id,
+            'name'                => $employee->name,
+            'shift'               => $employee->shift?->name,
+            'leave'               => true,
+            'leave_type'          => $filed->type_label,
+            'leave_paid'          => (bool) $filed->is_paid,
+            'leaveDays'           => round($days, 2),
+            'leavePay'            => $pay,
+            'dailyRate'           => round($rate, 2),
+            'rate'                => round($rate / $hours, 2),
+            'bonus'               => round($rates['bonus'] ?? 0, 2),
+            'is_holiday'          => false,
+            'holiday_type'        => null,
+            'gross'               => $pay,
+            'sssDeduction'        => $ded['sss'],
+            'philhealthDeduction' => $ded['philhealth'],
+            'pagibigDeduction'    => $ded['pagibig'],
+            'withholdingTax'      => $ded['tax'],
+            'autoDeductions'      => $ded['total'],
+            'totalDeductions'     => $ded['total'],
+            'net'                 => round($pay - $ded['total'], 2),
+        ] + array_fill_keys([
+            'hours', 'minutes', 'basicPay', 'ot_hours', 'ot_minutes', 'ot_rate',
+            'late_minutes', 'otPay', 'holidayPay', 'restDayPay', 'nightDiffPay',
+            'vale', 'manualDeductions',
+        ], 0);
     }
 
     /**
@@ -1130,6 +1375,7 @@ class PayrollService
                             'restDayPay'      => 0,
                             'nightDiffPay'    => 0,
                             'leaveDays'       => 0,
+                            'paidLeaveDays'   => 0,
                             'leavePay'        => 0,
                             'bonus'           => 0,
                             'totalDeductions' => 0,
@@ -1151,6 +1397,7 @@ class PayrollService
                 $employees[$id]['totals']['restDayPay']      += $d['restDayPay'];
                 $employees[$id]['totals']['nightDiffPay']    += $d['nightDiffPay'];
                 $employees[$id]['totals']['leaveDays']       += $d['leaveDays'] ?? 0;
+                $employees[$id]['totals']['paidLeaveDays']   += $d['paidLeaveDays'] ?? 0;
                 $employees[$id]['totals']['leavePay']        += $d['leavePay'] ?? 0;
                 $employees[$id]['totals']['bonus']           += $d['bonus'];
                 $employees[$id]['totals']['totalDeductions'] += $d['totalDeductions'];

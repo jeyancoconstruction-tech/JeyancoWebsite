@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\LaborType;
 use App\Models\LeaveRequest;
 use App\Models\PayrollRate;
+use App\Models\PayrollRun;
 use App\Models\Shift;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -471,5 +472,209 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->actingAs($this->admin)
             ->get(route('payslip.batch', ['from' => '2026-09-07', 'to' => '2026-09-13', 'employee' => $e->id]))
             ->assertOk();
+    }
+
+    // ── A day off is a record for that day ───────────────────────────────
+
+    /** One worker's row on one date of the day-by-day breakdown. */
+    private function dayRow(Employee $e, string $on, string $from, string $to): ?array
+    {
+        $day = collect(app(PayrollService::class)->computeForRange($from, $to)['days'])
+            ->firstWhere('date', $on);
+
+        return collect($day['details'] ?? [])->firstWhere('employee_id', $e->id);
+    }
+
+    /**
+     * The day a leave falls on has a payroll record on it.
+     *
+     * Reported from the office: a worker with an approved paid leave for
+     * today was simply not on today's payroll. The day view is built from
+     * attendance, and leave writes no attendance row — nothing ever will —
+     * so the one screen that answers "what is this person owed for today"
+     * had nothing to show, and a paid day off read as an absence.
+     */
+    public function test_a_day_of_leave_is_a_record_for_that_day(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-17 14:00:00', 'Asia/Manila'));
+
+        $this->worker(['2026-09-17'], 'Crew Mate');
+
+        $off = $this->worker([], 'Lawrence Bernas');
+        $this->leave($off, '2026-09-17', '2026-09-17');
+
+        $row = $this->dayRow($off, '2026-09-17', '2026-09-17', '2026-09-17');
+
+        $this->assertNotNull($row, 'the day off is on the day');
+        $this->assertTrue($row['leave']);
+        $this->assertEqualsWithDelta(800.0, $row['leavePay'], 0.001);
+        $this->assertEqualsWithDelta(800.0, $row['gross'], 0.001, 'a paid day off is wages');
+        $this->assertEqualsWithDelta(0.0, $row['minutes'], 0.001, 'and no hours at all');
+        $this->assertGreaterThan(0, $row['totalDeductions'], 'income is contributed on');
+        $this->assertEqualsWithDelta(800.0, $row['dailyRate'], 0.001);
+    }
+
+    /**
+     * Nobody worked that day, and the leave is still paid.
+     *
+     * The weeks came off attendance, so a range nobody clocked in on had no
+     * weeks in it at all — and everyone on leave through it vanished from
+     * payroll rather than being paid for it.
+     */
+    public function test_leave_is_paid_on_a_day_nobody_worked(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-17 14:00:00', 'Asia/Manila'));
+
+        $off = $this->worker([], 'Lawrence Bernas');
+        $this->leave($off, '2026-09-17', '2026-09-17');
+
+        $t = $this->totals($off, '2026-09-17', '2026-09-17');
+
+        $this->assertEqualsWithDelta(1.0, $t['leaveDays'], 0.001);
+        $this->assertEqualsWithDelta(800.0, $t['leavePay'], 0.001);
+        $this->assertNotNull($this->dayRow($off, '2026-09-17', '2026-09-17', '2026-09-17'));
+
+        // And over the whole week, still nobody else having worked.
+        $this->assertEqualsWithDelta(800.0,
+            $this->totals($off, '2026-09-14', '2026-09-20')['leavePay'], 0.001);
+    }
+
+    /**
+     * One day's view pays one day of a week-long leave.
+     *
+     * Leave was bounded by the week it falls in and by nothing else, so a
+     * single date asked about answered with every day of the leave the week
+     * had reached — four days of pay against one day.
+     */
+    public function test_a_days_view_credits_only_that_day(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-17 14:00:00', 'Asia/Manila'));
+
+        $off = $this->worker([], 'Lawrence Bernas');
+        $this->leave($off, '2026-09-14', '2026-09-18');
+
+        $day = $this->totals($off, '2026-09-17', '2026-09-17');
+
+        $this->assertEqualsWithDelta(1.0, $day['leaveDays'], 0.001);
+        $this->assertEqualsWithDelta(800.0, $day['leavePay'], 0.001);
+
+        // The week it sits in still credits every day of it that has come
+        // round — Monday to Thursday, with the Friday still ahead.
+        $week = $this->totals($off, '2026-09-14', '2026-09-20');
+
+        $this->assertEqualsWithDelta(4.0, $week['leaveDays'], 0.001);
+        $this->assertEqualsWithDelta(3200.0, $week['leavePay'], 0.001);
+    }
+
+    /** Payroll Records shows the day, and says it is leave rather than hours. */
+    public function test_payroll_records_shows_the_day_off(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-17 14:00:00', 'Asia/Manila'));
+
+        $off = $this->worker([], 'Lawrence Bernas');
+        $this->leave($off, '2026-09-17', '2026-09-17');
+
+        $this->actingAs($this->admin)
+            ->get(route('payroll-records', ['mode' => 'daily', 'date' => '2026-09-17']))
+            ->assertOk()
+            ->assertSee('Lawrence Bernas')
+            ->assertSee('Sick Leave');
+    }
+
+    /** Payroll Processing pays it, and its arithmetic still closes. */
+    public function test_payroll_processing_pays_a_week_of_nothing_but_leave(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-17 14:00:00', 'Asia/Manila'));
+
+        $off = $this->worker([], 'Lawrence Bernas');
+        $this->leave($off, '2026-09-17', '2026-09-17');
+
+        $sel = $this->actingAs($this->admin)->get(route('payroll-processing.index', [
+            'period' => '2026-09-14_2026-09-20', 'view' => 'workflow', 'employee' => $off->id,
+        ]))->assertOk()->viewData('sel');
+
+        $this->assertEqualsWithDelta(800.0, $sel['leave'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $sel['basic'], 0.001, 'no day was worked');
+        $this->assertTrue($sel['worked'], 'a paid day off is not nothing');
+
+        // Basic + premiums + leave is the gross, which is what the stages on
+        // the page say. With the leave left out they stopped adding up.
+        $premiums = $sel['overtime'] + $sel['night'] + $sel['holiday'] + $sel['rest'];
+
+        $this->assertEqualsWithDelta($sel['gross'], $sel['basic'] + $premiums + $sel['leave'], 0.011);
+    }
+
+    /**
+     * The printed payslip gives it a line of its own.
+     *
+     * It had none at all, and "Regular" quietly absorbed it — the slip
+     * claimed the worker had earned it by the hour on days they were not
+     * there.
+     */
+    public function test_the_printed_payslip_itemises_the_leave(): void
+    {
+        $e = $this->worker(['2026-09-10']);
+        $this->leave($e, '2026-09-08', '2026-09-09');
+
+        $slips = $this->actingAs($this->admin)
+            ->get(route('payslip.batch', ['from' => '2026-09-07', 'to' => '2026-09-13', 'employee' => $e->id]))
+            ->assertOk()
+            ->assertSee('Paid Leave')
+            ->viewData('slips');
+
+        $s = $slips->first();
+
+        $this->assertEqualsWithDelta(1600.0, $s['leavePay'], 0.001);
+        $this->assertEqualsWithDelta(800.0, $s['regular'], 0.011, 'one day worked, and only that');
+        $this->assertEqualsWithDelta($s['gross'],
+            $s['regular'] + $s['overtime'] + $s['holidayPay'] + $s['restDayPay']
+            + $s['nightDiffPay'] + $s['leavePay'], 0.011, 'the earnings are the gross');
+    }
+
+    /**
+     * A finalised run pays the leave once.
+     *
+     * The engine's gross has carried the leave ever since it reached Payroll
+     * Records, and the run took basic pay to be that gross less the premiums
+     * — leave not among them. So the leave stayed inside basic pay and was
+     * then added again as a line of its own: every finalised payslip paid an
+     * approved day off twice, and called half of it hours worked.
+     */
+    public function test_a_finalised_run_pays_the_leave_once(): void
+    {
+        $e = $this->worker(['2026-09-10']);
+        $this->leave($e, '2026-09-08', '2026-09-09');
+
+        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
+            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
+        ]);
+
+        $item   = PayrollRun::sole()->items()->sole();
+        $engine = $this->totals($e, ...self::WEEK);
+
+        $this->assertEqualsWithDelta(1600.0, (float) $item->leave_pay, 0.011);
+        $this->assertEqualsWithDelta(2.0, (float) $item->paid_leave_days, 0.011);
+        $this->assertEqualsWithDelta(800.0, (float) $item->basic_pay, 0.011,
+            'basic pay is the day worked, not the days off');
+        $this->assertEqualsWithDelta($engine['gross'], (float) $item->gross_pay, 0.02,
+            'and the run grosses what Payroll Records does');
+        $this->assertEqualsWithDelta($engine['net'], (float) $item->net_pay, 0.02);
+    }
+
+    /** A worker with nothing but leave in the period still gets a run item. */
+    public function test_a_run_pays_a_worker_who_only_had_leave(): void
+    {
+        $e = $this->worker([], 'Lawrence Bernas');
+        $this->leave($e, '2026-09-08', '2026-09-09');
+
+        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
+            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
+        ]);
+
+        $item = PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
+
+        $this->assertEqualsWithDelta(1600.0, (float) $item->leave_pay, 0.011);
+        $this->assertEqualsWithDelta(0.0, (float) $item->basic_pay, 0.011);
+        $this->assertEqualsWithDelta(1600.0, (float) $item->gross_pay, 0.011);
     }
 }

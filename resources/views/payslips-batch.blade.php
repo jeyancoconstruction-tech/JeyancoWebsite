@@ -125,6 +125,11 @@
                             <div class="ln"><span class="k">{{ __('Overtime') }}</span><span class="v">&#8369;{{ number_format($s['overtime'], 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('Holiday') }}</span><span class="v">&#8369;{{ number_format($s['holidayPay'], 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('Rest Day') }}</span><span class="v">&#8369;{{ number_format($s['restDayPay'], 2) }}</span></div>
+                            {{-- A day off that was signed off as paid. Its own
+                                 line, and it says how many days, because "why
+                                 was I paid for a day I was not here" is the
+                                 question a lump sum cannot answer. --}}
+                            <div class="ln"><span class="k">{{ __('Paid Leave') }}@if(($s['leaveDays'] ?? 0) > 0) ({{ rtrim(rtrim(number_format($s['leaveDays'], 2), '0'), '.') }}d)@endif</span><span class="v">&#8369;{{ number_format($s['leavePay'] ?? 0, 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('Bonus') }}</span><span class="v">&#8369;{{ number_format($s['bonus'], 2) }}</span></div>
                             <div class="ln sum"><span class="k">{{ __('Gross') }}</span><span class="v">&#8369;{{ number_format($s['gross'], 2) }}</span></div>
                         </div>
