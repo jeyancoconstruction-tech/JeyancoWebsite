@@ -39,7 +39,7 @@
     </div>
 
     @if($tab === 'leave')
-        <div class="mod-card">
+        <div class="mod-card" data-fill-screen>
             <form method="GET" class="mod-filters" data-autoload>
                 <input type="hidden" name="tab" value="leave">
                 <div class="mod-filter mod-filter-grow">
@@ -176,7 +176,7 @@
             </div>
         </div>
 
-        <div class="mod-card">
+        <div class="mod-card" data-fill-screen>
             <form method="GET" class="mod-filters" data-autoload>
                 <input type="hidden" name="tab" value="advances">
                 <div class="mod-filter mod-filter-grow">
@@ -646,6 +646,86 @@
 
 @push('scripts')
 <script>
+// ── Only the list scrolls ───────────────────────────────────────────────────
+// The heading, the tabs, the totals and the filters stay where they are; the
+// list takes whatever height is left on the screen and scrolls inside it,
+// with its column heads pinned. Measured rather than written as a fixed
+// calc(), because what sits above the list is not one height — the totals
+// wrap on a narrower window, and a validation alert can appear above them.
+// On a phone the page scrolls as a whole: a list boxed into what is left of
+// a small screen would be a sliver.
+(function () {
+    const wraps = [...document.querySelectorAll('.mod-card[data-fill-screen] > .mod-table-wrap')];
+    if (!wraps.length) return;
+
+    const MIN  = 200;                                   // never less than about three rows
+    const wide = window.matchMedia('(min-width: 768px)');
+
+    // What has to stay on screen under the list: the rest of its card (the
+    // pager, the card's edge) and the margins and padding that close the page
+    // below it. Not the document's height less the list's bottom — the layout
+    // holds the page at least a screen tall, and that filler is not content.
+    function spaceBelow(wrap, rect) {
+        const card = wrap.closest('.mod-card');
+        let space  = card.getBoundingClientRect().bottom - rect.bottom;
+
+        for (let el = card; el && el !== document.body; el = el.parentElement) {
+            const cs = getComputedStyle(el);
+            space += (parseFloat(cs.marginBottom) || 0)
+                   + (el === card ? 0 : (parseFloat(cs.paddingBottom) || 0) + (parseFloat(cs.borderBottomWidth) || 0));
+        }
+        return space;
+    }
+
+    function fit() {
+        wraps.forEach(wrap => {
+            wrap.style.maxHeight = '';
+            wrap.classList.remove('is-fitted');
+        });
+
+        if (!wide.matches) return;
+
+        wraps.forEach(wrap => {
+            const rect  = wrap.getBoundingClientRect();
+            const top   = rect.top + window.scrollY;
+            const room  = Math.floor(window.innerHeight - top - spaceBelow(wrap, rect));
+
+            if (rect.height <= room) return;            // it already fits
+
+            wrap.style.maxHeight = Math.max(MIN, room) + 'px';
+            wrap.classList.add('is-fitted');
+        });
+
+        // Once more, by what is left over. Fitting the list can move what sits
+        // above it — the page's scrollbar goes, the width changes, a line of
+        // text rewraps — so the first measurement can be a few pixels out.
+        const over = document.documentElement.scrollHeight - window.innerHeight;
+
+        if (over > 0) {
+            wraps.filter(w => w.classList.contains('is-fitted')).forEach(wrap => {
+                wrap.style.maxHeight = Math.max(MIN, wrap.clientHeight - over) + 'px';
+            });
+        }
+    }
+
+    // After a resize the layout can still be settling on the frame this runs
+    // in, so it measures again on the frame after.
+    let queued = false;
+    const refit = () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+            fit();
+            requestAnimationFrame(() => { queued = false; fit(); });
+        });
+    };
+
+    window.addEventListener('resize', refit);
+    wide.addEventListener?.('change', refit);
+    document.fonts?.ready.then(refit);
+    fit();
+})();
+
 // ── Filters apply themselves ────────────────────────────────────────────────
 // There is no Apply button. Picking a status, a type or a date reloads the
 // list at once. A name reloads once typing pauses — on every keystroke the

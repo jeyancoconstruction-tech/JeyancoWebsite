@@ -576,4 +576,53 @@ class LeaveAdvancesPageTest extends TestCase
         $this->assertCount(2, $ids(['q' => '', 'status' => '', 'type' => '', 'from' => '', 'to' => '']),
             'every box back on All is the whole list — the way back that Reset was');
     }
+
+    /**
+     * Only the list scrolls: both tabs mark their list to take what is left
+     * of the screen, and the page carries the script that sizes it.
+     *
+     * Michael: "dapat pag pinag scroll ko yung mismong list lang ng advances
+     * ang na scroll para fix na yung screen sa page na yan." The sizing itself
+     * is measured in a browser; what the server owes it is the marking.
+     */
+    public function test_both_lists_are_boxed_to_the_screen(): void
+    {
+        foreach (['leave', 'advances'] as $tab) {
+            $html = $this->actingAs($this->admin())
+                ->get(route('leave.index', ['tab' => $tab]))->assertOk()->getContent();
+
+            $this->assertMatchesRegularExpression(
+                '#<div class="mod-card" data-fill-screen>\s*<form method="GET" class="mod-filters" data-autoload>#', $html,
+                "{$tab}: the list card is marked");
+            $this->assertSame(1, substr_count($html, 'data-fill-screen>'), "{$tab}: and only the list card");
+            $this->assertStringContainsString(".mod-card[data-fill-screen] > .mod-table-wrap", $html, "{$tab}: the script is there");
+        }
+    }
+
+    /**
+     * A second page of advances has a pager of ordinary size.
+     *
+     * Pagination was Laravel's default Tailwind markup on a site with no
+     * Tailwind, so its arrow icons rendered at full width: a pager 3,000
+     * pixels tall, found the moment the list was boxed to the screen.
+     */
+    public function test_a_long_list_has_a_bootstrap_pager(): void
+    {
+        $e = $this->worker('Lawrence Bernas');
+
+        foreach (range(1, 16) as $i) {
+            $this->onFile($e, Loan::ADVANCE, 1000, 100, '2026-09-' . str_pad((string) min(28, $i), 2, '0', STR_PAD_LEFT));
+        }
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('leave.index', ['tab' => 'advances']))->assertOk()->getContent();
+
+        $at    = strpos($html, 'class="mod-pager"');
+        $this->assertNotFalse($at, 'sixteen advances make a second page');
+        $pager = substr($html, $at, 4000);
+
+        $this->assertStringContainsString('class="pagination', $pager, 'Bootstrap markup, which the pager CSS is written for');
+        $this->assertStringContainsString('advance_page=2', $pager);
+        $this->assertStringNotContainsString('<svg', $pager, 'not the Tailwind arrows');
+    }
 }

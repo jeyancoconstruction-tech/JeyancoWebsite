@@ -99,6 +99,13 @@
 
 /* ── Table ────────────────────────────────────────────────────────────── */
 .mod-table-wrap { overflow-x: auto; }
+/* A list boxed to the screen (see data-fill-screen on Leave & Advances): it
+   scrolls on its own, and reaching its end does not carry on into the page. */
+.mod-table-wrap.is-fitted { overflow-y: auto; overscroll-behavior: contain; }
+/* Such a list ends at the bottom of the screen, so its pager always lands
+   under the floating chat button (50px, 28px in from the right) — kept clear
+   of it, or the next-page arrow cannot be clicked. */
+.mod-card[data-fill-screen] .mod-pager { padding-right: 76px; }
 .mod-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .mod-table thead th {
     position: sticky; top: 0; z-index: 2;

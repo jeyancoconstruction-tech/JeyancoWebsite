@@ -89,6 +89,13 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->ensureStorageLink();
 
+        // Page links in Bootstrap's markup, which is what the site loads and
+        // what every pager's CSS here (.mod-pager, .acct-pager) was written
+        // for. Laravel's default is Tailwind markup, and with no Tailwind on
+        // the page its arrow icons render at full width: on a list long
+        // enough to have a second page, the pager alone was 3,000 pixels tall.
+        \Illuminate\Pagination\Paginator::useBootstrapFive();
+
         // Every change, sign-in and write request goes into the Audit Log.
         \App\Support\ActivityRecorder::listen();
 
