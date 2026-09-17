@@ -116,14 +116,17 @@ class DashboardLayoutTest extends TestCase
         $this->actingAs($this->admin)->get('/dashboard')
             ->assertSee('Workers still timed in');
 
+        // Filed leave is not work outstanding. There is no approval step —
+        // the owner, HR and staff who file it are the ones who would approve
+        // it — so nothing about a leave waits on anybody.
         LeaveRequest::create([
             'employee_id' => $emp->id, 'leave_type' => 'sick',
             'starts_on' => now()->toDateString(), 'ends_on' => now()->toDateString(),
-            'days' => 1, 'is_paid' => true, 'status' => 'pending',
+            'days' => 1, 'is_paid' => true,
         ]);
 
         $this->actingAs($this->admin)->get('/dashboard')
-            ->assertSee('Leave requests awaiting a decision');
+            ->assertDontSee('Leave requests awaiting a decision');
     }
 
     /**

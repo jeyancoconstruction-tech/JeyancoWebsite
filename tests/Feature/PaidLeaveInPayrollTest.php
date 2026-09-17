@@ -156,13 +156,17 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->assertEqualsWithDelta($before['net'], $t['net'], 0.011);
     }
 
-    /** Leave still waiting on a decision pays nothing. */
-    public function test_leave_that_is_not_approved_pays_nothing(): void
+    /** A cancelled leave pays nothing, and restoring it pays it again. */
+    public function test_cancelled_leave_pays_nothing(): void
     {
-        $e = $this->worker(['2026-09-10']);
-        $this->leave($e, '2026-09-08', '2026-09-09')->forceFill(['status' => 'pending'])->save();
+        $e     = $this->worker(['2026-09-10']);
+        $leave = $this->leave($e, '2026-09-08', '2026-09-09');
 
+        $leave->forceFill(['status' => 'cancelled'])->save();
         $this->assertEqualsWithDelta(0.0, $this->totals($e, ...self::WEEK)['leavePay'], 0.001);
+
+        $leave->forceFill(['status' => 'approved'])->save();
+        $this->assertEqualsWithDelta(1600.0, $this->totals($e, ...self::WEEK)['leavePay'], 0.001);
     }
 
     /**

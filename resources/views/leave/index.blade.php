@@ -11,7 +11,7 @@
             'button' => __('New Cash Advance'),
         ]
         : [
-            'sub'    => __('Filed leave and the decisions on it. Approved leave is picked up by Payroll Processing and never writes an attendance record. Overtime is not filed — payroll counts it from attendance.'),
+            'sub'    => __('Leave counts as soon as it is filed. Paid leave is picked up by Payroll Processing as its days come round and never writes an attendance record. Overtime is not filed — payroll counts it from attendance.'),
             'modal'  => 'leaveModal',
             'button' => __('File Leave'),
         ];
@@ -30,7 +30,6 @@
     <div class="mod-tabs">
         <a class="mod-tab {{ $tab === 'leave' ? 'active' : '' }}" href="{{ route('leave.index', ['tab' => 'leave']) }}">
             <i class="fas fa-calendar-day"></i> {{ __('Leave') }}
-            @if($counts['leave_pending'])<span class="mod-tab-count">{{ $counts['leave_pending'] }}</span>@endif
         </a>
         @if($canAdvances)
             <a class="mod-tab {{ $tab === 'advances' ? 'active' : '' }}" href="{{ route('leave.index', ['tab' => 'advances']) }}">
@@ -89,7 +88,7 @@
                             <th class="num">{{ __('Days') }}</th>
                             <th>{{ __('Pay') }}</th>
                             <th>{{ __('Status') }}</th>
-                            <th>{{ __('Approved by') }}</th>
+                            <th>{{ __('Filed by') }}</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -106,33 +105,42 @@
                                 </span>
                             </td>
                             <td>
-                                @php $tone = ['approved' => 'ok', 'rejected' => 'danger', 'cancelled' => 'muted'][$row->status] ?? 'warn'; @endphp
+                                @php $tone = $row->status === 'cancelled' ? 'muted' : 'ok'; @endphp
                                 <span class="mod-badge {{ $tone }}"><span class="dot"></span>{{ $row->status_label }}</span>
                             </td>
                             <td class="muted">
-                                {{ $row->approver->name ?? '—' }}
-                                @if($row->approved_at)<div class="mod-person-sub">{{ $row->approved_at->format('M d, Y') }}</div>@endif
+                                {{-- Whoever entered it. Filing is the decision
+                                     now, so there is no separate approver to
+                                     name; an older row filed before that falls
+                                     back to the person who approved it. --}}
+                                {{ $row->filer->name ?? $row->approver->name ?? '—' }}
+                                <div class="mod-person-sub">{{ $row->created_at?->format('M d, Y') }}</div>
                             </td>
                             <td>
-                                @if($row->status === 'pending')
-                                    <div class="mod-row-actions">
-                                        <form method="POST" action="{{ route('leave.decide', ['id' => $row->id]) }}">
-                                            @csrf @method('PATCH')
-                                            <input type="hidden" name="decision" value="approved">
-                                            <button class="mod-btn sm ok" type="submit"><i class="fas fa-check"></i> {{ __('Approve') }}</button>
-                                        </form>
-                                        <form method="POST" action="{{ route('leave.decide', ['id' => $row->id]) }}">
-                                            @csrf @method('PATCH')
-                                            <input type="hidden" name="decision" value="rejected">
-                                            <button class="mod-btn sm danger" type="submit"><i class="fas fa-xmark"></i> {{ __('Reject') }}</button>
-                                        </form>
-                                    </div>
+                                @if($row->status === 'cancelled')
+                                    <form method="POST" action="{{ route('leave.decide', ['id' => $row->id]) }}" class="mod-row-actions">
+                                        @csrf @method('PATCH')
+                                        <input type="hidden" name="decision" value="approved">
+                                        <button class="mod-btn sm" type="submit"><i class="fas fa-rotate-left"></i> {{ __('Restore') }}</button>
+                                    </form>
+                                @else
+                                    <form method="POST" action="{{ route('leave.decide', ['id' => $row->id]) }}" class="mod-row-actions"
+                                          data-confirm="{{ $row->is_paid
+                                              ? __('Its days stop being paid. A payroll already finalised keeps what it paid.')
+                                              : __('It stays on record, marked cancelled.') }}"
+                                          data-confirm-title="{{ __('Cancel this leave?') }}"
+                                          data-confirm-label="{{ __('Cancel leave') }}"
+                                          data-confirm-tone="danger">
+                                        @csrf @method('PATCH')
+                                        <input type="hidden" name="decision" value="cancelled">
+                                        <button class="mod-btn sm danger" type="submit"><i class="fas fa-xmark"></i> {{ __('Cancel') }}</button>
+                                    </form>
                                 @endif
                             </td>
                         </tr>
                     @empty
                         @include('modules._empty', ['cols' => 8, 'icon' => 'fa-calendar-day',
-                            'title' => __('No leave filed'), 'sub' => __('Filed leave appears here for approval.')])
+                            'title' => __('No leave filed'), 'sub' => __('Leave filed here counts straight away.')])
                     @endforelse
                     </tbody>
                 </table>
@@ -278,7 +286,7 @@
             <span class="emp-head-icon" aria-hidden="true"><i class="fas fa-calendar-day"></i></span>
             <div class="emp-head-text">
                 <h6 class="emp-head-title" id="leaveModalTitle">{{ __('File Leave') }}</h6>
-                <p class="emp-head-sub">{{ __('Recorded as pending until someone approves it.') }}</p>
+                <p class="emp-head-sub">{{ __('Counts as soon as it is filed — no approval step.') }}</p>
             </div>
             <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
         </div>

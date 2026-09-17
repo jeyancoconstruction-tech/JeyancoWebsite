@@ -19,12 +19,15 @@ use Illuminate\Http\Request;
  * issued. Old loan rows stay on file but are neither listed nor collected.
  *
  * The page opens under the leave module. The advances tab needs the advances
- * module as well, and so does every advance write (LoanController): a
- * supervisor who approves leave has no business seeing who owes the company
- * what.
+ * module as well, and so does every advance write (LoanController): a role
+ * that files leave has no business seeing who owes the company what.
  *
- * Neither tab writes attendance. Approved leave and advance instalments are
- * read by Payroll Processing.
+ * Leave has no approval step. The people filing it are the owner, HR and
+ * staff — the same people who would approve it — so it counts as filed, and
+ * the one decision left on a row is to cancel it.
+ *
+ * Neither tab writes attendance. Filed leave and advance instalments are read
+ * by Payroll Processing.
  */
 class LeaveAdvancesController extends Controller
 {
@@ -39,9 +42,6 @@ class LeaveAdvancesController extends Controller
             'tab'         => $tab,
             'canAdvances' => $canAdvances,
             'employees'   => Employee::registered()->orderBy('name')->get(['id', 'name']),
-            'counts'      => [
-                'leave_pending' => LeaveRequest::where('status', 'pending')->count(),
-            ],
         ];
 
         // Only the open tab is queried. The two share filter names — status
@@ -75,7 +75,7 @@ class LeaveAdvancesController extends Controller
                 'collected'   => round($totals->sum(fn (Loan $l) => $l->paid_amount), 2),
             ];
         } else {
-            $view['leave'] = LeaveRequest::with(['employee', 'approver'])
+            $view['leave'] = LeaveRequest::with(['employee', 'filer', 'approver'])
                 ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
                 ->when($request->filled('type'), fn ($q) => $q->where('leave_type', $request->type))
                 ->when($request->filled('q'), fn ($q) => $q->whereHas('employee',
@@ -105,26 +105,39 @@ class LeaveAdvancesController extends Controller
         // Calendar days when the filer did not say otherwise. The office often
         // wants a different figure — a half day, or a range crossing a holiday
         // it chose not to charge — so the field stays editable.
-        $data['days'] = $data['days']
+        $data['days'] = ($data['days'] ?? null)
             ?: \Carbon\Carbon::parse($data['starts_on'])->diffInDays($data['ends_on']) + 1;
 
-        $data['is_paid']  = $request->boolean('is_paid');
-        $data['status']   = 'pending';
-        $data['filed_by'] = auth()->id();
+        // Filed is decided. Only the owner, HR and staff file leave, and they
+        // are the ones who would have approved it — so it counts from the
+        // moment it is entered, and paid leave reaches payroll as its days
+        // come round without anybody pressing a second button.
+        $data['is_paid']     = $request->boolean('is_paid');
+        $data['status']      = 'approved';
+        $data['filed_by']    = auth()->id();
+        $data['approved_by'] = auth()->id();
+        $data['approved_at'] = now();
 
         $leave = LeaveRequest::create($data);
 
         AuditLog::record('Leave', 'created',
             'Filed ' . $leave->type_label . ' for ' . $leave->employee->name, $leave);
 
-        return back()->with('success', 'Leave filed and awaiting approval.');
+        return back()->with('success', 'Leave filed.');
     }
 
-    /** Approve, reject or cancel a leave request. */
+    /**
+     * Cancel a filed leave, or restore one cancelled by mistake.
+     *
+     * With no approval step, rejecting a request is gone with it — and that
+     * was the only way to take back a leave filed in error. Cancelling is
+     * that way now. It leaves who filed it untouched; the audit log records
+     * who called it off.
+     */
     public function decide(Request $request, int $id)
     {
         $data = $request->validate([
-            'decision' => 'required|in:approved,rejected,cancelled',
+            'decision' => 'required|in:approved,cancelled',
             'note'     => 'nullable|string|max:500',
         ]);
 
@@ -132,14 +145,14 @@ class LeaveAdvancesController extends Controller
 
         $leave->update([
             'status'        => $data['decision'],
-            'approved_by'   => auth()->id(),
-            'approved_at'   => now(),
-            'decision_note' => $data['note'] ?? null,
+            'decision_note' => $data['note'] ?? $leave->decision_note,
         ]);
 
-        AuditLog::record('Leave', $data['decision'],
-            ucfirst($data['decision']) . ' for ' . ($leave->employee->name ?? 'employee'), $leave);
+        $action = $data['decision'] === 'cancelled' ? 'cancelled' : 'restored';
 
-        return back()->with('success', 'Request ' . $data['decision'] . '.');
+        AuditLog::record('Leave', $action,
+            ucfirst($action) . ' ' . $leave->type_label . ' for ' . ($leave->employee->name ?? 'employee'), $leave);
+
+        return back()->with('success', 'Leave ' . $action . '.');
     }
 }

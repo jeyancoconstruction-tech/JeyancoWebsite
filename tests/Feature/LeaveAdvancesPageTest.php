@@ -329,4 +329,136 @@ class LeaveAdvancesPageTest extends TestCase
 
         $this->assertStringContainsString('payrolls to collect.', $form('instModal' . $loan->id));
     }
+
+    // ── Leave has no approval step ───────────────────────────────────────
+
+    /**
+     * Filed is decided.
+     *
+     * Michael: "remove pending, rejected since the one who editing of this
+     * system is the owner and hr and staff only that's why there's no reason
+     * to put approve right there." The people filing leave are the ones who
+     * would approve it, so a request that sat at Pending only kept a signed-off
+     * day off out of payroll until somebody pressed a second button.
+     */
+    public function test_filed_leave_counts_straight_away(): void
+    {
+        $emp = $this->worker('Lawrence Bernas');
+
+        $this->actingAs($this->admin())
+             ->from(route('leave.index'))
+             ->post(route('leave.store'), [
+                 'employee_id' => $emp->id, 'leave_type' => 'sick',
+                 'starts_on' => '2026-09-16', 'ends_on' => '2026-09-18', 'is_paid' => 1,
+             ])
+             ->assertRedirect(route('leave.index'))
+             ->assertSessionHas('success', 'Leave filed.');
+
+        $leave = LeaveRequest::sole();
+
+        $this->assertSame('approved', $leave->status);
+        $this->assertSame($this->admin()->id, $leave->filed_by);
+        $this->assertSame($this->admin()->id, $leave->approved_by, 'whoever filed it decided it');
+        $this->assertNotNull($leave->approved_at);
+        $this->assertTrue(LeaveRequest::approved()->whereKey($leave->id)->exists(), 'so payroll reads it');
+    }
+
+    /** A leave written without a status is approved, not stranded on the old default. */
+    public function test_a_leave_written_without_a_status_is_approved(): void
+    {
+        $leave = LeaveRequest::create([
+            'employee_id' => $this->worker('Somebody')->id, 'leave_type' => 'vacation',
+            'starts_on' => '2026-09-16', 'ends_on' => '2026-09-16', 'days' => 1, 'is_paid' => true,
+        ]);
+
+        $this->assertSame('approved', $leave->fresh()->status);
+    }
+
+    /** Nothing on the page offers Pending, Rejected, Approve or Reject. */
+    public function test_there_is_no_pending_or_rejected_left_to_choose(): void
+    {
+        $this->assertSame(['approved', 'cancelled'], array_keys(LeaveRequest::STATUSES));
+
+        LeaveRequest::create([
+            'employee_id' => $this->worker('Lawrence Bernas')->id, 'leave_type' => 'sick',
+            'starts_on' => '2026-09-16', 'ends_on' => '2026-09-18', 'days' => 3, 'is_paid' => true,
+        ]);
+
+        $html = $this->actingAs($this->admin())->get(route('leave.index'))->assertOk()->getContent();
+
+        // The status filter, on its own: "Pending" is a word other parts of
+        // the page may use about registrations, which is a different thing.
+        $at     = strpos($html, 'id="lstatus"');
+        $filter = substr($html, $at, strpos($html, '</' . 'select>', $at) - $at);
+
+        $this->assertStringContainsString('Approved', $filter);
+        $this->assertStringContainsString('Cancelled', $filter);
+        $this->assertStringNotContainsString('Pending', $filter);
+        $this->assertStringNotContainsString('Rejected', $filter);
+
+        $this->assertStringNotContainsString('value="rejected"', $html);
+        $this->assertStringNotContainsString('> Approve<', $html);
+        $this->assertStringNotContainsString('> Reject<', $html);
+        $this->assertStringNotContainsString('awaiting approval', $html);
+        $this->assertStringContainsString('Filed by', $html);
+        $this->assertStringContainsString('value="cancelled"', $html, 'a filed leave can still be called off');
+    }
+
+    /**
+     * Rejecting was the only way to take back a leave filed in error, and it
+     * went with the approval step. Cancelling is that way now — and a leave
+     * cancelled by mistake can be put back.
+     */
+    public function test_a_leave_can_be_cancelled_and_restored_but_not_rejected(): void
+    {
+        $leave = LeaveRequest::create([
+            'employee_id' => $this->worker('Lawrence Bernas')->id, 'leave_type' => 'sick',
+            'starts_on' => '2026-09-16', 'ends_on' => '2026-09-18', 'days' => 3, 'is_paid' => true,
+            'filed_by' => $this->admin()->id, 'approved_by' => $this->admin()->id, 'approved_at' => now(),
+        ]);
+
+        $decide = fn (string $decision) => $this->actingAs($this->admin())
+            ->from(route('leave.index'))
+            ->patch(route('leave.decide', ['id' => $leave->id]), ['decision' => $decision]);
+
+        $decide('cancelled')->assertSessionHas('success', 'Leave cancelled.');
+        $this->assertSame('cancelled', $leave->fresh()->status);
+        $this->assertSame($this->admin()->id, $leave->fresh()->approved_by, 'who filed it is kept');
+
+        $decide('approved')->assertSessionHas('success', 'Leave restored.');
+        $this->assertSame('approved', $leave->fresh()->status);
+
+        foreach (['rejected', 'pending'] as $retired) {
+            $decide($retired)->assertSessionHasErrors('decision');
+            $this->assertSame('approved', $leave->fresh()->status, "{$retired} is not a decision any more");
+        }
+    }
+
+    /** Rows already on the retired statuses are moved off them, not stranded. */
+    public function test_the_migration_moves_old_rows_off_the_retired_statuses(): void
+    {
+        $emp   = $this->worker('Lawrence Bernas');
+        $filer = $this->admin();
+        $row   = fn (string $status) => DB::table('leave_requests')->insertGetId([
+            'employee_id' => $emp->id, 'leave_type' => 'sick', 'starts_on' => '2026-09-16',
+            'ends_on' => '2026-09-16', 'days' => 1, 'is_paid' => true, 'status' => $status,
+            'filed_by' => $filer->id, 'created_at' => '2026-09-15 10:00:00', 'updated_at' => '2026-09-15 10:00:00',
+        ]);
+
+        $pending   = $row('pending');
+        $rejected  = $row('rejected');
+        $cancelled = $row('cancelled');
+
+        (require database_path('migrations/2026_09_17_150000_leave_has_no_approval_step.php'))->up();
+
+        $status = fn (int $id) => DB::table('leave_requests')->where('id', $id)->value('status');
+
+        $this->assertSame('approved', $status($pending), 'pending is approved, as if filed today');
+        $this->assertSame($filer->id, (int) DB::table('leave_requests')->where('id', $pending)->value('approved_by'),
+            'credited to whoever filed it');
+        $this->assertNotNull(DB::table('leave_requests')->where('id', $pending)->value('approved_at'));
+
+        $this->assertSame('cancelled', $status($rejected), 'rejected is cancelled — it still pays nothing');
+        $this->assertSame('cancelled', $status($cancelled), 'and what was already settled is left alone');
+    }
 }

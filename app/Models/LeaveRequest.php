@@ -7,8 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Leave filed for a worker. Approved paid leave is credited by Payroll
- * Processing; nothing here writes an attendance row.
+ * Leave filed for a worker. Paid leave is credited by payroll as its days
+ * come round; nothing here writes an attendance row.
+ *
+ * There is no approval step. Leave is filed by the owner, HR or staff — the
+ * people who would otherwise be approving it — so filing it is the decision,
+ * and a request sitting at "pending" only kept a signed-off day off out of
+ * payroll until somebody clicked a second button. What remains is whether it
+ * still stands: approved, or cancelled.
  */
 class LeaveRequest extends Model
 {
@@ -23,10 +29,18 @@ class LeaveRequest extends Model
     ];
 
     public const STATUSES = [
-        'pending'   => 'Pending',
         'approved'  => 'Approved',
-        'rejected'  => 'Rejected',
         'cancelled' => 'Cancelled',
+    ];
+
+    /**
+     * Approved unless said otherwise. The table's own default is still the
+     * old "pending", and a row written without a status would otherwise land
+     * on a status that no longer exists — invisible to payroll, and with no
+     * button left to bring it back.
+     */
+    protected $attributes = [
+        'status' => 'approved',
     ];
 
     protected $fillable = [

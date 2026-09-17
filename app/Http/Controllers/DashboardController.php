@@ -176,19 +176,6 @@ class DashboardController extends Controller
             ];
         }
 
-        if (Schema::hasTable('leave_requests')) {
-            $n = \App\Models\LeaveRequest::where('status', 'pending')->count();
-            if ($n > 0) {
-                $rows[] = [
-                    'icon'  => 'fa-calendar-day',
-                    'tone'  => 'warn',
-                    'label' => 'Leave requests awaiting a decision',
-                    'count' => $n,
-                    'url'   => route('leave.index', ['tab' => 'leave', 'status' => 'pending']),
-                ];
-            }
-        }
-
         if (Schema::hasTable('payroll_runs')) {
             $open = \App\Models\PayrollRun::whereIn('status', ['draft', 'calculated'])->count();
             if ($open > 0) {
