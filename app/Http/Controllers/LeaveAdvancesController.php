@@ -62,11 +62,14 @@ class LeaveAdvancesController extends Controller
             // An advance the schedule has finished collecting is settled
             // whether or not anybody pressed anything, so the columns are
             // brought up to what the schedule says before they are read.
+            Loan::loadPayDates($view['advances']->getCollection());
             $view['advances']->each(fn (Loan $l) => $l->syncSettlement());
 
             $totals = Loan::advances()
                 ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
                 ->get();
+
+            Loan::loadPayDates($totals);
 
             // What each worker still owes, so the New Cash Advance form can say
             // how much more they may be advanced the moment they are picked —

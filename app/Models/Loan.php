@@ -147,6 +147,14 @@ class Loan extends Model
             $status = 'paid';
         }
 
+        // Both ways for an advance: Fully Paid is read off the schedule, so a
+        // schedule that says something is still owed puts it back to Active.
+        // An advance marked paid on instalments no payroll ever took would
+        // otherwise read Fully Paid while payroll went on collecting it.
+        if ($left > 0 && $status === 'paid' && $this->type === self::ADVANCE) {
+            $status = 'active';
+        }
+
         if (round((float) $this->balance, 2) === round($left, 2) && $status === $this->status) {
             return false;
         }
@@ -187,6 +195,76 @@ class Loan extends Model
     public function collectionOpensOn(): Carbon
     {
         return ($this->starts_on ?? $this->issued_on)->copy();
+    }
+
+    /**
+     * The days this worker has pay an instalment can come out of: days clocked
+     * in, and days of approved paid leave that have come round. Y-m-d, from
+     * the week collection opens.
+     *
+     * @var list<string>|null  null until loaded
+     */
+    private ?array $payDates = null;
+
+    /** @return list<string> */
+    public function payDates(): array
+    {
+        if ($this->payDates === null) {
+            static::loadPayDates(collect([$this]));
+        }
+
+        return $this->payDates;
+    }
+
+    /**
+     * Load payDates() for many advances in two queries rather than two each.
+     * Payroll asks every advance about every week, so it must not query per
+     * question.
+     *
+     * @param  iterable<self>  $advances
+     */
+    public static function loadPayDates(iterable $advances): void
+    {
+        $advances = collect($advances)->filter(fn ($l) => $l instanceof self && $l->payDates === null);
+
+        if ($advances->isEmpty()) {
+            return;
+        }
+
+        $ids   = $advances->pluck('employee_id')->unique()->values()->all();
+        $from  = $advances->map(fn (self $l) => $l->collectionOpensOn()->subDays(6)->toDateString())->min();
+        $today = now()->toDateString();
+        $dates = [];
+
+        Attendance::whereIn('employee_id', $ids)
+            ->whereNotNull('time_in')
+            ->whereDate('date', '>=', $from)
+            ->get(['employee_id', 'date'])
+            ->each(function ($a) use (&$dates) {
+                $dates[(int) $a->employee_id][Carbon::parse($a->date)->toDateString()] = true;
+            });
+
+        LeaveRequest::approved()
+            ->whereIn('employee_id', $ids)
+            ->where('is_paid', true)
+            ->where('days', '>', 0)
+            ->whereDate('ends_on', '>=', $from)
+            ->whereDate('starts_on', '<=', $today)
+            ->get(['employee_id', 'starts_on', 'ends_on'])
+            ->each(function (LeaveRequest $l) use (&$dates, $from, $today) {
+                $day  = Carbon::parse(max($l->starts_on->toDateString(), $from));
+                $last = min($l->ends_on->toDateString(), $today);
+
+                for (; $day->toDateString() <= $last; $day->addDay()) {
+                    $dates[(int) $l->employee_id][$day->toDateString()] = true;
+                }
+            });
+
+        foreach ($advances as $advance) {
+            $mine = array_keys($dates[(int) $advance->employee_id] ?? []);
+            sort($mine);
+            $advance->payDates = $mine;
+        }
     }
 
     /**
@@ -238,6 +316,19 @@ class Loan extends Model
             }
         }
 
+        // The weeks the worker has pay in. An instalment comes out of a payroll,
+        // and a week with no attendance and no paid leave has none: payroll
+        // takes nothing from it. The schedule used to charge it anyway, so
+        // this tab showed a deduction — "20% paid" — that Payroll Records,
+        // Payroll Processing and the payslip had never made. It charges only
+        // the weeks payroll can collect in now, and payroll asks it what each
+        // week takes, so the two cannot come apart.
+        $payWeeks = [];
+
+        foreach ($this->payDates() as $day) {
+            $payWeeks[Carbon::parse($day)->startOfWeek($weekStartsOn)->toDateString()] = true;
+        }
+
         for ($week = $opens; $week->lessThanOrEqualTo($last) && $left > 0; $week->addWeek()) {
             $key     = $week->toDateString();
             $byRun   = 0.0;
@@ -267,8 +358,10 @@ class Loan extends Model
             }
 
             // A week before collection starts takes the payments made in it
-            // and nothing else.
-            if ($week->lessThan($first)) {
+            // and nothing else — and so does a week with no pay to take an
+            // instalment out of. What it did not take is still owed, and the
+            // next week with pay takes its instalment then.
+            if ($week->lessThan($first) || ! isset($payWeeks[$key])) {
                 continue;
             }
 
@@ -325,6 +418,7 @@ class Loan extends Model
             ->where('status', '!=', 'cancelled')
             ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
             ->get()
+            ->tap(fn ($all) => static::loadPayDates($all))
             ->sum(fn (self $l) => $l->outstanding), 2);
     }
 
@@ -361,6 +455,7 @@ class Loan extends Model
             })
             ->with(['deductions' => fn ($q) => $q->orderBy('deducted_on')->orderBy('id')])
             ->get()
+            ->tap(fn ($all) => static::loadPayDates($all))
             ->map(fn (self $l) => ['advance' => $l, 'employee_id' => (int) $l->employee_id])
             ->all();
     }

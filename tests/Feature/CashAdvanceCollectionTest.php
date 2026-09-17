@@ -337,7 +337,9 @@ class CashAdvanceCollectionTest extends TestCase
     /** The balance follows what payroll has taken, without anybody pressing anything. */
     public function test_the_balance_follows_the_payrolls_that_have_passed(): void
     {
-        $e = $this->worker();
+        // A day worked in each of the three weeks, so each has a payroll to
+        // take its instalment out of.
+        $e = $this->worker(['2026-09-10', '2026-09-17', '2026-09-24']);
         $advance = $this->advance($e, 500, 200);
 
         // Saturday of the first week: one instalment has been taken.
@@ -354,7 +356,7 @@ class CashAdvanceCollectionTest extends TestCase
     /** Nothing left, and the row says Fully Paid — saved, so the filter finds it. */
     public function test_it_marks_itself_fully_paid_once_nothing_is_left(): void
     {
-        $e = $this->worker();
+        $e = $this->worker(['2026-09-10', '2026-09-17', '2026-09-24']);
         $advance = $this->advance($e, 500, 200);
 
         Carbon::setTestNow(Carbon::parse('2026-09-26 12:00:00', 'Asia/Manila'));
@@ -438,7 +440,7 @@ class CashAdvanceCollectionTest extends TestCase
      */
     public function test_the_history_lists_every_deduction_and_payment_with_the_balance(): void
     {
-        $e = $this->worker();
+        $e = $this->worker(['2026-09-10', '2026-09-17']);
         $advance = $this->advance($e, 500, 200);
 
         LoanDeduction::create([
@@ -565,7 +567,7 @@ class CashAdvanceCollectionTest extends TestCase
     /** A settled advance keeps its history but is not offered a payment. */
     public function test_a_settled_advance_shows_history_but_no_payment(): void
     {
-        $e = $this->worker();
+        $e = $this->worker(['2026-09-10', '2026-09-17', '2026-09-24']);
         $this->advance($e, 500, 200);
 
         Carbon::setTestNow(Carbon::parse('2026-09-26 12:00:00', 'Asia/Manila'));
@@ -895,5 +897,141 @@ class CashAdvanceCollectionTest extends TestCase
 
         $this->assertEqualsWithDelta(20000.0, (float) ($owed[(string) $owing->id] ?? 0), 0.001);
         $this->assertArrayNotHasKey((string) $clear->id, $owed, 'a worker owing nothing has the whole limit');
+    }
+
+    // ── The tab and payroll agree ────────────────────────────────────────
+
+    /**
+     * A week of leave collects the instalment, and every screen shows it.
+     *
+     * Reported for Lawrence Bernas: the Cash Advances tab showed his ₱5,000
+     * advance 20% paid — this week's ₱1,000 instalment taken — while Payroll
+     * Records and Payroll Processing showed no deduction at all. He was on
+     * paid leave all week with no attendance, and the payroll row a week of
+     * leave gets carried the advance at zero while the schedule counted it.
+     */
+    public function test_a_week_of_leave_collects_the_instalment_on_every_screen(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-17 14:00:00', 'Asia/Manila'));
+
+        $e = $this->worker([], 'Lawrence Bernas');
+
+        \App\Models\LeaveRequest::create([
+            'employee_id' => $e->id, 'leave_type' => 'sick', 'starts_on' => '2026-09-16', 'ends_on' => '2026-09-18',
+            'days' => 3, 'is_paid' => true, 'filed_by' => $this->admin->id,
+        ]);
+
+        $net = fn () => (float) $this->totals($e, '2026-09-14', '2026-09-20')['net'];
+        $before = $net();
+
+        $advance = Loan::create([
+            'employee_id' => $e->id, 'type' => Loan::ADVANCE, 'principal' => 5000, 'balance' => 5000,
+            'installment' => 1000, 'schedule' => 'per_payroll', 'issued_on' => '2026-09-17',
+            'status' => 'active', 'created_by' => $this->admin->id,
+        ]);
+
+        // The tab: this week's instalment taken.
+        $this->assertEqualsWithDelta(4000.0, $advance->fresh()->outstanding, 0.001);
+        $this->assertSame(20, $advance->fresh()->progress);
+
+        // Payroll Records: the same ₱1,000, off the net.
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001);
+        $this->assertEqualsWithDelta($before - 1000, $net(), 0.011, 'the net pay is ₱1,000 less');
+
+        // Payroll Processing.
+        $sel = $this->actingAs($this->admin)->get(route('payroll-processing.index', [
+            'period' => '2026-09-14_2026-09-20', 'view' => 'workflow', 'employee' => $e->id,
+        ]))->assertOk()->viewData('sel');
+
+        $this->assertEqualsWithDelta(1000.0, $sel['advance'], 0.001, 'named as the advance instalment');
+        $this->assertEqualsWithDelta(1000.0, $sel['vale'], 0.001, 'on the vale / cash advance line');
+        $this->assertEqualsWithDelta($before - 1000, $sel['net'], 0.011);
+
+        // The payslip.
+        $slip = $this->actingAs($this->admin)
+            ->get(route('payslip.batch', ['from' => '2026-09-14', 'to' => '2026-09-20', 'employee' => $e->id]))
+            ->assertOk()->viewData('slips')->first();
+
+        $this->assertEqualsWithDelta(1000.0, $slip['ded']['vale'], 0.001, 'in the payslip deductions');
+        $this->assertEqualsWithDelta($before - 1000, $slip['net'], 0.011);
+
+        // And a run for the week charges it once.
+        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
+            'period_start' => '2026-09-14', 'period_end' => '2026-09-20',
+        ]);
+
+        $item = \App\Models\PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
+
+        $this->assertEqualsWithDelta(1000.0, (float) $item->advance_deduction, 0.001);
+        $this->assertEqualsWithDelta($before - 1000, (float) $item->net_pay, 0.011);
+    }
+
+    /**
+     * A week with no pay collects nothing — on the tab as in payroll.
+     *
+     * There is nothing to take an instalment out of: no attendance, no paid
+     * leave, no payroll row. The schedule used to charge the week anyway, so
+     * the tab showed a deduction no payroll had made. What is not taken stays
+     * owed, and the next week with pay takes its instalment then.
+     */
+    public function test_a_week_with_no_pay_collects_nothing_anywhere(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-17 14:00:00', 'Asia/Manila'));
+
+        $e       = $this->worker([], 'Lawrence Bernas');
+        $advance = $this->advance($e, 5000, 1000, '2026-09-14');
+
+        $this->assertEqualsWithDelta(5000.0, $advance->fresh()->outstanding, 0.001, 'nothing taken');
+        $this->assertSame(0, $advance->fresh()->progress);
+        $this->assertSame([], $advance->fresh()->walk('2026-09-17', Carbon::MONDAY)['lines']);
+        $this->assertSame([], $this->figures($e, '2026-09-14', '2026-09-20'), 'and no payroll row to take it from');
+
+        // He clocks in on the Friday: the week has pay, and both sides take it.
+        Carbon::setTestNow(Carbon::parse('2026-09-18 18:00:00', 'Asia/Manila'));
+
+        Attendance::create([
+            'employee_id' => $e->id, 'shift_id' => $e->shift_id, 'date' => '2026-09-18', 'session' => 'AM',
+            'time_in' => '2026-09-18 08:00:00', 'time_out' => '2026-09-18 17:00:00',
+        ]);
+
+        $this->assertEqualsWithDelta(4000.0, $advance->fresh()->outstanding, 0.001);
+        $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001);
+    }
+
+    /**
+     * Week by week, what the tab says each payroll took is what that payroll
+     * took — across a week worked, a week off, a week of leave and a week
+     * worked again — and the total never more than was advanced.
+     */
+    public function test_the_tab_and_payroll_agree_week_by_week(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-05 09:00:00', 'Asia/Manila'));
+
+        $e = $this->worker(['2026-09-10', '2026-10-01'], 'Lawrence Bernas');   // weeks 37 and 40
+
+        \App\Models\LeaveRequest::create([
+            'employee_id' => $e->id, 'leave_type' => 'vacation', 'starts_on' => '2026-09-22', 'ends_on' => '2026-09-23',
+            'days' => 2, 'is_paid' => true, 'filed_by' => $this->admin->id,
+        ]);                                                                      // week 39
+
+        $advance = $this->advance($e, 2500, 1000, '2026-09-07');
+
+        $weeks = [
+            ['2026-09-07', '2026-09-13', 1000.0],   // worked
+            ['2026-09-14', '2026-09-20', 0.0],      // nothing
+            ['2026-09-21', '2026-09-27', 1000.0],   // leave
+            ['2026-09-28', '2026-10-04', 500.0],    // worked — the remainder
+        ];
+
+        $lines = collect($advance->fresh()->walk('2026-10-05', Carbon::MONDAY)['lines'])->keyBy('week');
+
+        foreach ($weeks as [$opens, $closes, $expected]) {
+            $this->assertEqualsWithDelta($expected, (float) ($lines[$opens]['amount'] ?? 0), 0.001, "the tab, week of {$opens}");
+            $this->assertEqualsWithDelta($expected, $this->advanceTaken($e, $opens, $closes), 0.001, "payroll, week of {$opens}");
+        }
+
+        $this->assertEqualsWithDelta(0.0, $advance->fresh()->outstanding, 0.001);
+        $this->assertEqualsWithDelta(2500.0, $this->advanceTaken($e, '2026-09-07', '2026-10-04'), 0.001,
+            'all of it, and not a peso more');
     }
 }

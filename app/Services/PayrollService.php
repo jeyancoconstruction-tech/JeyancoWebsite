@@ -316,7 +316,15 @@ class PayrollService
         // stop on the Tuesday — asked only up to the Tuesday, it was never
         // loaded, and that week collected nothing while the balance on Leave &
         // Advances counted it as taken.
-        $advancesTo = $dates->isEmpty() ? null : Carbon::parse($dates->max())->addDays(6)->toDateString();
+        //
+        // And the end of the week the range closes in, when there is one. A
+        // range nobody clocked in on still has leave in it, and a week of
+        // leave collects its instalment like any other — sized off attendance
+        // alone, it loaded no advances at all.
+        $advancesTo = collect([
+            $dates->isEmpty() ? null : Carbon::parse($dates->max())->addDays(6)->toDateString(),
+            $to ? Carbon::parse($to)->addDays(6)->toDateString() : null,
+        ])->filter()->max();
 
         $cfg['valeAdvances'] = $advancesTo === null ? [] : ValeAdvance::upTo($advancesTo);
 
@@ -753,6 +761,51 @@ class PayrollService
     }
 
     /**
+     * What one worker's advances collect in the week opening on a date — the
+     * Payroll Settings vale advances that name them, and their own cash
+     * advances — as [due, taken].
+     *
+     * Due is what each advance's own schedule says the week takes. Taken is
+     * that, held to the vale ceiling: the ceiling limits what one period may
+     * collect, so the instalment answers to it too, and to what the day vale
+     * has already taken under it. What it does not collect stays owed; only
+     * this period is limited.
+     *
+     * One place for a worked week and a week of leave alike, so neither can
+     * collect differently from the other or from the schedule the Cash
+     * Advances tab shows.
+     *
+     * @return array{0: float, 1: float}
+     */
+    private function advancesFor(int $empId, string $weekOpens, int $weekStart, array $cfg, array $weekRates,
+                                 float $gross, float $auto, float $valeSoFar): array
+    {
+        $due = 0.0;
+
+        foreach ($cfg['valeAdvances'] ?? [] as $adv) {
+            if ($adv['all'] || in_array($empId, $adv['employees'])) {
+                $due += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
+            }
+        }
+
+        foreach ($cfg['cashAdvances'] ?? [] as $adv) {
+            if ($adv['employee_id'] === $empId) {
+                $due += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
+            }
+        }
+
+        $taken   = $due;
+        $ceiling = (int) ($weekRates['vale_ceiling_percent'] ?? 100);
+
+        if ($ceiling < 100 && $due > 0) {
+            $allowance = round(max(0, $gross - $auto) * $ceiling / 100, 2);
+            $taken     = max(0, min($due, round($allowance - $valeSoFar, 2)));
+        }
+
+        return [$due, $taken];
+    }
+
+    /**
      * The stretch of a week that leave may be credited for.
      *
      * Three bounds, and the narrowest of them wins. The week, because pay is
@@ -980,31 +1033,9 @@ class PayrollService
                     // summed above came off the days themselves; this is the
                     // instalment on a sum already handed over, so it is a
                     // figure for the week rather than for any one day.
-                    $advanceDue = 0.0;
-
-                    foreach ($cfg['valeAdvances'] ?? [] as $adv) {
-                        if ($adv['all'] || in_array($empId, $adv['employees'])) {
-                            $advanceDue += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
-                        }
-                    }
-
-                    foreach ($cfg['cashAdvances'] ?? [] as $adv) {
-                        if ($adv['employee_id'] === $empId) {
-                            $advanceDue += $adv['advance']->dueForWeekOpening($weekOpens, $weekStart);
-                        }
-                    }
-
-                    // The ceiling is a limit on what one period may collect, so
-                    // the instalment answers to it too — and to what the day
-                    // vale has already taken under it. What it does not collect
-                    // stays owed; only this period is limited.
-                    $advanceTaken = $advanceDue;
-                    $ceiling      = (int) ($weekRates['vale_ceiling_percent'] ?? 100);
-
-                    if ($ceiling < 100 && $advanceDue > 0) {
-                        $allowance    = round(max(0, $sumGross - $sumAuto) * $ceiling / 100, 2);
-                        $advanceTaken = max(0, min($advanceDue, round($allowance - $sumVale, 2)));
-                    }
+                    [$advanceDue, $advanceTaken] = $this->advancesFor(
+                        (int) $empId, $weekOpens, $weekStart, $cfg, $weekRates, $sumGross, $sumAuto, $sumVale
+                    );
 
                     $sumVale += $advanceTaken;
                     $sumNet  -= $advanceTaken;
@@ -1104,6 +1135,18 @@ class PayrollService
                     (bool) $onLeave->isExcludedFromPayroll()
                 );
 
+                // A cash advance is collected from a week of leave the same as
+                // from a week worked. It was not: this row carried the advance
+                // at zero, while the schedule on the advance counted the week's
+                // instalment as taken — so Leave & Advances showed a deduction
+                // that Payroll Records, Payroll Processing and the payslip never
+                // made. Both ask the same schedule now.
+                [$advanceDue, $advanceTaken] = $this->advancesFor(
+                    (int) $leaveEmpId, $weekOpens, $weekStart, $cfg, $weekRates, $pay, $ded['total'], 0.0
+                );
+
+                $net = round($pay - $ded['total'] - $advanceTaken, 2);
+
                 $employeeSummaries[] = [
                     'employee_id'         => (int) $leaveEmpId,
                     'shift'               => $onLeave->shift?->name,
@@ -1119,15 +1162,17 @@ class PayrollService
                     'pagibigDeduction'    => $ded['pagibig'],
                     'withholdingTax'      => $ded['tax'],
                     'autoDeductions'      => $ded['total'],
-                    'totalDeductions'     => $ded['total'],
-                    'net'                 => round($pay - $ded['total'], 2),
+                    'vale'                => round($advanceTaken, 2),
+                    'vale_advance'        => round($advanceTaken, 2),
+                    'vale_advance_due'    => round($advanceDue, 2),
+                    'totalDeductions'     => round($ded['total'] + $advanceTaken, 2),
+                    'net'                 => $net,
                 ] + array_fill_keys([
                     'workdays', 'hours', 'minutes', 'overtime', 'holidayPay', 'restDayPay',
-                    'nightDiffPay', 'bonus', 'late_minutes',
-                    'vale', 'vale_advance', 'vale_advance_due', 'manualDeductions',
+                    'nightDiffPay', 'bonus', 'late_minutes', 'manualDeductions',
                 ], 0);
 
-                $weeklyTotalSalary += round($pay - $ded['total'], 2);
+                $weeklyTotalSalary += $net;
             }
 
             $payrollWeeks[] = [

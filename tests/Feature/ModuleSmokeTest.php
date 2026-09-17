@@ -207,7 +207,13 @@ class ModuleSmokeTest extends TestCase
         $this->assertEqualsWithDelta((float) $otHours, $item->ot_hours, 0.01,
             'the overtime hours on the line are the ones attendance counted');
         $this->assertGreaterThan(0, $item->leave_pay, 'approved paid leave was not credited');
-        $this->assertSame(500.0, (float) $item->advance_deduction, 'the cash advance instalment was not charged');
+        // Every pay week of the run that has pay in it takes an instalment — a
+        // week of paid leave as much as a week worked — and the run charges
+        // exactly what the engine did, no more. The range is the last eight
+        // days on the real clock, so how many weeks that is depends on the day.
+        $this->assertGreaterThanOrEqual(500.0, (float) $item->advance_deduction, 'the cash advance instalment was not charged');
+        $this->assertEqualsWithDelta((float) collect($engine['periods'])->sum('vale_advance'), (float) $item->advance_deduction, 0.001,
+            'the run charges the advance payroll took, once');
         $this->assertSame(0.0, (float) $item->loan_deduction, 'an old loan must not be charged');
 
         // Recalculating must not collect the loan twice.
