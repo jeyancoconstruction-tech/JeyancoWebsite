@@ -252,18 +252,22 @@
                                      nakikita mo muna ang buong laman bago mo
                                      ito baguhin. --}}
                                 <div class="emp-more-menu">
-                                    <button type="button" class="emp-more-item js-set-vale"
-                                            data-id="{{ $emp->id }}"
-                                            data-name="{{ $emp->name }}"
-                                            data-vale="{{ $emp->vale ?? 0 }}">
-                                        <i class="fas fa-coins"></i> {{ __('Set Vale') }}
-                                    </button>
-                                    {{-- The number on the badge, not the row id: it is what
-                                         gets read down the phone to payroll. --}}
-                                    <button type="button" class="emp-more-item js-copy-id"
-                                            data-empid="{{ str_pad($emp->id, 4, '0', STR_PAD_LEFT) }}">
-                                        <i class="fas fa-hashtag"></i> {{ __('Copy ID') }}
-                                    </button>
+                                    {{-- A bonus for the pay period running now. Only for
+                                         whoever may already give one in Payroll Settings:
+                                         it is money on a payslip. --}}
+                                    @if(auth()->user()?->isAdmin() && ! $emp->isPending())
+                                        <button type="button" class="emp-more-item js-add-bonus"
+                                                data-id="{{ $emp->id }}"
+                                                data-name="{{ $emp->name }}"
+                                                data-given="{{ json_encode(($bonuses[$emp->id] ?? collect())->map(fn ($b) => [
+                                                    'id'     => $b->id,
+                                                    'amount' => '₱' . number_format((float) $b->amount, 2),
+                                                    'note'   => $b->note,
+                                                    'on'     => $b->effective_on->format('M d'),
+                                                ])->values()) }}">
+                                            <i class="fas fa-gift"></i> {{ __('Add bonus') }}
+                                        </button>
+                                    @endif
                                     <button type="button" class="emp-more-item emp-more-delete js-emp-delete"
                                             data-id="{{ $emp->id }}"
                                             data-name="{{ $emp->name }}">
@@ -337,29 +341,51 @@
     </div>
 </div>
 
-{{-- ── Set Vale modal ─────────────────────────────────────────────────────── --}}
-<div class="modal fade" id="empValeModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content emp-modal-content">
-            <div class="emp-modal-header">
-                <div>
-                    <h3 class="emp-modal-title">{{ __('Set Vale Balance') }}</h3>
-                    <p class="emp-modal-sub" id="valeModalName">—</p>
+{{-- ── Add bonus modal ─────────────────────────────────────────────────────
+     One worker, the pay period running now. The period is shown rather than
+     asked for: this is the bonus for the week being worked, and a date box
+     would only invite a bonus dated into a week already paid. --}}
+@if(auth()->user()?->isAdmin())
+<div class="modal fade" id="empBonusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered emp-dialog" style="max-width:460px;">
+        <div class="modal-content emp-modal">
+            <form method="POST" id="empBonusForm" data-once>
+                @csrf
+                <div class="emp-head">
+                    <span class="emp-head-icon"><i class="fas fa-gift"></i></span>
+                    <div class="emp-head-text">
+                        <h6 class="emp-head-title">{{ __('Add bonus') }}</h6>
+                        <p class="emp-head-sub"><span id="bonusModalName">—</span> &middot; {{ $bonusPeriod }}</p>
+                    </div>
+                    <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+                <div class="modal-body emp-body">
+                    <div class="emp-field">
+                        <label class="ep-label" for="bonusAmount">{{ __('Amount') }} <span class="ep-req">*</span></label>
+                        <input class="form-control" id="bonusAmount" type="number" step="0.01" min="0.01" name="amount" required>
+                        <span class="ep-hint">{{ __('Paid with this period, on top of the net. A bonus is not wages, so nothing is withheld on it.') }}</span>
+                    </div>
+                    <div class="emp-field">
+                        <label class="ep-label" for="bonusNote">{{ __('Note') }}</label>
+                        <input class="form-control" id="bonusNote" type="text" name="note" maxlength="160" placeholder="{{ __('What it is for') }}">
+                    </div>
+                </div>
+            </form>
+            {{-- Given already this period, each with a way back while the
+                 period is still running. --}}
+            <div class="modal-body emp-body pt-0" id="bonusGivenWrap" hidden>
+                <p class="ep-label">{{ __('Given this period') }}</p>
+                <div id="bonusGiven"></div>
             </div>
-            <div class="modal-body p-3">
-                <label class="emp-site-add-label" for="valeInput"><i class="fas fa-coins"></i> {{ __('Vale amount (₱)') }}</label>
-                <input type="number" step="0.01" min="0" id="valeInput" class="emp-modal-input" style="width:100%;" placeholder="0.00">
-                <p class="emp-modal-sub mt-2" style="color:var(--text-muted);">{{ __('Manual running balance per employee. Payroll deductions are still entered per period on the Payroll page.') }}</p>
-                <div class="d-flex justify-content-end gap-2 mt-3">
-                    <button type="button" class="emp-btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                    <button type="button" class="emp-site-add-btn" id="valeSaveBtn">{{ __('Save') }}</button>
-                </div>
+            <div class="emp-foot">
+                <p class="emp-foot-note"><span class="ep-req">*</span> {{ __('Required') }}</p>
+                <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                <button type="submit" form="empBonusForm" class="emp-btn-save"><i class="fas fa-check"></i> <span>{{ __('Add bonus') }}</span></button>
             </div>
         </div>
     </div>
 </div>
+@endif
 
 {{-- ── Styles ──────────────────────────────────────────────────────────────── --}}
 <style>
@@ -841,6 +867,20 @@
 .emp-more-delete i          { color: var(--danger); }
 .emp-more-delete:hover      { background: rgba(179,64,58,0.08); }
 
+/* ── A bonus already given this period, inside the Add bonus dialog ──── */
+.emp-bonus-given {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 7px 0; font-size: 12.5px; color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+}
+.emp-bonus-given:last-child { border-bottom: none; }
+.emp-bonus-remove {
+    border: none; background: none; padding: 0;
+    font-size: 12px; font-weight: 600; color: var(--danger); cursor: pointer;
+}
+.emp-bonus-remove:hover     { text-decoration: underline; }
+.emp-bonus-remove:disabled  { opacity: .55; cursor: not-allowed; }
+
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 .emp-modal-content {
     border: 1px solid var(--border); border-radius: 6px;
@@ -1117,61 +1157,75 @@
         (type === 'error' ? Notify.error : Notify.success)(msg);
     }
 
-    // ── Copy ID ──────────────────────────────────────────────────────────────
-    // clipboard.writeText needs a secure context, which a site served over
-    // plain http is not, so it is missing rather than merely failing there.
+    // ── Add bonus (for the pay period running now) ───────────────────────────
+    // The form posts and the page comes back with a toast, the way the rest of
+    // the money screens work; what it already gave this period is listed with
+    // a way to take it back while the period is still open.
+    const bonusModalEl = document.getElementById('empBonusModal');
+    let   bonusModal   = null;
+
     document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.js-copy-id');
-        if (!btn) return;
-        const id = btn.dataset.empid || '';
+        const btn = e.target.closest('.js-add-bonus');
+        if (!btn || !bonusModalEl) return;
+
+        const id   = btn.dataset.id;
+        const form = document.getElementById('empBonusForm');
+
+        form.action = `{{ url('employees') }}/${id}/bonus`;
+        form.reset();
+        document.getElementById('bonusModalName').textContent = btn.dataset.name;
+
+        // What this worker was already given this period.
+        let given = [];
+        try { given = JSON.parse(btn.dataset.given || '[]'); } catch (err) {}
+
+        const wrap = document.getElementById('bonusGivenWrap');
+        const list = document.getElementById('bonusGiven');
+        list.textContent = '';
+
+        given.forEach(b => {
+            const row = document.createElement('div');
+            row.className = 'emp-bonus-given';
+
+            const what = document.createElement('span');
+            what.textContent = b.amount + ' · ' + b.on + (b.note ? ' · ' + b.note : '');
+            row.appendChild(what);
+
+            const take = document.createElement('form');
+            take.method = 'POST';
+            take.action = `{{ url('employees') }}/${id}/bonus/${b.id}`;
+            take.dataset.once = '';
+            take.innerHTML = '@csrf' + '<input type="hidden" name="_method" value="DELETE">';
+
+            const btnRemove = document.createElement('button');
+            btnRemove.type = 'submit';
+            btnRemove.className = 'emp-bonus-remove';
+            btnRemove.textContent = '{{ __('Remove') }}';
+            take.appendChild(btnRemove);
+            row.appendChild(take);
+            list.appendChild(row);
+        });
+
+        wrap.hidden = given.length === 0;
+
         closeMenus();
-        if (navigator.clipboard?.writeText) {
-            navigator.clipboard.writeText(id)
-                .then(() => flashToast('Copied #' + id))
-                .catch(() => flashToast('Could not copy. The ID is #' + id, 'error'));
-        } else {
-            flashToast('Copying needs https. The ID is #' + id, 'error');
-        }
+        if (!bonusModal && window.bootstrap) bonusModal = new bootstrap.Modal(bonusModalEl);
+        if (bonusModal) bonusModal.show();
+        setTimeout(() => document.getElementById('bonusAmount').focus(), 250);
     });
 
-    // ── Set Vale (manual per-employee balance) ───────────────────────────────
-    const valeModalEl = document.getElementById('empValeModal');
-    let   valeModal   = null;
-    let   valeEmpId   = null;
-    function getValeModal() {
-        if (!valeModal && window.bootstrap) valeModal = new bootstrap.Modal(valeModalEl);
-        return valeModal;
-    }
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.js-set-vale');
-        if (!btn) return;
-        valeEmpId = btn.dataset.id;
-        document.getElementById('valeModalName').textContent = btn.dataset.name;
-        document.getElementById('valeInput').value = parseFloat(btn.dataset.vale || 0).toFixed(2);
-        closeMenus();
-        const m = getValeModal(); if (m) m.show();
-        setTimeout(() => document.getElementById('valeInput').focus(), 250);
-    });
-    document.getElementById('valeSaveBtn')?.addEventListener('click', async function () {
-        const amount = parseFloat(document.getElementById('valeInput').value);
-        if (isNaN(amount) || amount < 0) { flashToast('Enter a valid amount.', 'error'); return; }
-        this.disabled = true;
-        try {
-            const r = await fetch(`{{ url('employees') }}/${valeEmpId}/vale`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                body: JSON.stringify({ vale: amount }),
-            });
-            const data = await r.json();
-            if (data.success) {
-                const cell = document.querySelector(`[data-vale-cell="${valeEmpId}"]`);
-                if (cell) { cell.textContent = data.formatted; cell.classList.toggle('has-vale', data.vale > 0); }
-                const m = getValeModal(); if (m) m.hide();
-                flashToast('Vale balance updated.', 'success');
-            } else { flashToast(data.message || 'Update failed.', 'error'); }
-        } catch { flashToast('Network error — please try again.', 'error'); }
-        finally { this.disabled = false; }
-    });
+    // Sent once: a second click on Add bonus would give a second bonus.
+    document.addEventListener('submit', function (e) {
+        const form = e.target.closest('form[data-once]');
+        if (!form) return;
+        if (form.dataset.sent) { e.preventDefault(); return; }
+        form.dataset.sent = '1';
+        form.querySelectorAll('button[type="submit"]').forEach(b => { b.disabled = true; });
+        // The modal's own button sits in the footer, outside the form it sends.
+        if (form.id) {
+            document.querySelectorAll(`button[form="${form.id}"]`).forEach(b => { b.disabled = true; });
+        }
+    }, true);
 
     // ── Shift ────────────────────────────────────────────────────────────────
     // Kusang nagse-save ang dropdown. Ang mabilis na tumbok ang buong punto:

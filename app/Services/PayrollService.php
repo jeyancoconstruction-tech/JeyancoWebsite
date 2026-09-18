@@ -308,13 +308,25 @@ class PayrollService
 
         // The one-off grants that land anywhere in this range, loaded once. A
         // query per employee per week would be thousands for a month of a full
-        // crew. The dates come from the records rather than the arguments,
-        // which may be open-ended.
+        // crew.
+        //
+        // By the pay weeks the range touches, not by the days somebody happened
+        // to clock in on: a bonus given today, on a morning nobody has clocked
+        // in yet, is dated after the last attendance date and was not loaded at
+        // all — so the week it was given in paid nothing. The week each grant
+        // belongs to is picked out below.
         $dates = $records->pluck('date')->map(fn ($d) => Carbon::parse($d)->toDateString());
 
-        $cfg['bonusGrants'] = $dates->isEmpty()
+        $weekStartsOn = (int) ($cfg['day']->week_starts_on ?? Carbon::MONDAY);
+        $grantsFrom   = collect([$from, $dates->min()])->filter()->min();
+        $grantsTo     = collect([$to, $dates->max()])->filter()->max();
+
+        $cfg['bonusGrants'] = $grantsFrom === null || $grantsTo === null
             ? []
-            : Bonus::inRange($dates->min(), $dates->max());
+            : Bonus::inRange(
+                Carbon::parse($grantsFrom)->startOfWeek($weekStartsOn)->toDateString(),
+                Carbon::parse($grantsTo)->startOfWeek($weekStartsOn)->addDays(6)->toDateString()
+            );
 
         // Advances are filtered on where their schedule begins rather than on
         // the range: one started months ago may still have instalments left to
@@ -1236,7 +1248,19 @@ class PayrollService
                 $advanceDue   = $advances['due'];
                 $advanceTaken = $advances['taken'];
 
-                $net = round($pay - $ded['total'] - $advanceTaken, 2);
+                // A bonus given to somebody by name is theirs whether they
+                // worked the week or spent it on leave, so this row pays the
+                // week's grants too. The standing period bonus is not added
+                // here: that one goes with a week worked.
+                $leaveBonus = 0.0;
+
+                foreach ($grants as $grant) {
+                    if ($grant['all'] || in_array((int) $leaveEmpId, $grant['employees'])) {
+                        $leaveBonus += $grant['amount'];
+                    }
+                }
+
+                $net = round($pay - $ded['total'] - $advanceTaken + $leaveBonus, 2);
 
                 $employeeSummaries[] = [
                     'employee_id'         => (int) $leaveEmpId,
@@ -1248,6 +1272,7 @@ class PayrollService
                     'paidLeaveDays'       => round($paidDays, 2),
                     'leavePay'            => $pay,
                     'gross'               => $pay,
+                    'bonus'               => round($leaveBonus, 2),
                     'sssDeduction'        => $ded['sss'],
                     'philhealthDeduction' => $ded['philhealth'],
                     'pagibigDeduction'    => $ded['pagibig'],
@@ -1262,7 +1287,7 @@ class PayrollService
                     'net'                 => $net,
                 ] + array_fill_keys([
                     'workdays', 'hours', 'minutes', 'overtime', 'holidayPay', 'restDayPay',
-                    'nightDiffPay', 'bonus', 'late_minutes', 'manualDeductions',
+                    'nightDiffPay', 'late_minutes', 'manualDeductions',
                 ], 0);
 
                 $weeklyTotalSalary += $net;

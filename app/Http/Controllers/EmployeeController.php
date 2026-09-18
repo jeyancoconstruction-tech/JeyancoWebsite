@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Models\AuditLog;
+use App\Models\Bonus;
 use App\Models\Employee;
 use App\Models\Shift;
+use App\Models\SystemSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Models\Attendance;
@@ -60,7 +63,111 @@ class EmployeeController extends Controller
             'contractual' => $contractual,
         ];
 
-        return view('employees.index', compact('employees', 'sites', 'shifts', 'stats'));
+        // The pay period running now, and the bonuses already given in it from
+        // this page, so a row can offer to take one back. Loaded once for the
+        // whole table rather than per row, and only for whoever may give one.
+        [$periodOpens, $periodCloses] = self::payPeriod();
+
+        $bonusPeriod = Carbon::parse($periodOpens)->format('M d') . ' – ' . Carbon::parse($periodCloses)->format('M d, Y');
+        $bonuses     = auth()->user()?->isAdmin()
+            ? Bonus::with('employees:id')
+                ->where('all_employees', false)
+                ->whereBetween('effective_on', [$periodOpens, $periodCloses])
+                ->orderBy('id')
+                ->get()
+                ->filter(fn (Bonus $b) => $b->employees->count() === 1)
+                ->groupBy(fn (Bonus $b) => $b->employees->first()->id)
+            : collect();
+
+        return view('employees.index', compact('employees', 'sites', 'shifts', 'stats', 'bonuses', 'bonusPeriod'));
+    }
+
+    /**
+     * The pay period running on a day — the pay week payroll groups by, which
+     * opens on the day System Settings names.
+     *
+     * @return array{0: string, 1: string}  [opens, closes] as Y-m-d
+     */
+    private static function payPeriod(?string $on = null): array
+    {
+        $opens = Carbon::parse($on ?? now())
+            ->startOfWeek((int) (SystemSetting::current()->week_starts_on ?? Carbon::MONDAY));
+
+        return [$opens->toDateString(), $opens->copy()->addDays(6)->toDateString()];
+    }
+
+    /**
+     * Give this worker a bonus for the pay period running now.
+     *
+     * The same record Payroll Settings has always made — a grant naming one
+     * worker on one date — so payroll pays it the way it pays any other:
+     * added to the net of the week the date falls in, and not taxed, a bonus
+     * not being wages.
+     */
+    public function storeBonus(Request $request, Employee $employee)
+    {
+        // A pending registration is not on the payroll at all, so nothing
+        // would ever pay this out.
+        abort_if($employee->isPending(), 404);
+
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:0.01|max:1000000',
+            'note'   => 'nullable|string|max:160',
+        ], [
+            'amount.min' => 'A bonus of nothing is not a bonus.',
+        ]);
+
+        [$opens, $closes] = self::payPeriod();
+
+        $bonus = Bonus::create([
+            'amount'        => $data['amount'],
+            'effective_on'  => now()->toDateString(),
+            'all_employees' => false,
+            'note'          => $data['note'] ?? null,
+            'created_by'    => auth()->user()->name ?? auth()->user()->username ?? 'admin',
+        ]);
+
+        $bonus->employees()->sync([$employee->id]);
+
+        $period = Carbon::parse($opens)->format('M d') . ' – ' . Carbon::parse($closes)->format('M d, Y');
+        $amount = '₱' . number_format((float) $data['amount'], 2);
+
+        AuditLog::record('Payroll', 'created',
+            "Bonus of {$amount} for {$employee->name}, pay period {$period}"
+            . (filled($data['note'] ?? null) ? ' — ' . $data['note'] : '') . '.', $bonus);
+
+        return back()->with('success', "{$amount} bonus added to {$employee->name}'s pay for {$period}.");
+    }
+
+    /**
+     * Take back a bonus given from this page, while the period it was given in
+     * is still running.
+     *
+     * Only a grant that names this worker and nobody else, and only inside the
+     * pay period running now: a week that has closed was paid with it, and is
+     * left as it was — the same rule deleting a cash advance follows.
+     */
+    public function destroyBonus(Employee $employee, Bonus $bonus)
+    {
+        [$opens, $closes] = self::payPeriod();
+        $named            = $bonus->employees()->pluck('employees.id')->all();
+
+        abort_if(
+            $bonus->all_employees
+            || $named !== [$employee->id]
+            || $bonus->effective_on->toDateString() < $opens
+            || $bonus->effective_on->toDateString() > $closes,
+            404
+        );
+
+        $amount = '₱' . number_format((float) $bonus->amount, 2);
+        $bonus->employees()->detach();
+        $bonus->delete();
+
+        AuditLog::record('Payroll', 'deleted',
+            "Removed the {$amount} bonus for {$employee->name}, given " . $bonus->effective_on->format('M d, Y') . '.', $bonus);
+
+        return back()->with('success', "{$amount} bonus for {$employee->name} was removed.");
     }
 
     /**
