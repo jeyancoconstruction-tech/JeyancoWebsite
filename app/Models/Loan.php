@@ -268,6 +268,13 @@ class Loan extends Model
     private ?array $payRoom = null;
 
     /**
+     * Walks already worked out on this instance, by what they depend on.
+     *
+     * @var array<string, array{lines: list<array<string, mixed>>, outstanding: float}>
+     */
+    private array $walked = [];
+
+    /**
      * This worker's other advances that come first — issued earlier, or the
      * same day and entered first. A week's pay goes to them before this one.
      *
@@ -299,6 +306,7 @@ class Loan extends Model
         $this->payRoom        = null;
         $this->payRoomThrough = null;
         $this->olderAdvances  = [];
+        $this->walked         = [];
 
         return parent::refresh();
     }
@@ -387,6 +395,19 @@ class Loan extends Model
     }
 
     /**
+     * Where this advance stands right now, short enough to compare: its id,
+     * its status, and what has come off it. Two walks of an advance whose
+     * standing has not changed answer the same, so walk() keeps the first.
+     */
+    private function standing(): string
+    {
+        return $this->id . ':' . $this->status . ':' . (float) $this->principal . ':'
+            . ($this->relationLoaded('deductions')
+                ? $this->deductions->count() . ',' . $this->deductions->sum('amount') . ',' . $this->deductions->max('id')
+                : 'lazy');
+    }
+
+    /**
      * Every peso taken off this advance up to and including the week that
      * `$throughWeekOpening` falls in, in the order it came off, with what was
      * left after each — and every instalment deferred because the pay was too
@@ -413,11 +434,29 @@ class Loan extends Model
      */
     public function walk(string $throughWeekOpening, int $weekStartsOn): array
     {
+        // Walked once per question asked of it.
+        //
+        // A worker's advances are taken oldest first, so each one walks the
+        // ones before it — and without this, so did every one of those, and
+        // the work doubled with each advance a worker had: nineteen of them
+        // took a minute to answer what one takes a moment to. The key carries
+        // what the answer depends on, so a payment recorded, or a walk asked
+        // for a later week, is worked out afresh.
+        $memo = $throughWeekOpening . '|' . $weekStartsOn . '|' . $this->standing();
+
+        foreach ($this->olderAdvances as $advance) {
+            $memo .= '|' . $advance->standing();
+        }
+
+        if (isset($this->walked[$memo])) {
+            return $this->walked[$memo];
+        }
+
         $left  = round((float) $this->principal, 2);
         $lines = [];
 
         if ($this->status === 'cancelled' || $left <= 0) {
-            return ['lines' => [], 'outstanding' => $this->status === 'cancelled' ? 0.0 : $left];
+            return $this->walked[$memo] = ['lines' => [], 'outstanding' => $this->status === 'cancelled' ? 0.0 : $left];
         }
 
         $first = $this->collectionOpensOn()->startOfWeek($weekStartsOn);
@@ -565,7 +604,7 @@ class Loan extends Model
             ];
         }
 
-        return ['lines' => $lines, 'outstanding' => max(0.0, $left)];
+        return $this->walked[$memo] = ['lines' => $lines, 'outstanding' => max(0.0, $left)];
     }
 
     /**
