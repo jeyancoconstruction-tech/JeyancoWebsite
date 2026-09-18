@@ -496,9 +496,13 @@ html[data-bs-theme="dark"] .ana {
         refresh();
     });
 
-    // Live: the same filters asked again every minute while the tab is in
-    // view, and at once on coming back to a tab left open.
-    setInterval(() => { if (!document.hidden && !inflight) refresh(); }, 60000);
+    // Live: the same filters asked again the moment anything they are drawn
+    // from changes — attendance filed at the site, a leave, a payroll run —
+    // and once more on coming back to a tab that was left open.
+    Live.on('attendance payroll employees leave settings sites', () => {
+        if (!document.hidden && !inflight) refresh();
+    });
+
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden && Date.now() - paintedAt > 60000) refresh();
     });

@@ -234,7 +234,7 @@
                 </div>
             </div>
 
-            <div class="sx-table-wrap">
+            <div class="sx-table-wrap" id="roleList" data-live="accounts audit">
                 <table class="sx-table">
                     <thead><tr><th>Account</th><th>Username</th><th>Role</th><th>Last sign-in</th><th>Status</th></tr></thead>
                     <tbody>

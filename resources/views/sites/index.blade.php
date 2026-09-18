@@ -344,6 +344,13 @@
 
     // ── Init ─────────────────────────────────────────────────────────────────
     loadSites();
+
+    // A site added or renamed at another desk, or a kiosk switched to one:
+    // the list is asked for again rather than waiting for the next visit.
+    // Quietly — no spinner over a list that is already on the screen.
+    Live.on('sites devices kiosk', async () => {
+        try { renderSites((await req(listUrl, 'GET')).sites || []); } catch (e) {}
+    });
     JeyancoSiteMap.refresh(sitePicker);
 })();
 </script>

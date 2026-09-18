@@ -20,6 +20,10 @@ class AppServiceProvider extends ServiceProvider
         // a long-lived FrankenPHP worker never carries one request's changes
         // into the next.
         $this->app->singleton(\App\Support\ActivityRecorder::class);
+
+        // The same, for the live feed: what a request changed, announced once
+        // per topic however many rows it wrote.
+        $this->app->singleton(\App\Support\Live::class);
     }
 
     /**
@@ -98,6 +102,12 @@ class AppServiceProvider extends ServiceProvider
 
         // Every change, sign-in and write request goes into the Audit Log.
         \App\Support\ActivityRecorder::listen();
+
+        // And every change tells the pages that are open about itself, so a
+        // clock-in at the site appears on the screens in the office without
+        // anybody pressing anything. Listens after the recorder so the log
+        // entry it writes is itself announced.
+        \App\Support\Live::listen();
 
         // In production (Railway) the public connection is always HTTPS, so
         // generate https:// links and form actions to avoid "not secure"

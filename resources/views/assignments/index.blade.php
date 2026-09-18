@@ -12,7 +12,7 @@
 
     @include('modules._flash')
 
-    <div class="mod-stats">
+    <div class="mod-stats" id="assignmentStats" data-live="assignments employees sites">
         @foreach($bySite as $site)
             <div class="mod-stat">
                 <p class="mod-stat-label">{{ $site->name }}</p>
@@ -59,7 +59,7 @@
             </div>
         </form>
 
-        <div class="mod-table-wrap">
+        <div class="mod-table-wrap" id="assignmentList" data-live="assignments employees sites">
             <table class="mod-table">
                 <thead>
                     <tr>

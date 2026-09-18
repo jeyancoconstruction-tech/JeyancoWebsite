@@ -208,7 +208,9 @@
     </div>
 
     {{-- ── Summary bar (all key figures in one row) ────────────────────────── --}}
-    <div class="pr-summary-bar mb-4">
+    {{-- Every figure here is computed from attendance, leave, advances and
+         the payroll settings — so it follows all four. --}}
+    <div class="pr-summary-bar mb-4" id="prSummary" data-live="payroll attendance leave advances settings">
         <div class="pr-stat">
             <div class="k">{{ __('Net Payroll') }}</div>
             <div class="v" style="color:var(--brand);">&#8369;{{ number_format($summary['net'], 2) }}</div>
@@ -253,7 +255,7 @@
          The whole page. By Employee and Pay Periods were removed with the
          Payroll Records destination they belonged to; a week is now one row
          per worker here, and a day is one row per shift. --}}
-        <div class="card table-card">
+        <div class="card table-card" id="prBreakdown" data-live="payroll attendance leave advances settings employees">
             <div class="table-card-header">
                 <h6>
                     <i class="fas {{ $isDaily ? 'fa-calendar-day' : 'fa-calendar-week' }}"></i>

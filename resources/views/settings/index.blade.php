@@ -616,7 +616,9 @@
                                 <p>{{ __('Hourly = Daily ÷ 8  ·  OT uses the multiplier from Payroll Settings.') }}</p>
                             </div>
                         </div>
-                        <div class="ps-card-body p-0" id="lt-list-container">
+                        {{-- The one list on this page another desk can change. The
+                             forms are left alone: they hold what somebody is typing. --}}
+                        <div class="ps-card-body p-0" id="lt-list-container" data-live="settings">
                             @forelse($laborTypes as $type)
                             @include('settings._labor_type_row', ['type' => $type])
                             @empty

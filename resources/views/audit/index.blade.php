@@ -343,7 +343,8 @@
         </aside>
 
         {{-- ── B · Entries ──────────────────────────────────────────────── --}}
-        <section class="sx-card">
+        {{-- The log of what everyone is doing, as they do it. --}}
+        <section class="sx-card" id="auditEntries" data-live="audit">
             <div class="sx-card-head">
                 <span class="sx-idx">B</span><h2 class="sx-card-title">Entries</h2><span class="sx-card-note">Newest first · {{ $view === 'day' ? 'grouped by day · ' : '' }}times in PH time</span>
                 <div class="sx-card-tools">

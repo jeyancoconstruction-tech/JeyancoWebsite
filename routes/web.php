@@ -52,6 +52,12 @@ Route::middleware('auth')->post('/logout', [AuthController::class, 'logout'])->n
 // Anything reserved for Admins lives in the 'is_admin' group further down.
 Route::middleware(['auth', 'active'])->group(function () {
 
+    // LIVE UPDATES — the connection every page keeps open so it shows what is
+    // true now. /stream is the feed; /revisions is the one-line answer a tab
+    // asks for when it has no stream, or has just been looked at again.
+    Route::get('/live/stream',    [\App\Http\Controllers\LiveController::class, 'stream'])->name('live.stream');
+    Route::get('/live/revisions', [\App\Http\Controllers\LiveController::class, 'revisions'])->name('live.revisions');
+
     // DASHBOARD
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

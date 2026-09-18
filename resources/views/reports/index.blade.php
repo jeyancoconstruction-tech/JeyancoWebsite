@@ -71,7 +71,7 @@
             </dl>
         </div>
 
-        <div class="mod-table-wrap">
+        <div class="mod-table-wrap" id="reportList" data-live="payroll attendance leave advances employees settings">
             <table class="mod-table">
                 <thead>
                     <tr>

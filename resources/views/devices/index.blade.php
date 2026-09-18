@@ -360,7 +360,15 @@
             if (window.lucide) lucide.createIcons();
         } catch (e) { /* offline for a moment: the next tick tries again */ }
     }
-    setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 30000);
+    // A kiosk's heartbeat, its site switch and its GPS fix all say so as they
+    // land, so this asks when there is something to ask about.
+    Live.on('devices kiosk sites employees attendance', () => {
+        if (document.visibilityState === 'visible') refresh();
+    });
+
+    // Except for going quiet, which nothing announces: a kiosk that stops
+    // reporting only becomes offline with the passing of time.
+    setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60000);
 })();
 </script>
 @endpush

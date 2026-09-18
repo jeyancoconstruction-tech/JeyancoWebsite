@@ -106,9 +106,27 @@
 
     @include('_notify_styles')
 
+    {{-- The tint on a figure that changed by itself, and the note that says
+         the live connection is down. --}}
+    <link rel="stylesheet" href="{{ $cssv('live.css') }}">
+
     @stack('styles')
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    {{-- Live.on() before live.js has loaded. A page's own script runs while
+         the page is still being read; the live connection is opened last, once
+         everything it might update exists. This holds the subscriptions until
+         then, so a page can say what it watches wherever it is natural to. --}}
+    <script>
+        window.Live = window.Live || {
+            _queued: [],
+            on: function (topics, fn) { this._queued.push([topics, fn]); return this; },
+            refresh: function () {},
+            revisions: function () { return {}; },
+            streaming: function () { return false; }
+        };
+    </script>
 
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -747,6 +765,26 @@
      minimise / maximise and the clock's month popover. --}}
 <script src="{{ asset('js/ui-fixes.js') }}?v={{ @filemtime(public_path('js/ui-fixes.js')) ?: '1' }}"></script>
 
+{{-- ── Live updates ────────────────────────────────────────────────────────
+     Every page keeps one connection open and patches in what changes, so
+     attendance filed at the site, an employee registered on the kiosk or a
+     payment recorded at the next desk appears here without a refresh.
+
+     The revisions are the page's own timestamp: the contents below were true
+     as of these numbers, so the first thing the connection says is only what
+     has happened since. Loaded last, after every page's own script, so a page
+     that subscribes has had its chance to define what it does. --}}
+<script>
+    window.LiveConfig = {
+        streamUrl:    @json(route('live.stream')),
+        revisionsUrl: @json(route('live.revisions')),
+        revisions:    @json(\App\Support\Live::revisions()),
+        stream:       @json((bool) config('live.stream', true) && \App\Support\Live::available()),
+        pollMs:       @json((int) config('live.poll_ms', 8000)),
+    };
+</script>
+<script src="{{ asset('js/live.js') }}?v={{ @filemtime(public_path('js/live.js')) ?: '1' }}"></script>
+
 {{-- ── Notification Bell — CSS ─────────────────────────────────────────────── --}}
 <style>
         /* Initials avatar, drawn instead of downloaded. */
@@ -1010,14 +1048,16 @@
         render();
     });
 
-    // ── Poll unread count every 60 s ───────────────────────────────────────
+    // ── The count on the bell ──────────────────────────────────────────────
+    // Asked for when there is a new notification rather than every minute:
+    // the feed says when one is written, whoever wrote it.
     async function pollBadge() {
         const data = await fetchNotifications();
         if (data) updateBadge(data.unread_count);
     }
 
     pollBadge();   // initial load
-    setInterval(pollBadge, 60000);
+    Live.on('notifications', pollBadge);
 
     function escH(s) {
         return String(s ?? '')

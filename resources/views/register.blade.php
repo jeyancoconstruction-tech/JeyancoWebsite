@@ -807,7 +807,10 @@ html[data-bs-theme="dark"] .rmx {
                 prevPending = d.counts.pending;
             } catch (e) { /* offline / transient — try again next tick */ }
         }
-        setInterval(poll, 5000);
+        // The kiosk says when somebody has been enrolled, so the five-second
+        // question is gone. The poll itself is kept: it is what fetches the
+        // fresh list, and it now runs when there is news.
+        Live.on('employees attendance devices', poll);
     })();
 })();
 

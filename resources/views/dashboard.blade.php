@@ -50,7 +50,10 @@
     </div>
 
     {{-- ── Figures. Each tile links to the screen it summarises. ─────────── --}}
-    <div class="dash-kpis">
+    {{-- Every one of these is a count of something that changes while the page
+         is open, so they are re-read the moment any of it does. --}}
+    <div class="dash-kpis" id="dash-kpis"
+         data-live="attendance employees payroll advances devices leave">
         <a class="kpi" href="{{ url('/employees') }}">
             <span class="kpi-ic blue"><i class="fas fa-helmet-safety"></i></span>
             <span class="kpi-body">
@@ -115,13 +118,17 @@
     <div class="dash-grid">
 
         {{-- Labor hours, last 7 days --}}
-        <section class="panel area-chart">
+        <section class="panel area-chart" id="dash-chart" data-live="attendance">
             <div class="panel-head">
                 <h2><i class="fas fa-chart-line"></i> {{ __('Attendance · Last 7 Days') }}</h2>
                 <a class="panel-link" href="{{ url('/analytics') }}">{{ __('Analytics') }} <i class="fas fa-arrow-right"></i></a>
             </div>
-            <div class="panel-body flexcol">
-                <canvas id="attendanceChart"></canvas>
+            <div class="panel-body flexcol" id="dash-chart-body"
+                 data-labels="{{ json_encode($attendanceLabels ?? []) }}"
+                 data-values="{{ json_encode($attendanceData ?? []) }}">
+                {{-- Chart.js writes its own width and height onto the canvas,
+                     so the patch leaves it alone and redraws it instead. --}}
+                <canvas id="attendanceChart" data-live-freeze></canvas>
             </div>
         </section>
 
@@ -167,8 +174,10 @@
             </div>
         </section>
 
-        {{-- Live attendance, full height --}}
-        <section class="panel area-live">
+        {{-- Live attendance, full height. Named for what it now is: a
+             clock-in at the site appears here as it happens. --}}
+        <section class="panel area-live" id="dash-live-attendance"
+                 data-live="attendance employees">
             <div class="panel-head">
                 <h2><i class="fas fa-user-clock"></i> {{ __('Live Attendance') }}</h2>
                 <span class="panel-tag live">{{ __('TODAY') }}</span>
@@ -205,7 +214,8 @@
         </section>
 
         {{-- What is waiting for someone. Every row is a real count and a real link. --}}
-        <section class="panel area-todo">
+        <section class="panel area-todo" id="dash-attention"
+                 data-live="attendance leave advances payroll employees">
             <div class="panel-head">
                 <h2><i class="fas fa-clipboard-check"></i> {{ __('Needs Attention') }}</h2>
                 @if(count($attention ?? []))
@@ -232,7 +242,8 @@
         </section>
 
         {{-- Recent activity --}}
-        <section class="panel area-feed">
+        <section class="panel area-feed" id="dash-activity"
+                 data-live="audit attendance employees payroll leave advances">
             <div class="panel-head">
                 <h2><i class="fas fa-wave-square"></i> {{ __('Recent Activity') }}</h2>
                 <a class="panel-link" href="{{ auth()->user()?->isAdmin() ? route('audit-logs.index') : url('/employees') }}">
@@ -331,13 +342,26 @@
         const cMuted    = tok('--text-muted', '#8a96a8');
         const cSurface  = tok('--bg-surface', '#ffffff');
         const cInk      = tok('--text-primary', '#0f1e33');
-        new Chart(ctx.getContext('2d'), {
+        const body   = document.getElementById('dash-chart-body');
+        const series = () => {
+            try {
+                return {
+                    labels: JSON.parse(body.dataset.labels || '[]'),
+                    values: JSON.parse(body.dataset.values || '[]')
+                };
+            } catch (e) {
+                return { labels: [], values: [] };
+            }
+        };
+        const shown = series();
+
+        const chart = new Chart(ctx.getContext('2d'), {
             type: 'line',
             data: {
-                labels: {!! json_encode($attendanceLabels ?? []) !!},
+                labels: shown.labels,
                 datasets: [{
                     label: 'Workers Present',
-                    data: {!! json_encode($attendanceData ?? []) !!},
+                    data: shown.values,
                     borderColor: cBrand,
                     backgroundColor: 'transparent',
                     fill: true,
@@ -379,6 +403,18 @@
                     }
                 }
             }
+        });
+
+        // Somebody timed in while this was open: the same seven days, redrawn
+        // from the figures the patch brought in. No page reload, no re-fetch
+        // of its own — the panel it sits in has already been re-read.
+        document.addEventListener('live:updated', function (e) {
+            if (!body || !e.target || !e.target.contains(body)) { return; }
+
+            const now = series();
+            chart.data.labels = now.labels;
+            chart.data.datasets[0].data = now.values;
+            chart.update('none');
         });
     }
 
@@ -551,6 +587,7 @@
         });
         let liveMarker = null;
         let liveCentred = false;     // isang beses lang tayo mang-aagaw ng view
+        let heardAt = 0;             // when the kiosk last reported
 
         // Ang mapa ay naka-zoom sa mga site pin (zoom 16 = ilang daang metro).
         // Ang kiosk ay pwedeng kilometro ang layo — naidadagdag ang marker pero
@@ -593,6 +630,7 @@
             try {
                 const res = await fetch(`/api/location/latest?kiosk_id=${KIOSK_ID}`);
                 const d = await res.json();
+                heardAt = Date.now();
                 // What the operator picked on the kiosk comes first; the GPS
                 // guess is the second opinion.
                 const setTo = d.set_site || d.active_site || '—';
@@ -642,7 +680,22 @@
             }
         }
         refreshLive();
-        setInterval(refreshLive, 10000);
+
+        // The kiosk's fix is cached rather than saved, and the API says so the
+        // moment one lands — so the pin moves when the kiosk moves instead of
+        // ten seconds later, and a kiosk sitting still costs nothing.
+        Live.on('kiosk devices sites', refreshLive);
+
+        // Silence is the other thing worth showing, and nothing announces
+        // silence. This asks nobody: it only greys the status once nothing has
+        // arrived for longer than a kiosk's heartbeat.
+        setInterval(function () {
+            if (!heardAt || Date.now() - heardAt < 150000) { return; }
+
+            statusEl.innerHTML =
+                '<i class="fas fa-circle text-secondary" style="font-size:8px;"></i> ' +
+                'No word from the kiosk since ' + new Date(heardAt).toLocaleTimeString();
+        }, 15000);
     })();
 </script>
 @endsection

@@ -78,7 +78,7 @@
                 <noscript><div class="mod-filter-actions"><button class="mod-btn primary" type="submit">{{ __('Apply') }}</button></div></noscript>
             </form>
 
-            <div class="mod-table-wrap">
+            <div class="mod-table-wrap" id="leaveList" data-live="leave employees">
                 <table class="mod-table">
                     <thead>
                         <tr>
@@ -155,7 +155,9 @@
             <div>{{ __('Vale is a separate instrument, settled inside one pay period, and is still handled in Payroll Settings. Nothing here changes it.') }}</div>
         </div>
 
-        <div class="mod-stats">
+        {{-- Balances move as payroll collects and as payments are recorded,
+             both of which can happen while this page is open. --}}
+        <div class="mod-stats" id="advanceStats" data-live="advances payroll">
             <div class="mod-stat">
                 <p class="mod-stat-label">{{ __('Active') }}</p>
                 <p class="mod-stat-value">{{ $summary['active'] }}</p>
@@ -195,7 +197,7 @@
                 <noscript><div class="mod-filter-actions"><button class="mod-btn primary" type="submit">{{ __('Apply') }}</button></div></noscript>
             </form>
 
-            <div class="mod-table-wrap">
+            <div class="mod-table-wrap" id="advanceList" data-live="advances payroll employees">
                 <table class="mod-table">
                     <thead>
                         <tr>
@@ -373,6 +375,7 @@
 {{-- A record-payment dialog per unsettled advance: the amount is capped at
      that advance's own balance, which a single shared form could not enforce.
      Alongside it, the history of everything that has come off it. --}}
+<div id="advanceDialogs" data-live="advances payroll employees">
 @foreach($advances as $advance)
     @php $ledger = $advance->walk(now()->toDateString(), \App\Models\Loan::payWeekStartsOn()); @endphp
 
@@ -560,6 +563,7 @@
     </div>
     @endunless
 @endforeach
+</div>
 
 {{-- ── New cash advance ────────────────────────────────────────────────── --}}
 <div class="modal fade" id="advanceModal" tabindex="-1" aria-hidden="true" aria-labelledby="advanceModalTitle"

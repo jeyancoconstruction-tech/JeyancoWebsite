@@ -11,6 +11,7 @@
 
     @include('modules._flash')
 
+    <div id="payslipList" data-live="payroll employees">
     @if($runs->isEmpty())
         <div class="mod-card"><div class="mod-empty">
             <i class="fas fa-file-invoice"></i>
@@ -81,6 +82,7 @@
             @if($items && $items->hasPages())<div class="mod-pager">{{ $items->links() }}</div>@endif
         </div>
     @endif
+    </div>
 </div>
 
 @include('modules._kit')

@@ -218,7 +218,8 @@
         $cardBase = request()->except(['view', 'tab', 'page']);
         $cardUrl  = fn (?string $v) => route('attendance', $v === null ? $cardBase : $cardBase + ['view' => $v]);
     @endphp
-    <div class="att-stats">
+    {{-- Counts of what is happening now, so they follow the kiosk. --}}
+    <div class="att-stats" id="attStats" data-live="attendance employees">
         <a class="att-stat att-stat-brand {{ $view === null ? 'is-active' : '' }}"
            href="{{ $cardUrl(null) }}" @if($view === null) aria-current="true" @endif>
             <div class="att-stat-head">
@@ -344,7 +345,8 @@
     <div class="tab-content">
 
         <!-- ===== TODAY ===== -->
-        <div class="tab-pane fade {{ $openTab === 'today' ? 'show active' : '' }}" id="att-today" role="tabpanel">
+        <div class="tab-pane fade {{ $openTab === 'today' ? 'show active' : '' }}" id="att-today" role="tabpanel"
+             data-live="attendance employees sites">
             <div class="table-card">
                 <div class="table-responsive">
                 <table class="attendance-table w-100">
@@ -408,7 +410,8 @@
         </div>
 
         <!-- ===== HISTORY ===== -->
-        <div class="tab-pane fade {{ $openTab === 'history' ? 'show active' : '' }}" id="att-history" role="tabpanel">
+        <div class="tab-pane fade {{ $openTab === 'history' ? 'show active' : '' }}" id="att-history" role="tabpanel"
+             data-live="attendance employees sites">
 
             {{-- The toolbar moved up into the control row it shares with the
                  filters; the ids are unchanged, so the script below still

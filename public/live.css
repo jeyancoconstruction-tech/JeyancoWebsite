@@ -1,0 +1,77 @@
+/* =========================================================================
+   live.css — the two things live updates add to a page.
+
+   Both are meant to be barely there. A figure that changes by itself is
+   unsettling if nothing marks it, and alarming if the marking shouts: one
+   soft tint that fades, and a small note when the connection is down.
+   ========================================================================= */
+
+/* What just changed, for a moment. */
+.live-fresh {
+    animation: live-fresh-fade 1.6s ease-out;
+}
+
+@keyframes live-fresh-fade {
+    from { background-color: rgba(47, 129, 247, 0.16); }
+    to   { background-color: transparent; }
+}
+
+/* A table row cannot take a background on itself in every theme; its cells
+   can, and that reads the same. */
+tr.live-fresh > td,
+tr.live-fresh > th {
+    animation: live-fresh-fade 1.6s ease-out;
+}
+
+/* The line is down. Said quietly, in the corner, and only once it has been
+   down long enough that the page might be behind. */
+.live-offline {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--surface, #fff);
+    color: var(--text, #1f2937);
+    border: 1px solid var(--border, #e5e7eb);
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+    font-size: 12px;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+.live-offline-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    animation: live-offline-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes live-offline-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.25; }
+}
+
+/* Motion is a nicety; for anyone who has asked for less of it, the tint and
+   the pulse simply do not happen. */
+@media (prefers-reduced-motion: reduce) {
+    .live-fresh,
+    tr.live-fresh > td,
+    tr.live-fresh > th,
+    .live-offline-dot {
+        animation: none;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .live-offline {
+        right: 12px;
+        bottom: 76px;                    /* clear of the chat button */
+        font-size: 11px;
+    }
+}

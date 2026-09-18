@@ -416,7 +416,10 @@ html[data-bs-theme="dark"] .pp {
                     </div>
             @endif
 
-                <div class="pp-people" id="ppList">
+                {{-- The roster for this period, with what each worker has
+                     been paid so far. Attendance moves it, and so does a
+                     payment recorded elsewhere. --}}
+                <div class="pp-people" id="ppList" data-live="payroll attendance employees leave advances">
                     @foreach($rows as $r)
                         @php $open = $pending['by'][$r['employee_id']] ?? 0; @endphp
                         <div class="pp-pitem {{ $r['worked'] ? '' : 'idle' }}"
@@ -734,17 +737,23 @@ html[data-bs-theme="dark"] .pp {
     // Search narrows the employee step in place.
     const search = document.getElementById('ppSearch');
     const none   = document.getElementById('ppNone');
-    const items  = root.querySelectorAll('.pp-pitem');
-    search?.addEventListener('input', () => {
-        const q = search.value.trim().toLowerCase();
+
+    // Asked for each time rather than kept: attendance filed at the site adds
+    // and removes people from this list while it is open.
+    const items = () => root.querySelectorAll('.pp-pitem');
+
+    function narrow() {
+        const q = (search?.value || '').trim().toLowerCase();
         let shown = 0;
-        items.forEach(el => {
+        items().forEach(el => {
             const match = el.dataset.name.includes(q);
             el.hidden = !match;
             if (match) shown++;
         });
-        if (none) none.hidden = shown > 0 || items.length === 0;
-    });
+        if (none) none.hidden = shown > 0 || items().length === 0;
+    }
+
+    search?.addEventListener('input', narrow);
 
     // A new period is a new page, and it keeps the step the page is on.
     document.getElementById('ppPeriod')?.addEventListener('change', e => e.target.form.submit());
@@ -756,19 +765,20 @@ html[data-bs-theme="dark"] .pp {
     const bar  = document.getElementById('ppBulkBar');
     if (!form || !bar) return;
 
-    const boxes = [...form.querySelectorAll('input[name="employees[]"]:not(:disabled)')];
+    const boxes = () => [...form.querySelectorAll('input[name="employees[]"]:not(:disabled)')];
     const all   = document.getElementById('ppAll');
     const count = document.getElementById('ppCount');
     const go    = document.getElementById('ppDone');
     const label = document.getElementById('ppDoneLabel');
 
     // Only what the search is showing can be selected in bulk.
-    const pickable = () => boxes.filter(b => !b.closest('.pp-pitem').hidden);
+    const pickable = () => boxes().filter(b => !b.closest('.pp-pitem').hidden);
 
     function sync() {
-        const on = boxes.filter(b => b.checked);
+        const every = boxes();
+        const on    = every.filter(b => b.checked);
 
-        boxes.forEach(b => b.closest('.pp-pitem').classList.toggle('picked', b.checked));
+        every.forEach(b => b.closest('.pp-pitem').classList.toggle('picked', b.checked));
 
         go.disabled     = on.length === 0;
         label.textContent = on.length === 0
@@ -776,14 +786,19 @@ html[data-bs-theme="dark"] .pp {
             : 'Mark ' + on.length + (on.length === 1 ? ' employee done' : ' employees done');
         count.textContent = on.length === 0
             ? 'Nobody selected'
-            : on.length + ' of ' + boxes.length + ' selected';
+            : on.length + ' of ' + every.length + ' selected';
 
         const shown = pickable();
         all.checked = shown.length > 0 && shown.every(b => b.checked);
         all.indeterminate = !all.checked && shown.some(b => b.checked);
     }
 
-    boxes.forEach(b => b.addEventListener('change', sync));
+    // On the form rather than on each box, so a row that arrives by itself
+    // is already wired.
+    form.addEventListener('change', e => {
+        if (e.target.matches('input[name="employees[]"]')) { sync(); }
+    });
+
     all?.addEventListener('change', () => {
         pickable().forEach(b => { b.checked = all.checked; });
         sync();
@@ -798,6 +813,14 @@ html[data-bs-theme="dark"] .pp {
     });
 
     sync();
+
+    // Somebody clocked in, or a payment was recorded: the list has been
+    // patched in place, so narrow it again to what is being searched for and
+    // count the ticks afresh.
+    document.addEventListener('live:updated', () => {
+        narrow();
+        sync();
+    });
 })();
 </script>
 @endpush

@@ -42,7 +42,7 @@
 
         {{-- Toolbar: tabs, search, filter --}}
         <div class="dir-toolbar">
-            <div class="dir-tabs">
+            <div class="dir-tabs" id="empTabs" data-live="employees">
                 <button type="button" class="dir-tab active" data-scope="all">
                     All Employees <span class="dir-tab-count" id="countAll">{{ $stats['total'] }}</span>
                 </button>
@@ -102,7 +102,7 @@
             </div>
         </div>
 
-        <div class="table-responsive">
+        <div class="table-responsive" id="empTableWrap" data-live="employees settings assignments">
             <table class="emp-table" id="empTable">
                 <thead>
                     <tr>
@@ -1130,14 +1130,25 @@
         const base  = '{{ url('employees') }}';
         const modal = new bootstrap.Modal(modalEl);
 
-        document.querySelectorAll('.js-emp-delete').forEach(btn => {
-            btn.addEventListener('click', () => {
-                form.action = base + '/' + btn.dataset.id;
-                if (nameEl) nameEl.textContent = btn.dataset.name || '';
-                closeMenus();
-                modal.show();
+        function wireDelete() {
+            document.querySelectorAll('.js-emp-delete').forEach(btn => {
+                // A property, not an attribute: a patch rewrites attributes
+                // from the fresh page, and would hand the same button back
+                // looking unwired every time.
+                if (btn.__wired) return;
+                btn.__wired = true;
+
+                btn.addEventListener('click', () => {
+                    form.action = base + '/' + btn.dataset.id;
+                    if (nameEl) nameEl.textContent = btn.dataset.name || '';
+                    closeMenus();
+                    modal.show();
+                });
             });
-        });
+        }
+
+        wireDelete();
+        document.addEventListener('live:updated', wireDelete);
     })();
 
     document.getElementById('siteFilter')?.addEventListener('change', applyFilter);
@@ -1231,7 +1242,11 @@
     // Kusang nagse-save ang dropdown. Ang mabilis na tumbok ang buong punto:
     // hahatiin mo ang crew sa dalawa, at ang pagbukas ng buong edit form kada
     // tao ay labing-isang pahina para sa labing-isang pindot.
-    document.querySelectorAll('.emp-shift').forEach(sel => {
+    function wireShifts() {
+      document.querySelectorAll('.emp-shift').forEach(sel => {
+        if (sel.__wired) return;
+        sel.__wired = true;
+
         // Ang huling nakaligtas na halaga, para may maibalik kapag pumalya ang
         // network — kung hindi, ipapakita ng dropdown ang isang tatak na hindi
         // naman naitala.
@@ -1278,6 +1293,17 @@
                 this.disabled = false;
             }
         });
+      });
+    }
+
+    wireShifts();
+
+    // A worker registered on the kiosk, or a shift set at the next desk: the
+    // rows that arrive on their own get the same handlers the rest have, and
+    // the search and filters the viewer had set are applied to them too.
+    document.addEventListener('live:updated', function () {
+        wireShifts();
+        applyFilter();
     });
 
     function escHtml(s) {

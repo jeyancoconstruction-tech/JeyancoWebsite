@@ -90,6 +90,11 @@ class KioskLocationController extends Controller
 
         Cache::put(self::LOC_PREFIX . $kioskId, $record, now()->addDays(7));
 
+        // A fix is cached rather than saved, so no model event announces it.
+        // Said here, the dashboard map moves the kiosk's pin as the fix lands
+        // instead of on a timer of its own.
+        \App\Support\Live::bump('kiosk');
+
         // The tracker identifies itself by its own device id ("jeyanco-01") while
         // a clock request identifies the kiosk by its code ("SITE_A"). Writing the
         // fix under both means the attendance location gate and the dashboard map
