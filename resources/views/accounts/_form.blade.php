@@ -251,6 +251,11 @@
 }
 .acctf-pw-eye:hover { color: #475569; background: #f1f5f9; }
 
+/* Edge draws its own reveal control inside a password box, which would sit
+   beside ours and show two eyes. Ours stays - it is the one the form styles. */
+.acctf-pw input[type="password"]::-ms-reveal,
+.acctf-pw input[type="password"]::-ms-clear { display: none; }
+
 .acctf-note {
     display: flex; gap: 9px; align-items: flex-start;
     background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af;

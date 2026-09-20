@@ -208,6 +208,12 @@
         /* Room for the show/hide button. */
         .input-wrap:has(.toggle-pass) input { padding-right: 42px; }
 
+        /* Edge draws its own reveal control inside a password box, which would
+           sit beside ours and show two eyes. Ours stays: it carries the label,
+           the Caps Lock hint and the focus ring. */
+        .input-wrap input[type="password"]::-ms-reveal,
+        .input-wrap input[type="password"]::-ms-clear { display: none; }
+
         .toggle-pass {
             position: absolute; right: 5px;
             width: 32px; height: 32px;
