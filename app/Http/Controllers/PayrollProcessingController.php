@@ -104,6 +104,14 @@ class PayrollProcessingController extends Controller
             'open'    => count(array_filter($track, fn ($t) => $t['open'])),
             'notice'  => $sel ? $this->trackNotice($sel, $tracking) : null,
             'slip'    => $sel ? $this->slip($sel, $rates) : null,
+            // Every worker's slip at once, for the A4 sheet the office prints
+            // and cuts up. Built from the same slip() the single payslip uses,
+            // so a printed slip cannot disagree with the one on screen.
+            'sheet'   => $step === 'people' && $view === 'workflow'
+                ? $rows->where('worked', true)
+                       ->map(fn (array $r) => ['row' => $r, 'slip' => $this->slip($r, $rates)])
+                       ->values()
+                : collect(),
             'company' => SystemSetting::current(),
         ]);
     }

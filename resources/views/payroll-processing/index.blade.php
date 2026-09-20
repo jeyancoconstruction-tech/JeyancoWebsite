@@ -50,6 +50,8 @@ html[data-bs-theme="dark"] .pp {
 .pp-bar .pp-field.grow { flex: 1; min-width: 240px; max-width: 420px; }
 
 /* Back to the step before */
+.pp-listbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pp-listbar .pp-back { margin-bottom: 0; }
 .pp-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--pp-txt-2); margin-bottom: 12px; }
 .pp-back:hover { color: var(--pp-accent-txt); }
 .pp-back i { font-size: 15px; }
@@ -393,7 +395,16 @@ html[data-bs-theme="dark"] .pp {
             $bulk = $view === 'tracker' && $tracking && $pending['total'] > 0;
         @endphp
         <div class="pp-anim" style="animation-delay:.1s">
-            <a class="pp-back" href="{{ $url() }}"><i class="ti ti-arrow-left"></i>All options</a>
+            <div class="pp-listbar">
+                <a class="pp-back" href="{{ $url() }}"><i class="ti ti-arrow-left"></i>All options</a>
+                @if($sheet->isNotEmpty())
+                    {{-- Prints the sheet already on this page, so nothing has to
+                         open in a tab the user then has to close. --}}
+                    <button type="button" class="pp-btn sm no-print" id="ppPrintAll">
+                        <i class="ti ti-printer"></i>Print all payslips &middot; A4
+                    </button>
+                @endif
+            </div>
 
             @if($view === 'tracker' && ! $tracking)
                 <div class="pp-note inline"><i class="ti ti-info-circle"></i><span>Remittance tracking is switched on by a database update that has not been run on this server yet. The amounts are right; they can be marked once it has.</span></div>
@@ -726,6 +737,10 @@ html[data-bs-theme="dark"] .pp {
         </section>
     @endif
 </div>
+
+@if($sheet->isNotEmpty())
+    @include('payroll-processing._print-sheet')
+@endif
 @endsection
 
 @push('scripts')
@@ -821,6 +836,13 @@ html[data-bs-theme="dark"] .pp {
         narrow();
         sync();
     });
+})();
+
+// Print every payslip for the period. The sheet is already in this page, so
+// this only asks the browser to lay it out — no window to open, none to close.
+(function () {
+    var btn = document.getElementById('ppPrintAll');
+    if (btn) { btn.addEventListener('click', function () { window.print(); }); }
 })();
 </script>
 @endpush
