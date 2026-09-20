@@ -4,7 +4,7 @@
      It lives inside the page rather than behind a link: a separate tab is a
      second thing to close, and the figures are already here. On screen it is
      hidden; the print stylesheet hides the app around it and shows this. --}}
-<div id="ppSheet" aria-hidden="true">
+<div id="ppSheet" class="ps-mode-{{ $sheetMode ?? 'grid' }}" aria-hidden="true">
     <div class="ps-grid">
         @foreach($sheet as $s)
             @php $r = $s['row']; $sl = $s['slip']; @endphp
@@ -79,7 +79,9 @@
     /* The app's chrome is not part of the document being handed over. */
     .sidebar, .topbar, .chatbot-fab, .chatbot-window,
     .pp, .no-print { display: none !important; }
-    .main-content { margin: 0 !important; padding: 0 !important; }
+    /* The app's own gutters would otherwise push the last row a few
+       millimetres past the page and spill a sliver onto a second sheet. */
+    html, body, .main-content { margin: 0 !important; padding: 0 !important; }
     body { background: #fff !important; }
 
     #ppSheet {
@@ -88,16 +90,17 @@
         color: #0f1e33;
     }
 
-    /* Two across, three down: six slips to the sheet. The row height is the
-       page's printable height less its gaps, divided by three, so the third
-       row lands on the page rather than pushing a fourth onto the next. */
+    /* Two across, three down: six slips to the sheet. Three rows of 87mm
+       and two 5mm gaps come to 271mm, inside A4's 281mm of printable height,
+       with enough left over that a stray millimetre cannot spill the last
+       row onto a second sheet. */
     .ps-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 5mm;
     }
     .ps-card {
-        height: 89mm;
+        height: 87mm;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
@@ -114,6 +117,33 @@
        three rows of 89mm plus two 5mm gaps is 277mm, inside A4's 281mm of
        printable height. Forcing a break here instead adds a blank sheet,
        because the row has already ended where the page does. */
+
+    /* A payslip printed on its own has a whole sheet to use, so it uses it:
+       one column, no cut line, and type at a size meant for reading rather
+       than for fitting six to a page. */
+    #ppSheet.ps-mode-single .ps-grid { grid-template-columns: 1fr; }
+    #ppSheet.ps-mode-single .ps-card {
+        height: auto; border: none; border-radius: 0;
+        padding: 0; font-size: 11pt; line-height: 1.5;
+    }
+    #ppSheet.ps-mode-single .ps-logo { width: 14mm; height: 14mm; }
+    #ppSheet.ps-mode-single .ps-co .co { font-size: 15pt; }
+    #ppSheet.ps-mode-single .ps-co .sub,
+    #ppSheet.ps-mode-single .ps-doc .per,
+    #ppSheet.ps-mode-single .ps-basis,
+    #ppSheet.ps-mode-single .ps-emp .meta,
+    #ppSheet.ps-mode-single .ps-math { font-size: 9pt; }
+    #ppSheet.ps-mode-single .ps-doc .lbl { font-size: 12pt; }
+    #ppSheet.ps-mode-single .ps-emp .who { font-size: 14pt; }
+    #ppSheet.ps-mode-single .ps-emp .meta { max-width: 55%; }
+    #ppSheet.ps-mode-single .ps-cols { flex: none; gap: 10mm; }
+    #ppSheet.ps-mode-single .ps-cols h6 { font-size: 9pt; }
+    #ppSheet.ps-mode-single .ps-cols .ln { padding: 1.1mm 0; }
+    #ppSheet.ps-mode-single .ps-net { margin-top: 6mm; padding: 4mm 6mm; }
+    #ppSheet.ps-mode-single .ps-net .k { font-size: 11pt; }
+    #ppSheet.ps-mode-single .ps-net .v { font-size: 20pt; }
+    #ppSheet.ps-mode-single .ps-foot { margin-top: 12mm; font-size: 9pt; }
+    #ppSheet.ps-mode-single .ps-foot .sign { min-width: 60mm; padding-top: 2mm; }
 
     .ps-head {
         display: flex; align-items: center; gap: 2mm;

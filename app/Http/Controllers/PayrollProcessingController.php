@@ -107,11 +107,20 @@ class PayrollProcessingController extends Controller
             // Every worker's slip at once, for the A4 sheet the office prints
             // and cuts up. Built from the same slip() the single payslip uses,
             // so a printed slip cannot disagree with the one on screen.
-            'sheet'   => $step === 'people' && $view === 'workflow'
-                ? $rows->where('worked', true)
-                       ->map(fn (array $r) => ['row' => $r, 'slip' => $this->slip($r, $rates)])
-                       ->values()
-                : collect(),
+            // What the printer gets. The employee list prints the week's
+            // slips six to an A4 sheet; a single payslip prints itself, full
+            // size. Both are the same partial off the same slip(), so no
+            // printed slip can disagree with the one on screen.
+            'sheet'     => match (true) {
+                $step === 'people' && $view === 'workflow' => $rows->where('worked', true)
+                    ->map(fn (array $r) => ['row' => $r, 'slip' => $this->slip($r, $rates)])
+                    ->values(),
+                $step === 'detail' && $view === 'payslip' && $sel !== null => collect([
+                    ['row' => $sel, 'slip' => $this->slip($sel, $rates)],
+                ]),
+                default => collect(),
+            },
+            'sheetMode' => $step === 'detail' ? 'single' : 'grid',
             'company' => SystemSetting::current(),
         ]);
     }

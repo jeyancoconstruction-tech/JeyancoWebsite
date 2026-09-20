@@ -50,8 +50,6 @@ html[data-bs-theme="dark"] .pp {
 .pp-bar .pp-field.grow { flex: 1; min-width: 240px; max-width: 420px; }
 
 /* Back to the step before */
-.pp-listbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.pp-listbar .pp-back { margin-bottom: 0; }
 .pp-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--pp-txt-2); margin-bottom: 12px; }
 .pp-back:hover { color: var(--pp-accent-txt); }
 .pp-back i { font-size: 15px; }
@@ -146,6 +144,24 @@ html[data-bs-theme="dark"] .pp {
 .pp-btn.sm { height: 30px; padding: 0 11px; }
 .pp-btn.icon { width: 30px; padding: 0; justify-content: center; }
 .pp-btn:disabled { opacity: .5; cursor: not-allowed; filter: none; }
+
+/* The list's one action. It carries a count, so it is taller than a plain
+   button and says what it is about to produce before it is pressed. */
+.pp-listbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.pp-listbar .pp-back { margin-bottom: 0; }
+.pp-print {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 7px 15px 7px 12px; border-radius: 9px; cursor: pointer;
+    background: var(--pp-accent-bold); border: none; color: #fff;
+    font-size: 12.5px; font-weight: 600; line-height: 1.15; text-align: left;
+    box-shadow: 0 1px 2px rgba(16, 32, 60, .16);
+    transition: filter .15s, transform .06s;
+}
+.pp-print i { font-size: 17px; opacity: .92; }
+.pp-print small { display: block; font-size: 10.5px; font-weight: 500; opacity: .8; margin-top: 1px; }
+.pp-print:hover { filter: brightness(1.08); }
+.pp-print:active { transform: translateY(1px); }
+.pp-print:focus-visible { outline: 2px solid var(--pp-accent-bold); outline-offset: 2px; }
 .pp-btn i { font-size: 15px; }
 .pp-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 4px 11px; border-radius: 20px; white-space: nowrap; }
 .pp-badge i { font-size: 13px; }
@@ -398,10 +414,15 @@ html[data-bs-theme="dark"] .pp {
             <div class="pp-listbar">
                 <a class="pp-back" href="{{ $url() }}"><i class="ti ti-arrow-left"></i>All options</a>
                 @if($sheet->isNotEmpty())
-                    {{-- Prints the sheet already on this page, so nothing has to
-                         open in a tab the user then has to close. --}}
-                    <button type="button" class="pp-btn sm no-print" id="ppPrintAll">
-                        <i class="ti ti-printer"></i>Print all payslips &middot; A4
+                    {{-- Directly above the people it prints. It lays out the
+                         sheet already in this page, so nothing opens that then
+                         has to be closed. --}}
+                    <button type="button" class="pp-print no-print" id="ppPrintAll">
+                        <i class="ti ti-printer"></i>
+                        @php $sheets = (int) ceil($sheet->count() / 6); @endphp
+                        <span>Print payslips
+                            <small>{{ $sheet->count() }} on {{ $sheets }} A4 sheet{{ $sheets === 1 ? '' : 's' }}</small>
+                        </span>
                     </button>
                 @endif
             </div>
@@ -672,12 +693,11 @@ html[data-bs-theme="dark"] .pp {
              behind its Print / Save as PDF button. --}}
         @if($view === 'payslip')
         <div class="pp-view">
-            <div class="pp-view-head">
+            <div class="pp-view-head no-print">
                 <h3><i class="ti ti-file-text pp-c-green"></i>Payslip</h3>
-                <a class="pp-btn primary" target="_blank" rel="noopener"
-                   href="{{ route('payslip.batch', ['from' => $period['from'], 'to' => $period['to'], 'employee' => $sel['employee_id']]) }}">
+                <button type="button" class="pp-btn primary" id="ppPrintOne">
                     <i class="ti ti-printer"></i>Print / Save as PDF
-                </a>
+                </button>
             </div>
             <div class="pp-view-body">
                 <div class="emp-slip" style="border:none;padding:0;background:transparent;">
@@ -840,9 +860,13 @@ html[data-bs-theme="dark"] .pp {
 
 // Print every payslip for the period. The sheet is already in this page, so
 // this only asks the browser to lay it out — no window to open, none to close.
+// Both print buttons lay out the sheet already in this page. Neither opens
+// a window, so neither leaves one to close.
 (function () {
-    var btn = document.getElementById('ppPrintAll');
-    if (btn) { btn.addEventListener('click', function () { window.print(); }); }
+    ['ppPrintAll', 'ppPrintOne'].forEach(function (id) {
+        var btn = document.getElementById(id);
+        if (btn) { btn.addEventListener('click', function () { window.print(); }); }
+    });
 })();
 </script>
 @endpush
