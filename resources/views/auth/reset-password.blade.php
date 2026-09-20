@@ -4,7 +4,64 @@
 @section('heading', 'Set a new password')
 @section('subheading', 'Choose a password you have not used before')
 
+@php $min = $minLength ?? 8; @endphp
+
+@push('styles')
+<style>
+    /* The same three steps shown on the request page, now at the last one. */
+    .pw-flow {
+        display: flex; list-style: none; margin: 0 0 22px; padding: 0;
+    }
+    .pw-flow li {
+        flex: 1; position: relative; text-align: center;
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .pw-flow li::before {
+        content: ""; position: absolute; top: 13px; left: -50%;
+        width: 100%; height: 2px; background: var(--line); z-index: 0;
+    }
+    .pw-flow li:first-child::before { display: none; }
+    .pw-flow .n {
+        position: relative; z-index: 1;
+        width: 26px; height: 26px; border-radius: 50%;
+        display: grid; place-items: center;
+        background: #fff; border: 2px solid var(--line);
+        color: var(--muted); font-size: 12px; font-weight: 700;
+    }
+    .pw-flow .t { font-size: 11.5px; line-height: 1.3; color: var(--muted); }
+    .pw-flow li.is-done::before,
+    .pw-flow li.is-now::before  { background: var(--success); }
+    .pw-flow li.is-done .n {
+        background: var(--success); border-color: var(--success); color: #fff;
+    }
+    .pw-flow li.is-now .n {
+        background: var(--blue); border-color: var(--blue); color: #fff;
+    }
+    .pw-flow li.is-now .t { color: var(--ink); font-weight: 600; }
+
+    /* The rules the server will apply, checked off while the person types, so
+       a rejected password is caught here instead of after a round trip. */
+    .pw-rules {
+        list-style: none; margin: 10px 0 0; padding: 0;
+        display: grid; gap: 7px;
+    }
+    .pw-rules li {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 12.5px; line-height: 1.4; color: var(--muted);
+    }
+    .pw-rules li i { flex: 0 0 14px; text-align: center; font-size: 11px; }
+    .pw-rules li.ok { color: var(--success); }
+    .pw-rules li.bad { color: #b54708; }
+</style>
+@endpush
+
 @section('form')
+    <ol class="pw-flow">
+        <li class="is-done"><span class="n">1</span><span class="t">Ask for a link</span></li>
+        <li class="is-done"><span class="n">2</span><span class="t">Open your email</span></li>
+        <li class="is-now"><span class="n">3</span><span class="t">Set a new one</span></li>
+    </ol>
+
     <form action="{{ route('password.update') }}" method="POST" id="resetForm">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
@@ -24,12 +81,23 @@
             <label for="password">{{ __('New password') }}</label>
             <div class="input-wrap">
                 <input type="password" id="password" name="password" required autofocus
-                       autocomplete="new-password" placeholder="{{ __('At least 8 characters') }}">
+                       autocomplete="new-password" placeholder="{{ __('At least :n characters', ['n' => $min]) }}">
                 <button type="button" class="toggle-pass" data-toggle="password" aria-label="{{ __('Show password') }}" title="{{ __('Show / hide password') }}">
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
-            <p class="field-hint">{{ __('Must be at least 8 characters and include both letters and numbers.') }}</p>
+
+            <ul class="pw-rules" id="pwRules" aria-live="polite">
+                <li data-rule="len"><i class="fas fa-circle" style="font-size:6px"></i>
+                    <span>{{ __('At least :n characters', ['n' => $min]) }}</span></li>
+                <li data-rule="letter"><i class="fas fa-circle" style="font-size:6px"></i>
+                    <span>{{ __('Contains a letter') }}</span></li>
+                <li data-rule="number"><i class="fas fa-circle" style="font-size:6px"></i>
+                    <span>{{ __('Contains a number') }}</span></li>
+                <li data-rule="match"><i class="fas fa-circle" style="font-size:6px"></i>
+                    <span>{{ __('Both boxes match') }}</span></li>
+            </ul>
+
             <div class="caps-hint" id="capsHint" role="status">
                 <i class="fas fa-triangle-exclamation"></i> {{ __('Caps Lock is on') }}
             </div>
@@ -44,7 +112,6 @@
                     <i class="fas fa-eye"></i>
                 </button>
             </div>
-            <p class="field-hint" id="matchHint"></p>
         </div>
 
         <button type="submit" class="btn-login" id="resetBtn">
@@ -84,20 +151,50 @@
         input.addEventListener('blur', function () { hint.classList.remove('show'); });
     })();
 
-    // Say straight away when the two boxes disagree, rather than after a round trip.
+    // Tick the rules off as they are met. These are the same rules the server
+    // enforces, so nothing here is the only thing standing between a weak
+    // password and the account.
     (function () {
+        const MIN = {{ (int) $min }};
         const pw = document.getElementById('password');
         const confirm = document.getElementById('password_confirmation');
-        const hint = document.getElementById('matchHint');
+        const rules = document.getElementById('pwRules');
+        if (!pw || !confirm || !rules) return;
+
+        const items = {};
+        rules.querySelectorAll('li[data-rule]').forEach(function (li) {
+            items[li.dataset.rule] = li;
+        });
+
+        function mark(li, state) {
+            li.classList.toggle('ok', state === 'ok');
+            li.classList.toggle('bad', state === 'bad');
+            const icon = li.querySelector('i');
+            if (state === 'ok') {
+                icon.className = 'fas fa-circle-check';
+                icon.style.fontSize = '';
+            } else if (state === 'bad') {
+                icon.className = 'fas fa-circle-xmark';
+                icon.style.fontSize = '';
+            } else {
+                icon.className = 'fas fa-circle';
+                icon.style.fontSize = '6px';
+            }
+        }
 
         function check() {
-            if (confirm.value === '') { hint.textContent = ''; return; }
-            const ok = pw.value === confirm.value;
-            hint.textContent = ok ? 'Passwords match.' : 'Passwords do not match yet.';
-            hint.style.color = ok ? '#027a48' : '#b54708';
+            const v = pw.value;
+            const c = confirm.value;
+
+            mark(items.len,    v === '' ? 'idle' : (v.length >= MIN ? 'ok' : 'bad'));
+            mark(items.letter, v === '' ? 'idle' : (/[A-Za-z]/.test(v) ? 'ok' : 'bad'));
+            mark(items.number, v === '' ? 'idle' : (/[0-9]/.test(v) ? 'ok' : 'bad'));
+            mark(items.match,  c === '' ? 'idle' : (v === c ? 'ok' : 'bad'));
         }
+
         pw.addEventListener('input', check);
         confirm.addEventListener('input', check);
+        check();
     })();
 
     // Submit state.

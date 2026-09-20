@@ -58,8 +58,11 @@ class PasswordResetController extends Controller
     public function reset(Request $request, string $token)
     {
         return view('auth.reset-password', [
-            'token' => $token,
-            'email' => $request->query('email'),
+            'token'     => $token,
+            'email'     => $request->query('email'),
+            // The form states the rule it will be judged by, rather than
+            // naming a length the setting may no longer agree with.
+            'minLength' => SystemSetting::current()->password_min_length,
         ]);
     }
 
