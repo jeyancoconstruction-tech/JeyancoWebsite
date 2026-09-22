@@ -269,31 +269,30 @@ class ModuleSmokeTest extends TestCase
     /** The permission map must actually close doors, not just decorate them. */
     public function test_module_access_is_enforced(): void
     {
-        // HR: leave, cash advances and assignments — nothing on the payroll side.
+        // HR, as Table 4.5 of Chapter 4 lists it: everything but user
+        // administration and the audit trail.
         $hr = User::create([
             'name' => 'People Office', 'username' => 'hr1', 'password' => 'secret123',
             'role' => User::ROLE_HR, 'is_active' => true,
         ]);
 
-        foreach (['/leave-advances', '/leave-advances?tab=advances', '/project-assignments'] as $url) {
+        foreach (['/leave-advances', '/leave-advances?tab=advances', '/project-assignments',
+                  '/payroll-processing', '/payroll-reports', '/device-monitoring'] as $url) {
             $this->assertSame(200, $this->actingAs($hr)->get($url)->getStatusCode(), "HR lost {$url}");
         }
-
-        foreach (['/payroll-processing', '/payslips', '/payroll-reports', '/device-monitoring'] as $url) {
-            $this->actingAs($hr)->get($url)->assertForbidden();
-        }
+        $this->assertTrue($hr->canAccessModule(\App\Support\Modules::PAYSLIPS));
 
         // Users & Roles and Audit Logs stay behind the existing admin guard.
         $this->actingAs($hr)->get('/users-roles')->assertForbidden();
         $this->actingAs($hr)->get('/audit-logs')->assertForbidden();
     }
 
-    /** Existing 'staff' accounts must not lose anything they had. */
-    public function test_staff_keeps_its_existing_access(): void
+    /** HR opens every everyday screen the Staff role used to open. */
+    public function test_hr_keeps_the_everyday_screens(): void
     {
         $staff = User::create([
             'name' => 'Staff', 'username' => 'staff1', 'password' => 'secret123',
-            'role' => User::ROLE_STAFF, 'is_active' => true,
+            'role' => User::ROLE_HR, 'is_active' => true,
         ]);
 
         foreach (['/dashboard', '/employees', '/attendance', '/sites',
@@ -307,7 +306,7 @@ class ModuleSmokeTest extends TestCase
     public function test_last_admin_cannot_be_demoted(): void
     {
         $this->actingAs($this->admin)
-            ->patch('/users-roles/' . $this->admin->id . '/role', ['role' => User::ROLE_STAFF]);
+            ->patch('/users-roles/' . $this->admin->id . '/role', ['role' => User::ROLE_HR]);
 
         $this->assertTrue($this->admin->fresh()->isAdmin(), 'the only admin was demoted');
     }

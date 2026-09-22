@@ -29,7 +29,7 @@ class AccountManagementTest extends TestCase
             'name'      => 'Staff One',
             'username'  => 'staff.one',
             'password'  => Hash::make('secret123'),
-            'role'      => User::ROLE_STAFF,
+            'role'      => User::ROLE_HR,
             'is_active' => true,
         ], $attributes));
     }
@@ -43,7 +43,7 @@ class AccountManagementTest extends TestCase
         $this->assertTrue($user->fresh()->is_admin);
     }
 
-    public function test_admin_can_create_a_staff_account_that_can_log_in(): void
+    public function test_admin_can_create_an_hr_account_that_can_log_in(): void
     {
         $admin = $this->admin();
 
@@ -51,7 +51,7 @@ class AccountManagementTest extends TestCase
             'name'                  => 'Maria Santos',
             'username'              => 'maria.santos',
             'email'                 => 'maria@jeyanco.test',
-            'role'                  => User::ROLE_STAFF,
+            'role'                  => User::ROLE_HR,
             'is_active'             => 1,
             'password'              => 'payroll2026',
             'password_confirmation' => 'payroll2026',
@@ -59,7 +59,7 @@ class AccountManagementTest extends TestCase
 
         $created = User::where('username', 'maria.santos')->first();
         $this->assertNotNull($created);
-        $this->assertSame(User::ROLE_STAFF, $created->role);
+        $this->assertSame(User::ROLE_HR, $created->role);
         $this->assertFalse($created->is_admin);
         $this->assertSame($admin->id, $created->created_by);
 
@@ -82,7 +82,7 @@ class AccountManagementTest extends TestCase
             'name'                  => 'No Email',
             'username'              => 'no.email',
             'email'                 => '',
-            'role'                  => User::ROLE_STAFF,
+            'role'                  => User::ROLE_HR,
             'password'              => 'payroll2026',
             'password_confirmation' => 'payroll2026',
         ])->assertRedirect(route('accounts.index'));
@@ -121,7 +121,7 @@ class AccountManagementTest extends TestCase
             'name'      => 'Staff One',
             'username'  => 'staff.one',
             'email'     => '',
-            'role'      => User::ROLE_STAFF,
+            'role'      => User::ROLE_HR,
             'is_active' => 1,
             'password'  => '',
         ])->assertRedirect(route('accounts.index'));
@@ -137,7 +137,7 @@ class AccountManagementTest extends TestCase
             ->post(route('accounts.store'), [
                 'name'                  => 'Copycat',
                 'username'              => 'staff.one',
-                'role'                  => User::ROLE_STAFF,
+                'role'                  => User::ROLE_HR,
                 'password'              => 'payroll2026',
                 'password_confirmation' => 'payroll2026',
             ])
@@ -222,7 +222,7 @@ class AccountManagementTest extends TestCase
             'name'      => $peer->name,
             'username'  => $peer->username,
             'email'     => $peer->email,
-            'role'      => User::ROLE_STAFF,
+            'role'      => User::ROLE_HR,
             'is_active' => 1,
             'password'  => '',
         ])->assertSessionHasErrors('role');

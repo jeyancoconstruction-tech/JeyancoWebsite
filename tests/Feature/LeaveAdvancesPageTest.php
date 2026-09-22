@@ -218,19 +218,19 @@ class LeaveAdvancesPageTest extends TestCase
         }
     }
 
-    public function test_a_role_without_advances_sees_the_leave_tab_only(): void
+    /** Two roles now, and both hold cash advances: HR sees both tabs. */
+    public function test_hr_sees_both_tabs(): void
     {
-        $supervisor = User::create([
-            'name' => 'Supervisor', 'username' => 'sup.leaveadvances', 'password' => 'secret123',
-            'role' => User::ROLE_SUPERVISOR, 'is_active' => true,
+        $hr = User::create([
+            'name' => 'People Office', 'username' => 'hr.leaveadvances', 'password' => 'secret123',
+            'role' => User::ROLE_HR, 'is_active' => true,
         ]);
 
-        $page = $this->actingAs($supervisor)->get('/leave-advances')->assertOk();
-        $this->assertFalse($page->viewData('canAdvances'));
-        $page->assertDontSee($this->advanceTab(), false);
+        $page = $this->actingAs($hr)->get('/leave-advances')->assertOk();
+        $this->assertTrue($page->viewData('canAdvances'));
+        $page->assertSee($this->advanceTab(), false);
 
-        $this->actingAs($supervisor)->get('/leave-advances?tab=advances')->assertForbidden();
-        $this->actingAs($supervisor)->get('/loans')->assertForbidden();
+        $this->actingAs($hr)->get('/leave-advances?tab=advances')->assertOk();
     }
 
     public function test_the_sidebar_has_one_entry_for_both(): void

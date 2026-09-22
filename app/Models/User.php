@@ -17,22 +17,21 @@ class User extends Authenticatable
     /** Full access, including Settings and Account Management. */
     public const ROLE_ADMIN = 'admin';
 
-    /** Day-to-day operations only — no Settings, no Account Management. */
-    public const ROLE_STAFF = 'staff';
-
-    // Narrower roles for the modules added around payroll. They are additions,
-    // not a replacement: every existing account keeps the role it has, and
-    // 'staff' still means exactly what it meant before. What each one may open
-    // is declared in App\Support\Modules, and applies only to those modules —
-    // the older screens keep the guards they already had.
-
-    /** Payroll, its reports and payslips. No employee administration. */
-    public const ROLE_PAYROLL = 'payroll_officer';
-
-    /** People: employees, leave, cash advances. No payroll figures. */
+    /**
+     * Everyone else in the office. Opens the day-to-day screens and the modules
+     * App\Support\Modules grants it — leave, cash advances, project assignment,
+     * payroll processing, payslips, payroll reports and device monitoring — but
+     * not Settings, Account Management, Users & Roles or the Audit Logs.
+     */
     public const ROLE_HR = 'hr';
 
-    /** One site's crew: assignments, leave approval, devices. */
+    // Two roles, Administrator and HR, as Chapter 4 (Table 4.5) describes the
+    // system. The narrower roles tried before them — Staff, Payroll Officer and
+    // Site Supervisor — were folded into HR by the 2026_09_22_090000 migration,
+    // which kept every account and its history. Their keys stay here only so
+    // old audit entries and that migration can still name them.
+    public const ROLE_STAFF = 'staff';
+    public const ROLE_PAYROLL = 'payroll_officer';
     public const ROLE_SUPERVISOR = 'site_supervisor';
 
     // There is no role for a worker. Workers clock in and out at the kiosk
@@ -42,11 +41,13 @@ class User extends Authenticatable
 
     /** Roles the Admin may assign, with their human labels. */
     public const ROLES = [
-        self::ROLE_ADMIN      => 'Administrator',
-        self::ROLE_STAFF      => 'Staff',
-        self::ROLE_PAYROLL    => 'Payroll Officer',
-        self::ROLE_HR         => 'HR',
-        self::ROLE_SUPERVISOR => 'Site Supervisor',
+        self::ROLE_ADMIN => 'Administrator',
+        self::ROLE_HR    => 'HR',
+    ];
+
+    /** A new account is HR unless an Administrator picks otherwise. */
+    protected $attributes = [
+        'role' => self::ROLE_HR,
     ];
 
     /**
@@ -112,9 +113,9 @@ class User extends Authenticatable
         return $this->role === self::ROLE_ADMIN;
     }
 
-    public function isStaff(): bool
+    public function isHr(): bool
     {
-        return $this->role === self::ROLE_STAFF;
+        return $this->role === self::ROLE_HR;
     }
 
     /**
@@ -129,7 +130,7 @@ class User extends Authenticatable
     /** Human label for the assigned role. */
     public function getRoleLabelAttribute(): string
     {
-        return self::ROLES[$this->role] ?? 'Staff';
+        return self::ROLES[$this->role] ?? 'HR';
     }
 
     /** Accounts allowed to sign in. */

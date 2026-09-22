@@ -35,7 +35,7 @@ class SystemSectionTest extends TestCase
     {
         return User::create([
             'name' => $name, 'username' => $username, 'password' => Hash::make('secret123'),
-            'role' => User::ROLE_STAFF, 'is_active' => true,
+            'role' => User::ROLE_HR, 'is_active' => true,
         ]);
     }
 
@@ -47,7 +47,7 @@ class SystemSectionTest extends TestCase
 
         $this->actingAs($admin)->post(route('accounts.store'), [
             'name' => 'Maria Santos', 'username' => 'maria.santos', 'email' => '',
-            'role' => User::ROLE_STAFF, 'password' => 'payroll2026', 'password_confirmation' => 'payroll2026',
+            'role' => User::ROLE_HR, 'password' => 'payroll2026', 'password_confirmation' => 'payroll2026',
         ])->assertRedirect();
 
         $created = AuditLog::where('module', 'Users')->where('action', 'created')->latest('id')->first();
@@ -59,7 +59,7 @@ class SystemSectionTest extends TestCase
 
         $this->actingAs($admin)->put(route('accounts.update', $maria), [
             'name' => 'Maria L. Santos', 'username' => 'maria.santos', 'email' => '',
-            'role' => User::ROLE_STAFF, 'is_active' => 1,
+            'role' => User::ROLE_HR, 'is_active' => 1,
             'password' => 'brandnew2026', 'password_confirmation' => 'brandnew2026',
         ])->assertRedirect();
 
@@ -75,11 +75,11 @@ class SystemSectionTest extends TestCase
         $admin = $this->admin();
         $staff = $this->staff();
 
-        $this->actingAs($admin)->patch(route('users-roles.update', $staff), ['role' => User::ROLE_HR]);
+        $this->actingAs($admin)->patch(route('users-roles.update', $staff), ['role' => User::ROLE_ADMIN]);
 
         $about = AuditLog::where('subject_type', 'User')->where('subject_id', $staff->id)->get();
         $this->assertCount(1, $about, 'the role change was logged twice');
-        $this->assertSame('Changed Carlo Staff from Staff to HR', $about->first()->description);
+        $this->assertSame('Changed Carlo Staff from HR to Administrator', $about->first()->description);
     }
 
     public function test_sign_ins_are_logged_and_the_password_never_is(): void
@@ -162,7 +162,7 @@ class SystemSectionTest extends TestCase
         $this->actingAs($admin)->get(route('users-roles.index', ['account' => $staff->id]))
             ->assertOk()
             ->assertSee('Selected account')
-            ->assertSee('Can open · 6 of 9')
+            ->assertSee('Can open · 7 of 9')
             ->assertSee('Access matrix')
             ->assertSee(route('accounts.edit', $staff), false);
     }
@@ -244,11 +244,11 @@ class SystemSectionTest extends TestCase
         $this->actingAs($admin)->patch(route('users-roles.update', $staff), ['role' => 'employee'])
             ->assertSessionHasErrors('role');
 
-        $this->assertSame(User::ROLE_STAFF, $staff->fresh()->role);
+        $this->assertSame(User::ROLE_HR, $staff->fresh()->role);
 
         $this->actingAs($admin)->get(route('users-roles.index'))
             ->assertOk()
-            ->assertSee('in 5 roles');
+            ->assertSee('in 2 roles');
     }
 
     public function test_accounts_that_had_the_employee_role_are_kept_but_cannot_sign_in(): void
@@ -289,5 +289,67 @@ class SystemSectionTest extends TestCase
                 ->assertSee('All changes saved')
                 ->assertSee('Accounts &amp; roles', false);
         }
+    }
+
+    // ── Two roles: Administrator and HR ──────────────────────────────────────
+
+    public function test_the_narrow_roles_are_folded_into_hr_and_nothing_is_lost(): void
+    {
+        $made = [];
+        foreach (['staff' => 'Carla Cruz', 'payroll_officer' => 'Pia Reyes', 'site_supervisor' => 'Sam Uy'] as $role => $name) {
+            $made[$role] = User::create([
+                'name' => $name, 'username' => str_replace(' ', '.', strtolower($name)),
+                'password' => Hash::make('secret123'), 'role' => $role, 'is_active' => $role !== 'site_supervisor',
+            ]);
+        }
+        $admin = $this->admin();
+
+        $migration = require database_path('migrations/2026_09_22_090000_fold_the_narrow_roles_into_hr.php');
+        $migration->up();
+
+        foreach ($made as $role => $user) {
+            $user->refresh();
+            $this->assertSame(User::ROLE_HR, $user->role, "{$role} became HR");
+            $this->assertFalse($user->is_admin);
+        }
+        $this->assertFalse($made['site_supervisor']->is_active, 'a disabled account stays disabled');
+        $this->assertSame(User::ROLE_ADMIN, $admin->fresh()->role, 'administrators are untouched');
+        $this->assertTrue(
+            AuditLog::where('description', 'like', 'Roles reduced to Administrator and HR%Pia Reyes%')->exists(),
+            'who was moved is written to the Audit Log'
+        );
+    }
+
+    public function test_the_role_screens_offer_administrator_and_hr_only(): void
+    {
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->get(route('accounts.create'))
+            ->assertOk()
+            ->assertSee('value="hr"', false)
+            ->assertSee('value="admin"', false)
+            ->assertDontSee('value="staff"', false)
+            ->assertSee('This account can open');
+
+        $this->actingAs($admin)->post(route('accounts.store'), [
+            'name' => 'Old Role', 'username' => 'old.role', 'role' => 'payroll_officer',
+            'password' => 'payroll2026', 'password_confirmation' => 'payroll2026',
+        ])->assertSessionHasErrors('role');
+
+        $this->actingAs($admin)->get(route('users-roles.index'))
+            ->assertOk()
+            ->assertDontSee('Site Supervisor')
+            ->assertDontSee('Payroll Officer');
+    }
+
+    public function test_the_inspector_folds_its_long_sections(): void
+    {
+        $admin = $this->admin();
+        $hr    = $this->staff();
+
+        $page = $this->actingAs($admin)->get(route('users-roles.index', ['account' => $hr->id]))->assertOk();
+        $page->assertSee('data-fold="access"', false)
+             ->assertSee('data-fold="history"', false)
+             ->assertSee('fold-arrow', false);
     }
 }

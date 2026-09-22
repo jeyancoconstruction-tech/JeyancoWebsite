@@ -34,25 +34,12 @@ final class Modules
      * before this map is consulted.
      */
     private const MATRIX = [
-        // The role every existing non-admin account already has. It keeps
-        // everything it could reach before, and gains the operational modules
-        // — but not user administration, the audit trail, or the device rail.
-        User::ROLE_STAFF => [
-            self::LEAVE, self::ADVANCES, self::ASSIGNMENTS,
-            self::PROCESSING, self::PAYSLIPS, self::REPORTS,
-        ],
-
-        User::ROLE_PAYROLL => [
-            self::LEAVE, self::ADVANCES,
-            self::PROCESSING, self::PAYSLIPS, self::REPORTS,
-        ],
-
+        // The office role, as Table 4.5 of Chapter 4 lists it: everything but
+        // user administration and the audit trail, which stay with Admin.
         User::ROLE_HR => [
             self::LEAVE, self::ADVANCES, self::ASSIGNMENTS,
-        ],
-
-        User::ROLE_SUPERVISOR => [
-            self::LEAVE, self::ASSIGNMENTS, self::DEVICES,
+            self::PROCESSING, self::PAYSLIPS, self::REPORTS,
+            self::DEVICES,
         ],
 
         // No worker role: workers use the kiosk, not the web.

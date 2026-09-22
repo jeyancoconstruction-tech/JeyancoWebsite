@@ -48,6 +48,10 @@
 .ur-dist i { background: var(--rc); min-width: 4px; }
 .ur-grid { display: grid; grid-template-columns: minmax(0, 1fr) 336px; gap: 14px; align-items: start; margin-bottom: 14px; }
 @media (max-width: 1100px) { .ur-grid { grid-template-columns: 1fr; } }
+/* The username rides under the name, so the table keeps all its columns in view. */
+#roleList .person > div { min-width: 0; }
+#roleList .sb { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#roleList th:last-child, #roleList td:last-child { padding-right: 16px; white-space: nowrap; }
 .uname { font-size: 11.5px; color: var(--text-secondary); background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 5px; padding: 2px 6px; }
 .ur-pick { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 6px 0 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
 .ur-pick:hover { border-color: var(--border-md); }
@@ -84,6 +88,19 @@
 .acc-item.lock .mk svg { width: 10px; height: 10px; stroke-width: 2.4; }
 .acc-item .why { margin-left: auto; font-size: 10.5px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
 .hist { position: relative; padding-left: 18px; margin-top: 8px; }
+
+/* Folding sections of the inspector: an arrow opens and closes each one,
+   and the panel stays short until someone asks for the detail. */
+.ins-fold { padding: 0; }
+.ins-fold > summary { list-style: none; cursor: pointer; margin: 0; padding: 11px 16px; gap: 8px; justify-content: flex-start; user-select: none; }
+.ins-fold > summary::-webkit-details-marker { display: none; }
+.ins-fold > summary:hover { background: var(--bg-subtle); }
+.ins-fold > summary .fp { margin-left: auto; }
+.ins-fold > summary .sx-link { margin-left: auto; }
+.fold-arrow { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; color: var(--text-muted); border: 1px solid var(--border); background: var(--surface); flex: none; transition: transform .15s; }
+.fold-arrow svg { width: 13px; height: 13px; stroke-width: 2.6; }
+.ins-fold[open] > summary .fold-arrow { transform: rotate(90deg); color: var(--brand); border-color: var(--brand); }
+.fold-body { padding: 0 16px 10px; }
 .hist::before { content: ""; position: absolute; left: 4px; top: 7px; bottom: 18px; width: 1px; background: var(--border-md); }
 .hist-i { position: relative; padding-bottom: 10px; font-size: 12.5px; color: var(--text-primary); line-height: 1.4; }
 .hist-i::before { content: ""; position: absolute; left: -18px; top: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--surface); border: 2px solid var(--warning); }
@@ -236,7 +253,7 @@
 
             <div class="sx-table-wrap" id="roleList" data-live="accounts audit">
                 <table class="sx-table">
-                    <thead><tr><th>Account</th><th>Username</th><th>Role</th><th>Last sign-in</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Account</th><th>Role</th><th>Last sign-in</th><th>Status</th></tr></thead>
                     <tbody>
                     @forelse($users as $u)
                         @php
@@ -251,11 +268,13 @@
                                     <span class="av {{ $cls($u->role) }}">{{ $initials($u->name ?: $u->username) }}</span>
                                     <div style="min-width:0">
                                         <div class="nm"><a href="{{ $query(['account' => $u->id, 'page' => $users->currentPage() > 1 ? $users->currentPage() : null]) }}">{{ $u->name ?: $u->username }}</a>@if($me && $me->id === $u->id)<span class="you">You</span>@endif</div>
-                                        <div class="sb">{{ $u->email ?: 'No email on file' }}</div>
+                                        @php
+                                            $sub = $u->email ? ($u->email !== $u->username ? ' · ' . $u->email : '') : ' · no email on file';
+                                        @endphp
+                                        <div class="sb" title="{{ $u->username }}{{ $sub }}"><span class="mono">{{ $u->username ?: '—' }}</span>{{ $sub }}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td><span class="mono uname">{{ $u->username ?: '—' }}</span></td>
                             <td>
                                 <button type="button" class="ur-pick {{ $cls($u->role) }}" data-role-pick
                                         data-name="{{ $u->name ?: $u->username }}" data-role="{{ $u->role }}"
@@ -270,7 +289,7 @@
                             <td><span class="ur-st {{ $u->is_active ? '' : 'off' }}">{{ $u->is_active ? 'Active' : 'Disabled' }}</span></td>
                         </tr>
                     @empty
-                        <tr><td colspan="5"><div class="sx-empty"><i data-lucide="users"></i>No accounts match those filters.</div></td></tr>
+                        <tr><td colspan="4"><div class="sx-empty"><i data-lucide="users"></i>No accounts match those filters.</div></td></tr>
                     @endforelse
                     </tbody>
                 </table>
@@ -327,8 +346,12 @@
                     <dt>Last sign-in</dt><dd>{{ $when($selected->last_login_at) }}</dd>
                     <dt>Added</dt><dd>{{ $selected->created_at?->format('M j, Y') ?? '—' }}@if($selected->creator) · by {{ $selected->creator->name }}@endif</dd>
                 </dl>
-                <div class="ins-sec">
-                    <div class="ins-sec-h"><span class="sx-label">Can open · {{ $n9($selFp) }} of 9</span>{!! $fp($selFp, $cls($selected->role)) !!}</div>
+                <details class="ins-sec ins-fold" data-fold="access">
+                    <summary class="ins-sec-h">
+                        <span class="fold-arrow"><i data-lucide="chevron-right"></i></span>
+                        <span class="sx-label">Can open · {{ $n9($selFp) }} of 9</span>{!! $fp($selFp, $cls($selected->role)) !!}
+                    </summary>
+                    <div class="fold-body">
                     @foreach($groups as $group => $keys)
                         <div class="acc-group {{ $cls($selected->role) }}"><span class="sx-label">{{ $group }}</span>
                             @foreach($keys as $key)
@@ -343,9 +366,16 @@
                             @endforeach
                         </div>
                     @endforeach
-                </div>
-                <div class="ins-sec">
-                    <div class="ins-sec-h"><span class="sx-label">History</span><a class="sx-link" style="font-size:12px" href="{{ route('audit-logs.index', ['subject_type' => 'User', 'subject_id' => $selected->id, 'range' => 'all']) }}">All activity <i data-lucide="arrow-up-right"></i></a></div>
+                    </div>
+                </details>
+                @php $histN = $history->count() + ($created ? 0 : 1); @endphp
+                <details class="ins-sec ins-fold" data-fold="history">
+                    <summary class="ins-sec-h">
+                        <span class="fold-arrow"><i data-lucide="chevron-right"></i></span>
+                        <span class="sx-label">History · {{ $histN }} {{ Str::plural('entry', $histN) }}</span>
+                        <a class="sx-link" style="font-size:12px" href="{{ route('audit-logs.index', ['subject_type' => 'User', 'subject_id' => $selected->id, 'range' => 'all']) }}">All activity <i data-lucide="arrow-up-right"></i></a>
+                    </summary>
+                    <div class="fold-body">
                     <div class="hist">
                         @foreach($history as $h)
                             @php $tone = \App\Models\AuditLog::toneFor($h->action); @endphp
@@ -361,7 +391,8 @@
                             </div>
                         @endunless
                     </div>
-                </div>
+                    </div>
+                </details>
                 <div class="ins-foot">
                     <a class="sx-btn sm" href="{{ route('accounts.edit', $selected) }}"><i data-lucide="pencil"></i> Edit account</a>
                     @unless($isSelf)
@@ -560,6 +591,17 @@
         // A row opens the inspector, unless the click was on something of its own.
         const row = e.target.closest('tr[data-href]');
         if (row && !e.target.closest('a, button, form, input')) window.location.href = row.dataset.href;
+    });
+
+    // Remember which inspector sections are open. Closed by default.
+    document.querySelectorAll('.ins-fold[data-fold]').forEach(d => {
+        const key = 'ur-fold-' + d.dataset.fold;
+        try { if (localStorage.getItem(key) === '1') d.open = true; } catch (e) {}
+        d.addEventListener('toggle', () => {
+            try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (e) {}
+        });
+        // The "All activity" link inside a summary should open the page, not fold.
+        d.querySelectorAll('summary a').forEach(a => a.addEventListener('click', e => e.stopPropagation()));
     });
 
     document.addEventListener('keydown', e => {

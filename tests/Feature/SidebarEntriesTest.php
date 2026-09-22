@@ -39,7 +39,7 @@ class SidebarEntriesTest extends TestCase
 
     public function test_payroll_processing_leads_the_payroll_group_on_the_office_rail(): void
     {
-        foreach ([User::ROLE_ADMIN, User::ROLE_STAFF, User::ROLE_PAYROLL] as $i => $role) {
+        foreach ([User::ROLE_ADMIN, User::ROLE_HR] as $i => $role) {
             $rail = $this->rail($this->user($role, 'rail.office' . $i));
 
             $processing = strpos($rail, 'href="' . route('payroll-processing.index') . '"');
@@ -57,10 +57,11 @@ class SidebarEntriesTest extends TestCase
     {
         $this->assertArrayNotHasKey('employee', User::ROLES);
 
+        $this->assertSame(['admin', 'hr'], array_keys(User::ROLES), 'two roles: Administrator and HR');
+
         $rail = $this->rail($this->user(User::ROLE_HR, 'rail.hr'));
 
         $this->assertStringNotContainsString(route('payslips.index'), $rail);
-        $this->assertStringNotContainsString(route('payroll-processing.index'), $rail);
     }
 
     public function test_each_run_still_opens_on_its_own_page(): void

@@ -8,8 +8,18 @@
 @php
     $account = $account ?? null;
     $isSelf  = $account && $account->id === auth()->id();
-    $roleOld = old('role', $account->role ?? \App\Models\User::ROLE_STAFF);
+    $roleOld = old('role', $account->role ?? \App\Models\User::ROLE_HR);
     $active  = (bool) old('is_active', $account->is_active ?? true);
+
+    // What each role opens, for the preview beside the form.
+    $M       = \App\Support\Modules::class;
+    $labels  = $M::labels();
+    $groups  = $M::groups();
+    $access  = [];
+    foreach (array_keys(\App\Models\User::ROLES) as $r) {
+        $access[$r] = $M::forRole($r);
+    }
+    $adminOnly = array_values(array_filter(array_keys($labels), fn ($k) => $M::isAdminOnly($k)));
 @endphp
 
 <div class="acctf-page">
@@ -37,6 +47,7 @@
         </div>
     @endif
 
+    <div class="acctf-layout">
     <form method="POST"
           action="{{ $account ? route('accounts.update', $account) : route('accounts.store') }}"
           class="acctf-card" autocomplete="off">
@@ -91,15 +102,15 @@
             @endif
 
             <div class="acctf-roles">
-                <label class="acctf-role {{ $roleOld === \App\Models\User::ROLE_STAFF ? 'picked' : '' }} {{ $isSelf ? 'locked' : '' }}">
-                    <input type="radio" name="role" value="{{ \App\Models\User::ROLE_STAFF }}"
-                           {{ $roleOld === \App\Models\User::ROLE_STAFF ? 'checked' : '' }}
+                <label class="acctf-role {{ $roleOld === \App\Models\User::ROLE_HR ? 'picked' : '' }} {{ $isSelf ? 'locked' : '' }}">
+                    <input type="radio" name="role" value="{{ \App\Models\User::ROLE_HR }}"
+                           {{ $roleOld === \App\Models\User::ROLE_HR ? 'checked' : '' }}
                            {{ $isSelf ? 'disabled' : '' }}>
                     <span class="acctf-role-body">
-                        <span class="acctf-role-name"><i class="fas fa-user"></i> {{ __('Staff') }}</span>
+                        <span class="acctf-role-name"><i class="fas fa-user"></i> {{ __('HR') }}</span>
                         <span class="acctf-role-desc">
-                            Dashboard, Attendance, Employees, Sites, Payroll Records, Analytics and
-                            Jeyanco AI. No access to Settings or Account Management.
+                            Runs the office day to day: attendance, employees, leave and cash advances,
+                            project assignment, payroll, payslips and reports. No Settings, Users &amp; Roles or Audit Logs.
                         </span>
                     </span>
                 </label>
@@ -192,10 +203,66 @@
             </button>
         </div>
     </form>
+
+    {{-- ── What the chosen role opens ─────────────────────────────────────── --}}
+    <aside class="acctf-side">
+        <div class="acctf-prev">
+            <div class="acctf-prev-head">
+                <span class="acctf-prev-eyebrow">{{ __('This account can open') }}</span>
+                <span class="acctf-prev-role" id="acctfPrevRole">{{ \App\Models\User::ROLES[$roleOld] ?? 'HR' }}</span>
+                <span class="acctf-prev-count"><b id="acctfPrevN">{{ count($access[$roleOld] ?? []) }}</b> {{ __('of') }} {{ count($labels) }} {{ __('modules') }}</span>
+            </div>
+            @foreach($groups as $group => $keys)
+                <div class="acctf-prev-group">
+                    <span class="acctf-prev-label">{{ $group }}</span>
+                    @foreach($keys as $key)
+                        <div class="acctf-prev-item {{ in_array($key, $access[$roleOld] ?? [], true) ? 'on' : '' }}" data-module="{{ $key }}">
+                            <span class="mk"></span><span>{{ $labels[$key] }}</span>
+                            @if(in_array($key, $adminOnly, true))<span class="why">{{ __('admin only') }}</span>@endif
+                        </div>
+                    @endforeach
+                </div>
+            @endforeach
+            <p class="acctf-prev-foot">
+                {{ __('Both roles also open the everyday screens: Dashboard, Attendance, Employees, Sites, Payroll Records, Analytics and Jeyanco AI. Settings and System Settings stay with Administrators.') }}
+            </p>
+        </div>
+
+        <div class="acctf-tips">
+            <div class="acctf-tip"><i class="fas fa-bolt"></i><span>{{ __('The account can sign in as soon as you save it.') }}</span></div>
+            <div class="acctf-tip"><i class="fas fa-user-tag"></i><span>{{ __('You can change the role later from Users & Roles.') }}</span></div>
+            <div class="acctf-tip"><i class="fas fa-scroll"></i><span>{{ __('Creating or changing an account is written to the Audit Logs.') }}</span></div>
+        </div>
+    </aside>
+    </div>
 </div>
 
 <style>
-.acctf-page { max-width: 860px; width: 100%; margin: 0; }
+.acctf-page { max-width: 1180px; width: 100%; margin: 0 auto; }
+
+/* Form on the left, what the role opens on the right; one column on narrow screens. */
+.acctf-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .acctf-layout { grid-template-columns: 1fr; } }
+.acctf-side { position: sticky; top: 84px; display: flex; flex-direction: column; gap: 14px; }
+.acctf-prev { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; }
+.acctf-prev-head { display: flex; flex-direction: column; gap: 4px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; margin-bottom: 6px; }
+.acctf-prev-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #64748b; }
+.acctf-prev-role { font-size: 18px; font-weight: 700; color: #0f172a; }
+.acctf-prev-count { font-size: 12.5px; color: #64748b; }
+.acctf-prev-count b { color: #1e3a8a; }
+.acctf-prev-group { padding: 8px 0 2px; }
+.acctf-prev-label { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; }
+.acctf-prev-item { display: flex; align-items: center; gap: 9px; padding: 4px 0; font-size: 13px; color: #94a3b8; }
+.acctf-prev-item .mk { width: 18px; height: 18px; border-radius: 5px; border: 1.5px dashed #cbd5e1; flex: none; display: grid; place-items: center; }
+.acctf-prev-item.on { color: #0f172a; }
+.acctf-prev-item.on .mk { border: none; background: #dbeafe; }
+.acctf-prev-item.on .mk::after { content: ""; width: 5px; height: 9px; border: solid #1e3a8a; border-width: 0 2.2px 2.2px 0; transform: rotate(45deg) translate(-1px, -1px); }
+.acctf-prev-item .why { margin-left: auto; font-size: 10.5px; color: #94a3b8; }
+.acctf-prev-item.on .why { display: none; }
+.acctf-prev-foot { font-size: 12px; color: #64748b; line-height: 1.55; margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+.acctf-tips { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.acctf-tip { display: flex; gap: 10px; font-size: 12.5px; color: #475569; line-height: 1.45; }
+.acctf-tip i { color: #1e3a8a; width: 14px; margin-top: 2px; flex: none; }
 
 .acctf-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .acctf-title { font-size: 1.45rem; font-weight: 700; color: #0f172a; margin: 0; }
@@ -342,10 +409,35 @@
 [data-bs-theme="dark"] .acctf-btn.ghost  { background: #151d2e; border-color: #283449; color: #9fb0c7; }
 [data-bs-theme="dark"] .acctf-btn.ghost:hover { border-color: #3d4a63; color: #e8edf5; }
 [data-bs-theme="dark"] .acctf-errors     { background: #450a0a; border-color: #991b1b; color: #fca5a5; }
+[data-bs-theme="dark"] .acctf-prev       { background: #151d2e; border-color: #283449; }
+[data-bs-theme="dark"] .acctf-prev-head,
+[data-bs-theme="dark"] .acctf-prev-foot  { border-color: #1e2637; }
+[data-bs-theme="dark"] .acctf-prev-role,
+[data-bs-theme="dark"] .acctf-prev-item.on { color: #e8edf5; }
+[data-bs-theme="dark"] .acctf-prev-count b { color: #93c5fd; }
+[data-bs-theme="dark"] .acctf-prev-item.on .mk { background: #172554; }
+[data-bs-theme="dark"] .acctf-prev-item.on .mk::after { border-color: #93c5fd; }
+[data-bs-theme="dark"] .acctf-tips       { background: #101828; border-color: #283449; }
+[data-bs-theme="dark"] .acctf-tip        { color: #9fb0c7; }
+[data-bs-theme="dark"] .acctf-tip i      { color: #60a5fa; }
 </style>
 
 <script>
 (function () {
+    {{-- json_encode rather than @json: @json splits its argument on commas. --}}
+    const ACCESS = {!! json_encode($access, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!};
+    const NAMES  = {!! json_encode(\App\Models\User::ROLES, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) !!};
+
+    // Tick what the chosen role opens, in the panel beside the form.
+    function preview(role) {
+        const open = ACCESS[role] || [];
+        document.querySelectorAll('.acctf-prev-item').forEach(el => {
+            el.classList.toggle('on', open.includes(el.dataset.module));
+        });
+        document.getElementById('acctfPrevRole').textContent = NAMES[role] || role;
+        document.getElementById('acctfPrevN').textContent = open.length;
+    }
+
     // Highlight the selected role card.
     const cards = document.querySelectorAll('.acctf-role');
     cards.forEach(card => {
@@ -354,6 +446,7 @@
             if (!radio || radio.disabled) return;
             cards.forEach(c => c.classList.remove('picked'));
             card.classList.add('picked');
+            preview(radio.value);
         });
     });
 
