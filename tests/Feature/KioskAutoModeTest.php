@@ -113,6 +113,33 @@ class KioskAutoModeTest extends TestCase
         $this->assertNotNull(Kiosk::where('code', 'SITE_A')->first()->settingsReadAt(), 'the read is remembered for Settings → Kiosk');
     }
 
+    /**
+     * The kiosk asks every few seconds with the version it holds. Nothing
+     * changed: a tiny answer. The hours changed on the web: the new hours.
+     */
+    public function test_new_shift_hours_reach_the_kiosk_on_its_next_question(): void
+    {
+        $first = $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A')->assertOk();
+        $v     = $first->json('v');
+        $this->assertNotEmpty($v);
+
+        $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A&v=' . $v)
+            ->assertOk()
+            ->assertExactJson(['success' => true, 'same' => true, 'v' => $v]);
+
+        // The office moves the day crew to seven to four.
+        $day = \App\Models\Shift::where('crosses_midnight', false)->firstOrFail();
+        $day->update(\App\Models\Shift::layOut('07:00', '16:00', '12:00', '13:00'));
+
+        $next = $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A&v=' . $v)->assertOk();
+        $this->assertNotSame($v, $next->json('v'), 'a new version');
+        $this->assertNull($next->json('same'));
+
+        $shift = collect($next->json('attendance.shifts'))->firstWhere('night', false);
+        $this->assertSame(['07:00', '12:00', '13:00', '16:00', '05:00'],
+            [$shift['am_start'], $shift['am_end'], $shift['pm_start'], $shift['pm_end'], $shift['opens']]);
+    }
+
     // ── A day of scans ──────────────────────────────────────────────────────
 
     public function test_a_whole_day_is_four_scans(): void

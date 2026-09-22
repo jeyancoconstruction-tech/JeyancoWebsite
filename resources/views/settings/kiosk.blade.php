@@ -137,7 +137,7 @@
 <div class="sx-page">
     @include('settings._head', [
         'title' => 'Kiosk',
-        'sub'   => 'How the attendance kiosk records a scan. A saved change reaches the kiosk within a minute — nobody has to touch the Pi.',
+        'sub'   => 'How the attendance kiosk records a scan. A saved change reaches the kiosk within a few seconds — nobody has to touch the Pi.',
     ])
 
     <div class="st-wrap">
@@ -252,7 +252,7 @@
 
             <div class="st-two">
                 <div class="sx-card">
-                    <div class="sx-card-head"><span class="sx-idx">D</span><h2 class="sx-card-title">Kiosks</h2><span class="sx-card-note">Each reads this setting every minute</span></div>
+                    <div class="sx-card-head"><span class="sx-idx">D</span><h2 class="sx-card-title">Kiosks</h2><span class="sx-card-note">Each checks for changes every few seconds</span></div>
                     @forelse($kiosks as $k)
                         <div class="kk">
                             <span class="i {{ $k['online'] ? 'on' : '' }}"><i data-lucide="tablet-smartphone"></i></span>
@@ -263,7 +263,7 @@
                             <div class="s">
                                 @if($k['read'])
                                     Read it <b>{{ $k['read']->diffForHumans() }}</b>
-                                    <br>{{ $k['online'] ? 'A change reaches it within a minute' : 'Picks up changes when it is back online' }}
+                                    <br>{{ $k['online'] ? 'A change reaches it within a few seconds' : 'Picks up changes when it is back online' }}
                                 @else
                                     Has not read it yet<br>Needs the new kiosk files
                                 @endif

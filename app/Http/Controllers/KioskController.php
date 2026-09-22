@@ -457,31 +457,59 @@ class KioskController extends Controller
      */
     public function getSettings(Request $request)
     {
-        $laborTypes = LaborType::select('id', 'name', 'daily_rate')->get();
-        $system     = SystemSetting::current();
+        $system = SystemSetting::current();
 
-        // Remember when each kiosk last asked, so System Settings → Kiosk can
-        // say whether a change has reached it yet.
-        $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
-        if ($kiosk) {
-            Cache::put(Kiosk::SETTINGS_READ_KEY . $kiosk->code, now()->toIso8601String(), now()->addDays(30));
+        // How the kiosk records a scan, and the hours of every shift. The
+        // kiosk asks every few seconds, so a change saved on the web reaches
+        // it almost at once — nobody touches the Pi.
+        $attendance = [
+            'mode'                 => $system->kioskMode(),
+            'repeat_guard_seconds' => (int) ($system->kiosk_repeat_guard_seconds ?? 180),
+            'idle_return_seconds'  => (int) ($system->kiosk_idle_return_seconds ?? 60),
+            'shifts'               => Shift::query()->orderBy('crosses_midnight')->orderBy('id')->get()
+                ->filter(fn (Shift $s) => $s->hasSchedule())
+                ->map(fn (Shift $s) => $this->kioskShift($s))
+                ->values()
+                ->all(),
+        ];
+
+        // A fingerprint of all of that. The kiosk sends back the one it holds;
+        // while nothing has changed the answer is a few bytes, so asking often
+        // costs next to nothing.
+        $version = substr(sha1(json_encode($attendance)), 0, 16);
+
+        $this->noteSettingsRead($request);
+
+        if ((string) $request->query('v') === $version) {
+            return response()->json(['success' => true, 'same' => true, 'v' => $version]);
         }
 
         return response()->json([
             'success'     => true,
-            'labor_types' => $laborTypes,
-            // How the kiosk records a scan. It reads this every minute, so a
-            // change on the web reaches it without anyone touching the Pi.
-            'attendance'  => [
-                'mode'                 => $system->kioskMode(),
-                'repeat_guard_seconds' => (int) ($system->kiosk_repeat_guard_seconds ?? 180),
-                'idle_return_seconds'  => (int) ($system->kiosk_idle_return_seconds ?? 60),
-                'shifts'               => Shift::query()->orderBy('crosses_midnight')->orderBy('id')->get()
-                    ->filter(fn (Shift $s) => $s->hasSchedule())
-                    ->map(fn (Shift $s) => $this->kioskShift($s))
-                    ->values(),
-            ],
+            'v'           => $version,
+            'labor_types' => LaborType::select('id', 'name', 'daily_rate')->get(),
+            'attendance'  => $attendance,
         ]);
+    }
+
+    /**
+     * Remember when each kiosk last asked, so System Settings → Kiosk can say
+     * whether a change has reached it yet.
+     *
+     * Written at most every 30 seconds: the kiosk asks every few, and a write
+     * each time would be a database write every few seconds for no gain.
+     */
+    private function noteSettingsRead(Request $request): void
+    {
+        $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
+        if (! $kiosk) {
+            return;
+        }
+
+        $read = $kiosk->settingsReadAt();
+        if ($read === null || $read->lt(now()->subSeconds(30))) {
+            Cache::put(Kiosk::SETTINGS_READ_KEY . $kiosk->code, now()->toIso8601String(), now()->addDays(30));
+        }
     }
 
     /** A shift's day as the kiosk draws it, in 24-hour "H:i" times. */
