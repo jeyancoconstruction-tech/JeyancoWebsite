@@ -7,9 +7,11 @@ use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Throwable;
 
 /**
  * Self-service password reset.
@@ -35,6 +37,23 @@ class PasswordResetController extends Controller
             'login' => ['required', 'string'],
         ], [], ['login' => 'username or email']);
 
+        // Before anything is looked up: can this deployment send mail at all?
+        // With MAIL_MAILER unset Laravel falls back to the `log` mailer, which
+        // writes the message into storage/logs/laravel.log and reports success
+        // — so the form would promise a link that was never posted. The answer
+        // does not depend on who asked, so saying it out loud reveals nothing
+        // about the account, and it is the one failure a person can act on.
+        if (! $this->canSendMail()) {
+            Log::warning('Password reset requested, but this deployment cannot send mail.', [
+                'mailer' => config('mail.default'),
+                'hint'   => 'Set MAIL_MAILER=smtp and the MAIL_* settings, then run: php artisan mail:test <address>',
+            ]);
+
+            return back()->withErrors(['login' =>
+                'Email is not set up on this system yet, so no reset link can be sent. '
+                . 'Please ask an Admin to reset your password in Account Management.']);
+        }
+
         $login = trim($request->input('login'));
 
         // Same rule as the login box: an "@" can only be an email, because
@@ -46,7 +65,21 @@ class PasswordResetController extends Controller
         // else falls through to the same reply below, so this form cannot be
         // used to discover which usernames exist.
         if ($user && $user->is_active && ! empty($user->email)) {
-            Password::sendResetLink(['email' => $user->email]);
+            try {
+                Password::sendResetLink(['email' => $user->email]);
+            } catch (Throwable $e) {
+                // A refused SMTP handshake throws out of sendResetLink. Left
+                // alone it renders a 500 page — and only ever for an address
+                // that exists, which turns a broken mailer into exactly the
+                // account oracle the branch above is written to avoid. So it
+                // is swallowed into the same reply as every other outcome,
+                // and the detail goes to the log for whoever runs the system.
+                Log::error('Password reset email could not be sent.', [
+                    'user_id' => $user->id,
+                    'mailer'  => config('mail.default'),
+                    'error'   => $e->getMessage(),
+                ]);
+            }
         }
 
         return back()->with('success',
@@ -99,5 +132,19 @@ class PasswordResetController extends Controller
         }
 
         return back()->withErrors(['email' => __($status)])->withInput($request->only('email'));
+    }
+
+    /**
+     * Whether a message sent from here would reach an inbox.
+     *
+     * `log` is Laravel's default when MAIL_MAILER is absent, and `array` and
+     * `null` are the test mailers; all three accept a message and deliver it
+     * nowhere, without raising anything. Every other mailer is taken at its
+     * word — whether it can actually connect is only knowable by trying,
+     * which is what the send itself finds out.
+     */
+    private function canSendMail(): bool
+    {
+        return ! in_array(config('mail.default'), ['log', 'array', 'null'], true);
     }
 }
