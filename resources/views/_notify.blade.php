@@ -82,7 +82,12 @@
 
         // An error is worth reading twice; the same success repeated four times
         // is just noise, so an identical live toast is refreshed, not stacked.
-        const dupe = [...stack.children].find(c => c.dataset.key === tone + '|' + message);
+        //
+        // A toast already on its way out does not count. It matched, so the
+        // new message was handed the dying element and then removed with it —
+        // dismiss a toast and immediately trigger the same one again and
+        // nothing came back at all.
+        const dupe = [...stack.children].find(c => c.dataset.key === tone + '|' + message && !c.dataset.leaving);
         if (dupe) {
             dupe.style.animation = 'none';
             void dupe.offsetWidth;
@@ -143,8 +148,13 @@
 
         stack.appendChild(el);
 
-        // A screenful of toasts hides the page behind them.
-        while (stack.children.length > 4) dismiss(stack.firstElementChild);
+        // A screenful of toasts hides the page behind them. Counted over
+        // the ones still arriving: a toast already leaving is on its way out
+        // by itself, and dismiss() does nothing when asked twice — so cutting
+        // the stack down by the raw child count spun forever the moment a
+        // dismissed toast was still animating away.
+        const live = [...stack.children].filter(c => !c.dataset.leaving);
+        while (live.length > 4) dismiss(live.shift());
 
         return el;
     }

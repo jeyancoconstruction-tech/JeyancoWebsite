@@ -59,6 +59,108 @@ class NotificationSystemTest extends TestCase
         return $out;
     }
 
+    /**
+     * The last browser dialog in the app, and the one that could not simply
+     * be deleted.
+     *
+     * Leaving System Settings with an unsaved field raised the browser's own
+     * "Leave site? Changes you made may not be saved." — grey, titled after
+     * the site rather than the page, and unable to name the setting it was
+     * asking about. Every other question this app asks is asked in Notify's
+     * dialog, and this one is too, for the case a page can actually catch: a
+     * click on an in-app link.
+     *
+     * beforeunload STAYS underneath it. Closing the tab, the back button and
+     * typing an address cannot be intercepted, and there the browser insists
+     * on its own wording. The two guards cover what the other cannot, so a
+     * test that simply banned beforeunload would be asking for the unsaved
+     * change to be lost silently.
+     */
+    public function test_leaving_a_dirty_settings_form_asks_in_the_apps_own_dialog(): void
+    {
+        $src = File::get(resource_path('views/settings/_form-script.blade.php'));
+
+        $this->assertStringContainsString('Notify.confirm', $src,
+            'an in-app link should be answered by the app dialog');
+        $this->assertStringContainsString("closest('a[href]')", $src,
+            'the guard hangs off a click on a link');
+        $this->assertStringContainsString('leaving = true', $src,
+            'and the beforeunload guard must not fire on top of it');
+
+        // The point of doing it ourselves: the browser box could only say
+        // "changes", never which one.
+        $this->assertStringContainsString('dataset.label', $src,
+            'the dialog names the setting that is unsaved');
+
+        // Still there for the exits a page cannot catch.
+        $this->assertStringContainsString('beforeunload', $src,
+            'closing the tab has to keep its guard');
+    }
+
+    /**
+     * A link out of the app, a new tab, a download or an anchor is not the
+     * page being left behind, and stopping those would break them.
+     */
+    public function test_the_leave_guard_leaves_other_links_alone(): void
+    {
+        $src = File::get(resource_path('views/settings/_form-script.blade.php'));
+
+        foreach ([
+            'url.origin !== location.origin' => 'a link to another site',
+            "hasAttribute('download')"       => 'a download',
+            "link.target"                    => 'a new tab',
+            "startsWith('#')"                => 'an anchor on this page',
+            'e.metaKey'                      => 'ctrl or cmd click',
+        ] as $needle => $what) {
+            $this->assertStringContainsString($needle, $src, "should not intercept {$what}");
+        }
+    }
+
+    /**
+     * A toast and the confirm dialog are one family, not two components that
+     * happen to share a palette: both put their icon in a soft tinted chip in
+     * the tone's colour.
+     */
+    public function test_a_toast_and_the_dialog_carry_the_tone_the_same_way(): void
+    {
+        $css = File::get(resource_path('views/_notify_styles.blade.php'));
+
+        foreach (['success' => 'success-soft', 'error' => 'danger-soft',
+                  'warning' => 'warning-soft', 'info' => 'brand-subtle'] as $tone => $token) {
+            $this->assertMatchesRegularExpression(
+                // The rules are written in a column, so the spacing varies.
+                "/\.jy-toast-{$tone}\s+\.jy-toast-icon \{ background: var\(--{$token}/",
+                $css,
+                "the {$tone} toast icon should sit in the same tinted chip the dialog uses"
+            );
+        }
+
+        // The stripe down the left edge said the same thing a second time.
+        $this->assertStringNotContainsString('.jy-toast::before', $css,
+            'the tone is carried by the chip and the timer bar, not also by a stripe');
+    }
+
+    /**
+     * Two ways the stack could swallow a message, both reachable by
+     * dismissing a toast and immediately firing the same one again.
+     */
+    public function test_a_toast_on_its_way_out_does_not_swallow_the_next_one(): void
+    {
+        $js = File::get(resource_path('views/_notify.blade.php'));
+
+        // The duplicate check handed the new message to the dying element,
+        // which then removed itself — and nothing came back.
+        $this->assertStringContainsString("!c.dataset.leaving", $js,
+            'a leaving toast is not a duplicate to refresh');
+
+        // And the stack cap asked an already-leaving toast to leave, which
+        // does nothing, so the loop never ended.
+        $this->assertStringContainsString('live.shift()', $js,
+            'the cap counts the toasts still arriving');
+        $this->assertStringNotContainsString('while (stack.children.length > 4)', $js,
+            'counting raw children spun forever once one was mid-dismissal');
+    }
+
     public function test_no_page_still_uses_a_browser_alert_or_confirm(): void
     {
         $offenders = [];
