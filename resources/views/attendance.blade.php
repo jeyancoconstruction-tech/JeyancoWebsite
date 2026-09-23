@@ -101,27 +101,10 @@
     box-shadow:0 0 0 3px color-mix(in srgb, var(--brand,#1668dc) 20%, transparent);
 }
 
-/* Shift: a segmented control built from radios, so the choice is submitted
-   with the form and works without JavaScript. */
-.att-seg {
-    display:inline-flex; align-items:center; gap:2px; padding:3px;
-    border-radius:9px; background:var(--bg-subtle,#f8f9fb);
-    border:1px solid var(--border,#e4e7ec);
-}
-.att-seg input { position:absolute; opacity:0; pointer-events:none; }
-.att-seg label {
-    display:inline-flex; align-items:center; gap:6px; margin:0;
-    padding:6px 14px; border-radius:6px; cursor:pointer;
-    font-size:.82rem; color:var(--text-secondary,#344054);
-    transition:background .13s, color .13s;
-}
-.att-seg label i { font-size:.85rem; }
-.att-seg label:hover { color:var(--text-primary,#101828); }
-.att-seg input:checked + label {
-    background:var(--bg-elevated,#fff); color:var(--text-primary,#101828);
-    font-weight:600; box-shadow:0 1px 2px rgba(16,24,40,.08);
-}
-.att-seg input:focus-visible + label { outline:2px solid var(--brand,#1668dc); outline-offset:1px; }
+/* Shift used to be a segmented row of radios. Three pills that look alike
+   read as one control row; a segment in the middle of them read as a
+   different kind of thing, and it grew wider with every shift the office
+   added. The whole .att-seg block went with it. */
 
 .att-ghost-btn {
     display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px;
@@ -134,9 +117,8 @@
 
 @media (max-width:620px) {
     .att-controls-left, .att-controls-right { width:100%; }
-    .att-pick, .att-seg { width:100%; }
+    .att-pick { width:100%; }
     .att-pick select { flex:1; }
-    .att-seg label { flex:1; justify-content:center; }
 }
 
 .att-site { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600;
@@ -302,17 +284,27 @@
                 </select>
             </div>
 
-            {{-- Radios, not buttons: the choice survives without JavaScript,
-                 and the browser gives it keyboard handling for free. --}}
-            <div class="att-seg" role="group" aria-label="{{ __('Filter by shift') }}">
-                <input type="radio" name="shift" id="attShiftAll" value="" @checked(! $shiftId)>
-                <label for="attShiftAll">{{ __('All shifts') }}</label>
-                @foreach($shifts as $sh)
-                    <input type="radio" name="shift" id="attShift{{ $sh->id }}" value="{{ $sh->id }}" @checked($shiftId === $sh->id)>
-                    <label for="attShift{{ $sh->id }}">
-                        <i class="fas {{ $sh->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>{{ $sh->name }}
-                    </label>
-                @endforeach
+            {{-- The same pill as Site and Date Range either side of it. A
+                 select also keeps the office's own shift names from widening
+                 the row, which a segment per shift did.
+
+                 The sun and moon the segments carried are not lost: the pill's
+                 own icon follows the chosen shift, so "which crew" is still
+                 readable at a glance without opening the list. --}}
+            @php
+                $pickedShift = $shifts->firstWhere('id', $shiftId);
+                $shiftIcon   = $pickedShift
+                    ? ($pickedShift->crosses_midnight ? 'fa-moon' : 'fa-sun')
+                    : 'fa-user-clock';
+            @endphp
+            <div class="att-pick">
+                <i class="fas {{ $shiftIcon }}"></i>
+                <select name="shift" id="attShift" aria-label="{{ __('Filter by shift') }}">
+                    <option value="">{{ __('All shifts') }}</option>
+                    @foreach($shifts as $sh)
+                        <option value="{{ $sh->id }}" @selected($shiftId === $sh->id)>{{ $sh->name }}</option>
+                    @endforeach
+                </select>
             </div>
 
             {{-- How far back History reaches. It rides in the same form, so it
@@ -546,10 +538,10 @@
 
     const tabField = document.getElementById('attTabField');
 
-    // Site is a select, Shift is a group of radios; either one reloads with
-    // the choice applied. The noscript Apply button covers the case where
-    // this never runs at all.
-    form.querySelectorAll('select, input[type="radio"]').forEach(el => {
+    // Site, Shift and Date Range are all selects now; any of them reloads
+    // with the choice applied. The noscript Apply button covers the case
+    // where this never runs at all.
+    form.querySelectorAll('select').forEach(el => {
         el.addEventListener('change', () => form.submit());
     });
 

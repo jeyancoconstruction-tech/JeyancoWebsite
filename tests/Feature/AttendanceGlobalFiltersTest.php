@@ -126,7 +126,7 @@ class AttendanceGlobalFiltersTest extends TestCase
              ->get(route('attendance'))
              ->assertOk()
              ->assertSee('All sites')      // the site dropdown
-             ->assertSee('All shifts')     // the first segment of the shift control
+             ->assertSee('All shifts')     // the shift dropdown
              ->assertSee('Site A')
              ->assertSee('Site B')
              ->assertSee('Day')
