@@ -1,19 +1,17 @@
-{{-- The entry loader's markup and its script. The check that decides whether
-     it runs at all, and everything that draws it, are in _loading_head —
+{{-- The loading screen's markup and its controller. The check that decides
+     whether it runs, and everything that draws it, are in _loading_head —
      they have to be read before this paints. See the notes there.
 
-     JeyancoLoader.show() / .hide() / .setMessage(text, icon) /
-     .setProgress(0-100) are on window for anything that wants to put the
-     overlay up by hand; data-manual on #jp-loader turns off the auto-hide.
-     setMessage takes any of the four icons below, so a slow job that really
-     is doing something can say what it is doing. --}}
+     window.JeyancoLoader:
+       .show(message)  bring the overlay back — the sign-in form uses this so
+                       the wait for the dashboard is the same screen the site
+                       opened on, rather than a form frozen mid-press.
+       .hide()         play the exit, then let the page build in underneath. --}}
 
 <div id="jp-loader" role="status" aria-live="polite" aria-label="{{ __('Loading Jeyanco Payroll') }}">
   <div class="jp-stage">
-
     <div class="jp-dial">
       <div class="jp-halo"></div>
-
       <svg viewBox="0 0 160 160" aria-hidden="true">
         <defs>
           <linearGradient id="jp-tail" x1="0" y1="0" x2="1" y2="0">
@@ -21,10 +19,7 @@
             <stop offset="1" stop-color="#4F8FD1" stop-opacity=".9"/>
           </linearGradient>
         </defs>
-
         <circle class="jp-track" cx="80" cy="80" r="66"/>
-
-        <!-- 12 hour ticks; each lights up as the sweep passes it -->
         <g>
           <line class="jp-tick major" x1="80" y1="17" x2="80" y2="24" style="animation-delay:-3s"/>
           <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(30 80 80)"  style="animation-delay:-2.75s"/>
@@ -39,125 +34,140 @@
           <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(300 80 80)" style="animation-delay:-.5s"/>
           <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(330 80 80)" style="animation-delay:-.25s"/>
         </g>
-
-        <!-- sweeping "second hand" on the outer ring -->
         <g class="jp-orbit">
           <path class="jp-orbit-tail" d="M 33.33 33.33 A 66 66 0 0 1 80 14"/>
           <circle class="jp-orbit-dot" cx="80" cy="14" r="3"/>
         </g>
       </svg>
-
-      {{-- The mark, with the monogram behind it: the file is served off the
-           app's own public folder, and if it ever is not there the badge
-           should still read as Jeyanco rather than as an empty circle. --}}
-      <div class="jp-core" id="jp-core">
-        <img src="{{ asset('images/logo-mark.png') }}" alt=""
-             onerror="this.parentNode.classList.add('no-logo')">
-        <span class="jp-monogram">J</span>
-      </div>
+      <div class="jp-core"><img src="{{ asset('images/logo-mark.png') }}" alt=""></div>
     </div>
 
     <div class="jp-brand">
       <div class="jp-wordmark">JEYANCO <span>PAYROLL</span></div>
-      <div class="jp-sub">{{ __('Jeyanco Construction') }}</div>
+      <div class="jp-sub">{{ ($company ?? null)?->company_name ?? __('Jeyanco Construction') }}</div>
     </div>
 
-    <div class="jp-progress" id="jp-progress">
-      <div class="jp-progress-bar" id="jp-progress-bar"></div>
-    </div>
+    <div class="jp-progress"><div class="jp-progress-bar" id="jp-bar"></div></div>
 
     <div class="jp-status" id="jp-status">
-      <svg id="jp-status-icon" viewBox="0 0 24 24"></svg>
-      <span><span id="jp-status-text">{{ __('Getting things ready') }}</span><span class="jp-dots"></span></span>
+      <svg id="jp-icon" viewBox="0 0 24 24"></svg>
+      <span id="jp-text">{{ __('Connecting to server') }}</span>
     </div>
-
   </div>
 </div>
 
 <script>
 (function () {
-  var ICONS = {
-    calendar: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M16 3v4M8 3v4M4 11h16M9 16l2 2 4-4"/>',
-    clock:    '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
-    users:    '<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85"/>',
-    peso:     '<path d="M8 19V5h3.5a4.5 4.5 0 0 1 0 9H8M18 8H6M18 11H6"/>'
-  };
-
-  // What the screen says while the site opens.
-  //
-  // It used to cycle four lines — syncing attendance logs, computing hours
-  // worked, loading employee records, preparing payroll summary — and none
-  // of them was true. Nothing is synced or computed here; the page is simply
-  // arriving. They also could not be read: the overlay lifts as soon as the
-  // page has loaded, so past the first line nobody ever saw them.
-  //
-  // One line, true of every page and of nobody's data. Change the words
-  // here and in the markup above, which carries the same text so the screen
-  // is not blank for the frame before this script runs.
-  var DEFAULT = { icon: 'clock', text: @json(__('Getting things ready')) };
-
+  var root   = document.documentElement;
   var el     = document.getElementById('jp-loader');
   var status = document.getElementById('jp-status');
-  var icon   = document.getElementById('jp-status-icon');
-  var label  = document.getElementById('jp-status-text');
-  var prog   = document.getElementById('jp-progress');
-  var bar    = document.getElementById('jp-progress-bar');
+  var icon   = document.getElementById('jp-icon');
+  var text   = document.getElementById('jp-text');
+  var bar    = document.getElementById('jp-bar');
 
-  var shownAt = Date.now();
-
-  function render(step) { icon.innerHTML = ICONS[step.icon]; label.textContent = step.text; }
-
-  function swap(fn) {
-    status.classList.add('is-swapping');
-    setTimeout(function () { fn(); status.classList.remove('is-swapping'); }, 350);
-  }
-
-  function reset() {
-    render(DEFAULT);
-    prog.classList.remove('is-determinate');
-    bar.style.width = '';
-  }
-
-  var api = {
-    show: function () {
-      reset();
-      shownAt = Date.now();
-      el.style.display = '';
-      void el.offsetWidth; // restart transition
-      el.classList.remove('is-hidden');
-    },
-    hide: function () {
-      var wait = Math.max(0, 700 - (Date.now() - shownAt));
-      setTimeout(function () {
-        el.classList.add('is-hidden');
-        setTimeout(function () {
-          if (el.classList.contains('is-hidden')) el.style.display = 'none';
-        }, 520);
-      }, wait);
-    },
-    setMessage: function (text, iconName) {
-      swap(function () { render({ icon: iconName || 'clock', text: text }); });
-    },
-    setProgress: function (pct) {
-      prog.classList.add('is-determinate');
-      bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
-    }
+  var ICONS = {
+    server:   '<rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/><path d="M8 7.5h.01M8 16.5h.01"/>',
+    calendar: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M16 3v4M8 3v4M4 11h16M9 16l2 2 4-4"/>',
+    peso:     '<path d="M8 19V5h3.5a4.5 4.5 0 0 1 0 9H8M18 8H6M18 11H6"/>',
+    shield:   '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    user:     '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>'
   };
 
-  window.JeyancoLoader = api;
-  render(DEFAULT);
+  var STEPS = [
+    { icon: 'server',   text: @json(__('Connecting to server')),    pct: 28 },
+    { icon: 'calendar', text: @json(__('Syncing attendance logs')), pct: 56 },
+    { icon: 'peso',     text: @json(__('Loading payroll modules')), pct: 80 },
+    { icon: 'shield',   text: @json(__('Securing your session')),   pct: 94 }
+  ];
 
-  // Internal navigation: loader stays off, only manual show() can bring it back
-  if (document.documentElement.classList.contains('jp-skip')) {
-    el.classList.add('is-hidden');
+  var MIN_SHOW = 1900;   // long enough to feel intentional, short enough not to annoy
+  var STEP_MS  = 480;
+
+  // Somebody who has asked for less movement is not asking to be held on a
+  // splash screen either. The floor drops to a blink; everything else about
+  // the screen is the same.
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) MIN_SHOW = 300;
+  var start = Date.now(), timer = null, i = 0, hiding = false;
+
+  function set(step) {
+    icon.innerHTML = ICONS[step.icon];
+    text.textContent = step.text;
+    if (step.pct != null) bar.style.width = step.pct + '%';
+  }
+
+  function swap(step) {
+    status.classList.add('is-swapping');
+    setTimeout(function () { set(step); status.classList.remove('is-swapping'); }, 260);
+  }
+
+  function run() {
+    i = 0; set(STEPS[0]);
+    clearInterval(timer);
+    timer = setInterval(function () {
+      if (i < STEPS.length - 1) swap(STEPS[++i]);
+    }, STEP_MS);
+  }
+
+  function hide() {
+    if (hiding) return;
+    hiding = true;
+    var wait = Math.max(0, MIN_SHOW - (Date.now() - start));
+
+    setTimeout(function () {
+      clearInterval(timer);
+      bar.style.width = '100%';
+      setTimeout(function () {
+        el.classList.add('is-leaving');          // the dial pulls forward and blurs out
+        setTimeout(function () {                 // the page begins building underneath it
+          root.classList.remove('jp-loading');
+          root.classList.add('jp-ready');
+        }, 180);
+        setTimeout(function () {
+          el.classList.remove('is-on', 'is-leaving');
+          el.style.display = 'none';
+          // The cursor lands in the first field — but not on a phone, where
+          // that throws the keyboard up over the page just arrived at.
+          var f = document.getElementById('username');
+          if (f && window.innerWidth > 480) f.focus({ preventScroll: true });
+        }, 1000);
+      }, 350);
+    }, wait);
+  }
+
+  function show(message) {
+    hiding = false;
+    el.style.display = '';
+    el.classList.remove('is-leaving');
+    el.classList.add('is-on');
+    var stage = el.querySelector('.jp-stage');
+    stage.style.animation = 'none'; void stage.offsetWidth; stage.style.animation = '';
+    bar.style.width = '0%';
+    clearInterval(timer);
+    set({ icon: 'user', text: message || @json(__('Signing you in')), pct: 35 });
+    setTimeout(function () { bar.style.width = '70%'; }, 400);
+    setTimeout(function () { swap({ icon: 'calendar', text: @json(__('Opening your dashboard')), pct: 88 }); }, 1400);
+  }
+
+  window.JeyancoLoader = { show: show, hide: hide };
+
+  if (root.classList.contains('jp-loading')) {
+    run();
+    if (document.readyState === 'complete') hide();
+    else window.addEventListener('load', hide);
+  } else {
     el.style.display = 'none';
-    document.documentElement.classList.remove('jp-skip');
-    return;
   }
 
-  if (!el.hasAttribute('data-manual')) {
-    if (document.readyState === 'complete') api.hide();
-    else window.addEventListener('load', api.hide);
-  }
+  // Coming back from the browser's cache restores the DOM as it was when the
+  // page left — which, if the loader was carrying somebody to the dashboard,
+  // is mid-flight with the overlay up and nothing left to take it down.
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    clearInterval(timer);
+    el.classList.remove('is-on', 'is-leaving');
+    el.style.display = 'none';
+    root.classList.remove('jp-loading');
+    root.classList.add('jp-ready');
+  });
 })();
 </script>
