@@ -771,7 +771,15 @@ class PayrollProcessingPageTest extends TestCase
 
     // ── The payslip ──────────────────────────────────────────────────────
 
-    /** The same slip Payroll Records hands out, and the same page to print it from. */
+    /**
+     * The same slip Payroll Records hands out, printed from this page.
+     *
+     * It used to link out to the batch-print URL, and this test still asked
+     * for that link long after both Print buttons became window.print() over
+     * the sheet already rendered here — no window opened, so none left to
+     * close. The rule now is that the slip and its Print button are both on
+     * the page.
+     */
     public function test_the_payslip_uses_the_payroll_records_format(): void
     {
         $e = $this->worker();
@@ -783,7 +791,8 @@ class PayrollProcessingPageTest extends TestCase
             ->assertSee('− Deductions')
             ->assertSee('+ Bonus')
             ->assertSee('NET PAY')
-            ->assertSee(e(route('payslip.batch', ['from' => '2026-09-07', 'to' => '2026-09-13', 'employee' => $e->id])), false);
+            ->assertSee('Print / Save as PDF')
+            ->assertSee('id="ppPrintOne"', false);
 
         $slip = $page->viewData('slip');
 
