@@ -9,21 +9,18 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * What the system shows between a click and the next page.
+ * The overlay the site opens on.
  *
- * This is a server-rendered app on a small container a long way from the
- * office: every sidebar click is a full page load, and until now there was
- * nothing at all in between — the old page sat frozen with no sign the click
- * had been heard.
+ * It runs when jeyancopayroll.me is OPENED — a typed address, a bookmark, a
+ * link from outside. A click inside the app, a form submit and the back
+ * button all skip it. That is the whole distinction: this is an arrival, not
+ * a page load, and an earlier attempt that ran on every navigation was the
+ * wrong thing and was taken out.
  *
- * Two pieces. A brand line across the top the moment the page starts to
- * leave, which for most navigations is the whole of it; and, only once the
- * wait passes half a second, the card with the mark sweeping round a dial.
- * A splash on every navigation would add a wait the system does not have.
- *
- * The animation itself is the browser's to run and PHPUnit cannot watch it.
- * What it can hold is everything that decides whether the thing appears at
- * the right moment, disappears reliably, and looks like this system.
+ * The animation is the browser's to run and PHPUnit cannot watch it. What it
+ * can hold is what decides whether the thing appears at the right moment,
+ * gets out of the way afterwards, and is on the pages people actually arrive
+ * on.
  */
 class LoadingScreenTest extends TestCase
 {
@@ -40,7 +37,7 @@ class LoadingScreenTest extends TestCase
         ]);
     }
 
-    private function page(): string
+    private function appPage(): string
     {
         return $this->actingAs($this->admin())
             ->get(route('employees.index'))
@@ -48,149 +45,179 @@ class LoadingScreenTest extends TestCase
             ->getContent();
     }
 
+    private function headOf(string $html): string
+    {
+        return substr($html, 0, strpos($html, '</head>'));
+    }
+
     private function source(): string
     {
         return File::get(resource_path('views/_loading.blade.php'));
     }
 
-    // ── It is there, and it is not showing ───────────────────────────────
+    // ── It is on the pages people arrive on ──────────────────────────────
 
-    public function test_every_page_on_the_main_layout_carries_it(): void
+    public function test_it_is_on_the_dashboard_layout(): void
     {
-        $html = $this->page();
+        $html = $this->appPage();
 
-        $this->assertStringContainsString('id="jy-load-bar"', $html, 'the line across the top');
-        $this->assertStringContainsString('id="jy-loading"', $html, 'and the card behind it');
-        $this->assertStringContainsString('jy-load-dial', $html);
+        $this->assertStringContainsString('id="jp-loader"', $html);
+        $this->assertStringContainsString('JEYANCO <span>PAYROLL</span>', $html);
     }
 
     /**
-     * A loader visible on arrival is the worst version of this: every page
-     * would open with a flash of "Loading…" over content already rendered.
+     * And on the sign-in page, which is where most arrivals actually land:
+     * the address goes to /login when nobody is signed in, so a loader only
+     * on the dashboard layout would never be seen by a visitor opening the
+     * site cold.
      */
-    public function test_it_starts_hidden_on_a_page_that_has_arrived(): void
+    public function test_it_is_on_the_sign_in_page_too(): void
     {
-        $html = $this->page();
+        $html = $this->get(route('login'))->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression('#<div id="jy-loading" hidden#', $html,
-            'the card is hidden until something is actually being waited for');
-        $this->assertStringContainsString('width: 0;', $this->source(),
-            'and the bar has no width until it starts');
+        $this->assertStringContainsString('id="jp-loader"', $html);
+        $this->assertStringContainsString('jp-skip', $this->headOf($html));
     }
 
-    // ── When it appears, and when it gives up ────────────────────────────
+    // ── Opened, or navigated to? ─────────────────────────────────────────
 
     /**
-     * Hung off the page leaving rather than off a click.
-     *
-     * Plenty of clicks never navigate, and one that is stopped — the
-     * unsaved-changes guard in settings cancels navigation to ask first —
-     * would have left the loader sitting on screen over the dialog.
+     * The check has to stamp <html> BEFORE the styles are read. Later, and
+     * the overlay paints for a frame on every internal click — the flash it
+     * exists to avoid.
      */
-    public function test_it_is_driven_by_the_page_leaving_not_by_a_click(): void
+    public function test_the_entry_check_runs_before_the_styles_it_controls(): void
+    {
+        $head = $this->headOf($this->appPage());
+
+        $check = strpos($head, "classList.add('jp-skip')");
+        $style = strpos($head, '.jp-skip #jp-loader');
+
+        $this->assertNotFalse($check, 'the entry check belongs in the head');
+        $this->assertNotFalse($style, 'and so does the rule it sets up');
+        $this->assertLessThan($style, $check, 'the class has to be set before the rule is read');
+    }
+
+    /** A referrer from this same site is a click, not an arrival. */
+    public function test_an_internal_referrer_and_the_back_button_skip_it(): void
+    {
+        $head = $this->headOf($this->appPage());
+
+        $this->assertStringContainsString('document.referrer', $head);
+        $this->assertStringContainsString('location.origin', $head);
+        $this->assertStringContainsString("nav.type === 'back_forward'", $head);
+        $this->assertStringContainsString('.jp-skip #jp-loader { display: none; }', $head);
+    }
+
+    /**
+     * The earlier version put a bar and a card up on EVERY navigation. That
+     * is not what was wanted and it is gone; nothing here should be listening
+     * for the page leaving or for a click.
+     */
+    public function test_it_does_not_run_on_every_navigation(): void
+    {
+        $src = $this->source() . File::get(resource_path('views/_loading_head.blade.php'));
+
+        $this->assertStringNotContainsString('beforeunload', $src,
+            'an arrival is not the page leaving');
+        $this->assertStringNotContainsString("addEventListener('click'", $src);
+        $this->assertStringNotContainsString('jy-load-bar', $src,
+            'the per-navigation loader was removed, not left alongside this one');
+    }
+
+    // ── It gets out of the way ───────────────────────────────────────────
+
+    public function test_it_hides_itself_once_the_page_has_loaded(): void
     {
         $src = $this->source();
 
-        $this->assertStringContainsString("addEventListener('beforeunload', start)", $src);
-        $this->assertStringNotContainsString("addEventListener('click'", $src,
-            'a click is not a navigation');
+        $this->assertStringContainsString("window.addEventListener('load', api.hide)", $src);
+        $this->assertStringContainsString("document.readyState === 'complete'", $src,
+            'a page that already finished loading still has to be uncovered');
     }
 
-    /** The card waits: a fast answer should never be interrupted by a splash. */
-    public function test_the_card_waits_before_it_shows_itself(): void
+    /** Shown for an instant and snatched away reads worse than not at all. */
+    public function test_it_stays_long_enough_to_have_been_seen(): void
     {
-        $src = $this->source();
-
-        $this->assertMatchesRegularExpression('#CARD_AFTER\s*=\s*(\d+)#', $src);
-        preg_match('#CARD_AFTER\s*=\s*(\d+)#', $src, $m);
-
-        $this->assertGreaterThanOrEqual(300, (int) $m[1], 'too eager and every click flashes a splash');
-        $this->assertLessThanOrEqual(900, (int) $m[1], 'too slow and a long wait says nothing at all');
+        $this->assertMatchesRegularExpression('/700 - \(Date\.now\(\) - shownAt\)/', $this->source(),
+            'a floor on how briefly it can appear');
     }
 
-    /**
-     * Three ways it could otherwise be left on screen for good: a wait that
-     * never ends, a page restored from the browser's cache mid-navigation,
-     * and a navigation the user cancelled at the browser's own prompt.
-     */
-    public function test_it_can_always_take_itself_down(): void
+    // ── What it says ─────────────────────────────────────────────────────
+
+    /** Payroll, attendance, employees, hours — not a bare spinner. */
+    public function test_the_status_line_talks_about_this_system(): void
     {
-        $src = $this->source();
+        $html = $this->appPage();
 
-        $this->assertStringContainsString('GIVE_UP', $src, 'a wait that never ends still ends');
-        $this->assertStringContainsString("'pageshow'", $src, 'the back button restores it mid-flight');
-        $this->assertStringContainsString("'focus'", $src, 'a cancelled navigation never unloads');
-    }
-
-    // ── It looks like this system ────────────────────────────────────────
-
-    /**
-     * Every colour comes from a token that actually exists.
-     *
-     * var(--invented-name, #f4f6fa) is not an error — it silently resolves to
-     * the fallback, so a name nobody defined paints one hard-coded colour in
-     * both themes. This file had exactly that: --bg-base, which does not
-     * exist, and which would have washed the dark theme out with a light
-     * overlay.
-     */
-    public function test_no_colour_falls_through_to_a_hard_coded_fallback(): void
-    {
-        preg_match_all('/var\((--[a-z0-9-]+)/i', $this->source(), $m);
-        $used = array_unique($m[1]);
-        $this->assertNotEmpty($used);
-
-        $css = '';
-        foreach (File::glob(public_path('*.css')) as $file) {
-            $css .= File::get($file);
+        foreach ([
+            'Syncing attendance logs',
+            'Computing hours worked',
+            'Loading employee records',
+            'Preparing payroll summary',
+        ] as $step) {
+            $this->assertStringContainsString($step, $html);
         }
 
-        $dead = array_values(array_filter($used, fn ($t) => ! str_contains($css, $t . ':')));
-
-        $this->assertSame([], $dead,
-            "these CSS variables are never defined, so they paint their fallback:\n" . implode("\n", $dead));
+        // Each step brings its own icon, and the peso is the payroll one.
+        foreach (['calendar', 'clock', 'users', 'peso'] as $icon) {
+            $this->assertStringContainsString($icon . ':', $html);
+        }
     }
 
-    /** Payroll, attendance and the company's own mark — not a generic spinner. */
-    public function test_it_carries_the_systems_own_identity(): void
+    /** Twelve hours on the dial, and the sweep that lights them. */
+    public function test_the_dial_is_a_clock(): void
     {
-        $html = $this->page();
+        $html = $this->appPage();
 
-        $this->assertStringContainsString('Jeyanco Payroll', $html);
-        $this->assertStringContainsString('Payroll · Attendance', $html);
-        $this->assertStringContainsString('JeyancoLogo.png', $html);
-
-        // The dial: a ring, a sweep, and the quarters that make it read as a
-        // clock rather than as a circle.
-        $this->assertSame(4, substr_count($html, 'class="jy-load-tick"'),
-            'four quarters — the CSS selectors of the same name do not count');
-        $this->assertStringContainsString('jy-load-sweep', $html);
+        $this->assertSame(12, substr_count($html, 'class="jp-tick'), 'twelve hours');
+        $this->assertStringContainsString('jp-orbit-tail', $html, 'and a hand sweeping them');
     }
 
-    /** Movement is a nicety; a reader who asked for less gets the rest of it. */
+    /** The badge should read as Jeyanco even if the file is not there. */
+    public function test_the_mark_falls_back_to_the_monogram(): void
+    {
+        $html = $this->appPage();
+
+        $this->assertStringContainsString('images/logo-mark.png', $html);
+        $this->assertStringContainsString("classList.add('no-logo')", $html);
+        $this->assertStringContainsString('jp-monogram', $html);
+
+        $this->assertFileExists(public_path('images/logo-mark.png'),
+            'the file the loader reaches for');
+    }
+
+    // ── The usual courtesies ─────────────────────────────────────────────
+
     public function test_the_movement_is_dropped_for_anyone_who_asked_for_less(): void
     {
-        $src = $this->source();
+        $css = File::get(resource_path('views/_loading_head.blade.php'));
 
-        $this->assertStringContainsString('prefers-reduced-motion: reduce', $src);
+        $this->assertStringContainsString('prefers-reduced-motion: reduce', $css);
 
-        $block = substr($src, strpos($src, 'prefers-reduced-motion: reduce'));
-        $block = substr($block, 0, strpos($block, '@media (max-width'));
-
-        foreach (['.jy-load-sweep', '.jy-load-track::after', '#jy-load-bar.on'] as $moving) {
-            $this->assertStringContainsString($moving, $block,
-                "{$moving} should stop moving when asked to");
+        $block = substr($css, strpos($css, 'prefers-reduced-motion: reduce'));
+        foreach (['.jp-orbit', '.jp-tick', '.jp-halo', '.jp-stage'] as $moving) {
+            $this->assertStringContainsString($moving, $block, "{$moving} should hold still when asked");
         }
     }
 
-    /** It has to sit above the toasts and the dialog, which reserve 9500–9700. */
-    public function test_it_sits_above_everything_else(): void
+    /** A screen that covers everything has to be above everything. */
+    public function test_it_sits_above_the_toasts_and_the_dialog(): void
     {
-        $src = $this->source();
+        $css = File::get(resource_path('views/_loading_head.blade.php'));
 
-        preg_match('/#jy-loading \{[^}]*z-index: (\d+)/s', $src, $sheet);
-        preg_match('/#jy-load-bar \{[^}]*z-index: (\d+)/s', $src, $bar);
+        preg_match('/#jp-loader \{[^}]*z-index: (\d+)/s', $css, $m);
 
-        $this->assertGreaterThan(9700, (int) $sheet[1]);
-        $this->assertGreaterThan((int) $sheet[1], (int) $bar[1], 'the line stays visible over the card');
+        $this->assertGreaterThan(9700, (int) $m[1],
+            'the notifier reserves up to 9700');
+    }
+
+    public function test_a_reader_is_told_what_is_happening(): void
+    {
+        $html = $this->appPage();
+
+        $this->assertStringContainsString('role="status"', $html);
+        $this->assertStringContainsString('aria-live="polite"', $html);
+        $this->assertStringContainsString('aria-label="Loading Jeyanco Payroll"', $html);
     }
 }

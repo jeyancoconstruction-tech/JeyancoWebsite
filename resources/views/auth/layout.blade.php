@@ -299,8 +299,15 @@
         }
     </style>
     @stack('styles')
+    {{-- The entry loader. Signing in is where most people arrive — the
+         address goes to the login page when nobody is signed in — so the
+         overlay belongs here as much as on the dashboard layout. The check
+         inside stamps <html> before these styles are read. --}}
+    @include('_loading_head')
 </head>
 <body>
+
+@include('_loading')
     <div class="site-art" aria-hidden="true">
         {{-- A site elevation, all of it on one ground line: a tower finished,
              two frames going up, and the plant working between them. The band

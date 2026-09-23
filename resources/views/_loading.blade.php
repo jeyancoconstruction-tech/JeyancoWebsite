@@ -1,262 +1,170 @@
-{{-- What the system shows while it is fetching the next page.
+{{-- The entry loader's markup and its script. The check that decides whether
+     it runs at all, and everything that draws it, are in _loading_head —
+     they have to be read before this paints. See the notes there.
 
-     This is a server-rendered app: every sidebar click is a full page load,
-     and the container it runs on is small and a long way from the office. So
-     between the click and the new page there was nothing at all — the screen
-     sat frozen on the old page with no sign that anything had been heard,
-     which reads as a click that missed.
+     JeyancoLoader.show() / .hide() / .setMessage(text, icon) /
+     .setProgress(0-100) are on window for anything that wants to put the
+     overlay up by hand; data-manual on #jp-loader turns off the auto-hide. --}}
 
-     Two pieces, deliberately in that order:
+<div id="jp-loader" role="status" aria-live="polite" aria-label="{{ __('Loading Jeyanco Payroll') }}">
+  <div class="jp-stage">
 
-       1. A thin brand line across the top, the moment the page starts to
-          leave. Most navigations are answered before anything else appears,
-          and for those this is the whole of it.
+    <div class="jp-dial">
+      <div class="jp-halo"></div>
 
-       2. If the wait passes half a second, the card fades in: the mark
-          sweeping like a hand round a dial, the name, and a line that says
-          what is happening. A splash on EVERY navigation would add a wait
-          the system does not have; this one only appears when there is
-          already a wait to explain.
+      <svg viewBox="0 0 160 160" aria-hidden="true">
+        <defs>
+          <linearGradient id="jp-tail" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#4F8FD1" stop-opacity="0"/>
+            <stop offset="1" stop-color="#4F8FD1" stop-opacity=".9"/>
+          </linearGradient>
+        </defs>
 
-     It is hung off the page leaving rather than off a click, so it cannot
-     strand itself over a click that was intercepted — the unsaved-changes
-     guard in settings/_form-script.blade.php cancels navigation, and a
-     loader started on the click would have sat there over the dialog. --}}
-<style>
-/* ── The line across the top ────────────────────────────────────────────
-   Above everything, including the toasts, which reserve 9500–9700. */
-#jy-load-bar {
-    position: fixed; top: 0; left: 0; height: 3px; width: 0;
-    z-index: 9850;
-    background: linear-gradient(90deg,
-        var(--brand, #1668dc),
-        color-mix(in srgb, var(--brand, #1668dc) 55%, #fff));
-    box-shadow: 0 0 10px color-mix(in srgb, var(--brand, #1668dc) 60%, transparent);
-    opacity: 0; pointer-events: none;
-}
-#jy-load-bar.on {
-    opacity: 1;
-    /* It cannot know how far along the answer is, so it slows as it goes and
-       never reaches the end: the page arriving is what finishes it. A bar
-       that filled to 100% and waited would be telling a lie. */
-    animation: jyLoadBar 14s cubic-bezier(.1, .8, .2, 1) forwards;
-}
-@keyframes jyLoadBar {
-    0%   { width: 0; }
-    20%  { width: 42%; }
-    55%  { width: 74%; }
-    100% { width: 93%; }
-}
+        <circle class="jp-track" cx="80" cy="80" r="66"/>
 
-/* ── The card ───────────────────────────────────────────────────────────── */
-#jy-loading {
-    position: fixed; inset: 0; z-index: 9800;
-    display: flex; align-items: center; justify-content: center;
-    /* The page behind stays visible but out of focus, so the wait reads as
-       this screen still being here rather than as a screen having been
-       replaced by a blank one. */
-    /* --bg-subtle is the page ground in both themes. An invented name
-       here would have fallen through to its literal fallback and washed the
-       dark theme out with a light one. */
-    background: color-mix(in srgb, var(--bg-subtle, #f8f9fb) 82%, transparent);
-    backdrop-filter: blur(6px) saturate(115%);
-    -webkit-backdrop-filter: blur(6px) saturate(115%);
-    opacity: 0;
-    transition: opacity .28s ease;
-}
-#jy-loading[hidden] { display: none !important; }
-#jy-loading.on { opacity: 1; }
+        <!-- 12 hour ticks; each lights up as the sweep passes it -->
+        <g>
+          <line class="jp-tick major" x1="80" y1="17" x2="80" y2="24" style="animation-delay:-3s"/>
+          <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(30 80 80)"  style="animation-delay:-2.75s"/>
+          <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(60 80 80)"  style="animation-delay:-2.5s"/>
+          <line class="jp-tick major" x1="80" y1="17" x2="80" y2="24" transform="rotate(90 80 80)"  style="animation-delay:-2.25s"/>
+          <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(120 80 80)" style="animation-delay:-2s"/>
+          <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(150 80 80)" style="animation-delay:-1.75s"/>
+          <line class="jp-tick major" x1="80" y1="17" x2="80" y2="24" transform="rotate(180 80 80)" style="animation-delay:-1.5s"/>
+          <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(210 80 80)" style="animation-delay:-1.25s"/>
+          <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(240 80 80)" style="animation-delay:-1s"/>
+          <line class="jp-tick major" x1="80" y1="17" x2="80" y2="24" transform="rotate(270 80 80)" style="animation-delay:-.75s"/>
+          <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(300 80 80)" style="animation-delay:-.5s"/>
+          <line class="jp-tick" x1="80" y1="18" x2="80" y2="23" transform="rotate(330 80 80)" style="animation-delay:-.25s"/>
+        </g>
 
-.jy-load-card {
-    display: flex; flex-direction: column; align-items: center;
-    gap: 18px; padding: 34px 44px 30px;
-    border-radius: 18px;
-    background: var(--bg-elevated, #fff);
-    border: 1px solid var(--border, #e4e7ec);
-    box-shadow: 0 1px 2px rgba(16, 24, 40, .08), 0 28px 64px -16px rgba(16, 24, 40, .28);
-    transform: translateY(8px) scale(.985);
-    transition: transform .28s cubic-bezier(.2, .8, .3, 1);
-}
-#jy-loading.on .jy-load-card { transform: none; }
+        <!-- sweeping "second hand" on the outer ring -->
+        <g class="jp-orbit">
+          <path class="jp-orbit-tail" d="M 33.33 33.33 A 66 66 0 0 1 80 14"/>
+          <circle class="jp-orbit-dot" cx="80" cy="14" r="3"/>
+        </g>
+      </svg>
 
-/* ── The dial ────────────────────────────────────────────────────────────
-   A ring with one sweeping arc, four ticks at the quarters, and the mark in
-   the middle. It is a clock read at a glance rather than drawn in detail:
-   this system is about hours worked, and a hand going round says that
-   without a picture of a clock face on a loading screen. */
-.jy-load-dial { position: relative; width: 88px; height: 88px; flex: none; }
-
-.jy-load-ring, .jy-load-sweep { position: absolute; inset: 0; border-radius: 50%; }
-
-.jy-load-ring {
-    border: 3px solid var(--border, #e4e7ec);
-}
-.jy-load-sweep {
-    /* Masked to a ring of the same width as the track it runs on, so the arc
-       sits in the groove instead of over it. */
-    background: conic-gradient(from 0deg,
-        transparent 0deg,
-        color-mix(in srgb, var(--brand, #1668dc) 15%, transparent) 150deg,
-        var(--brand, #1668dc) 340deg,
-        var(--brand, #1668dc) 360deg);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
-            mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
-    animation: jySweep 1.15s linear infinite;
-}
-@keyframes jySweep { to { transform: rotate(1turn); } }
-
-/* The quarters. Enough of a dial to be read as one; a full twelve would be a
-   clock face, which is more picture than a loading screen should carry. */
-.jy-load-tick {
-    position: absolute; left: 50%; top: 5px;
-    width: 2px; height: 7px; margin-left: -1px;
-    border-radius: 1px;
-    background: var(--border-md, #d0d5dd);
-    transform-origin: 50% 39px;
-}
-.jy-load-tick:nth-child(2) { transform: rotate(90deg); }
-.jy-load-tick:nth-child(3) { transform: rotate(180deg); }
-.jy-load-tick:nth-child(4) { transform: rotate(270deg); }
-
-.jy-load-mark {
-    position: absolute; inset: 15px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--brand-subtle, #eaf2fd);
-    overflow: hidden;
-}
-.jy-load-mark img { width: 34px; height: 34px; object-fit: contain; }
-
-/* ── The name and the line under it ─────────────────────────────────────
-   The sidebar's own lockup, so the wait looks like the system it belongs
-   to rather than a generic splash. */
-.jy-load-words { text-align: center; }
-.jy-load-name {
-    margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: .02em;
-    color: var(--text-primary, #101828);
-}
-.jy-load-sub {
-    margin: 3px 0 0; font-size: .66rem; font-weight: 700;
-    letter-spacing: .22em; text-transform: uppercase;
-    color: var(--text-muted, #667085);
-}
-.jy-load-say {
-    margin: 13px 0 0; font-size: .8rem;
-    color: var(--text-secondary, #344054);
-}
-
-/* A track that says work is happening without claiming to know how much is
-   left — the same honesty as the bar at the top. */
-.jy-load-track {
-    position: relative; width: 190px; height: 3px;
-    border-radius: 3px; overflow: hidden;
-    background: var(--bg-subtle, #f8f9fb);
-    border: 1px solid var(--border, #e4e7ec);
-}
-.jy-load-track::after {
-    content: ''; position: absolute; top: 0; bottom: 0; width: 42%;
-    border-radius: 3px;
-    background: linear-gradient(90deg,
-        transparent,
-        var(--brand, #1668dc),
-        color-mix(in srgb, var(--brand, #1668dc) 40%, transparent));
-    animation: jyLoadTrack 1.35s cubic-bezier(.45, .05, .55, .95) infinite;
-}
-@keyframes jyLoadTrack {
-    0%   { left: -45%; }
-    100% { left: 100%; }
-}
-
-/* A reader who has asked for less movement gets the card, the mark and the
-   words — and none of the spinning. */
-@media (prefers-reduced-motion: reduce) {
-    #jy-load-bar.on { animation: none; width: 40%; }
-    .jy-load-sweep  { animation: none; opacity: .65; }
-    .jy-load-track::after { animation: none; left: 0; width: 100%; opacity: .4; }
-    .jy-load-card, #jy-loading { transition: none; }
-    #jy-loading.on .jy-load-card { transform: none; }
-}
-
-@media (max-width: 520px) {
-    .jy-load-card { padding: 28px 30px 26px; }
-    .jy-load-track { width: 150px; }
-}
-</style>
-
-<div id="jy-load-bar" aria-hidden="true"></div>
-
-<div id="jy-loading" hidden role="status" aria-live="polite" aria-label="{{ __('Loading') }}">
-    <div class="jy-load-card">
-        <div class="jy-load-dial" aria-hidden="true">
-            <span class="jy-load-tick"></span>
-            <span class="jy-load-tick"></span>
-            <span class="jy-load-tick"></span>
-            <span class="jy-load-tick"></span>
-            <div class="jy-load-ring"></div>
-            <div class="jy-load-sweep"></div>
-            <div class="jy-load-mark">
-                <img src="{{ asset('images/JeyancoLogo.png') }}" alt="">
-            </div>
-        </div>
-
-        <div class="jy-load-words">
-            <p class="jy-load-name">{{ __('Jeyanco Payroll') }}</p>
-            <p class="jy-load-sub">{{ __('Payroll · Attendance') }}</p>
-            <p class="jy-load-say" id="jy-load-say">{{ __('Loading…') }}</p>
-        </div>
-
-        <div class="jy-load-track"></div>
+      {{-- The mark, with the monogram behind it: the file is served off the
+           app's own public folder, and if it ever is not there the badge
+           should still read as Jeyanco rather than as an empty circle. --}}
+      <div class="jp-core" id="jp-core">
+        <img src="{{ asset('images/logo-mark.png') }}" alt=""
+             onerror="this.parentNode.classList.add('no-logo')">
+        <span class="jp-monogram">J</span>
+      </div>
     </div>
+
+    <div class="jp-brand">
+      <div class="jp-wordmark">JEYANCO <span>PAYROLL</span></div>
+      <div class="jp-sub">{{ __('Jeyanco Construction') }}</div>
+    </div>
+
+    <div class="jp-progress" id="jp-progress">
+      <div class="jp-progress-bar" id="jp-progress-bar"></div>
+    </div>
+
+    <div class="jp-status" id="jp-status">
+      <svg id="jp-status-icon" viewBox="0 0 24 24"></svg>
+      <span><span id="jp-status-text">{{ __('Syncing attendance logs') }}</span><span class="jp-dots"></span></span>
+    </div>
+
+  </div>
 </div>
 
 <script>
 (function () {
-    const bar   = document.getElementById('jy-load-bar');
-    const sheet = document.getElementById('jy-loading');
-    if (!bar || !sheet) return;
+  var ICONS = {
+    calendar: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M16 3v4M8 3v4M4 11h16M9 16l2 2 4-4"/>',
+    clock:    '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+    users:    '<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85"/>',
+    peso:     '<path d="M8 19V5h3.5a4.5 4.5 0 0 1 0 9H8M18 8H6M18 11H6"/>'
+  };
 
-    const CARD_AFTER = 480;    // a wait worth explaining, not every click
-    const GIVE_UP    = 20000;  // nothing should hang this long; let the page back
-    let cardTimer = null, giveUpTimer = null, running = false;
+  var STEPS = [
+    { icon: 'calendar', text: @json(__('Syncing attendance logs')) },
+    { icon: 'clock',    text: @json(__('Computing hours worked')) },
+    { icon: 'users',    text: @json(__('Loading employee records')) },
+    { icon: 'peso',     text: @json(__('Preparing payroll summary')) }
+  ];
 
-    function start() {
-        if (running) return;
-        running = true;
+  var el     = document.getElementById('jp-loader');
+  var status = document.getElementById('jp-status');
+  var icon   = document.getElementById('jp-status-icon');
+  var label  = document.getElementById('jp-status-text');
+  var prog   = document.getElementById('jp-progress');
+  var bar    = document.getElementById('jp-progress-bar');
 
-        bar.classList.add('on');
+  var i = 0, timer = null, pinned = false, shownAt = Date.now();
 
-        cardTimer = setTimeout(() => {
-            sheet.hidden = false;
-            // The frame between being shown and being told to fade is what
-            // makes it a fade rather than a flash.
-            requestAnimationFrame(() => sheet.classList.add('on'));
-        }, CARD_AFTER);
+  function render(step) { icon.innerHTML = ICONS[step.icon]; label.textContent = step.text; }
 
-        giveUpTimer = setTimeout(stop, GIVE_UP);
+  function swap(fn) {
+    status.classList.add('is-swapping');
+    setTimeout(function () { fn(); status.classList.remove('is-swapping'); }, 350);
+  }
+
+  function cycle() {
+    clearInterval(timer);
+    timer = setInterval(function () {
+      if (pinned) return;
+      i = (i + 1) % STEPS.length;
+      swap(function () { render(STEPS[i]); });
+    }, 1900);
+  }
+
+  function reset() {
+    i = 0; pinned = false;
+    render(STEPS[0]);
+    prog.classList.remove('is-determinate');
+    bar.style.width = '';
+  }
+
+  var api = {
+    show: function () {
+      reset();
+      shownAt = Date.now();
+      el.style.display = '';
+      void el.offsetWidth; // restart transition
+      el.classList.remove('is-hidden');
+      cycle();
+    },
+    hide: function () {
+      var wait = Math.max(0, 700 - (Date.now() - shownAt));
+      setTimeout(function () {
+        el.classList.add('is-hidden');
+        clearInterval(timer);
+        setTimeout(function () {
+          if (el.classList.contains('is-hidden')) el.style.display = 'none';
+        }, 520);
+      }, wait);
+    },
+    setMessage: function (text, iconName) {
+      pinned = true;
+      swap(function () { render({ icon: iconName || 'clock', text: text }); });
+    },
+    setProgress: function (pct) {
+      prog.classList.add('is-determinate');
+      bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
     }
+  };
 
-    function stop() {
-        running = false;
-        clearTimeout(cardTimer);
-        clearTimeout(giveUpTimer);
-        bar.classList.remove('on');
-        sheet.classList.remove('on');
-        sheet.hidden = true;
-    }
+  window.JeyancoLoader = api;
+  render(STEPS[0]);
 
-    // The page is on its way out, whatever sent it: a link, a form, a script
-    // setting location. A click would have been earlier but also wrong —
-    // plenty of clicks are answered without going anywhere, and one that is
-    // stopped by the unsaved-changes guard would have left this on screen.
-    window.addEventListener('beforeunload', start);
+  // Internal navigation: loader stays off, only manual show() can bring it back
+  if (document.documentElement.classList.contains('jp-skip')) {
+    el.classList.add('is-hidden');
+    el.style.display = 'none';
+    document.documentElement.classList.remove('jp-skip');
+    return;
+  }
 
-    // Coming back to a page held in the browser's cache restores the DOM as
-    // it was when it left — mid-navigation, with all of this showing.
-    window.addEventListener('pageshow', e => { if (e.persisted) stop(); });
+  cycle();
 
-    // A navigation the user cancelled — the browser's own "leave site?" on a
-    // form with unsaved changes — never unloads, so nothing else would take
-    // this down.
-    window.addEventListener('focus', () => { if (running) setTimeout(stop, 400); });
+  if (!el.hasAttribute('data-manual')) {
+    if (document.readyState === 'complete') api.hide();
+    else window.addEventListener('load', api.hide);
+  }
 })();
 </script>

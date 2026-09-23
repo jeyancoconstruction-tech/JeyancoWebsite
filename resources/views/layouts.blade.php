@@ -104,6 +104,11 @@
          density. Loaded last so both win their ties. --}}
     <link rel="stylesheet" href="{{ $cssv('density.css') }}">
 
+    {{-- The entry loader. In the head because the check inside it has to
+         stamp <html> before the styles below it are read; the overlay
+         itself is the first thing in the body. --}}
+    @include('_loading_head')
+
     @include('_notify_styles')
 
     {{-- The tint on a figure that changed by itself, and the note that says
@@ -133,16 +138,16 @@
 
 <body class="bg-light">
 
+{{-- The overlay the site opens on, first in the body so it is painted while
+     the rest of the page is still arriving behind it. See
+     _loading.blade.php and _loading_head.blade.php. --}}
+@include('_loading')
+
 {{-- One notification system for every page: toasts for what a Create,
      Update or Delete did, and a styled dialog in place of the browser's
      confirm(). Included here, above the content, so window.Notify exists
      before any page script reaches for it. See _notify.blade.php. --}}
 @include('_notify')
-
-{{-- What the system shows between a click and the next page. A line across
-     the top straight away, and the branded card only once the wait is long
-     enough to be worth explaining. See _loading.blade.php. --}}
-@include('_loading')
 
 <!-- SIDEBAR OVERLAY (mobile) -->
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
