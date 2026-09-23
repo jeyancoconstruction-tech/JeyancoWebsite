@@ -422,9 +422,21 @@
                 <div class="table-responsive" data-fill-scroll>
                 <table class="attendance-table w-100">
                     <thead>
+                        {{-- The same labels, in the same order and at the same
+                             widths as History. Without Date the two tables
+                             disagreed from the third column on: Session and
+                             Time In / Out sat 112px apart between the tabs, so
+                             the grid jumped sideways every time you switched.
+
+                             Date is not filler here. A row is filed under the
+                             workday it opened, and the night crew's opened
+                             last night — so on Today's Attendance their date
+                             reads yesterday, which is the one thing on the row
+                             that says why they are on this tab at all. --}}
                         <tr>
                             <th class="p-2 text-start att-col-employee">{{ __('Employee') }}</th>
                             <th class="p-2 text-start att-col-site">{{ __('Site') }}</th>
+                            <th class="p-2 text-start att-col-date">{{ __('Date') }}</th>
                             <th class="p-2 text-start att-col-session">{{ __('Session') }}</th>
                             <th class="p-2 text-start att-col-time">{{ __('Time In / Out') }}</th>
                             <th class="p-2 text-center att-col-status">{{ __('Status') }}</th>
@@ -445,6 +457,7 @@
                                     <span class="text-muted">&mdash;</span>
                                 @endif
                             </td>
+                            <td class="p-2">{{ $day->date()->format('m/d/Y') }}</td>
                             @include('partials.attendance-day-cells', ['day' => $day])
                             <td class="text-center p-2">
                                 <span class="badge-attendance {{ $cls }}">{{ $label }}</span>
@@ -458,7 +471,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">
+                            <td colspan="6" class="text-center py-5 text-muted">
                                 <i class="fas fa-user-clock mb-2 d-block" style="font-size: 1.75rem; opacity: 0.3;"></i>
                                 No employees have clocked in today yet.
                             </td>

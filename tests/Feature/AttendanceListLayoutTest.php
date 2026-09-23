@@ -172,19 +172,54 @@ class AttendanceListLayoutTest extends TestCase
         $this->assertStringContainsString('.attendance-table thead th { white-space:nowrap; }', $html);
     }
 
-    /** Both tables label the same columns the same way, or they drift apart. */
-    public function test_both_tables_carry_the_column_classes(): void
+    /**
+     * Both tables label the same columns the same way, in the same order.
+     *
+     * Today's Attendance had no Date column, so from the third column on the
+     * two disagreed: Session and Time In / Out sat 112px apart between the
+     * tabs and the whole grid jumped sideways when you switched. Date earns
+     * its place on that tab too — a row is filed under the workday it opened,
+     * and the night crew's opened last night, so theirs reads yesterday.
+     */
+    public function test_both_tables_carry_the_same_columns_in_the_same_order(): void
     {
         $html = $this->page();
 
-        // Employee, Site, Session, Time and Status are on both; Date is on
-        // History alone, since Today's Attendance is one date by definition.
-        foreach (['att-col-employee', 'att-col-site', 'att-col-session', 'att-col-time', 'att-col-status'] as $class) {
+        foreach (['att-col-employee', 'att-col-site', 'att-col-date',
+                  'att-col-session', 'att-col-time', 'att-col-status'] as $class) {
             $this->assertSame(2, substr_count($html, $class . '"'),
                 "{$class} belongs to both tables");
         }
 
-        $this->assertSame(1, substr_count($html, 'att-col-date"'), 'only History has a Date column');
+        // In order, and the same order in each.
+        preg_match_all('#<table class="attendance-table[^>]*>.*?</thead>#s', $html, $heads);
+        $this->assertCount(2, $heads[0], 'both tables should be on the page');
+
+        $order = array_map(function ($head) {
+            preg_match_all('#att-col-([a-z]+)"#', $head, $m);
+            return $m[1];
+        }, $heads[0]);
+
+        $this->assertSame(
+            ['employee', 'site', 'date', 'session', 'time', 'status'],
+            $order[0]
+        );
+        $this->assertSame($order[0], $order[1], 'the tabs must not shuffle the columns between them');
+    }
+
+    /** A column added to one table needs a cell under it, or the row shifts. */
+    public function test_todays_rows_are_filled_out_to_the_new_column(): void
+    {
+        $html = $this->page();
+
+        preg_match('#<table class="attendance-table w-100">.*?</table>#s', $html, $today);
+        $this->assertNotEmpty($today, "Today's table should be on the page");
+
+        preg_match_all('#<th[ >]#', $today[0], $th);
+        $this->assertCount(6, $th[0], 'Employee, Site, Date, Session, Time, Status');
+
+        // The empty state has to reach across all of them.
+        $this->assertStringContainsString('colspan="6"', $today[0]);
     }
 
     /**
