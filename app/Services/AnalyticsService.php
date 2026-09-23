@@ -85,7 +85,29 @@ class AnalyticsService
         }
 
         $cfg        = $this->payroll->config();
-        $computed   = $this->payroll->computeForRange($fromStr, $toStr);
+        // Kept until something payroll reads changes (see remembered()), and
+        // only the fields read below, so what is kept stays small. The filters
+        // are applied afterwards, so one entry per date range serves them all.
+        $computed   = $this->payroll->remembered('analytics.' . $f['range'], $fromStr, $toStr, fn (array $c) => [
+            'weeks' => array_map(fn (array $w) => [
+                'week_range' => $w['week_range'],
+                'details'    => array_map(fn (array $d) => [
+                    'employee_id' => $d['employee_id'],
+                    'net'         => $d['net'],
+                ], $w['details']),
+            ], $c['weeks']),
+            'days' => array_map(fn (array $day) => [
+                'date'    => $day['date'],
+                'details' => array_map(fn (array $r) => [
+                    'id'           => $r['id'],
+                    'employee_id'  => $r['employee_id'],
+                    'gross'        => $r['gross'],
+                    'late_minutes' => $r['late_minutes'],
+                    'hours'        => $r['hours'],
+                    'ot_hours'     => $r['ot_hours'],
+                ], $day['details']),
+            ], $c['days']),
+        ]);
         $weeks      = $this->payWeeks($computed['weeks']);
         $siteNames  = Site::orderBy('name')->pluck('name', 'id');
         $shiftNames = Shift::orderBy('id')->pluck('name', 'id');

@@ -90,11 +90,15 @@ class PayrollRemittance extends Model
     /**
      * Whether the table is there in its current shape. Migrations are run by
      * hand on this deployment, so the page has to open in the gap between a
-     * push and the migrate that follows it. Asked per request, never cached:
-     * a long-lived worker would otherwise keep answering "no" after it.
+     * push and the migrate that follows it. A "no" is asked again every
+     * request — a long-lived worker would otherwise keep answering "no" after
+     * the migrate. A "yes" is kept: a column that is there stays there, and on
+     * MySQL each asking is a trip to information_schema.
      */
     public static function available(): bool
     {
-        return Schema::hasColumn('payroll_remittances', 'employee_id');
+        static $there = false;
+
+        return $there || ($there = Schema::hasColumn('payroll_remittances', 'employee_id'));
     }
 }

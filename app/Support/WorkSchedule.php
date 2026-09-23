@@ -52,6 +52,33 @@ final class WorkSchedule
      */
     public static function windows(array $s, string $date): array
     {
+        // Payroll asks for the same shift day several times per record, and a
+        // range is a few dozen days shared by the whole crew — so each is laid
+        // out once. Callers get their own copies: some move the moments they
+        // are handed (shiftDayFor subtracts from one).
+        $key = $s['am_starts_at'] . '|' . $s['am_ends_at'] . '|' . $s['pm_starts_at'] . '|' . $s['pm_ends_at']
+             . '|' . $date . '|' . date_default_timezone_get();
+
+        if (! isset(self::$laidOut[$key])) {
+            if (count(self::$laidOut) >= 4096) {
+                self::$laidOut = [];
+            }
+            self::$laidOut[$key] = self::layOutDay($s, $date);
+        }
+
+        $w = self::$laidOut[$key];
+
+        return [
+            'AM' => [$w['AM'][0]->copy(), $w['AM'][1]->copy()],
+            'PM' => [$w['PM'][0]->copy(), $w['PM'][1]->copy()],
+        ];
+    }
+
+    /** @var array<string, array{AM: array{0: Carbon, 1: Carbon}, PM: array{0: Carbon, 1: Carbon}}> */
+    private static array $laidOut = [];
+
+    private static function layOutDay(array $s, string $date): array
+    {
         $points = [];
         $prev   = null;
 

@@ -40,8 +40,13 @@ class DashboardController extends Controller
         // so it matches Payroll Records exactly (single source of truth).
         $from = Carbon::now()->startOfWeek(Carbon::MONDAY)->toDateString();
         $to   = Carbon::now()->endOfWeek(Carbon::SUNDAY)->toDateString();
-        $weeklyPayroll = collect($payroll->computeForRange($from, $to)['employees'])
-            ->sum(fn ($e) => $e['totals']['net']);
+        //
+        // Kept between opens until something payroll reads changes: every
+        // tab with the dashboard open re-reads it on each clock-in, and the
+        // week is the same answer for all of them.
+        $netOf = fn (array $computed) => collect($computed['employees'])->sum(fn ($e) => $e['totals']['net']);
+
+        $weeklyPayroll = $payroll->remembered('dashboard.this-week', $from, $to, $netOf);
 
         $pendingVale = $employees->sum('vale');
 
@@ -55,8 +60,7 @@ class DashboardController extends Controller
 
         $lwFrom = Carbon::now()->subWeek()->startOfWeek(Carbon::MONDAY)->toDateString();
         $lwTo   = Carbon::now()->subWeek()->endOfWeek(Carbon::SUNDAY)->toDateString();
-        $lastWeekPayroll = collect($payroll->computeForRange($lwFrom, $lwTo)['employees'])
-            ->sum(fn ($e) => $e['totals']['net']);
+        $lastWeekPayroll = $payroll->remembered('dashboard.last-week', $lwFrom, $lwTo, $netOf);
 
         $newThisWeek = Employee::active()
             ->where('created_at', '>=', Carbon::now()->subDays(7))
@@ -176,7 +180,11 @@ class DashboardController extends Controller
             ];
         }
 
-        if (Schema::hasTable('payroll_runs')) {
+        // Once the table is there it stays there, so only "not yet" is asked
+        // again — on MySQL each asking is a trip to information_schema.
+        static $runsTable = false;
+
+        if ($runsTable || ($runsTable = Schema::hasTable('payroll_runs'))) {
             $open = \App\Models\PayrollRun::whereIn('status', ['draft', 'calculated'])->count();
             if ($open > 0) {
                 $rows[] = [

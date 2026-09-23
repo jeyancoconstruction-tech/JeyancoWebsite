@@ -310,6 +310,24 @@ final class Live
         }
     }
 
+    /**
+     * Where these topics stand, as one string that changes whenever any of
+     * them does — for keeping something built from them until it is stale.
+     *
+     * Null while the feed cannot be read: nothing can be known to be current
+     * then, so nothing should be kept.
+     */
+    public static function stamp(string ...$topics): ?string
+    {
+        $now = self::revisions();
+
+        if (self::silenced()) {
+            return null;
+        }
+
+        return implode(',', array_map(fn (string $t) => $t . '=' . ($now[$t] ?? 0), $topics));
+    }
+
     /** Whether the feed is readable at all — false while the table is missing. */
     public static function available(): bool
     {

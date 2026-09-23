@@ -12,8 +12,10 @@ use App\Models\Bonus;
 use App\Models\Shift;
 use App\Models\ValeAdvance;
 use App\Models\SystemSetting;
+use App\Support\Live;
 use App\Support\WorkSchedule;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -34,6 +36,35 @@ class PayrollService
      * a break to lose.
      */
     private const MEAL_PERIOD_AFTER_HOURS = 5.0;
+
+    /**
+     * What each record came to, while one computeForRange() call is running.
+     *
+     * The week view and the day view price the same records against the same
+     * settings, so the second one reads the first one's answer instead of
+     * working every record out again. Emptied when the call returns.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    private array $priced = [];
+
+    /** Stored date => 'Y-m-d', and date => day of the week. A range has a few
+     *  dozen dates shared by every worker, so each is parsed once. */
+    private array $dateStrings = [];
+    private array $weekdays = [];
+
+    /** "m/d/Y - m/d/Y" for the pay week a date falls in, by week start. */
+    private array $weekLabels = [];
+
+    private function dateOf($value): string
+    {
+        return $this->dateStrings[(string) $value] ??= Carbon::parse($value)->toDateString();
+    }
+
+    private function weekdayOf($value): int
+    {
+        return $this->weekdays[(string) $value] ??= Carbon::parse($value)->dayOfWeek;
+    }
 
     /**
      * Resolve the configurable payroll settings + holiday overlay once.
@@ -109,19 +140,26 @@ class PayrollService
      */
     private function nightHours(Carbon $start, float $hours): array
     {
-        $night = function (float $fromHour, float $toHour) use ($start): float {
+        // The clock minute the stretch starts on, counted from midnight. Every
+        // minute after it is the next one on the clock: Manila keeps no summer
+        // time, so no hour is ever skipped or repeated.
+        $startMinute = (int) $start->format('G') * 60 + (int) $start->format('i');
+        $nightFrom   = WorkSchedule::NIGHT_FROM_HOUR * 60;
+        $nightTo     = WorkSchedule::NIGHT_TO_HOUR * 60;
+
+        $night = function (float $fromHour, float $toHour) use ($startMinute, $nightFrom, $nightTo): float {
             if ($toHour <= $fromHour) return 0.0;
 
             $minutes = 0;
-            $cursor  = $start->copy()->addMinutes((int) round($fromHour * 60));
-            $end     = $start->copy()->addMinutes((int) round($toHour * 60));
+            $end     = (int) round($toHour * 60);
 
-            // Minute by minute is slow; walk it in whole minutes only across the
-            // segment, which is at most a day's worth.
-            while ($cursor < $end) {
-                $h = (int) $cursor->format('G');
-                if ($h >= WorkSchedule::NIGHT_FROM_HOUR || $h < WorkSchedule::NIGHT_TO_HOUR) $minutes++;
-                $cursor->addMinute();
+            // Minute by minute, as whole numbers. It used to step a Carbon
+            // along the same minutes, and at ten microseconds a step that was
+            // three milliseconds for every record payroll priced — most of the
+            // time the dashboard, Analytics and Payroll Records took to open.
+            for ($m = (int) round($fromHour * 60); $m < $end; $m++) {
+                $clock = ($startMinute + $m) % 1440;
+                if ($clock >= $nightFrom || $clock < $nightTo) $minutes++;
             }
 
             return $minutes / 60;
@@ -247,7 +285,10 @@ class PayrollService
         // A pending registration is not on the payroll. Their rows are left
         // out here rather than zeroed later, so they cannot reach a payslip,
         // a report or a weekly total by any route.
-        $query = Attendance::with(['employee', 'shift'])->ofRegistered()
+        //
+        // The labour type comes along: pricing reads its daily rate for every
+        // worker, and left to load itself that was a query per worker.
+        $query = Attendance::with(['employee.laborType', 'shift'])->ofRegistered()
             ->when($only !== null, fn ($q) => $q->whereIn('employee_id', $only));
         if ($from && $to) {
             $query->whereBetween('date', [$from, $to]);
@@ -261,7 +302,7 @@ class PayrollService
         // Lateness is measured once per session — on the first time in. A
         // worker back from a mistaken time-out is not late for the second one.
         $cfg['firstInSession'] = $records->filter(fn ($r) => $r->time_in)
-            ->groupBy(fn ($r) => $r->employee_id . '|' . Carbon::parse($r->date)->toDateString() . '|' . $r->session)
+            ->groupBy(fn ($r) => $r->employee_id . '|' . $this->dateOf($r->date) . '|' . $r->session)
             ->map(fn ($g) => $g->sortBy(fn ($r) => (string) $r->time_in)->first()->id)
             ->flip()
             ->all();
@@ -281,7 +322,7 @@ class PayrollService
             : null;
 
         $byDay = $records->filter(fn ($r) => $r->time_in && $r->time_out)
-            ->groupBy(fn ($r) => $r->employee_id . '|' . Carbon::parse($r->date)->toDateString());
+            ->groupBy(fn ($r) => $r->employee_id . '|' . $this->dateOf($r->date));
 
         foreach ($byDay as $rows) {
             $used = 0;
@@ -289,7 +330,7 @@ class PayrollService
             foreach ($rows->sortBy(fn ($r) => (string) $r->time_in) as $rec) {
                 $cfg['regularUsedBefore'][$rec->id] = $used;
 
-                $date  = Carbon::parse($rec->date)->toDateString();
+                $date  = $this->dateOf($rec->date);
                 $sched = $cfg['shifts'][$rec->shift_id] ?? null;
 
                 if (! $rulesFrom || $date < $rulesFrom || ! WorkSchedule::has($sched)) {
@@ -315,7 +356,7 @@ class PayrollService
         // in yet, is dated after the last attendance date and was not loaded at
         // all — so the week it was given in paid nothing. The week each grant
         // belongs to is picked out below.
-        $dates = $records->pluck('date')->map(fn ($d) => Carbon::parse($d)->toDateString());
+        $dates = $records->pluck('date')->map(fn ($d) => $this->dateOf($d));
 
         $weekStartsOn = (int) ($cfg['day']->week_starts_on ?? Carbon::MONDAY);
         $grantsFrom   = collect([$from, $dates->min()])->filter()->min();
@@ -379,13 +420,78 @@ class PayrollService
         // against that one day, because the week was the only bound on it.
         $cfg['range'] = ['from' => $from, 'to' => $to];
 
-        $weeks = $this->groupByWeek($records, $cfg);
+        $this->priced = [];
 
-        return [
-            'weeks'     => $weeks,
-            'days'      => $this->groupByDay($records, $cfg),
-            'employees' => $this->pivotByEmployee($weeks),
-        ];
+        try {
+            $weeks = $this->groupByWeek($records, $cfg);
+
+            return [
+                'weeks'     => $weeks,
+                'days'      => $this->groupByDay($records, $cfg),
+                'employees' => $this->pivotByEmployee($weeks),
+            ];
+        } finally {
+            $this->priced = [];
+        }
+    }
+
+    /** Every live topic a payroll figure can move with. */
+    private const READS = ['employees', 'attendance', 'leave', 'advances', 'payroll', 'settings'];
+
+    /**
+     * computeForRange(), boiled down by $shape, and kept until something it
+     * reads has changed.
+     *
+     * The dashboard and Analytics priced the same weeks again on every open,
+     * and again in every tab each time a clock-in was announced — the same
+     * answer, seconds of work each time. A payroll figure depends on the data
+     * and on the date, never on the time of day, so it is kept against the
+     * revision of every topic it draws on plus today's date: any save anywhere
+     * that could move it (a model write, or a route's bulk write, as Live
+     * announces them) makes the next read work it out afresh.
+     *
+     * Shifts left open are closed first, as computeForRange() would. Closing
+     * one is a save, so it moves the revision before the stamp is read.
+     *
+     * $name is the one slot the result lives in — one per use, not one per
+     * range, so the store holds a few rows rather than one more every day.
+     */
+    public function remembered(string $name, string $from, string $to, callable $shape): mixed
+    {
+        $now = Carbon::now('Asia/Manila');
+
+        Attendance::closeStale(null, $now);
+
+        $revisions = Live::stamp(...self::READS);
+
+        if ($revisions === null) {
+            return $shape($this->computeForRange($from, $to));
+        }
+
+        $key   = 'payroll.remembered.' . $name;
+        $stamp = $revisions . '|' . $now->toDateString() . '|' . $from . '|' . $to;
+
+        try {
+            $kept = Cache::get($key);
+        } catch (\Throwable) {
+            $kept = null;
+        }
+
+        if (is_array($kept) && ($kept['stamp'] ?? null) === $stamp) {
+            return $kept['value'];
+        }
+
+        $value = $shape($this->computeForRange($from, $to));
+
+        try {
+            // Ten minutes at most regardless: anything the revisions somehow
+            // missed cannot outlive it.
+            Cache::put($key, ['stamp' => $stamp, 'value' => $value], now()->addMinutes(10));
+        } catch (\Throwable) {
+            // Not kept, then. The figure is right either way.
+        }
+
+        return $value;
     }
 
     /**
@@ -534,13 +640,11 @@ class PayrollService
         $ot_hours      = $autoOt ? max(0, $hours - $paidStandard) : 0.0;
 
         // The multipliers in force on the day being computed, not today's.
-        $dateStr = Carbon::parse($rec->date)->toDateString();
+        $dateStr = $this->dateOf($rec->date);
         $rates   = $this->ratesOn($dateStr, $cfg);
 
-        [$nightRegularHours, $nightOtHours] = ($hours > 0 && $rec->time_in)
-            ? $this->nightHours(Carbon::parse($rec->time_in)->startOfMinute(), $hours)
-            : [0.0, 0.0];
-        $night_hours = round($nightRegularHours + $nightOtHours, 2);
+        // (Worked out below, once it is known whether the sessions count
+        // replaces it — the flat count is only kept for days before them.)
 
         // ── Counting by the shift's sessions ─────────────────────────────────
         // From the office's chosen date, a day worked under a shift with a
@@ -559,6 +663,13 @@ class PayrollService
         $rulesFrom  = $day?->schedule_rules_from ? Carbon::parse($day->schedule_rules_from)->toDateString() : null;
         $scheduled  = $rulesFrom && $dateStr >= $rulesFrom && WorkSchedule::has($schedShift)
                       && $rec->time_in && $rec->time_out;
+
+        if (! $scheduled) {
+            [$nightRegularHours, $nightOtHours] = ($hours > 0 && $rec->time_in)
+                ? $this->nightHours(Carbon::parse($rec->time_in)->startOfMinute(), $hours)
+                : [0.0, 0.0];
+            $night_hours = round($nightRegularHours + $nightOtHours, 2);
+        }
 
         if ($scheduled) {
             [$in, $out] = WorkSchedule::stretch($rec->time_in, $rec->time_out, $dateStr);
@@ -644,7 +755,7 @@ class PayrollService
         // settled does not recalculate when the office changes its week; null
         // means "follow the current setting" — this week and future ones.
         $restDayOn = (int) ($cfg['restDayOn'] ?? Carbon::SUNDAY);
-        $onRestDay = Carbon::parse($rec->date)->dayOfWeek === $restDayOn;
+        $onRestDay = $this->weekdayOf($rec->date) === $restDayOn;
 
         // rest_day_applied is the whole answer, not half of it. It used to be
         // ANDed with the weekday, which was enough while the rest day was
@@ -985,9 +1096,11 @@ class PayrollService
         $weekEnd   = ($weekStart + 6) % 7;
 
         $recordsByWeek = $records->groupBy(function ($item) use ($weekStart, $weekEnd) {
-            $start = Carbon::parse($item->date)->startOfWeek($weekStart)->format('m/d/Y');
-            $end   = Carbon::parse($item->date)->endOfWeek($weekEnd)->format('m/d/Y');
-            return "$start - $end";
+            return $this->weekLabels[$weekStart . '|' . $item->date] ??= (function () use ($item, $weekStart, $weekEnd) {
+                $start = Carbon::parse($item->date)->startOfWeek($weekStart)->format('m/d/Y');
+                $end   = Carbon::parse($item->date)->endOfWeek($weekEnd)->format('m/d/Y');
+                return "$start - $end";
+            })();
         });
 
         // Which weeks payroll has something to say about.
@@ -1064,9 +1177,9 @@ class PayrollService
                     if (!$rec->employee) continue;
                     $employee = $rec->employee;
                     if ($rec->time_in) {
-                        $empDates[] = Carbon::parse($rec->date)->toDateString();
+                        $empDates[] = $this->dateOf($rec->date);
                     }
-                    $r = $this->computeRecord($rec, $cfg);
+                    $r = $this->priced[$rec->id] ??= $this->computeRecord($rec, $cfg);
                     $pricedDaily = $pricedDaily ?: (float) ($r["dailyRate"] ?? 0);
 
                     $sumHours    += $r['hours'];
@@ -1331,7 +1444,7 @@ class PayrollService
             foreach ($dayRecords as $detail) {
                 if (!$detail->employee) continue;
                 $employee = $detail->employee;
-                $r = $this->computeRecord($detail, $cfg);
+                $r = $this->priced[$detail->id] ??= $this->computeRecord($detail, $cfg);
 
                 $dayDetails[] = [
                     'id'                  => $detail->id,

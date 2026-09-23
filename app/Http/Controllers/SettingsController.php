@@ -653,6 +653,9 @@ class SettingsController extends Controller
             );
         }
 
+        // Written as queries, which say nothing to the model's own listeners.
+        Shift::forgetLookup();
+
         unset($data['shifts']);
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);

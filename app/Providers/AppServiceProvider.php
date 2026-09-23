@@ -146,8 +146,13 @@ class AppServiceProvider extends ServiceProvider
      */
     private function systemSettings(): ?SystemSetting
     {
+        // Asked of the database once per worker, not twice per page: on MySQL
+        // each hasTable() is a trip to information_schema, and a table that
+        // exists does not stop existing between requests.
+        static $tableSeen = false;
+
         try {
-            if (Schema::hasTable('system_settings')) {
+            if ($tableSeen || ($tableSeen = Schema::hasTable('system_settings'))) {
                 return SystemSetting::current();
             }
         } catch (Throwable) {

@@ -82,9 +82,35 @@ class Shift extends Model
      */
     public static function lookup(): array
     {
-        return static::query()->get()
+        // Once per request. The attendance scopes ask for it too, so one page
+        // read the whole table four or five times over. Held on the container
+        // like SystemSetting::current(), and dropped whenever a shift is
+        // written, so a save is never followed by the hours it replaced.
+        if (app()->bound(self::LOOKUP)) {
+            return app(self::LOOKUP);
+        }
+
+        $lookup = static::query()->get()
             ->mapWithKeys(fn (self $s) => [$s->id => $s->schedule()])
             ->all();
+
+        app()->instance(self::LOOKUP, $lookup);
+
+        return $lookup;
+    }
+
+    /** Forget the lookup, so the next read sees what was just written. */
+    public static function forgetLookup(): void
+    {
+        app()->forgetInstance(self::LOOKUP);
+    }
+
+    private const LOOKUP = 'shifts.lookup';
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => self::forgetLookup());
+        static::deleted(fn () => self::forgetLookup());
     }
 
     /**
