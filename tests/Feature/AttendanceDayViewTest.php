@@ -152,12 +152,21 @@ class AttendanceDayViewTest extends TestCase
         $rows = $this->page('2026-09-11 10:00:00')->viewData('todayAttendances');
 
         $this->assertCount(1, $rows, 'Friday shows Friday');
-        $this->assertSame($day->id, $rows->first()->employee_id);
+        $this->assertSame($day->id, $rows->first()->employee()->id);
     }
 
     // ── 3. Present means people ──────────────────────────────────────────
 
-    public function test_one_worker_with_several_stretches_counts_once(): void
+    /**
+     * One man's night is one line, and the line still says how it was worked.
+     *
+     * The table used to list the rows, so this arrived as three entries
+     * stacked under each other, each with its own date and status, and the
+     * day itself was nowhere on the screen. It is one attendance now — with
+     * all three stretches kept inside it, because the AM and PM times are
+     * what a timesheet is checked against.
+     */
+    public function test_one_worker_with_several_stretches_is_one_day(): void
     {
         $emp = $this->worker('Busy Night', true);
 
@@ -170,9 +179,17 @@ class AttendanceDayViewTest extends TestCase
         $this->clock($emp, 'time_in', '2026-09-10 23:30:00');
 
         $page = $this->page('2026-09-10 23:45:00');
+        $days = $page->viewData('todayAttendances');
 
-        $this->assertCount(3, $page->viewData('todayAttendances'), 'every stretch is still shown');
-        $this->assertSame(1, $page->viewData('presentToday'), 'but one man is one man');
+        $this->assertCount(1, $days, 'one worker, one day, one line');
+
+        $day = $days->first();
+        $this->assertCount(3, $day->stretches(), 'every stretch is still there');
+        $this->assertSame('08:00 PM', $day->firstIn()->format('h:i A'), 'the day opens when he arrived');
+        $this->assertNull($day->lastOut(), 'and has not ended — he is still on site');
+        $this->assertTrue($day->isOpen());
+
+        $this->assertSame(1, $page->viewData('presentToday'), 'one man is one man');
         $this->assertSame(1, $page->viewData('clockedIn'));
     }
 

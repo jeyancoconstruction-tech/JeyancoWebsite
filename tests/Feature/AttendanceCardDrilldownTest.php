@@ -103,9 +103,9 @@ class AttendanceCardDrilldownTest extends TestCase
         $this->seedCrew();
         $page = $this->page(['view' => 'clocked-in']);
 
-        $rows = $page->viewData('todayAttendances');
-        $this->assertCount(1, $rows);
-        $this->assertSame('Alice Still In', $rows->first()->employee->name);
+        $days = $page->viewData('todayAttendances');
+        $this->assertCount(1, $days);
+        $this->assertSame('Alice Still In', $days->first()->employee()->name);
         $this->assertSame('today', $page->viewData('openTab'));
     }
 
@@ -114,8 +114,9 @@ class AttendanceCardDrilldownTest extends TestCase
         $this->seedCrew();
         $page = $this->page(['view' => 'missed']);
 
+        // The pager counts days; the rows behind them come as $historyDays.
         $this->assertSame(1, $page->viewData('historyAttendances')->total());
-        $this->assertSame('Carl Forgot', $page->viewData('historyAttendances')->first()->employee->name);
+        $this->assertSame('Carl Forgot', $page->viewData('historyDays')->first()->employee()->name);
         $page->assertSee('Carl Forgot');
     }
 

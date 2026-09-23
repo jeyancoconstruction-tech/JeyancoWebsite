@@ -60,7 +60,13 @@ class NightShiftAttendanceTest extends TestCase
             'time_in'     => Carbon::now(),
         ]);
 
-        $this->assertSame('PM', $in->session, 'a 10pm arrival files under the afternoon half');
+        // The FIRST half of the night crew's own day, which the app writes as
+        // AM and shows as "NIGHT · FIRST HALF". It used to be stamped from
+        // the wall clock — 10pm is after noon, so PM — which put the start of
+        // a night in its second session and measured the lateness against the
+        // wrong boundary. The halves come from the shift's schedule now, and
+        // the kiosk has always stamped them that way.
+        $this->assertSame('AM', $in->session, 'a 10pm arrival opens the night crew\'s first half');
         $this->assertSame($this->night()->id, $in->shift_id, 'the shift is stamped on the row');
 
         // Morning: a different date, and the other half of the day.

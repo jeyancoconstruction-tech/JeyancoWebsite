@@ -9,6 +9,7 @@ use App\Models\Holiday;
 use App\Models\Shift;
 use App\Models\Site;
 use App\Notifications\AttendanceAlert;
+use App\Support\AttendanceDay;
 use Carbon\Carbon;
 
 class AttendanceController extends Controller
@@ -114,7 +115,7 @@ class AttendanceController extends Controller
 
         // Narrowed in memory rather than by a second query: the day view is
         // already loaded whole, because the cards above are counted from it.
-        $todayAttendances = match ($view) {
+        $todayRows = match ($view) {
             'clocked-in' => $todayAll->whereNull('time_out')->values(),
             'missed'     => $todayAll->filter(
                                 fn ($r) => $r->signOutOverdue($now) || $r->needs_review
@@ -122,24 +123,65 @@ class AttendanceController extends Controller
             default      => $todayAll,
         };
 
+        // One line per worker per day. A morning and an afternoon are one
+        // day's attendance, not two — see App\Support\AttendanceDay, which
+        // keeps both stretches so the AM and PM times are still readable.
+        $todayAttendances = AttendanceDay::gather($todayRows);
+
         // HISTORY — workdays that have finished, which for the night crew is
         // the following morning rather than midnight.
         // History is paginated, so this one narrows in SQL — filtering the
         // fifteen rows on screen would quietly ignore the rest of the result.
-        $historyAttendances = $filtered(
-                Attendance::with(['employee', 'site', 'shift'])
-                    ->ofRegistered()
-                    ->beforeWorkday($now)
-                    ->when($view === 'clocked-in',
-                        fn ($q) => $q->whereNotNull('time_in')->whereNull('time_out'))
-                    ->when($view === 'missed', fn ($q) => $q->missedSignOut($now))
-                    ->when($rangeStart, fn ($q) => $q->where('date', '>=', $rangeStart->toDateString()))
-                    ->orderBy('date', 'desc')
-                    ->orderBy('session', 'asc')
-            )->paginate(15)
+        //
+        // Paginated by DAY, not by row. A worker's Tuesday is several rows,
+        // and fifteen rows to a page would cut a day in half at the page
+        // break — the morning at the foot of one page, the afternoon at the
+        // head of the next, which is exactly the reading the page is meant to
+        // stop. So the days are paged first and their rows fetched after.
+        $historyFilters = fn ($query) => $filtered($query)
+            ->ofRegistered()
+            ->beforeWorkday($now)
+            ->when($view === 'clocked-in',
+                fn ($q) => $q->whereNotNull('time_in')->whereNull('time_out'))
+            ->when($view === 'missed', fn ($q) => $q->missedSignOut($now))
+            ->when($rangeStart, fn ($q) => $q->where('date', '>=', $rangeStart->toDateString()));
+
+        $days = $historyFilters(Attendance::query())
+            ->select('employee_id', 'date')
+            ->groupBy('employee_id', 'date')
+            ->orderBy('date', 'desc')
+            ->orderBy('employee_id')
+            ->paginate(15)
             // Without this, page 2 drops the filters and quietly shows
             // everything again.
             ->withQueryString();
+
+        // Every row behind the fifteen days on this page. One OR per day
+        // rather than a composite IN, which SQLite does not take and the
+        // suite runs on SQLite.
+        //
+        // Deliberately NOT re-filtered by the card: a day the card matched on
+        // one of its stretches is shown whole, or the reader would see a
+        // missed sign-out with the rest of its own day missing.
+        $historyDays = collect($days->items())->isEmpty()
+            ? collect()
+            : AttendanceDay::gather(
+                $filtered(Attendance::with(['employee', 'site', 'shift']))
+                    ->where(function ($q) use ($days) {
+                        foreach ($days->items() as $day) {
+                            $q->orWhere(fn ($w) => $w
+                                ->where('employee_id', $day->employee_id)
+                                ->where('date', $day->date));
+                        }
+                    })
+                    ->orderBy('date', 'desc')
+                    ->get()
+            )->sortByDesc(fn ($d) => $d->date()->toDateString() . '|' . str_pad((string) $d->first()->employee_id, 8, '0', STR_PAD_LEFT))
+             ->values();
+
+        // The pager and the empty state read this; the rows come from
+        // $historyDays above.
+        $historyAttendances = $days;
 
         // Stats. Counted by worker, not by row: a day is several rows — a
         // morning, an afternoon after lunch, a stretch begun again after a
@@ -201,7 +243,7 @@ class AttendanceController extends Controller
         }
 
         return view('attendance', compact(
-            'todayAttendances', 'historyAttendances',
+            'todayAttendances', 'historyAttendances', 'historyDays',
             'presentToday', 'clockedIn', 'invalidCount', 'holidayDates',
             'sites', 'shifts', 'siteId', 'shiftId', 'range', 'view', 'openTab'
         ));

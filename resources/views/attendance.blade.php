@@ -121,6 +121,18 @@
     .att-pick select { flex:1; }
 }
 
+/* A day's sessions, and the stretches it was worked in. The span is the day;
+   the line under it is what the day is made of, and it only appears when
+   there is more than one stretch to spell out. */
+.att-sessions { display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.att-day-span { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.att-stretches {
+    display:flex; flex-wrap:wrap; gap:2px 12px; margin-top:3px;
+    font-size:.74rem; color:var(--text-muted,#667085);
+}
+.att-stretch { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.att-stretch b { font-weight:700; color:var(--text-secondary,#344054); margin-right:3px; }
+
 .att-site { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600;
     color:#0f766e; background:#f0fdfa; border:1px solid #ccfbf1; border-radius:8px; padding:2px 8px; white-space:nowrap; }
 .att-site i { font-size:10px; }
@@ -384,38 +396,28 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($todayAttendances as $record)
+                        @forelse($todayAttendances as $day)
                         @php
-                            [$label, $cls] = $statusBadge($record->status);
-                            $isHoliday = in_array(\Carbon\Carbon::parse($record->date)->toDateString(), $holidayDates ?? []);
+                            [$label, $cls] = $statusBadge($day->status());
+                            $isHoliday = in_array($day->date()->toDateString(), $holidayDates ?? []);
                         @endphp
                         <tr>
-                            <td class="fw-bold p-2">{{ $record->employee->name ?? 'Unknown' }}</td>
+                            <td class="fw-bold p-2">{{ $day->employee()->name ?? 'Unknown' }}</td>
                             <td class="p-2">
-                                @if($record->site)
-                                    <span class="att-site"><i class="fas fa-map-marker-alt"></i> {{ $record->site->name }}</span>
+                                @if($day->site())
+                                    <span class="att-site"><i class="fas fa-map-marker-alt"></i> {{ $day->site()->name }}</span>
                                 @else
                                     <span class="text-muted">&mdash;</span>
                                 @endif
                             </td>
-                            <td class="p-2">
-                                <span class="session-label {{ $record->session == 'AM' ? 'badge-am' : 'badge-pm' }}">{{ $record->session }}</span>
-                            </td>
-                            <td class="p-2">
-                                {{ date('h:i A', strtotime($record->time_in)) }}
-                                &ndash;
-                                {{ $record->time_out ? date('h:i A', strtotime($record->time_out)) : '--' }}
-                                @if($record->out_days_later > 0)
-                                    <span class="att-nextday" title="{{ __('Timed out the next morning — the same workday') }}">+{{ $record->out_days_later }}</span>
-                                @endif
-                            </td>
+                            @include('partials.attendance-day-cells', ['day' => $day])
                             <td class="text-center p-2">
                                 <span class="badge-attendance {{ $cls }}">{{ $label }}</span>
                                 @if($isHoliday)
                                     <span class="badge-attendance badge-holiday ms-1" title="{{ __('Holiday (Settings)') }}"><i class="fas fa-star me-1"></i>{{ __('Holiday') }}</span>
                                 @endif
-                                @if($record->needs_review)
-                                    <span class="badge-attendance badge-review ms-1" title="{{ $record->close_reason ?: __('Closed by the system') }}"><i class="fas fa-triangle-exclamation me-1"></i>{{ __('Needs review') }}</span>
+                                @if($day->needsReview())
+                                    <span class="badge-attendance badge-review ms-1" title="{{ $day->reviewReason() ?: __('Closed by the system') }}"><i class="fas fa-triangle-exclamation me-1"></i>{{ __('Needs review') }}</span>
                                 @endif
                             </td>
                         </tr>
@@ -458,46 +460,35 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($historyAttendances as $record)
+                        @forelse($historyDays as $day)
                         @php
-                            [$label, $cls] = $statusBadge($record->status);
-                            $isHoliday = in_array(\Carbon\Carbon::parse($record->date)->toDateString(), $holidayDates ?? []);
+                            [$label, $cls] = $statusBadge($day->status());
+                            $isHoliday = in_array($day->date()->toDateString(), $holidayDates ?? []);
                         @endphp
-                        <tr data-id="{{ $record->id }}">
+                        {{-- The checkbox carries every row behind the day, so
+                             deleting a Tuesday takes the whole Tuesday rather
+                             than its morning and leaving its afternoon. --}}
+                        <tr data-id="{{ implode(',', $day->ids()) }}">
                             <td class="att-check-col p-2">
-                                <input type="checkbox" class="row-chk" value="{{ $record->id }}">
+                                <input type="checkbox" class="row-chk" value="{{ implode(',', $day->ids()) }}">
                             </td>
-                            <td class="fw-bold p-2">{{ $record->employee->name ?? 'Unknown' }}</td>
+                            <td class="fw-bold p-2">{{ $day->employee()->name ?? 'Unknown' }}</td>
                             <td class="p-2">
-                                @if($record->site)
-                                    <span class="att-site"><i class="fas fa-map-marker-alt"></i> {{ $record->site->name }}</span>
+                                @if($day->site())
+                                    <span class="att-site"><i class="fas fa-map-marker-alt"></i> {{ $day->site()->name }}</span>
                                 @else
                                     <span class="text-muted">&mdash;</span>
                                 @endif
                             </td>
-                            <td class="p-2">{{ \Carbon\Carbon::parse($record->date)->format('m/d/Y') }}</td>
-                            <td class="p-2">
-                                <span class="session-label {{ $record->session == 'AM' ? 'badge-am' : 'badge-pm' }}">{{ $record->session }}</span>
-                            </td>
-                            <td class="p-2">
-                                @if($record->time_in)
-                                    {{ date('h:i A', strtotime($record->time_in)) }}
-                                    &ndash;
-                                    {{ $record->time_out ? date('h:i A', strtotime($record->time_out)) : '--' }}
-                                    @if($record->out_days_later > 0)
-                                        <span class="att-nextday" title="{{ __('Timed out the next morning — the same workday') }}">+{{ $record->out_days_later }}</span>
-                                    @endif
-                                @else
-                                    <span class="text-muted fst-italic">{{ __('No time-in') }}</span>
-                                @endif
-                            </td>
+                            <td class="p-2">{{ $day->date()->format('m/d/Y') }}</td>
+                            @include('partials.attendance-day-cells', ['day' => $day])
                             <td class="text-center p-2">
                                 <span class="badge-attendance {{ $cls }}">{{ $label }}</span>
                                 @if($isHoliday)
                                     <span class="badge-attendance badge-holiday ms-1" title="{{ __('Holiday (Settings)') }}"><i class="fas fa-star me-1"></i>{{ __('Holiday') }}</span>
                                 @endif
-                                @if($record->needs_review)
-                                    <span class="badge-attendance badge-review ms-1" title="{{ $record->close_reason ?: __('Closed by the system') }}"><i class="fas fa-triangle-exclamation me-1"></i>{{ __('Needs review') }}</span>
+                                @if($day->needsReview())
+                                    <span class="badge-attendance badge-review ms-1" title="{{ $day->reviewReason() ?: __('Closed by the system') }}"><i class="fas fa-triangle-exclamation me-1"></i>{{ __('Needs review') }}</span>
                                 @endif
                             </td>
                         </tr>
@@ -671,7 +662,8 @@
         }
 
         delSelBtn.addEventListener('click', async function () {
-            const ids = getChecked().map(c => c.value);
+            // One checkbox is one day, and a day is one or more rows.
+            const ids = getChecked().flatMap(c => c.value.split(','));
             // Nothing ticked used to be a silent no-op, which reads as a
             // broken button rather than as an empty selection.
             if (!ids.length) { Notify.warning('Tick the records you want to delete first.'); return; }

@@ -137,7 +137,7 @@ class MissedSignOutTest extends TestCase
         $page = $this->page('2026-09-12 03:00:00');
 
         $this->assertSame(0, $page->viewData('invalidCount'));
-        $this->assertSame('active', $page->viewData('todayAttendances')->first()->status);
+        $this->assertSame('active', $page->viewData('todayAttendances')->first()->status());
     }
 
     public function test_the_card_counts_the_row_the_badge_flags(): void

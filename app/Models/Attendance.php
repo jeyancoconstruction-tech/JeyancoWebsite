@@ -40,16 +40,11 @@ class Attendance extends Model
     /** A day left open this long past its shift's end was forgotten, not still being worked. */
     public const STALE_AFTER_HOURS = 6;
 
-    // 🔥 AUTO FIX: kapag walang session, maglalagay siya automatically
     protected static function boot()
     {
         parent::boot();
 
         static::creating(function ($attendance) {
-            if (empty($attendance->session)) {
-                $attendance->session = now()->format('H') < 12 ? 'AM' : 'PM';
-            }
-
             // The shift the day was worked under, taken once and kept. Stamped
             // here rather than at each clock-in so no path — the kiosk, the
             // office screen, an import — can leave it off. Reading the
@@ -57,6 +52,34 @@ class Attendance extends Model
             // somebody to the night crew changed how late they were last month.
             if (empty($attendance->shift_id) && $attendance->employee_id) {
                 $attendance->shift_id = Employee::whereKey($attendance->employee_id)->value('shift_id');
+            }
+
+            // Which half of the day this is, when the caller did not say.
+            //
+            // It used to be noon off the wall clock, which is the one thing
+            // the office never configured: AM and PM are where the shift's
+            // meal period falls, and Payroll Settings is where that is typed.
+            // Noon put the night crew's first half — 8 PM — in the afternoon
+            // session and their second half, at 4 AM, in the morning one, so
+            // a night was filed as PM then AM and its lateness was measured
+            // against the wrong session's start.
+            //
+            // Noon survives only where there is no schedule to ask: a shift
+            // from before the working day was written down, or no shift at
+            // all.
+            if (empty($attendance->session)) {
+                $schedule = $attendance->shift_id
+                    ? Shift::find($attendance->shift_id)?->schedule()
+                    : null;
+
+                $at = \App\Support\WorkSchedule::moment(
+                    $attendance->time_in ?: Carbon::now(),
+                    (string) ($attendance->date ?: Carbon::now()->toDateString())
+                );
+
+                $attendance->session = \App\Support\WorkSchedule::has($schedule)
+                    ? \App\Support\WorkSchedule::sessionAt($schedule, $at)
+                    : ($at->hour < 12 ? 'AM' : 'PM');
             }
         });
     }

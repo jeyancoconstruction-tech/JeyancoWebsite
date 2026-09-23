@@ -127,9 +127,12 @@ class DashboardWorkdayTest extends TestCase
         $dash  = $this->dashboard('2026-09-11 10:00:00');
         $board = $this->attendancePage('2026-09-11 10:00:00');
 
+        // By the people, not by the rows: the Attendance board gathers a
+        // worker's stretches into one day now, while the dashboard's strip
+        // still lists the clocks. What has to match is who is on each.
         $this->assertSame(
-            $board->viewData('todayAttendances')->pluck('id')->all(),
-            $dash->viewData('todayAttendance')->pluck('id')->all(),
+            $board->viewData('todayAttendances')->map(fn ($d) => $d->employee()->id)->all(),
+            $dash->viewData('todayAttendance')->pluck('employee_id')->unique()->values()->all(),
             'the two screens have to agree on who is here'
         );
         $this->assertSame($board->viewData('presentToday'), $dash->viewData('presentToday'));
