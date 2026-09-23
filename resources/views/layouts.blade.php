@@ -139,6 +139,11 @@
      before any page script reaches for it. See _notify.blade.php. --}}
 @include('_notify')
 
+{{-- What the system shows between a click and the next page. A line across
+     the top straight away, and the branded card only once the wait is long
+     enough to be worth explaining. See _loading.blade.php. --}}
+@include('_loading')
+
 <!-- SIDEBAR OVERLAY (mobile) -->
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
