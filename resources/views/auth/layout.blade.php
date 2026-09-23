@@ -29,7 +29,8 @@
          file is served once from /images and cached.
 
          No theme switch here. The rest of the app follows the device; this
-         page is the front door and is always the dark one. --}}
+         page is the front door and is always the dark one, the same as the
+         loading screen it hands over to. --}}
     <style>
         :root {
             --bg:          #0a0f1e;
@@ -86,10 +87,11 @@
                 linear-gradient(90deg, rgba(127,176,230,.035) 1px, transparent 1px);
             background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
         }
-        /* On arrival the panel starts as the page's own ground; its colour
-           and its glow come in with everything else (see _entrance). */
+        /* While the loader is up the panel is the loader's own ground; its
+           colour and its glow come in with everything else, so the hand-over
+           reads as one screen becoming another rather than a cut. */
         .brand-panel { transition: background-color .9s ease; }
-        .jp-enter .brand-panel { background-color: var(--bg); }
+        .jp-loading .brand-panel { background-color: var(--bg); }
         .brand-panel::before {
             content: ""; position: absolute; inset: 0; pointer-events: none;
             background:
@@ -97,7 +99,7 @@
                 linear-gradient(180deg, transparent 55%, rgba(10,15,30,.85));
             transition: opacity 1.2s ease .1s;
         }
-        .jp-enter .brand-panel::before { opacity: 0; }
+        .jp-loading .brand-panel::before { opacity: 0; }
         .brand-panel > * { position: relative; }
 
         .logo { display: flex; align-items: center; gap: var(--s-3); }
@@ -162,8 +164,9 @@
            sit here too and only hand over their own fields. */
         .auth-stack { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: var(--s-4); }
         form { width: 100%; display: flex; flex-direction: column; gap: var(--s-4); }
-        /* No entrance of its own: the .rv choreography in _entrance brings
-           the page in piece by piece. Two entrances at once would fight. */
+        /* No entrance of its own: the loading screen hands over to the .rv
+           choreography in _loading_head, which brings the page in piece by
+           piece as the overlay lifts. Two entrances at once would fight. */
 
         .head h1 { margin: 0 0 var(--s-1); font-size: 29px; font-weight: 800; letter-spacing: -.02em; }
         .head p  { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--muted); }
@@ -342,11 +345,16 @@
 
     @stack('styles')
 
-    {{-- The entrance. No loading screen: the form is usable the moment it
-         is drawn. The check inside stamps <html> before the page is. --}}
-    @include('_entrance')
+    {{-- The loading screen the site opens on. Signing in is where most
+         people arrive — the address goes to the login page when nobody is
+         signed in — so the overlay belongs here as much as on the dashboard
+         layout. The check inside stamps <html> before these styles are read.
+         Pressing Sign In does not bring it back. --}}
+    @include('_loading_head')
 </head>
 <body>
+
+@include('_loading')
 
 @php
     $mark = $company?->logo_path ? $company->logoUrl() : asset('images/logo-mark.png');

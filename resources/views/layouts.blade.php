@@ -111,6 +111,11 @@
          density. Loaded last so both win their ties. --}}
     <link rel="stylesheet" href="{{ $cssv('density.css') }}">
 
+    {{-- The loading screen the site opens on. In the head because the check
+         inside it has to stamp <html> before the styles below it are read;
+         the overlay itself is the first thing in the body. --}}
+    @include('_loading_head')
+
     @include('_notify_styles')
 
     {{-- The tint on a figure that changed by itself, and the note that says
@@ -143,6 +148,12 @@
 </head>
 
 <body class="bg-light">
+
+{{-- The overlay the site opens on, first in the body so it is painted while
+     the rest of the page is still arriving behind it. Only on opening the
+     site — a click inside it never shows it. See _loading.blade.php and
+     _loading_head.blade.php. --}}
+@include('_loading')
 
 {{-- One notification system for every page: toasts for what a Create,
      Update or Delete did, and a styled dialog in place of the browser's
