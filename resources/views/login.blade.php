@@ -130,23 +130,15 @@
       return;
     }
 
+    // The form goes straight away; the button says it is working. No
+    // full-screen loading screen and no pause before submitting — the
+    // dashboard is already on its way, and nothing is covered while it comes.
     btn.classList.add('loading');
     btn.querySelector('.label').textContent = @json(__('Signing in…'));
-
-    // The wait for the dashboard is the screen the site opened on, not a
-    // form frozen mid-press. The overlay goes up first and the form is then
-    // submitted for real — a short beat, only long enough for the fade to
-    // start, because the page it is waiting for is already on its way.
-    if (window.JeyancoLoader) {
-      e.preventDefault();
-      window.JeyancoLoader.show(@json(__('Signing you in')));
-      setTimeout(function () { HTMLFormElement.prototype.submit.call(form); }, 220);
-    }
   });
 
   // Coming back to this page from the browser's cache leaves the button
-  // spinning on a form that is no longer being submitted. The loading screen
-  // clears itself on the same event, in _loading.blade.php.
+  // spinning on a form that is no longer being submitted.
   window.addEventListener('pageshow', function (e) {
     if (!e.persisted) return;
     btn.classList.remove('loading');

@@ -29,8 +29,7 @@
          file is served once from /images and cached.
 
          No theme switch here. The rest of the app follows the device; this
-         page is the front door and is always the dark one, the same as the
-         loading screen it hands over to. --}}
+         page is the front door and is always the dark one. --}}
     <style>
         :root {
             --bg:          #0a0f1e;
@@ -87,11 +86,10 @@
                 linear-gradient(90deg, rgba(127,176,230,.035) 1px, transparent 1px);
             background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
         }
-        /* While the loader is up the panel is the loader's own ground; its
-           colour and its glow come in with everything else, so the hand-over
-           reads as one screen becoming another rather than a cut. */
+        /* On arrival the panel starts as the page's own ground; its colour
+           and its glow come in with everything else (see _entrance). */
         .brand-panel { transition: background-color .9s ease; }
-        .jp-loading .brand-panel { background-color: var(--bg); }
+        .jp-enter .brand-panel { background-color: var(--bg); }
         .brand-panel::before {
             content: ""; position: absolute; inset: 0; pointer-events: none;
             background:
@@ -99,7 +97,7 @@
                 linear-gradient(180deg, transparent 55%, rgba(10,15,30,.85));
             transition: opacity 1.2s ease .1s;
         }
-        .jp-loading .brand-panel::before { opacity: 0; }
+        .jp-enter .brand-panel::before { opacity: 0; }
         .brand-panel > * { position: relative; }
 
         .logo { display: flex; align-items: center; gap: var(--s-3); }
@@ -164,9 +162,8 @@
            sit here too and only hand over their own fields. */
         .auth-stack { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: var(--s-4); }
         form { width: 100%; display: flex; flex-direction: column; gap: var(--s-4); }
-        /* No entrance of its own: the loading screen hands over to the .rv
-           choreography in _loading_head, which brings the page in piece by
-           piece as the overlay lifts. Two entrances at once would fight. */
+        /* No entrance of its own: the .rv choreography in _entrance brings
+           the page in piece by piece. Two entrances at once would fight. */
 
         .head h1 { margin: 0 0 var(--s-1); font-size: 29px; font-weight: 800; letter-spacing: -.02em; }
         .head p  { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--muted); }
@@ -345,15 +342,11 @@
 
     @stack('styles')
 
-    {{-- The entry loader. Signing in is where most people arrive — the
-         address goes to the login page when nobody is signed in — so the
-         overlay belongs here as much as on the dashboard layout. The check
-         inside stamps <html> before these styles are read. --}}
-    @include('_loading_head')
+    {{-- The entrance. No loading screen: the form is usable the moment it
+         is drawn. The check inside stamps <html> before the page is. --}}
+    @include('_entrance')
 </head>
 <body>
-
-@include('_loading')
 
 @php
     $mark = $company?->logo_path ? $company->logoUrl() : asset('images/logo-mark.png');
@@ -395,26 +388,26 @@
         <svg class="skyline" viewBox="0 0 760 260" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
             <path class="sk draw" pathLength="1" style="--jp-d:200" d="M0 259.5H760"/>
             <rect class="sk draw" pathLength="1" style="--jp-d:300" x="40" y="70" width="110" height="190"/>
-            <path class="sk2 fade" style="--jp-d:1300" d="M40 95H150M40 120H150M40 145H150M40 170H150M40 195H150M40 220H150M40 245H150M77 70V260M113 70V260"/>
+            <path class="sk2 jp-fade" style="--jp-d:1300" d="M40 95H150M40 120H150M40 145H150M40 170H150M40 195H150M40 220H150M40 245H150M77 70V260M113 70V260"/>
             <path class="sk draw" pathLength="1" style="--jp-d:700" d="M60 70V56H130V70M95 56V30"/>
             <rect class="sk draw" pathLength="1" style="--jp-d:400" x="168" y="140" width="92" height="120"/>
-            <path class="sk2 fade" style="--jp-d:1400" d="M168 164H260M168 188H260M168 212H260M168 236H260M199 140V260M229 140V260"/>
+            <path class="sk2 jp-fade" style="--jp-d:1400" d="M168 164H260M168 188H260M168 212H260M168 236H260M199 140V260M229 140V260"/>
             <path class="sk draw" pathLength="1" style="--jp-d:450" d="M322 260V48M338 260V48M322 48H338"/>
-            <path class="sk2 fade" style="--jp-d:1350" d="M322 70L338 90L322 110L338 130L322 150L338 170L322 190L338 210L322 230L338 250"/>
+            <path class="sk2 jp-fade" style="--jp-d:1350" d="M322 70L338 90L322 110L338 130L322 150L338 170L322 190L338 210L322 230L338 250"/>
             <path class="sk draw" pathLength="1" style="--jp-d:750" d="M250 48H540M250 60H540M250 48V60M540 48V60M330 48L330 22L250 48M330 22L540 48"/>
-            <path class="sk2 fade" style="--jp-d:1500" d="M270 48L282 60L294 48L306 60M360 48L372 60L384 48L396 60L408 48L420 60L432 48L444 60L456 48L468 60L480 48L492 60L504 48L516 60L528 48"/>
-            <rect class="sk fade" style="--jp-d:1200" x="256" y="60" width="26" height="14"/>
-            <g class="hook fade" style="--jp-d:1600">
+            <path class="sk2 jp-fade" style="--jp-d:1500" d="M270 48L282 60L294 48L306 60M360 48L372 60L384 48L396 60L408 48L420 60L432 48L444 60L456 48L468 60L480 48L492 60L504 48L516 60L528 48"/>
+            <rect class="sk jp-fade" style="--jp-d:1200" x="256" y="60" width="26" height="14"/>
+            <g class="hook jp-fade" style="--jp-d:1600">
                 <path class="sk" d="M470 60V150"/>
                 <rect class="sk" x="452" y="150" width="36" height="22"/>
                 <path class="sk2" d="M452 150L488 172M488 150L452 172"/>
             </g>
-            <path class="sk fade" style="--jp-d:1100" d="M390 260V170H530V260" stroke-dasharray="5 5"/>
-            <path class="sk2 fade" style="--jp-d:1450" d="M390 200H530M390 230H530M425 170V260M460 170V260M495 170V260M390 170L425 200M425 200L390 230M495 170L530 200M530 200L495 230"/>
+            <path class="sk jp-fade" style="--jp-d:1100" d="M390 260V170H530V260" stroke-dasharray="5 5"/>
+            <path class="sk2 jp-fade" style="--jp-d:1450" d="M390 200H530M390 230H530M425 170V260M460 170V260M495 170V260M390 170L425 200M425 200L390 230M495 170L530 200M530 200L495 230"/>
             <rect class="sk draw" pathLength="1" style="--jp-d:500" x="560" y="100" width="78" height="160"/>
-            <path class="sk2 fade" style="--jp-d:1400" d="M560 124H638M560 148H638M560 172H638M560 196H638M560 220H638M560 244H638M586 100V260M612 100V260"/>
+            <path class="sk2 jp-fade" style="--jp-d:1400" d="M560 124H638M560 148H638M560 172H638M560 196H638M560 220H638M560 244H638M586 100V260M612 100V260"/>
             <rect class="sk draw" pathLength="1" style="--jp-d:550" x="656" y="170" width="84" height="90"/>
-            <path class="sk2 fade" style="--jp-d:1500" d="M656 192H740M656 214H740M656 236H740M684 170V260M712 170V260"/>
+            <path class="sk2 jp-fade" style="--jp-d:1500" d="M656 192H740M656 214H740M656 236H740M684 170V260M712 170V260"/>
         </svg>
     </aside>
 

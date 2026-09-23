@@ -1106,9 +1106,9 @@
 
             {{-- Flatpickr (date picker for Add Custom Holiday modal) --}}
 @push('styles')
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
 @endpush
-            <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+            <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 
             {{-- Calendar JavaScript --}}
             <script>

@@ -68,6 +68,13 @@
         </script>
     @endif
 
+    {{-- Open the connections to the CDNs while the page is still being
+         read, rather than one after another as each file is reached. --}}
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -104,11 +111,6 @@
          density. Loaded last so both win their ties. --}}
     <link rel="stylesheet" href="{{ $cssv('density.css') }}">
 
-    {{-- The entry loader. In the head because the check inside it has to
-         stamp <html> before the styles below it are read; the overlay
-         itself is the first thing in the body. --}}
-    @include('_loading_head')
-
     @include('_notify_styles')
 
     {{-- The tint on a figure that changed by itself, and the note that says
@@ -133,15 +135,14 @@
         };
     </script>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
+    {{-- Pinned to the release @latest resolved to, byte for byte. @latest
+         answered with a redirect cached for sixty seconds, so after a minute
+         on any page the next one waited on a trip to unpkg before it could
+         draw; a versioned file is cached for a year. --}}
+    <script src="https://cdn.jsdelivr.net/npm/lucide@1.47.0/dist/umd/lucide.min.js"></script>
 </head>
 
 <body class="bg-light">
-
-{{-- The overlay the site opens on, first in the body so it is painted while
-     the rest of the page is still arriving behind it. See
-     _loading.blade.php and _loading_head.blade.php. --}}
-@include('_loading')
 
 {{-- One notification system for every page: toasts for what a Create,
      Update or Delete did, and a styled dialog in place of the browser's

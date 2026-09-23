@@ -3,7 +3,7 @@
 @section('page_title', 'Payroll Records')
 
 @push('styles')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
 <style>
     /* No side padding here: the shell's .container-fluid already insets the
        page, and adding another 28px on top of it was leaving the section
@@ -737,7 +737,7 @@ document.addEventListener('shown.bs.modal', function () {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script>
 // Date inputs — display MM-DD-YYYY, send YYYY-MM-DD to server
 flatpickr('input[name="from"], input[name="to"], input[name="date"]', {
