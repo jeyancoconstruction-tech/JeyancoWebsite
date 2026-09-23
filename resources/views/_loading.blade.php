@@ -4,7 +4,9 @@
 
      JeyancoLoader.show() / .hide() / .setMessage(text, icon) /
      .setProgress(0-100) are on window for anything that wants to put the
-     overlay up by hand; data-manual on #jp-loader turns off the auto-hide. --}}
+     overlay up by hand; data-manual on #jp-loader turns off the auto-hide.
+     setMessage takes any of the four icons below, so a slow job that really
+     is doing something can say what it is doing. --}}
 
 <div id="jp-loader" role="status" aria-live="polite" aria-label="{{ __('Loading Jeyanco Payroll') }}">
   <div class="jp-stage">
@@ -66,7 +68,7 @@
 
     <div class="jp-status" id="jp-status">
       <svg id="jp-status-icon" viewBox="0 0 24 24"></svg>
-      <span><span id="jp-status-text">{{ __('Syncing attendance logs') }}</span><span class="jp-dots"></span></span>
+      <span><span id="jp-status-text">{{ __('Getting things ready') }}</span><span class="jp-dots"></span></span>
     </div>
 
   </div>
@@ -81,12 +83,18 @@
     peso:     '<path d="M8 19V5h3.5a4.5 4.5 0 0 1 0 9H8M18 8H6M18 11H6"/>'
   };
 
-  var STEPS = [
-    { icon: 'calendar', text: @json(__('Syncing attendance logs')) },
-    { icon: 'clock',    text: @json(__('Computing hours worked')) },
-    { icon: 'users',    text: @json(__('Loading employee records')) },
-    { icon: 'peso',     text: @json(__('Preparing payroll summary')) }
-  ];
+  // What the screen says while the site opens.
+  //
+  // It used to cycle four lines — syncing attendance logs, computing hours
+  // worked, loading employee records, preparing payroll summary — and none
+  // of them was true. Nothing is synced or computed here; the page is simply
+  // arriving. They also could not be read: the overlay lifts as soon as the
+  // page has loaded, so past the first line nobody ever saw them.
+  //
+  // One line, true of every page and of nobody's data. Change the words
+  // here and in the markup above, which carries the same text so the screen
+  // is not blank for the frame before this script runs.
+  var DEFAULT = { icon: 'clock', text: @json(__('Getting things ready')) };
 
   var el     = document.getElementById('jp-loader');
   var status = document.getElementById('jp-status');
@@ -95,7 +103,7 @@
   var prog   = document.getElementById('jp-progress');
   var bar    = document.getElementById('jp-progress-bar');
 
-  var i = 0, timer = null, pinned = false, shownAt = Date.now();
+  var shownAt = Date.now();
 
   function render(step) { icon.innerHTML = ICONS[step.icon]; label.textContent = step.text; }
 
@@ -104,18 +112,8 @@
     setTimeout(function () { fn(); status.classList.remove('is-swapping'); }, 350);
   }
 
-  function cycle() {
-    clearInterval(timer);
-    timer = setInterval(function () {
-      if (pinned) return;
-      i = (i + 1) % STEPS.length;
-      swap(function () { render(STEPS[i]); });
-    }, 1900);
-  }
-
   function reset() {
-    i = 0; pinned = false;
-    render(STEPS[0]);
+    render(DEFAULT);
     prog.classList.remove('is-determinate');
     bar.style.width = '';
   }
@@ -127,20 +125,17 @@
       el.style.display = '';
       void el.offsetWidth; // restart transition
       el.classList.remove('is-hidden');
-      cycle();
     },
     hide: function () {
       var wait = Math.max(0, 700 - (Date.now() - shownAt));
       setTimeout(function () {
         el.classList.add('is-hidden');
-        clearInterval(timer);
         setTimeout(function () {
           if (el.classList.contains('is-hidden')) el.style.display = 'none';
         }, 520);
       }, wait);
     },
     setMessage: function (text, iconName) {
-      pinned = true;
       swap(function () { render({ icon: iconName || 'clock', text: text }); });
     },
     setProgress: function (pct) {
@@ -150,7 +145,7 @@
   };
 
   window.JeyancoLoader = api;
-  render(STEPS[0]);
+  render(DEFAULT);
 
   // Internal navigation: loader stays off, only manual show() can bring it back
   if (document.documentElement.classList.contains('jp-skip')) {
@@ -159,8 +154,6 @@
     document.documentElement.classList.remove('jp-skip');
     return;
   }
-
-  cycle();
 
   if (!el.hasAttribute('data-manual')) {
     if (document.readyState === 'complete') api.hide();

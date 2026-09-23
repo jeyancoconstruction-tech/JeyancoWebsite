@@ -145,24 +145,63 @@ class LoadingScreenTest extends TestCase
 
     // ── What it says ─────────────────────────────────────────────────────
 
-    /** Payroll, attendance, employees, hours — not a bare spinner. */
-    public function test_the_status_line_talks_about_this_system(): void
+    /**
+     * One line, and a true one.
+     *
+     * It used to cycle four — syncing attendance logs, computing hours
+     * worked, loading employee records, preparing payroll summary — and not
+     * one of them described what was happening: nothing is synced or
+     * computed while a page arrives. They were also unreadable, since the
+     * overlay lifts as soon as the page has loaded and nobody got past the
+     * first.
+     */
+    public function test_the_status_line_says_only_what_is_true(): void
     {
         $html = $this->appPage();
+
+        $this->assertStringContainsString('Getting things ready', $html);
 
         foreach ([
             'Syncing attendance logs',
             'Computing hours worked',
             'Loading employee records',
             'Preparing payroll summary',
-        ] as $step) {
-            $this->assertStringContainsString($step, $html);
+        ] as $claim) {
+            $this->assertStringNotContainsString($claim, $html,
+                'the screen should not claim work it is not doing');
         }
 
-        // Each step brings its own icon, and the peso is the payroll one.
+        $this->assertStringNotContainsString('setInterval', $html,
+            'there is nothing left to cycle between');
+    }
+
+    /**
+     * The same words in the markup and in the script. The markup is what is
+     * on screen for the frame before the script runs, so a mismatch shows as
+     * the line changing under the reader the instant the page starts.
+     */
+    public function test_the_line_on_screen_matches_the_one_the_script_sets(): void
+    {
+        $src = File::get(resource_path('views/_loading.blade.php'));
+
+        preg_match('/id="jp-status-text">\{\{ __\(\x27([^\x27]+)\x27\) \}\}/', $src, $markup);
+        preg_match('/var DEFAULT = \{ icon: \x27\w+\x27, text: @json\(__\(\x27([^\x27]+)\x27\)\) \}/', $src, $script);
+
+        $this->assertNotEmpty($markup, 'the markup should carry the line');
+        $this->assertNotEmpty($script, 'and so should the script');
+        $this->assertSame($markup[1], $script[1], 'they have to be the same words');
+    }
+
+    /** The four icons stay: setMessage() can pin a real one to a slow job. */
+    public function test_the_icons_are_still_available_to_set_message(): void
+    {
+        $html = $this->appPage();
+
         foreach (['calendar', 'clock', 'users', 'peso'] as $icon) {
             $this->assertStringContainsString($icon . ':', $html);
         }
+
+        $this->assertStringContainsString('setMessage', $html);
     }
 
     /** Twelve hours on the dial, and the sweep that lights them. */
