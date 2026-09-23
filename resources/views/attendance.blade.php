@@ -67,6 +67,7 @@
     display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0;
 }
 .att-controls-right[hidden] { display:none; }
+.att-pick[hidden] { display:none; }
 
 /* Site: a soft pill with the select sitting inside it, borderless, so the
    pill is the control rather than a label next to one. */
@@ -314,6 +315,37 @@
                 @endforeach
             </div>
 
+            {{-- How far back History reaches. It rides in the same form, so it
+                 combines with Site and Shift instead of clearing them, and the
+                 change listener below reloads on it like any other select.
+
+                 It shows only while History is open — Today's Attendance is a
+                 single workday and the cards count today and this week, so
+                 there is nothing there for "last 6 months" to narrow. Hidden
+                 rather than removed: the field still submits, so the range
+                 survives a trip to the other tab. --}}
+            <div class="att-pick" id="attRangePick" @if($openTab !== 'history') hidden @endif>
+                <i class="fas fa-calendar-days"></i>
+                <select name="range" id="attRange" aria-label="{{ __('Filter history by date range') }}">
+                    @foreach([
+                        '7'    => __('Last 7 Days'),
+                        '30'   => __('Last 30 Days'),
+                        '3m'   => __('Last 3 Months'),
+                        '6m'   => __('Last 6 Months'),
+                        'year' => __('This Year'),
+                        'all'  => __('All Time'),
+                    ] as $key => $label)
+                        {{-- (string) $key, because PHP turns the two numeric
+                             keys above into ints: a strict === against the
+                             string out of the query string never matched them,
+                             so the list quietly fell back to showing its first
+                             option while the table underneath was filtered
+                             correctly. --}}
+                        <option value="{{ $key }}" @selected((string) $key === $range)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             {{-- The tab rides along, so changing a filter while reading
                  History does not drop you back on Today's Attendance. --}}
             <input type="hidden" name="tab" id="attTabField" value="{{ request('tab') === 'history' ? 'history' : 'today' }}">
@@ -479,7 +511,15 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">{{ __('No previous attendance records.') }}</td>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                {{-- "Nothing here" and "nothing here lately"
+                                     are different answers, and a reader who
+                                     forgot the range is on would read the
+                                     first one as the second. --}}
+                                {{ $range === 'all'
+                                    ? __('No previous attendance records.')
+                                    : __('No attendance records in this date range.') }}
+                            </td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -518,12 +558,14 @@
     // does a refresh. The delete controls share the row with the filters and
     // only mean anything on History, so they come and go with it.
     const historyActions = document.getElementById('attHistoryActions');
+    const rangePick      = document.getElementById('attRangePick');
 
     document.querySelectorAll('.att-tabs [data-tab]').forEach(btn => {
         btn.addEventListener('shown.bs.tab', () => {
             const tab = btn.dataset.tab;
             if (tabField) tabField.value = tab;
             if (historyActions) historyActions.hidden = (tab !== 'history');
+            if (rangePick)      rangePick.hidden      = (tab !== 'history');
 
             const url = new URL(window.location);
             if (tab === 'history') url.searchParams.set('tab', 'history');

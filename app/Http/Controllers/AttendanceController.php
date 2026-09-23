@@ -44,6 +44,35 @@ class AttendanceController extends Controller
         $siteId  = $sites->contains('id', (int) $siteId)   ? (int) $siteId  : null;
         $shiftId = $shifts->contains('id', (int) $shiftId) ? (int) $shiftId : null;
 
+        // How far back the History table reaches. Unlike Site and Shift this
+        // one narrows History alone: Today's Attendance is a single workday,
+        // and the three cards count today and this week, so every range would
+        // be either a no-op or a lie up there. The control comes and goes with
+        // the History tab for the same reason.
+        //
+        // Day counts include today, the way the audit log's periods do — "last
+        // 7 days" is today and the six before it. Anything rejected falls back
+        // to the whole history rather than to an empty table.
+        $range = $request->query('range');
+        $range = is_string($range) && in_array($range, ['7', '30', '3m', '6m', 'year', 'all'], true)
+            ? $range
+            : 'all';
+
+        // A plain date comparison rather than whereDate(): the column is a
+        // date, so this compares like for like on both engines and can still
+        // use the index. See the MySQL-only SQL already in this app.
+        // NoOverflow on the month steps: plain subMonths() on the 31st
+        // walks into a month that has no 31st and lands three days late, so
+        // 'last 3 months' would quietly mean something else five days a year.
+        $rangeStart = match ($range) {
+            '7'    => Carbon::today()->subDays(6),
+            '30'   => Carbon::today()->subDays(29),
+            '3m'   => Carbon::today()->subMonthsNoOverflow(3),
+            '6m'   => Carbon::today()->subMonthsNoOverflow(6),
+            'year' => Carbon::today()->startOfYear(),
+            default => null,
+        };
+
         $filtered = function ($query) use ($siteId, $shiftId) {
             // The attendance carries its own site and shift: one kiosk is
             // moved between sites, and a worker's shift can change, so
@@ -104,6 +133,7 @@ class AttendanceController extends Controller
                     ->when($view === 'clocked-in',
                         fn ($q) => $q->whereNotNull('time_in')->whereNull('time_out'))
                     ->when($view === 'missed', fn ($q) => $q->missedSignOut($now))
+                    ->when($rangeStart, fn ($q) => $q->where('date', '>=', $rangeStart->toDateString()))
                     ->orderBy('date', 'desc')
                     ->orderBy('session', 'asc')
             )->paginate(15)
@@ -173,7 +203,7 @@ class AttendanceController extends Controller
         return view('attendance', compact(
             'todayAttendances', 'historyAttendances',
             'presentToday', 'clockedIn', 'invalidCount', 'holidayDates',
-            'sites', 'shifts', 'siteId', 'shiftId', 'view', 'openTab'
+            'sites', 'shifts', 'siteId', 'shiftId', 'range', 'view', 'openTab'
         ));
     }
 
