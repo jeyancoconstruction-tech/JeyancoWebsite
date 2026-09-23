@@ -85,7 +85,7 @@ class MailTest extends Command
             $this->line('  Common causes:');
             $this->line('   • Gmail needs an App Password (16 characters), not the account password.');
             $this->line('   • 2-Step Verification must be on before App Passwords can be created.');
-            $this->line('   • Port 587 with MAIL_SCHEME=tls, or port 465 with MAIL_SCHEME=smtps.');
+            $this->line('   • MAIL_SCHEME is smtp (port 587) or smtps (port 465) — never "tls".');
             $this->newLine();
 
             return self::FAILURE;
