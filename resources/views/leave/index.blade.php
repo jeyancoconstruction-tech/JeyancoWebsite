@@ -660,88 +660,13 @@
 @endif
 
 @include('modules._kit')
+@include('modules._fill_screen')
 @include('employees._profile_styles')
 @include('employees._modal_styles')
 @endsection
 
 @push('scripts')
 <script>
-// ── Only the list scrolls, and its card reaches the bottom ─────────────────
-// The heading, the tabs, the totals and the filters stay where they are; the
-// list's card runs down to the bottom of the screen, and the list scrolls
-// inside it with its column heads pinned and its pager at the foot. The card
-// goes all the way down however few rows there are, so the page ends in the
-// same place whatever is in it. Measured rather than written as a fixed
-// calc(), because what sits above the list is not one height — the totals
-// wrap on a narrower window, and a validation alert can appear above them.
-// On a phone the page scrolls as a whole: a list boxed into what is left of
-// a small screen would be a sliver.
-(function () {
-    const wraps = [...document.querySelectorAll('.mod-card[data-fill-screen] > .mod-table-wrap')];
-    if (!wraps.length) return;
-
-    const MIN  = 200;                                   // never less than about three rows
-    const wide = window.matchMedia('(min-width: 768px)');
-    const root = document.documentElement;
-
-    function fit() {
-        root.classList.remove('fills-screen');
-        wraps.forEach(wrap => {
-            wrap.style.height = '';
-            wrap.classList.remove('is-fitted');
-        });
-
-        if (!wide.matches) return;
-
-        // The layout's own padding and the card's margin under the list are
-        // what kept the card short of the bottom; this page does without them.
-        root.classList.add('fills-screen');
-
-        wraps.forEach(wrap => {
-            const rect = wrap.getBoundingClientRect();
-            const top  = rect.top + window.scrollY;
-            const card = wrap.closest('.mod-card');
-            // The rest of the card under the list — its pager and its edge.
-            const foot = card.getBoundingClientRect().bottom - rect.bottom;
-            // Under the card, the same gap the page leaves above it, so the
-            // bottom reads as part of the page's own spacing.
-            const prev = card.previousElementSibling;
-            const gap  = prev ? Math.max(0, card.getBoundingClientRect().top - prev.getBoundingClientRect().bottom) : 13;
-            const room = Math.floor(window.innerHeight - top - foot - gap);
-
-            wrap.style.height = Math.max(MIN, room) + 'px';
-            wrap.classList.add('is-fitted');
-        });
-
-        // Once more, by what is left over. Fitting the list can move what sits
-        // above it — the page's scrollbar goes, the width changes, a line of
-        // text rewraps — so the first measurement can be a few pixels out.
-        const over = root.scrollHeight - window.innerHeight;
-
-        if (over > 0) {
-            wraps.forEach(wrap => {
-                wrap.style.height = Math.max(MIN, wrap.clientHeight - over) + 'px';
-            });
-        }
-    }
-
-    // After a resize the layout can still be settling on the frame this runs
-    // in, so it measures again on the frame after.
-    let queued = false;
-    const refit = () => {
-        if (queued) return;
-        queued = true;
-        requestAnimationFrame(() => {
-            fit();
-            requestAnimationFrame(() => { queued = false; fit(); });
-        });
-    };
-
-    window.addEventListener('resize', refit);
-    wide.addEventListener?.('change', refit);
-    document.fonts?.ready.then(refit);
-    fit();
-})();
 
 // ── The cash advance limit, as the worker is picked ─────────────────────────
 // ₱30,000 a worker, on what they owe. Choosing somebody sets the Amount box's

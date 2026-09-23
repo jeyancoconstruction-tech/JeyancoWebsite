@@ -99,16 +99,9 @@
 
 /* ── Table ────────────────────────────────────────────────────────────── */
 .mod-table-wrap { overflow-x: auto; }
-/* A list boxed to the screen (see data-fill-screen on Leave & Advances): it
-   scrolls on its own, and reaching its end does not carry on into the page. */
-.mod-table-wrap.is-fitted { overflow-y: auto; overscroll-behavior: contain; }
-/* While a list card runs to the bottom of the screen, the layout's padding
-   under the page and the card's own margin are what would stop it short. The
-   script sets the class, so a page without such a list keeps both. Specific
-   enough to beat the theme files, which set that padding per theme with
-   !important (design-tokens.css, enterprise.css, density.css). */
-html.fills-screen[data-bs-theme] .main-content .container-fluid.py-4 { padding-bottom: 0 !important; }
-html.fills-screen .mod-card[data-fill-screen] { margin-bottom: 0 !important; }
+/* A list boxed to the screen carries data-fill-screen on its card; the rules
+   that size it, and the script that measures it, live in
+   modules/_fill_screen.blade.php, which such a page includes. */
 /* Such a list ends at the bottom of the screen, so its pager always lands
    under the floating chat button (50px, 28px in from the right) — kept clear
    of it, or the next-page arrow cannot be clicked. */

@@ -37,8 +37,12 @@
         </div>
     </div>
 
-    {{-- ── Table card ──────────────────────────────────────────────────────── --}}
-    <div class="emp-card">
+    {{-- ── Table card ────────────────────────────────────────────────────────
+         data-fill-screen: the card reaches the bottom of the screen and the
+         list scrolls inside it, so the heading, the total and the toolbar
+         stay put however many people are on the payroll. See
+         modules/_fill_screen.blade.php. --}}
+    <div class="emp-card" data-fill-screen>
 
         {{-- Toolbar: tabs, search, filter --}}
         <div class="dir-toolbar">
@@ -102,7 +106,8 @@
             </div>
         </div>
 
-        <div class="table-responsive" id="empTableWrap" data-live="employees settings assignments">
+        <div class="table-responsive" id="empTableWrap" data-fill-scroll
+             data-live="employees settings assignments">
             <table class="emp-table" id="empTable">
                 <thead>
                     <tr>
@@ -203,7 +208,7 @@
                         </td>
 
                         {{-- Rate --}}
-                        <td class="emp-rate" data-label="Rate">
+                        <td class="emp-rate-cell" data-label="Rate">
                             @if($emp->isContractual())
                                 {{-- Walang oras-oras na rate ang kontrata. Ang ipapakita ay
                                      ang kabuuan ng kontrata; kung ilalagay dito ang
@@ -727,7 +732,13 @@
 .emp-shift-wrap.is-saved .emp-shift { border-color: color-mix(in srgb, var(--success, #16a34a) 50%, transparent); }
 
 .emp-dash { color: var(--text-muted); font-size: 13px; }
-.emp-rate { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+/* .emp-rate-cell, not .emp-rate: that name already belongs to the read-only
+   rate box in the Add Employee form, which _modal_styles gives a height, a
+   border and display:flex — and this page includes those styles. The cell
+   was being drawn as a form field, which a table cell cannot be: flex drops
+   the vertical-align that centres it, so every rate sat 12px above the row
+   it belonged to, in a box of its own. */
+.emp-rate-cell { text-align: center; font-size: 13.5px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 /* Ang halaga ng kontrata ay kabuuan, hindi kada-oras — kaya may maliit na
    pananda sa ilalim para hindi ito mabasa bilang rate kada oras. */
 .emp-rate-contract { display: block; }
@@ -963,6 +974,7 @@
 </style>
 
 @include('employees._modal_styles')
+@include('modules._fill_screen')
 @endsection
 
 {{-- ── Script ─────────────────────────────────────────────────────────────────
@@ -1070,6 +1082,11 @@
 
         const noMatch = document.getElementById('noMatch');
         if (noMatch) noMatch.style.display = (rows.length > 0 && visible === 0) ? 'block' : 'none';
+
+        // The empty-state panel appears under the list, inside the same card
+        // that is sized to reach the bottom of the screen — so the card has
+        // to be measured again or it runs off the end of it.
+        document.dispatchEvent(new CustomEvent('fill-screen:refit'));
 
         // Ang bilang sa ibaba ay dapat sumasalamin sa NAKIKITA, hindi sa
         // kabuuan — kung hindi, nagsisinungaling ito habang naghahanap ka.
