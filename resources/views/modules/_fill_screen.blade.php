@@ -64,6 +64,11 @@ html.fills-screen [data-fill-screen] { margin-bottom: 0 !important; }
         root.classList.add('fills-screen');
 
         wraps.forEach(wrap => {
+            // A list on the tab that is not open has no height to measure,
+            // and measuring it anyway sized it against a top of zero. It is
+            // left alone until its tab is shown, which asks for a refit.
+            if (!wrap.offsetParent) { return; }
+
             const rect = wrap.getBoundingClientRect();
             const top  = rect.top + window.scrollY;
             const card = wrap.closest('[data-fill-screen]');
@@ -87,6 +92,7 @@ html.fills-screen [data-fill-screen] { margin-bottom: 0 !important; }
 
         if (over > 0) {
             wraps.forEach(wrap => {
+                if (!wrap.offsetParent) { return; }
                 wrap.style.height = Math.max(MIN, wrap.clientHeight - over) + 'px';
             });
         }

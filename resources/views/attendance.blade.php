@@ -121,6 +121,38 @@
     .att-pick select { flex:1; }
 }
 
+/* ── The columns ──────────────────────────────────────────────────────────
+   Left to itself the table gave the widest column everything: Time In / Out
+   took 840 of 1,567 pixels while Employee was squeezed to 143 — 100 on a
+   1366-wide screen, which is not a name. So every column that holds
+   something of a known size asks for the room that thing needs, and Time In /
+   Out takes what is left over rather than taking it first.
+
+   The heads never wrap: a label broken over two lines is taller than the row
+   it labels and reads as two columns. */
+.attendance-table thead th { white-space:nowrap; }
+.att-col-employee { min-width:190px; }
+.att-col-site     { min-width:160px; }
+.att-col-date     { min-width:112px; }
+.att-col-session  { min-width:120px; }
+.att-col-status   { min-width:170px; }
+/* width:100% on one column is how a table is told which one absorbs the
+   slack; the min-width keeps it readable when there is none to absorb. */
+.att-col-time     { width:100%; min-width:260px; }
+
+/* The card ends at the bottom of the screen, so its pager lands under the
+   floating chat button (50px across, 28px in from the right). Kept clear of
+   it, or the next-page arrow cannot be clicked — which it could not: the
+   robot sat on top of it. Unconditional, because the button floats over the
+   foot of a scrolling page too. */
+.att-pager { padding-right:76px; }
+.att-pager .pagination { margin-bottom:0; }
+
+/* The heads stay while the rows move — the whole point of boxing the list.
+   Their background is already opaque in both themes (attendance.css and
+   dark-mode.css), which sticky needs or the rows show through. */
+.attendance-table thead th { position:sticky; top:0; z-index:2; }
+
 /* A day's sessions, and the stretches it was worked in. The span is the day;
    the line under it is what the day is made of, and it only appears when
    there is more than one stretch to spell out. */
@@ -383,16 +415,19 @@
         <!-- ===== TODAY ===== -->
         <div class="tab-pane fade {{ $openTab === 'today' ? 'show active' : '' }}" id="att-today" role="tabpanel"
              data-live="attendance employees sites">
-            <div class="table-card">
-                <div class="table-responsive">
+            {{-- The card reaches the bottom of the screen and the rows scroll
+                 inside it, under column heads that stay. See
+                 modules/_fill_screen.blade.php. --}}
+            <div class="table-card" data-fill-screen>
+                <div class="table-responsive" data-fill-scroll>
                 <table class="attendance-table w-100">
                     <thead>
                         <tr>
-                            <th class="p-2 text-start">{{ __('Employee') }}</th>
-                            <th class="p-2 text-start">{{ __('Site') }}</th>
-                            <th class="p-2 text-start">{{ __('Session') }}</th>
-                            <th class="p-2 text-start">{{ __('Time In / Out') }}</th>
-                            <th class="p-2 text-center">{{ __('Status') }}</th>
+                            <th class="p-2 text-start att-col-employee">{{ __('Employee') }}</th>
+                            <th class="p-2 text-start att-col-site">{{ __('Site') }}</th>
+                            <th class="p-2 text-start att-col-session">{{ __('Session') }}</th>
+                            <th class="p-2 text-start att-col-time">{{ __('Time In / Out') }}</th>
+                            <th class="p-2 text-center att-col-status">{{ __('Status') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -443,20 +478,20 @@
                  filters; the ids are unchanged, so the script below still
                  finds every button. --}}
 
-            <div class="table-card">
-                <div class="table-responsive">
+            <div class="table-card" data-fill-screen>
+                <div class="table-responsive" data-fill-scroll>
                 <table class="attendance-table w-100" id="historyTable">
                     <thead>
                         <tr>
                             <th class="att-check-col p-2">
                                 <input type="checkbox" id="selectAllChk" title="{{ __('Select all on this page') }}">
                             </th>
-                            <th class="p-2 text-start">{{ __('Employee') }}</th>
-                            <th class="p-2 text-start">{{ __('Site') }}</th>
-                            <th class="p-2 text-start">{{ __('Date') }}</th>
-                            <th class="p-2 text-start">{{ __('Session') }}</th>
-                            <th class="p-2 text-start">{{ __('Time In / Out') }}</th>
-                            <th class="p-2 text-center">{{ __('Status') }}</th>
+                            <th class="p-2 text-start att-col-employee">{{ __('Employee') }}</th>
+                            <th class="p-2 text-start att-col-site">{{ __('Site') }}</th>
+                            <th class="p-2 text-start att-col-date">{{ __('Date') }}</th>
+                            <th class="p-2 text-start att-col-session">{{ __('Session') }}</th>
+                            <th class="p-2 text-start att-col-time">{{ __('Time In / Out') }}</th>
+                            <th class="p-2 text-center att-col-status">{{ __('Status') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -509,7 +544,7 @@
                 </table>
                 </div>
 
-                <div class="mt-3">
+                <div class="mt-3 att-pager">
                     {{-- appends(): these links live in the History pane, so
                          page 2 has to carry the tab as well as the filters or
                          it lands on Today's Attendance. --}}
@@ -519,6 +554,8 @@
         </div>
     </div>
 </div>
+
+@include('modules._fill_screen')
 
 @push('scripts')
 <script>
@@ -554,6 +591,10 @@
             if (tab === 'history') url.searchParams.set('tab', 'history');
             else                   url.searchParams.delete('tab');
             history.replaceState(null, '', url);
+
+            // The pane that was hidden had no height to measure, so it is
+            // sized now that it is on screen.
+            document.dispatchEvent(new CustomEvent('fill-screen:refit'));
         });
     });
 })();
