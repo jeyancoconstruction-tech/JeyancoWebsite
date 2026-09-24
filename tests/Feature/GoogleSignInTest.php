@@ -41,6 +41,7 @@ class GoogleSignInTest extends TestCase
             'password'  => Hash::make('secret123'),
             'role'      => User::ROLE_ADMIN,
             'is_active' => true,
+            'login_method' => User::LOGIN_BOTH,
         ]);
     }
 

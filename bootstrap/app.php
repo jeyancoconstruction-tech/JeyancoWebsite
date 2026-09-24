@@ -22,6 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // long-lived process would otherwise keep the language it started with.
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
+            // A password the admin set is replaced before anything else opens.
+            \App\Http\Middleware\EnsurePasswordIsChosen::class,
         ]);
 
         $middleware->alias([

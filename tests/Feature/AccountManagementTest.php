@@ -48,7 +48,9 @@ class AccountManagementTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)->post(route('accounts.store'), [
-            'name'                  => 'Maria Santos',
+            'first_name'            => 'Maria',
+            'last_name'             => 'Santos',
+            'login_method'          => User::LOGIN_BOTH,
             'username'              => 'maria.santos',
             'email'                 => 'maria@jeyanco.test',
             'role'                  => User::ROLE_HR,
@@ -79,7 +81,9 @@ class AccountManagementTest extends TestCase
     public function test_admin_can_create_an_account_without_an_email(): void
     {
         $this->actingAs($this->admin())->post(route('accounts.store'), [
-            'name'                  => 'No Email',
+            'first_name'            => 'No',
+            'last_name'             => 'Email',
+            'login_method'          => User::LOGIN_PASSWORD,
             'username'              => 'no.email',
             'email'                 => '',
             'role'                  => User::ROLE_HR,
@@ -96,7 +100,9 @@ class AccountManagementTest extends TestCase
         $staff = $this->staff();
 
         $this->actingAs($admin)->put(route('accounts.update', $staff), [
-            'name'                  => 'Renamed Staff',
+            'first_name'            => 'Renamed',
+            'last_name'             => 'Staff',
+            'login_method'          => User::LOGIN_BOTH,
             'username'              => 'renamed.staff',
             'email'                 => 'renamed@jeyanco.test',
             'role'                  => User::ROLE_ADMIN,
@@ -118,7 +124,9 @@ class AccountManagementTest extends TestCase
         $staff = $this->staff();
 
         $this->actingAs($this->admin())->put(route('accounts.update', $staff), [
-            'name'      => 'Staff One',
+            'first_name'   => 'Staff',
+            'last_name'    => 'One',
+            'login_method' => User::LOGIN_PASSWORD,
             'username'  => 'staff.one',
             'email'     => '',
             'role'      => User::ROLE_HR,
@@ -135,7 +143,9 @@ class AccountManagementTest extends TestCase
 
         $this->actingAs($this->admin())
             ->post(route('accounts.store'), [
-                'name'                  => 'Copycat',
+                'first_name'            => 'Copy',
+                'last_name'             => 'Cat',
+                'login_method'          => User::LOGIN_PASSWORD,
                 'username'              => 'staff.one',
                 'role'                  => User::ROLE_HR,
                 'password'              => 'payroll2026',
@@ -219,7 +229,9 @@ class AccountManagementTest extends TestCase
 
         // Only "peer" is left — it cannot demote itself.
         $this->actingAs($peer)->put(route('accounts.update', $peer), [
-            'name'      => $peer->name,
+            'first_name'   => 'Peer',
+            'last_name'    => 'Admin',
+            'login_method' => User::LOGIN_BOTH,
             'username'  => $peer->username,
             'email'     => $peer->email,
             'role'      => User::ROLE_HR,

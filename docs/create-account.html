@@ -1,0 +1,342 @@
+<title>Jeyanco Create Account</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0a0f1e; --surface:#111a2e; --inset:#0d1526; --line:#1f2a44; --line2:#25324f;
+  --text:#e6ecf7; --muted:#a3aec6; --faint:#8a97b3; --ghost:#5d6b88;
+  --brand:#1E5C9B; --accent:#4f8ff0; --accentText:#7fb0ff; --chip:#16284a; --selBg:#13254a;
+  --ok:#86efac; --okBg:#10301f; --warn:#fcd34d; --warnBg:#3a2a0a; --bad:#fca5a5; --badBg:#3a1216; --req:#f87171;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:36px 48px 48px;display:flex;flex-direction:column;gap:28px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.crumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--faint)}
+.crumb b{color:var(--accentText);font-weight:600}
+h1{margin:6px 0 4px;font-size:30px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+.sub{margin:0;color:var(--muted);max-width:62ch}
+.btn{display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 18px;border-radius:12px;font:600 14px 'Plus Jakarta Sans',sans-serif;cursor:pointer;text-decoration:none;border:1px solid var(--line2);background:var(--surface);color:var(--text)}
+.btn:hover{border-color:#34446a}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
+.btn.primary:hover{background:#2468ad}
+.btn.ghost{background:transparent}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px}
+.form{overflow:hidden}
+section{padding:26px 28px;display:flex;flex-direction:column;gap:18px;border-bottom:1px solid var(--line)}
+.sh{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sh div{display:flex;align-items:center;gap:12px}
+.num{width:28px;height:28px;border-radius:8px;background:var(--chip);color:var(--accentText);display:grid;place-items:center;font-size:13px;font-weight:700}
+h2{margin:0;font-size:16px;font-weight:700}
+.hint{font-size:12px;color:var(--faint)}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.field{display:flex;flex-direction:column;gap:8px}
+label.l{font-size:14px;font-weight:600;display:flex;gap:6px;align-items:center}
+.req{color:var(--req)}
+.opt{font-size:12px;color:var(--faint);font-weight:500}
+input[type=text],input[type=email],input[type=password]{height:48px;width:100%;padding:0 16px;border-radius:12px;border:1px solid var(--line2);background:var(--inset);color:var(--text);font:15px 'Plus Jakarta Sans',sans-serif}
+input::placeholder{color:var(--ghost)}
+input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,143,240,.18)}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace!important}
+.iconin{position:relative}
+.iconin svg{position:absolute;left:15px;top:15px}
+.iconin input{padding-left:44px}
+.row{display:flex;gap:8px}
+.row input{flex:1;min-width:0}
+
+.choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.roles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.choice{text-align:left;padding:16px;border-radius:14px;border:1.5px solid var(--line);background:var(--inset);color:var(--text);display:flex;flex-direction:column;gap:8px;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}
+.choice:hover{border-color:#34446a}
+.choice[aria-pressed=true]{border-color:var(--accent);background:var(--selBg)}
+.choice .t{font-size:15px;font-weight:700}
+.choice .d{font-size:13px;color:var(--muted);line-height:1.45}
+.choice .head{display:flex;justify-content:space-between;align-items:center;width:100%}
+.ic{width:34px;height:34px;border-radius:10px;background:var(--chip);color:var(--accentText);display:grid;place-items:center;flex-shrink:0}
+.ic.g{background:#fff}
+.rec{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--ok);background:var(--okBg);padding:4px 8px;border-radius:999px}
+.role{flex-direction:row;gap:14px;padding:18px}
+.role .ic{width:38px;height:38px}
+.role span.txt{display:flex;flex-direction:column;gap:6px}
+
+.note{display:flex;gap:12px;padding:14px 16px;border-radius:12px;background:#0f2140;border:1px solid #1f3a66;font-size:13px;color:#c3d3ef;line-height:1.5}
+.note svg{flex-shrink:0;margin-top:1px}
+.check{display:flex;align-items:center;gap:10px;font-size:14px;color:#c3cde2;cursor:pointer}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+
+.status{padding:22px 28px;flex-direction:row;align-items:center;justify-content:space-between;border-bottom:0}
+.status .t{font-weight:700}
+.status .d{font-size:13px;color:var(--muted)}
+.switch{width:52px;height:30px;border-radius:999px;border:0;padding:3px;display:flex;flex-shrink:0;cursor:pointer;background:#22a55a;justify-content:flex-end;transition:background .15s}
+.switch[aria-pressed=false]{background:#2a3552;justify-content:flex-start}
+.switch span{width:24px;height:24px;border-radius:999px;background:#fff}
+.foot{padding:18px 28px;background:var(--inset);border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+
+aside{display:flex;flex-direction:column;gap:16px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 20px)}
+aside .card{padding:22px;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--faint)}
+.who{display:flex;align-items:center;gap:12px}
+.av{width:46px;height:46px;border-radius:999px;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;font-size:17px;flex-shrink:0}
+.who .n{font-weight:700;font-size:16px;overflow-wrap:anywhere}
+.who .u{font-size:13px;color:var(--faint);font-family:'JetBrains Mono',monospace;overflow-wrap:anywhere}
+.pills{display:flex;flex-wrap:wrap;gap:8px}
+.pill{font-size:12px;font-weight:600;padding:5px 10px;border-radius:999px}
+.pill.role{background:var(--chip);color:#a9c9ff;font-weight:700}
+.pill.warn{background:var(--warnBg);color:var(--warn)}
+.pill.ok{background:var(--okBg);color:var(--ok)}
+.pill.bad{background:var(--badBg);color:var(--bad)}
+.hr{height:1px;background:var(--line)}
+.mini{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.mini .logo{font-size:13px;font-weight:800;letter-spacing:.12em;text-align:center;color:#cfe0ff}
+.mini .f{height:34px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:12px;color:var(--ghost);display:flex;align-items:center;padding:0 10px}
+.mini .s{height:34px;border-radius:8px;background:var(--brand);font-size:12px;font-weight:700;color:#fff;display:grid;place-items:center}
+.mini .or{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ghost)}
+.mini .or i{flex:1;height:1px;background:var(--line)}
+.mini .g{height:36px;border-radius:8px;background:#fff;color:#1f2937;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px}
+.mods{display:flex;flex-direction:column;gap:2px}
+.mod{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;font-size:14px}
+.mod.off{color:var(--ghost)}
+.mod .grp{margin-left:auto;font-size:11px;color:var(--faint)}
+.count{font-size:13px;color:var(--muted)}
+.count b{color:var(--accentText);font-size:16px;font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:var(--okBg);color:var(--ok);border:1px solid #1e5b39;padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px}
+
+@media (max-width:1000px){
+  .grid{grid-template-columns:1fr}
+  aside{position:static}
+}
+@media (max-width:680px){
+  .wrap{padding:24px 16px 32px}
+  section,.foot,.status{padding-left:18px;padding-right:18px}
+  .cols,.choices,.roles{grid-template-columns:1fr}
+  h1{font-size:26px}
+  .foot .btn{flex:1;justify-content:center}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="crumb"><span>Users &amp; Roles</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+        <b>Create Account</b></div>
+      <h1>Create Account</h1>
+      <p class="sub">Add someone who can sign in to Jeyanco Payroll. Only accounts listed here can use Sign in with Google.</p>
+    </div>
+    <a class="btn" href="#">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></svg>
+      Back to Accounts</a>
+  </header>
+
+  <div class="grid">
+    <form class="card form" id="form" novalidate>
+      <section>
+        <div class="sh"><div><span class="num">1</span><h2>Profile</h2></div></div>
+        <div class="cols">
+          <div class="field">
+            <label class="l" for="firstname">First name <span class="req">*</span></label>
+            <input id="firstname" type="text" value="Maria" placeholder="e.g., Maria" autocomplete="off">
+          </div>
+          <div class="field">
+            <label class="l" for="lastname">Last name <span class="req">*</span></label>
+            <input id="lastname" type="text" value="Santos" placeholder="e.g., Santos" autocomplete="off">
+          </div>
+        </div>
+        <div class="cols">
+          <div class="field">
+            <label class="l" for="username">Username <span class="req">*</span></label>
+            <input id="username" class="mono" type="text" value="maria.santos" placeholder="e.g., maria.santos" autocomplete="off">
+            <span class="hint">Auto-filled from the name. Letters, numbers, dots, dashes and underscores.</span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sh"><div><span class="num">2</span><h2>How they sign in</h2></div><span class="hint">You can change this later</span></div>
+        <div class="choices" role="group" aria-label="Sign-in method">
+          <button type="button" class="choice" data-method="both" aria-pressed="false">
+            <span class="head">
+              <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15l6-6"/><path d="M11 6l.46-.54a5 5 0 0 1 7.07 7.07L18 13"/><path d="M13 18l-.4.53a5.07 5.07 0 0 1-7.12 0 4.97 4.97 0 0 1 0-7.07L6 11"/></svg></span>
+              <span class="rec">RECOMMENDED</span>
+            </span>
+            <span class="t">Both</span>
+            <span class="d">Google, with a password as backup if they lose access to their Gmail.</span>
+          </button>
+          <button type="button" class="choice" data-method="google" aria-pressed="true">
+            <span class="head">
+              <span class="ic g"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span>
+            </span>
+            <span class="t">Google only</span>
+            <span class="d">No password to manage. Signs in with their Gmail.</span>
+          </button>
+          <button type="button" class="choice" data-method="password" aria-pressed="false">
+            <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+            <span class="t">Password only</span>
+            <span class="d">Username and password. For staff without Gmail.</span>
+          </button>
+        </div>
+
+        <div class="field">
+          <label class="l" for="email"><span id="emailLabel">Google account email</span> <span class="req" id="emailReq">*</span><span class="opt" id="emailOpt" hidden>optional</span></label>
+          <div class="iconin">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a97b3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+            <input id="email" type="email" placeholder="e.g., maria.santos@gmail.com" autocomplete="off">
+          </div>
+          <span class="hint" id="emailHelp">Must be the exact Gmail or Workspace address they will pick on the Google screen.</span>
+        </div>
+
+        <div class="note" id="googleNote">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7fb0ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01"/><path d="M11 12h1v4h1"/></svg>
+          <span>The account shows as <strong style="color:var(--warn)">Pending</strong> until they sign in with Google for the first time. After that it shows <strong style="color:var(--ok)">Linked</strong> in Users &amp; Roles.</span>
+        </div>
+
+        <div id="pwBlock" hidden style="display:flex;flex-direction:column;gap:14px">
+          <div class="cols">
+            <div class="field">
+              <label class="l" for="pw">Password <span class="req">*</span></label>
+              <div class="row">
+                <input id="pw" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+                <button type="button" class="btn" id="gen">Generate</button>
+              </div>
+            </div>
+            <div class="field">
+              <label class="l" for="pw2">Confirm password <span class="req">*</span></label>
+              <input id="pw2" type="password" placeholder="Type it again" autocomplete="new-password">
+            </div>
+          </div>
+          <label class="check"><input id="forceChange" type="checkbox" checked> Ask them to change the password on first sign-in</label>
+        </div>
+      </section>
+
+      <section>
+        <div class="sh"><div><span class="num">3</span><h2>Access level</h2></div></div>
+        <div class="roles" role="group" aria-label="Access level">
+          <button type="button" class="choice role" data-role="hr" aria-pressed="true">
+            <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg></span>
+            <span class="txt"><span class="t">HR</span><span class="d">Day-to-day: attendance, employees, leave, advances, projects, payroll and reports. No Settings, Users &amp; Roles or Audit Logs.</span></span>
+          </button>
+          <button type="button" class="choice role" data-role="admin" aria-pressed="false">
+            <span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>
+            <span class="txt"><span class="t">Administrator</span><span class="d">Full access, including Settings, payroll configuration and managing accounts.</span></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="status">
+        <div><div class="t">Account is active</div><div class="d">Turn off to block sign-in (password and Google) without deleting history.</div></div>
+        <button type="button" class="switch" id="active" aria-pressed="true" aria-label="Account is active"><span></span></button>
+      </section>
+
+      <div class="foot">
+        <button type="button" class="btn ghost">Cancel</button>
+        <button type="submit" class="btn primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+          Create account</button>
+      </div>
+    </form>
+
+    <aside>
+      <div class="card">
+        <span class="eyebrow">ACCOUNT PREVIEW</span>
+        <div class="who">
+          <span class="av" id="pvAv">MS</span>
+          <div><div class="n" id="pvName">Maria Santos</div><div class="u" id="pvUser">maria.santos</div></div>
+        </div>
+        <div class="pills"><span class="pill role" id="pvRole">HR</span><span class="pill warn" id="pvStatus">Pending first Google sign-in</span></div>
+        <div class="hr"></div>
+        <span class="eyebrow">THEIR SIGN-IN SCREEN</span>
+        <div class="mini" aria-hidden="true">
+          <span class="logo">JEYANCO</span>
+          <div id="mPw" hidden style="display:flex;flex-direction:column;gap:8px">
+            <div class="f">Username</div><div class="f">Password</div><div class="s">Sign in</div>
+          </div>
+          <div class="or" id="mOr" hidden><i></i>or<i></i></div>
+          <div class="g" id="mG">
+            <svg width="14" height="14" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.470 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.570-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.730 6c4.51-4.180 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Sign in with Google</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sh"><span class="eyebrow">CAN OPEN</span><span class="count"><b id="modCount">7</b> of 9 modules</span></div>
+        <div class="mods" id="mods"></div>
+        <span class="hint">Dashboard, Attendance, Employees, Sites, Payroll Records, Analytics and Jeyanco AI are open to every role.</span>
+      </div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(function(){
+  const S={method:'both',role:'hr',active:true};
+  const $=id=>document.getElementById(id);
+  const MODS=[['Leave','Workforce',0],['Cash Advances','Workforce',0],['Project Assignment','Workforce',0],['Payroll Processing','Payroll',0],['Payslips','Payroll',0],['Payroll Reports','Payroll',0],['Device Monitoring','System',0],['Users & Roles','Admin only',1],['Audit Logs','Admin only',1]];
+  const CHECK='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>';
+  const LOCK='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5d6b88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+
+  function initials(n){const p=n.trim().split(/\s+/).filter(Boolean);return ((p[0]||'?')[0]+(p.length>1?p[p.length-1][0]:'')).toUpperCase();}
+
+  function render(){
+    const g=S.method!=='password', pw=S.method!=='google';
+    document.querySelectorAll('[data-method]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.method===S.method));
+    document.querySelectorAll('[data-role]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.role===S.role));
+    $('emailLabel').textContent=g?'Google account email':'Email';
+    $('emailReq').hidden=!g; $('emailOpt').hidden=g;
+    $('emailHelp').textContent=g?'Must be the exact Gmail or Workspace address they will pick on the Google screen.':'Used only for password reset links.';
+    $('googleNote').hidden=!g; $('pwBlock').hidden=!pw;
+    $('mPw').hidden=!pw; $('mG').hidden=!g; $('mOr').hidden=S.method!=='both';
+
+    const st=$('pvStatus');
+    let t='Pending first Google sign-in',c='warn';
+    if(S.method==='password'){t='Ready to sign in';c='ok';}
+    if(S.method==='both'){t='Password ready · Google pending';}
+    if(!S.active){t='Inactive';c='bad';}
+    st.textContent=t; st.className='pill '+c;
+
+    $('pvRole').textContent=S.role==='admin'?'Administrator':'HR';
+    $('active').setAttribute('aria-pressed',S.active);
+    const on=MODS.filter(m=>S.role==='admin'||!m[2]).length;
+    $('modCount').textContent=on;
+    $('mods').innerHTML=MODS.map(m=>{const ok=S.role==='admin'||!m[2];return '<div class="mod'+(ok?'':' off')+'">'+(ok?CHECK:LOCK)+'<span>'+m[0].replace('&','&amp;')+'</span><span class="grp">'+m[1]+'</span></div>';}).join('');
+  }
+
+  document.querySelectorAll('[data-method]').forEach(b=>b.addEventListener('click',()=>{S.method=b.dataset.method;render();}));
+  document.querySelectorAll('[data-role]').forEach(b=>b.addEventListener('click',()=>{S.role=b.dataset.role;render();}));
+  $('active').addEventListener('click',()=>{S.active=!S.active;render();});
+
+  let userEdited=false;
+  const slug=s=>s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ñ/g,'n').replace(/[^a-z0-9]+/g,'');
+  function onName(){
+    const f=$('firstname').value.trim(), l=$('lastname').value.trim();
+    const full=[f,l].filter(Boolean).join(' ')||'Full name';
+    $('pvName').textContent=full; $('pvAv').textContent=initials(full);
+    if(!userEdited){const u=[slug(f),slug(l)].filter(Boolean).join('.');$('username').value=u;$('pvUser').textContent=u||'username';}
+  }
+  $('firstname').addEventListener('input',onName);
+  $('lastname').addEventListener('input',onName);
+  $('username').addEventListener('input',e=>{userEdited=e.target.value!=='';$('pvUser').textContent=e.target.value||'username';});
+
+  $('gen').addEventListener('click',()=>{
+    const cs='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    const a=new Uint32Array(12);crypto.getRandomValues(a);
+    const p=Array.from(a,x=>cs[x%cs.length]).join('');
+    $('pw').value=p;$('pw2').value=p;$('pw').type='text';$('pw2').type='text';
+  });
+
+  let tt;
+  $('form').addEventListener('submit',e=>{
+    e.preventDefault();
+    const name=[$('firstname').value.trim(),$('lastname').value.trim()].filter(Boolean).join(' ')||'Account';
+    const toast=$('toast');
+    toast.textContent=name+' created'+(S.method!=='password'?' · pending first Google sign-in':'');
+    toast.hidden=false; clearTimeout(tt); tt=setTimeout(()=>toast.hidden=true,2600);
+  });
+
+  render();
+})();
+</script>

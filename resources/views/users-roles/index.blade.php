@@ -60,6 +60,7 @@
 .ur-st { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
 .ur-st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
 .ur-st.off::before { background: var(--text-muted); }
+.ur-g { margin-left: 8px; height: 20px; font-size: 11px; }
 .stale { color: var(--warning) !important; }
 .stale-chip { font-size: 10px; font-weight: 700; color: var(--warning); background: var(--warning-soft); border-radius: 4px; padding: 1px 5px; margin-left: 6px; }
 .ur-search { width: 218px; }
@@ -286,7 +287,12 @@
                             <td class="{{ $stale ? 'stale' : 'muted' }}" style="white-space:nowrap">
                                 {{ $when($seen) }}@if($stale && $days)<span class="stale-chip">{{ $days }} days</span>@endif
                             </td>
-                            <td><span class="ur-st {{ $u->is_active ? '' : 'off' }}">{{ $u->is_active ? 'Active' : 'Disabled' }}</span></td>
+                            <td style="white-space:nowrap">
+                                <span class="ur-st {{ $u->is_active ? '' : 'off' }}">{{ $u->is_active ? 'Active' : 'Disabled' }}</span>
+                                @if($g = $u->googleStatus())
+                                    <span class="sx-badge {{ $g === 'linked' ? 'ok' : 'warn' }} ur-g" title="{{ $g === 'linked' ? 'Has signed in with Google' : 'Has not signed in with Google yet' }}">Google {{ $g }}</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="4"><div class="sx-empty"><i data-lucide="users"></i>No accounts match those filters.</div></td></tr>
@@ -339,11 +345,15 @@
                         <div class="ins-chips">
                             <span class="sx-role"><span class="pip"></span>{{ $selected->role_label }}</span>
                             <span class="sx-badge {{ $selected->is_active ? 'ok' : 'muted' }}">{{ $selected->is_active ? 'Active' : 'Disabled' }}</span>
+                            @if($g = $selected->googleStatus())
+                                <span class="sx-badge {{ $g === 'linked' ? 'ok' : 'warn' }}">{{ $g === 'linked' ? 'Linked' : 'Pending' }}</span>
+                            @endif
                         </div>
                     </div>
                 </div>
                 <dl class="ins-dl">
                     <dt>Last sign-in</dt><dd>{{ $when($selected->last_login_at) }}</dd>
+                    <dt>Signs in with</dt><dd>{{ \App\Models\User::LOGIN_METHODS[$selected->login_method] ?? 'Password only' }}@if($selected->usesGoogle()) · {{ $selected->google_linked_at ? 'linked ' . $selected->google_linked_at->format('M j, Y') : 'not signed in with Google yet' }}@endif</dd>
                     <dt>Added</dt><dd>{{ $selected->created_at?->format('M j, Y') ?? '—' }}@if($selected->creator) · by {{ $selected->creator->name }}@endif</dd>
                 </dl>
                 <details class="ins-sec ins-fold" data-fold="access">

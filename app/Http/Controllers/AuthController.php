@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Laravel\Socialite\Facades\Socialite;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -79,6 +81,17 @@ class AuthController extends Controller
             event(new \Illuminate\Auth\Events\Lockout($request));
 
             return $this->failed($request, "Too many failed attempts. Please try again in {$seconds} second(s).");
+        }
+
+        // A Google-only account has no password anybody knows — its stored one
+        // is random — so no attempt could succeed. Say where its door is
+        // instead of calling a correct Google address a wrong password.
+        $account = User::where($field, $login)->first();
+
+        if ($account && $account->login_method === User::LOGIN_GOOGLE) {
+            RateLimiter::hit($throttleKey, $decaySeconds);
+
+            return $this->failed($request, 'This account signs in with Google. Use Sign in with Google below.');
         }
 
         $remember = $request->boolean('remember');
@@ -157,9 +170,66 @@ class AuthController extends Controller
             return $this->failed($request, "{$email} is not registered. Ask an administrator to add it to your account.");
         }
 
+        if ($user->login_method === User::LOGIN_PASSWORD) {
+            event(new Failed('web', $user, ['email' => $email]));
+
+            return $this->failed($request, 'This account signs in with a username and password, not Google.');
+        }
+
         Auth::login($user);
 
-        return $this->admit($request);
+        $response = $this->admit($request);
+
+        // The first Google sign-in links the account: Users & Roles stops
+        // showing it as pending.
+        if (Auth::check() && ! Auth::user()->google_linked_at) {
+            Auth::user()->forceFill(['google_linked_at' => now()])->saveQuietly();
+        }
+
+        return $response;
+    }
+
+    // ── A password of their own ─────────────────────────────────────────────
+
+    /**
+     * The admin set this account's password, so the person picks their own
+     * before anything else opens (see EnsurePasswordIsChosen).
+     */
+    public function showChoosePassword(Request $request)
+    {
+        if (! $request->user()->must_change_password) {
+            return redirect()->route('dashboard');
+        }
+
+        return view('auth.choose-password', [
+            'minLength' => SystemSetting::current()->password_min_length ?: 8,
+        ]);
+    }
+
+    public function choosePassword(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user->must_change_password) {
+            return redirect()->route('dashboard');
+        }
+
+        $request->validate([
+            'password' => ['required', 'confirmed', Password::min(SystemSetting::current()->password_min_length ?: 8)->letters()->numbers()],
+        ], [], ['password' => 'new password']);
+
+        // The point is a password only they know, so the one they were given
+        // does not count.
+        if (Hash::check($request->input('password'), $user->password)) {
+            return back()->withErrors(['password' => 'Choose a different password from the one you were given.']);
+        }
+
+        $user->forceFill([
+            'password'             => Hash::make($request->input('password')),
+            'must_change_password' => false,
+        ])->save();
+
+        return redirect()->intended(route('dashboard'))->with('success', 'Your password is set. Use it from now on.');
     }
 
     /**

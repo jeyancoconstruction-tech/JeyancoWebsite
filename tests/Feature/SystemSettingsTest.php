@@ -197,7 +197,9 @@ class SystemSettingsTest extends TestCase
 
         $this->actingAs($this->admin())
              ->post(route('accounts.store'), [
-                 'name'                  => 'New Person',
+                 'first_name'            => 'New',
+                 'last_name'             => 'Person',
+                 'login_method'          => User::LOGIN_PASSWORD,
                  'username'              => 'new.person',
                  'role'                  => User::ROLE_STAFF,
                  'password'              => 'short1pass',      // 10 characters

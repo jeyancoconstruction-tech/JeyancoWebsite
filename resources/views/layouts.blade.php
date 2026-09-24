@@ -280,10 +280,11 @@
             @endif
 
             @if(auth()->user()?->isAdmin())
-                {{-- Accounts is a tab of System Settings now, so one entry
-                     covers both and stays lit on either. --}}
+                {{-- Creating and editing an account belong to Users & Roles —
+                     its list, its Create account button, the form's own
+                     breadcrumb — so that entry stays lit on either. --}}
                 <div class="menu-section">{{ __('SYSTEM') }}</div>
-                <a class="nav-link {{ request()->is('users-roles*') ? 'active' : '' }}" href="{{ route('users-roles.index') }}">
+                <a class="nav-link {{ request()->is('users-roles*') || request()->is('accounts*') ? 'active' : '' }}" href="{{ route('users-roles.index') }}">
                     <i data-lucide="shield-check"></i> <span>{{ __('Users & Roles') }}</span>
                 </a>
                 <a class="nav-link {{ request()->is('audit-logs*') ? 'active' : '' }}" href="{{ route('audit-logs.index') }}">
@@ -294,7 +295,7 @@
                         <i data-lucide="monitor-smartphone"></i> <span>{{ __('Device Monitoring') }}</span>
                     </a>
                 @endif
-                <a class="nav-link {{ request()->is('system-settings*') || request()->is('accounts*') ? 'active' : '' }}" href="{{ route('system-settings.about') }}">
+                <a class="nav-link {{ request()->is('system-settings*') ? 'active' : '' }}" href="{{ route('system-settings.about') }}">
                     <i data-lucide="sliders-horizontal"></i> <span>{{ __('System Settings') }}</span>
                 </a>
             @endif

@@ -52,6 +52,13 @@ Route::middleware('guest')->group(function () {
 // LOGOUT (accessible to all authenticated users)
 Route::middleware('auth')->post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// A password of their own, when the admin set one and asked them to change it.
+// Everything else waits for this (EnsurePasswordIsChosen).
+Route::middleware(['auth', 'active'])->group(function () {
+    Route::get ('/account/password', [AuthController::class, 'showChoosePassword'])->name('account.password');
+    Route::post('/account/password', [AuthController::class, 'choosePassword'])->name('account.password.update');
+});
+
 // SIGNED-IN ROUTES — every active account (Admin and Staff) reaches these.
 // Anything reserved for Admins lives in the 'is_admin' group further down.
 Route::middleware(['auth', 'active'])->group(function () {

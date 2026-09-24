@@ -48,7 +48,11 @@ final class ActivityRecorder
     private const IGNORED = ['AuditLog', 'ChatMessage', 'PayrollRunItem'];
 
     /** Columns whose change on its own is bookkeeping rather than an activity. */
-    private const NOISE = ['updated_at', 'created_at', 'deleted_at', 'last_seen_at', 'last_login_at', 'remember_token'];
+    private const NOISE = ['updated_at', 'created_at', 'deleted_at', 'last_seen_at', 'last_login_at', 'remember_token',
+        // An account's name in parts: the whole name's change already says it.
+        'first_name', 'last_name',
+        // Reset when the email changes; the email's own change is the news.
+        'google_linked_at'];
 
     /** Values that are never written into a description, only named. */
     private const SECRET = ['password', 'remember_token'];
@@ -277,9 +281,11 @@ final class ActivityRecorder
         $login = (string) ($e->credentials['username'] ?? $e->credentials['email'] ?? '');
 
         $this->authEntry($e->user?->getAuthIdentifier(), $e->user ? $this->nameOf($e->user) : ($login ?: 'Unknown'),
-            'failed', $this->viaGoogle()
-                ? 'Google sign-in refused for “' . Str::limit($login, 60) . '” — no account has that email'
-                : 'Failed sign-in for “' . Str::limit($login, 60) . '”');
+            'failed', match (true) {
+                $this->viaGoogle() && $e->user !== null => 'Google sign-in refused for “' . Str::limit($login, 60) . '” — this account signs in with a password only',
+                $this->viaGoogle()                     => 'Google sign-in refused for “' . Str::limit($login, 60) . '” — no account has that email',
+                default                                => 'Failed sign-in for “' . Str::limit($login, 60) . '”',
+            });
     }
 
     /** Whether this request is Google handing a visitor back to sign in. */

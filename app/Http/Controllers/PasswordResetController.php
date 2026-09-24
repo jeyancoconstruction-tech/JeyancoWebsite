@@ -61,10 +61,11 @@ class PasswordResetController extends Controller
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
         $user = User::where($field, $login)->first();
 
-        // Only a live account with an address on file gets a link. Everything
-        // else falls through to the same reply below, so this form cannot be
-        // used to discover which usernames exist.
-        if ($user && $user->is_active && ! empty($user->email)) {
+        // Only a live account with an address on file gets a link — and only
+        // one that signs in with a password: a Google-only account has none
+        // to reset. Everything else falls through to the same reply below, so
+        // this form cannot be used to discover which usernames exist.
+        if ($user && $user->is_active && ! empty($user->email) && $user->usesPassword()) {
             try {
                 Password::sendResetLink(['email' => $user->email]);
             } catch (Throwable $e) {
@@ -117,9 +118,11 @@ class PasswordResetController extends Controller
                     return;
                 }
 
+                // Chosen by the person, from their own inbox: nothing left to change.
                 $user->forceFill([
-                    'password'       => Hash::make($password),
-                    'remember_token' => Str::random(60),
+                    'password'             => Hash::make($password),
+                    'remember_token'       => Str::random(60),
+                    'must_change_password' => false,
                 ])->save();
 
                 event(new PasswordReset($user));

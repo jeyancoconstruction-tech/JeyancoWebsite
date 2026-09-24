@@ -46,7 +46,7 @@ class SystemSectionTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)->post(route('accounts.store'), [
-            'name' => 'Maria Santos', 'username' => 'maria.santos', 'email' => '',
+            'first_name' => 'Maria', 'last_name' => 'Santos', 'login_method' => User::LOGIN_PASSWORD, 'username' => 'maria.santos', 'email' => '',
             'role' => User::ROLE_HR, 'password' => 'payroll2026', 'password_confirmation' => 'payroll2026',
         ])->assertRedirect();
 
@@ -58,7 +58,7 @@ class SystemSectionTest extends TestCase
         $maria = User::where('username', 'maria.santos')->firstOrFail();
 
         $this->actingAs($admin)->put(route('accounts.update', $maria), [
-            'name' => 'Maria L. Santos', 'username' => 'maria.santos', 'email' => '',
+            'first_name' => 'Maria L.', 'last_name' => 'Santos', 'login_method' => User::LOGIN_PASSWORD, 'username' => 'maria.santos', 'email' => '',
             'role' => User::ROLE_HR, 'is_active' => 1,
             'password' => 'brandnew2026', 'password_confirmation' => 'brandnew2026',
         ])->assertRedirect();
@@ -326,13 +326,13 @@ class SystemSectionTest extends TestCase
 
         $this->actingAs($admin)->get(route('accounts.create'))
             ->assertOk()
-            ->assertSee('value="hr"', false)
-            ->assertSee('value="admin"', false)
-            ->assertDontSee('value="staff"', false)
-            ->assertSee('This account can open');
+            ->assertSee('data-role="hr"', false)
+            ->assertSee('data-role="admin"', false)
+            ->assertDontSee('data-role="staff"', false)
+            ->assertSee('CAN OPEN');
 
         $this->actingAs($admin)->post(route('accounts.store'), [
-            'name' => 'Old Role', 'username' => 'old.role', 'role' => 'payroll_officer',
+            'first_name' => 'Old', 'last_name' => 'Role', 'login_method' => User::LOGIN_PASSWORD, 'username' => 'old.role', 'role' => 'payroll_officer',
             'password' => 'payroll2026', 'password_confirmation' => 'payroll2026',
         ])->assertSessionHasErrors('role');
 
