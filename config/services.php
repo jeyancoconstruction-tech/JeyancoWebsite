@@ -41,6 +41,17 @@ return [
         'key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    // Sign in with Google (Laravel Socialite). Only a Google account whose
+    // verified email is on an account an admin created gets in — nobody is
+    // registered by signing in. Without both values the button is hidden.
+    // The redirect must be listed, exactly, on the OAuth client in Google
+    // Cloud: https://<site>/auth/google/callback.
+    'google' => [
+        'client_id'     => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect'      => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
+    ],
+
     // Google Calendar API — fills the Holidays tab from Google's public
     // "Holidays in Philippines" calendar. Without a key the tab keeps the
     // holidays it computes offline. See App\Support\GoogleHolidays.

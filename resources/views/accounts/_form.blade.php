@@ -84,7 +84,11 @@
                     <input type="email" id="email" name="email" value="{{ old('email', $account->email ?? '') }}"
                            class="acctf-input @error('email') bad @enderror"
                            placeholder="e.g., maria@jeyanco.com" maxlength="255">
-                    @error('email')<span class="acctf-err">{{ $message }}</span>@enderror
+                    @error('email')
+                        <span class="acctf-err">{{ $message }}</span>
+                    @else
+                        <span class="acctf-hint">{{ __('For a password reset link. If it is a Google account, this person can also use Sign in with Google.') }}</span>
+                    @enderror
                 </div>
             </div>
         </div>

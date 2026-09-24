@@ -28,6 +28,10 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
+    // Sign in with Google — only for an address already on an account.
+    Route::get('/auth/google',          [AuthController::class, 'redirectToGoogle'])->name('login.google');
+    Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('login.google.callback');
+
     // PASSWORD RESET — self-service, for accounts that have an email on file.
     // Accounts without one are still reset by an Admin in Account Management.
     Route::get ('/forgot-password', [PasswordResetController::class, 'request'])->name('password.request');

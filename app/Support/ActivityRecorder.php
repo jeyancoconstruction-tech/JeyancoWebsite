@@ -254,7 +254,9 @@ final class ActivityRecorder
             return;
         }
 
-        $this->authEntry($user->getAuthIdentifier(), $this->nameOf($user), 'signed in', $e->remember ? 'Signed in (remember me)' : 'Signed in');
+        $how = $this->viaGoogle() ? 'Signed in with Google' : 'Signed in';
+
+        $this->authEntry($user->getAuthIdentifier(), $this->nameOf($user), 'signed in', $e->remember ? "{$how} (remember me)" : $how);
     }
 
     public function signedOut(Logout $e): void
@@ -275,7 +277,15 @@ final class ActivityRecorder
         $login = (string) ($e->credentials['username'] ?? $e->credentials['email'] ?? '');
 
         $this->authEntry($e->user?->getAuthIdentifier(), $e->user ? $this->nameOf($e->user) : ($login ?: 'Unknown'),
-            'failed', 'Failed sign-in for “' . Str::limit($login, 60) . '”');
+            'failed', $this->viaGoogle()
+                ? 'Google sign-in refused for “' . Str::limit($login, 60) . '” — no account has that email'
+                : 'Failed sign-in for “' . Str::limit($login, 60) . '”');
+    }
+
+    /** Whether this request is Google handing a visitor back to sign in. */
+    private function viaGoogle(): bool
+    {
+        return (bool) $this->request?->routeIs('login.google.callback');
     }
 
     public function lockedOut(Lockout $e): void

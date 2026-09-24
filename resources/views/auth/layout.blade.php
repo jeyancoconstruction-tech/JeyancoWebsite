@@ -252,6 +252,19 @@
         .submit .arrow { transition: transform .18s cubic-bezier(.2,.8,.2,1); }
         @keyframes sp { to { transform: rotate(360deg); } }
 
+        /* The Google button: the second way in, so quieter than Sign in. */
+        .or { display: flex; align-items: center; gap: var(--s-3); font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+        .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+        .google {
+            height: 50px; width: 100%; border-radius: 12px;
+            border: 1px solid var(--line-strong); background: var(--surface); color: var(--text);
+            font: 700 15px "Manrope", sans-serif;
+            display: flex; align-items: center; justify-content: center; gap: var(--s-3);
+            transition: background .15s, border-color .15s, transform .08s;
+        }
+        .google:hover { background: var(--surface-2); border-color: rgba(255,255,255,.24); color: var(--text); }
+        .google:active { transform: translateY(1px); }
+
         .notice {
             display: flex; align-items: center; gap: var(--s-3);
             padding: 13px 15px; border-radius: 12px;
@@ -337,8 +350,8 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .hook, .auth-stack, .alert, .submit .spin { animation: none; }
-            .submit, .submit .arrow, .control input, .eye { transition: none; }
-            .submit:active { transform: none; }
+            .submit, .submit .arrow, .control input, .eye, .google { transition: none; }
+            .submit:active, .google:active { transform: none; }
             .submit:hover .arrow { transform: none; }
         }
     </style>
