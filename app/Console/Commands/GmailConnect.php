@@ -84,7 +84,7 @@ class GmailConnect extends Command
         $code = $this->waitForCode($servers, $state, (int) $this->option('timeout'));
 
         if ($code === null) {
-            $this->error('No answer from Google in time, or it was declined.');
+            $this->error('No approval from Google in time. Run this again when ready.');
 
             return self::FAILURE;
         }
@@ -167,12 +167,18 @@ class GmailConnect extends Command
                 $ok   = ($query['state'] ?? null) === $state && filled($query['code'] ?? null);
                 $body = $ok
                     ? '<h2 style="font-family:sans-serif">Connected. You can close this tab.</h2>'
-                    : '<h2 style="font-family:sans-serif">Not connected: ' . e($query['error'] ?? 'the answer did not match') . '.</h2>';
+                    : '<h2 style="font-family:sans-serif">Not connected: ' . e($query['error'] ?? 'the answer did not match') . '. Go back to the Google page and try again.</h2>';
 
                 fwrite($client, "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " . strlen($body) . "\r\nConnection: close\r\n\r\n" . $body);
                 fclose($client);
 
-                return $ok ? $query['code'] : null;
+                if ($ok) {
+                    return $query['code'];
+                }
+
+                // Backed out of Google's warning, or a stale tab: say so and
+                // keep waiting, so opening the link again still works.
+                $this->warn('  Google answered "' . ($query['error'] ?? 'no code') . '" — still waiting; open the link again to retry.');
             }
         }
 
