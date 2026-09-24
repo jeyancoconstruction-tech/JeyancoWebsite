@@ -24,7 +24,7 @@
         position: relative; z-index: 1;
         width: 26px; height: 26px; border-radius: 50%;
         display: grid; place-items: center;
-        background: #fff; border: 2px solid var(--line);
+        background: var(--surface); border: 2px solid var(--line-strong);
         color: var(--muted); font-size: 12px; font-weight: 700;
     }
     .pw-flow .t { font-size: 11.5px; line-height: 1.3; color: var(--muted); }
@@ -34,18 +34,18 @@
         background: var(--success); border-color: var(--success); color: #fff;
     }
     .pw-flow li.is-now .n {
-        background: var(--blue); border-color: var(--blue); color: #fff;
+        background: var(--brand); border-color: var(--brand); color: #fff;
     }
-    .pw-flow li.is-now .t { color: var(--ink); font-weight: 600; }
+    .pw-flow li.is-now .t { color: var(--text-2); font-weight: 600; }
 
     /* After the request goes in, the form has nothing left to ask, so it is
        replaced by what to do next rather than left sitting there. */
     .pw-next {
-        border: 1px solid var(--line); border-radius: 10px;
-        padding: 16px 18px; background: #f8fafc;
+        border: 1px solid var(--line-strong); border-radius: 12px;
+        padding: 16px 18px; background: var(--surface);
     }
     .pw-next h2 {
-        font-size: 13.5px; font-weight: 700; color: var(--ink);
+        font-size: 13.5px; font-weight: 700; color: var(--text);
         margin: 0 0 12px; letter-spacing: .01em;
     }
     .pw-next ul {
@@ -54,15 +54,15 @@
     }
     .pw-next li {
         display: flex; gap: 10px; align-items: flex-start;
-        font-size: 13px; line-height: 1.5; color: var(--text);
+        font-size: 13px; line-height: 1.5; color: var(--text-2);
     }
-    .pw-next li i { flex: 0 0 15px; margin-top: 3px; color: var(--blue); font-size: 12.5px; }
-    .pw-next li b { color: var(--ink); }
+    .pw-next li i { flex: 0 0 15px; margin-top: 3px; color: var(--brand-light); font-size: 12.5px; }
+    .pw-next li b { color: var(--text); }
     .pw-again {
         margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line);
         font-size: 12.5px; color: var(--muted);
     }
-    .pw-again a { color: var(--blue); font-weight: 600; text-decoration: none; }
+    .pw-again a { color: var(--brand-light); font-weight: 600; text-decoration: none; }
     .pw-again a:hover { text-decoration: underline; }
 </style>
 @endpush

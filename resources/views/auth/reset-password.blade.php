@@ -25,7 +25,7 @@
         position: relative; z-index: 1;
         width: 26px; height: 26px; border-radius: 50%;
         display: grid; place-items: center;
-        background: #fff; border: 2px solid var(--line);
+        background: var(--surface); border: 2px solid var(--line-strong);
         color: var(--muted); font-size: 12px; font-weight: 700;
     }
     .pw-flow .t { font-size: 11.5px; line-height: 1.3; color: var(--muted); }
@@ -35,9 +35,9 @@
         background: var(--success); border-color: var(--success); color: #fff;
     }
     .pw-flow li.is-now .n {
-        background: var(--blue); border-color: var(--blue); color: #fff;
+        background: var(--brand); border-color: var(--brand); color: #fff;
     }
-    .pw-flow li.is-now .t { color: var(--ink); font-weight: 600; }
+    .pw-flow li.is-now .t { color: var(--text-2); font-weight: 600; }
 
     /* The rules the server will apply, checked off while the person types, so
        a rejected password is caught here instead of after a round trip. */
@@ -51,7 +51,7 @@
     }
     .pw-rules li i { flex: 0 0 14px; text-align: center; font-size: 11px; }
     .pw-rules li.ok { color: var(--success); }
-    .pw-rules li.bad { color: #b54708; }
+    .pw-rules li.bad { color: var(--warn); }
 </style>
 @endpush
 
