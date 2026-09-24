@@ -28,6 +28,7 @@ class GmailMailTest extends TestCase
         config([
             'mail.default'                  => 'gmail',
             'mail.from.address'             => 'jeyancoconstruction@gmail.com',
+            'mail.from.name'                => 'Jeyanco Construction',   // as on Railway
             'services.google.client_id'     => 'client.apps.googleusercontent.com',
             'services.google.client_secret' => 'secret',
             'services.gmail.refresh_token'  => 'refresh-token',
@@ -75,6 +76,26 @@ class GmailMailTest extends TestCase
         $this->assertStringContainsString('To: maria.santos@gmail.com', $mime);
         $this->assertStringContainsString('jeyancoconstruction@gmail.com', $mime);
         $this->assertMatchesRegularExpression('#reset-password/[0-9a-f]{64}#', quoted_printable_decode($mime));
+    }
+
+    public function test_the_reset_email_is_the_companys_not_laravels(): void
+    {
+        $this->googleAccepts();
+        config(['app.name' => 'Jeyanco Payroll']);
+        $this->account();
+
+        $this->post(route('password.email'), ['login' => 'maria.santos'])->assertRedirect();
+
+        $mime = quoted_printable_decode($this->sentMessage());
+        $this->assertStringContainsString('Subject: Reset your Jeyanco Payroll password', $mime);
+        $this->assertStringContainsString('Hi Maria,', $mime);
+        $this->assertStringContainsString('maria.santos', $mime);
+        $this->assertStringContainsString('Choose a new password', $mime);
+
+        // The stock notification — what phishing copies, and what Gmail was
+        // putting in Spam — is gone.
+        $this->assertStringNotContainsString('Reset Password Notification', $mime);
+        $this->assertStringNotContainsString('Laravel', $mime);
     }
 
     public function test_the_sign_in_is_kept_between_messages(): void

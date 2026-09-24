@@ -203,6 +203,12 @@ class User extends Authenticatable
         return $this->google_linked_at ? 'linked' : 'pending';
     }
 
+    /** Forgot password sends the company's own email, not Laravel's stock one. */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\ResetPasswordEmail($token));
+    }
+
     /** Human label for the assigned role. */
     public function getRoleLabelAttribute(): string
     {

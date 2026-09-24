@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AuditLog;
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\ResetPasswordEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -308,7 +308,7 @@ class SignInMethodTest extends TestCase
         $this->post(route('password.email'), ['login' => 'maria.santos@gmail.com'])->assertRedirect();
         $this->post(route('password.email'), ['login' => 'pedro.reyes@gmail.com'])->assertRedirect();
 
-        Notification::assertNotSentTo(User::where('username', 'maria.santos')->first(), ResetPassword::class);
-        Notification::assertSentTo(User::where('username', 'pedro.reyes')->first(), ResetPassword::class);
+        Notification::assertNotSentTo(User::where('username', 'maria.santos')->first(), ResetPasswordEmail::class);
+        Notification::assertSentTo(User::where('username', 'pedro.reyes')->first(), ResetPasswordEmail::class);
     }
 }
