@@ -82,7 +82,10 @@ class SystemSettingsController extends Controller
 
     public function appearance()
     {
-        return view('settings.appearance', $this->common());
+        return view('settings.appearance', $this->common() + [
+            'changes' => AuditLog::where('module', 'Settings')->where('description', 'like', 'Appearance:%')
+                ->latest()->latest('id')->limit(3)->get(),
+        ]);
     }
 
     /**

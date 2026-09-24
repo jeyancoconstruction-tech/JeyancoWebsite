@@ -194,11 +194,35 @@
 .lg-seal svg { width: 14px; height: 14px; color: var(--text-muted); }
 .lg-more { padding: 10px 16px 10px 114px; font-size: 12.5px; border-bottom: 1px solid var(--border); }
 .lg-load { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 14px 16px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
+
+/* On a wide screen the page is exactly one screen tall: the header, status
+   and chart stay put, and the filters and the entries scroll inside their
+   own cards instead of the whole page. The height is set by the script
+   below (--au-h), from where the page starts to the bottom of the window. */
+@media (min-width: 1001px) {
+    .au-fit.fit .au-chart { padding: 22px 18px 6px 16px; }
+    .au-fit.fit .au-plot { height: 84px; }
+    .au-fit.fit .au-out { padding: 12px 18px; }
+    .au-fit.fit .au-stack { margin: 8px 0 8px; }
+    .au-fit.fit .au-leg { padding: 2px 0; }
+    .au-fit.fit #auditEntries > .lg-load { padding: 9px 16px; }
+    .au-fit.fit { display: flex; flex-direction: column; height: var(--au-h, auto); }
+    .au-fit.fit > .sx-head, .au-fit.fit > .sx-status, .au-fit.fit > .sx-card { flex: none; }
+    .au-fit.fit > .au-body { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+    .au-fit.fit .au-body > aside.sx-card { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .au-fit.fit .au-body > aside .fc-rail { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+    .au-fit.fit .au-body > #auditEntries { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .au-fit.fit #auditEntries > .sx-card-head, .au-fit.fit #auditEntries > .lg-filters, .au-fit.fit #auditEntries > .lg-load { flex: none; }
+    .au-fit.fit .lg-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+    .au-fit.fit .lg-scroll > .sx-empty { height: 100%; display: flex; flex-direction: column; justify-content: center; }
+    .au-fit.fit .lg-scroll .lg-day { position: sticky; top: 0; z-index: 2; }
+    .au-fit.fit #auditEntries > .lg-load { border-top: 1px solid var(--border); }
+}
 </style>
 @endpush
 
 @section('content')
-<div class="sx-page">
+<div class="sx-page au-fit">
 
     <div class="sx-head">
         <div>
@@ -298,6 +322,7 @@
     <div class="au-body">
         {{-- ── Facet rail ───────────────────────────────────────────────── --}}
         <aside class="sx-card">
+            <div class="fc-rail">
             <div class="fc">
                 <form method="GET" action="{{ route('audit-logs.index') }}" class="sx-input">
                     <i data-lucide="search"></i>
@@ -340,6 +365,7 @@
                     @endforelse
                 </div>
             @endforeach
+            </div>
         </aside>
 
         {{-- ── B · Entries ──────────────────────────────────────────────── --}}
@@ -367,6 +393,7 @@
                 <span style="margin-left:auto" class="mono">{{ number_format($logs->total()) }} {{ Str::plural('result', $logs->total()) }}</span>
             </div>
 
+            <div class="lg-scroll">
             @php $day = null; @endphp
             @forelse($logs as $log)
                 @php
@@ -438,6 +465,7 @@
             @if($view === 'day' && $day && ($shown[$day] ?? 0) < ($dayTotals[$day] ?? 0))
                 <div class="lg-more"><a class="sx-link" href="{{ $periodLink(['from' => $day, 'to' => $day]) }}">Show all {{ $dayTotals[$day] }} from {{ \Illuminate\Support\Carbon::parse($day)->format('M j') }} <i data-lucide="chevron-down"></i></a></div>
             @endif
+            </div>
 
             <div class="lg-load">
                 @if($logs->onFirstPage() === false)
@@ -457,6 +485,29 @@
 
 @push('scripts')
 <script>
+(function () {
+    // Fit the page to the window, so only the filters and the entries scroll.
+    const page = document.querySelector('.au-fit');
+    // A window too short to leave the entries a usable list keeps the
+    // ordinary scrolling page instead.
+    function fit() {
+        if (!page) return;
+        page.classList.remove('fit');
+        page.style.removeProperty('--au-h');
+        if (window.innerWidth <= 1000) return;
+        const box = page.closest('.container-fluid') || page.parentElement;
+        const below = parseFloat(getComputedStyle(box).paddingBottom) || 0;
+        const top = page.getBoundingClientRect().top + window.scrollY;
+        page.style.setProperty('--au-h', Math.floor(window.innerHeight - top - below) + 'px');
+        page.classList.add('fit');
+        const list = page.querySelector('.lg-scroll');
+        if (list && list.clientHeight < 200) { page.classList.remove('fit'); page.style.removeProperty('--au-h'); }
+    }
+    fit();
+    window.addEventListener('resize', fit);
+    window.addEventListener('load', fit);
+})();
+
 (function () {
     // Open or close an entry; links inside it keep working.
     document.addEventListener('click', e => {

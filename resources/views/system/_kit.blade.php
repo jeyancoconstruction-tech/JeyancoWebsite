@@ -184,6 +184,41 @@ input.sx-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--b
 .st-item .dirty { position: absolute; right: 12px; top: 50%; margin-top: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
 .st-nav-foot { margin: 8px 2px 0; padding: 12px 8px 4px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); line-height: 1.5; display: flex; gap: 8px; }
 .st-nav-foot svg { width: 14px; height: 14px; flex: none; margin-top: 1px; }
+
+/* The left column (settings/_side): the nav, then the current values filling
+   what is left of it. On a wide screen it takes the height of the form beside
+   it — never adding its own — and is held to the screen while that scrolls. */
+.st-side { min-width: 0; }
+.st-side-in { display: flex; flex-direction: column; gap: 14px; }
+@media (min-width: 901px) {
+    /* body's overflow-x: hidden makes it a scroll container that never
+       scrolls, which pins every sticky element in place. clip hides the same
+       overflow without that, so the column can follow the page. */
+    body:has(.st-side) { overflow-x: clip; overflow-y: visible; }
+    .st-wrap:has(> .st-side) { align-items: stretch; }
+    .st-side { contain: size; }
+    .st-side-in { position: sticky; top: calc(var(--topbar-height, 60px) + 16px); height: 100%; max-height: calc(100vh - var(--topbar-height, 60px) - 32px); }
+    .st-side .st-nav { position: static; flex: none; }
+}
+.st-glance { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-xs); }
+.st-glance-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px 6px; flex: none; }
+.st-glance-head .live { font-size: 11px; color: var(--text-muted); }
+.st-glance-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 0 8px; overflow: hidden; }
+.st-gl { flex: 1 1 auto; min-height: 30px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 10px; border-radius: 8px; font-size: 12px; text-decoration: none; }
+.st-gl + .st-gl { box-shadow: inset 0 1px 0 var(--border); }
+.st-gl:hover { background: var(--bg-subtle); }
+.st-gl.on, .st-gl.on + .st-gl.on { background: var(--brand-subtle); box-shadow: none; }
+.st-gl .k { color: var(--text-muted); white-space: nowrap; flex: none; }
+.st-gl .v { color: var(--text-primary); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.st-gl.on .v { color: var(--brand); }
+.st-glance-foot { flex: none; margin: 6px 8px 8px; padding: 10px 10px 4px; border-top: 1px solid var(--border); font-size: 12px; }
+
+/* Two cards side by side share one height; their rows share the difference,
+   so the shorter card has no empty band at its foot. */
+.st-two > .sx-card { display: flex; flex-direction: column; }
+.st-two > .sx-card > :not(.sx-card-head) { flex: 1 1 auto; }
+.st-two > .sx-card > .chg { align-content: center; }
+.st-two > .sx-card > .sx-empty { display: flex; flex-direction: column; justify-content: center; }
 .st-last { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-muted); }
 .st-last svg { width: 14px; height: 14px; }
 .st-last b { color: var(--text-secondary); font-weight: 600; }

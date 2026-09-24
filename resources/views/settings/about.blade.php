@@ -7,14 +7,20 @@
     $tagline = old('company_tagline', $system->company_tagline);
     $address = old('company_address', $system->company_address);
     $parts   = preg_split('/\s+/', trim((string) $name), 2);
+    // The sign-in page keeps the built-in mark until a logo is uploaded.
+    $signinMark = $system->logo_path ? $system->logoUrl() : asset('images/logo-mark.png');
 @endphp
 
 @push('styles')
 @include('system._kit')
 <style>
-.co-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: start; }
+.co-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; align-items: stretch; }
 @media (max-width: 1200px) { .co-grid { grid-template-columns: 1fr; } }
-.co-grid .st-row { grid-template-columns: 1fr; gap: 10px; padding: 14px 18px 16px; }
+/* Identity and the preview stand side by side at one height: the identity
+   rows share whatever the preview adds, so neither leaves a gap under it. */
+.co-grid > div { display: flex; flex-direction: column; }
+.co-grid > div > .sx-card { flex: 1 1 auto; display: flex; flex-direction: column; }
+.co-grid .st-row { grid-template-columns: 1fr; gap: 10px; padding: 14px 18px 16px; flex: 1 1 auto; align-content: center; }
 .co-grid .st-row-l { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .co-grid .st-row-l .t { flex: none; }
 .co-grid .st-row-l .d { margin: 0; }
@@ -46,7 +52,8 @@
 .wh-leg { display: flex; gap: 16px; padding: 9px 16px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); flex-wrap: wrap; }
 .wh-leg span { display: inline-flex; align-items: center; gap: 6px; }
 
-.pv { position: sticky; top: 16px; }
+.pv { display: flex; flex-direction: column; }
+.pv .pv-note { margin-top: auto; }
 .pv-cap { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--border); min-height: 48px; }
 .pv-cap > svg { width: 15px; height: 15px; color: var(--text-muted); }
 .pv-cap .sx-badge { margin-left: auto; }
@@ -67,6 +74,15 @@
 .rail img { width: 32px; height: 32px; object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); flex: none; }
 .rail .l1 { font-size: 14px; font-weight: 800; color: #fff; letter-spacing: .04em; line-height: 1.1; text-transform: uppercase; }
 .rail .l2 { font-size: 8.5px; font-weight: 600; letter-spacing: .22em; color: #7c93b5; margin-top: 3px; text-transform: uppercase; }
+.signin { margin: 8px 14px 14px; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; background: #0a1421; }
+.signin-tab { display: flex; align-items: center; gap: 7px; padding: 7px 10px; background: #141a23; border-bottom: 1px solid #223049; font-size: 10.5px; color: #c9d4e3; min-width: 0; }
+.signin-tab img { width: 14px; height: 14px; object-fit: contain; flex: none; }
+.signin-tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.signin-body { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: radial-gradient(120% 120% at 0% 0%, #123566 0%, #0a1421 75%); }
+.signin-body img { width: 36px; height: 36px; object-fit: contain; flex: none; filter: drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
+.signin-body .f { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.signin-body i { display: block; height: 12px; border-radius: 3px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); }
+.signin-body i.b { background: #1668DC; border-color: #1668DC; width: 55%; }
 .pv-note { font-size: 11.5px; color: var(--text-muted); padding: 0 14px 14px; line-height: 1.5; display: flex; gap: 7px; }
 .pv-note svg { width: 13px; height: 13px; flex: none; margin-top: 2px; }
 </style>
@@ -80,7 +96,7 @@
     ])
 
     <div class="st-wrap">
-        @include('settings._hub')
+        @include('settings._side')
 
         <form method="POST" action="{{ route('system-settings.about.update') }}" enctype="multipart/form-data" data-sx-form>
             @csrf
@@ -157,28 +173,6 @@
                         </div>
                     </div>
 
-                    <div class="sx-card" style="margin-top:14px">
-                        <div class="sx-card-head"><span class="sx-idx">B</span><h2 class="sx-card-title">Where these appear</h2><span class="sx-card-note">Read from the templates that print them</span></div>
-                        <div class="sx-table-wrap">
-                            <table class="wh">
-                                <thead><tr><th>Printed on</th><th data-col="company_name">Name</th><th data-col="company_tagline">Line</th><th data-col="company_address">Address</th><th data-col="logo">Logo</th></tr></thead>
-                                <tbody>
-                                    <tr><td>Payslips — batch print<span class="s">every payslip in a run</span></td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="y"></span></td><td data-col="company_address"><span class="c"></span></td><td data-col="logo"><span class="y"></span></td></tr>
-                                    <tr><td>Payslip — single view</td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="n"></span></td><td data-col="company_address"><span class="n"></span></td><td data-col="logo"><span class="y"></span></td></tr>
-                                    <tr><td>Payroll receipt<span class="s">Payroll Processing &amp; Payroll Records</span></td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="y"></span></td><td data-col="company_address"><span class="n"></span></td><td data-col="logo"><span class="y"></span></td></tr>
-                                    <tr><td>Sidebar</td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="n"></span></td><td data-col="company_address"><span class="n"></span></td><td data-col="logo"><span class="y"></span></td></tr>
-                                    <tr><td>Sign-in page</td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="n"></span></td><td data-col="company_address"><span class="n"></span></td><td data-col="logo"><span class="c"></span></td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="wh-leg">
-                            <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--brand)"></span>Always</span>
-                            <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;border:2px solid var(--brand)"></span>Only when set / uploaded</span>
-                            <span><span style="display:inline-block;width:10px;height:2px;background:var(--border-md)"></span>Not printed</span>
-                        </div>
-                    </div>
-
-                    @include('settings._savebar')
                 </div>
 
                 <aside class="sx-card pv">
@@ -204,9 +198,37 @@
                         <img src="{{ $system->logoUrl() }}" alt="" data-logo>
                         <div style="min-width:0"><div class="l1" data-rail="1">{{ $parts[0] ?? '' }}</div><div class="l2" data-rail="2">{{ $parts[1] ?? '' }}</div></div>
                     </div>
-                    <div class="pv-note"><i data-lucide="info"></i><span>Both previews update as you type. The payslip keeps its own colours, so it looks the same in the dark theme as on paper.</span></div>
+                    <div class="pv-lbl"><span class="sx-label">Sign-in page</span><span class="sx-label">name in the tab</span></div>
+                    <div class="signin">
+                        <div class="signin-tab"><img src="{{ $signinMark }}" alt="" data-logo-signin><span><span data-pv="signin_name">{{ $name }}</span> | Sign In</span></div>
+                        <div class="signin-body"><img src="{{ $signinMark }}" alt="" data-logo-signin><div class="f"><i></i><i></i><i class="b"></i></div></div>
+                    </div>
+                    <div class="pv-note"><i data-lucide="info"></i><span>Every preview updates as you type. The payslip keeps its own colours, so it looks the same in the dark theme as on paper.</span></div>
                 </aside>
             </div>
+
+            <div class="sx-card" style="margin-top:14px">
+                <div class="sx-card-head"><span class="sx-idx">B</span><h2 class="sx-card-title">Where these appear</h2><span class="sx-card-note">Read from the templates that print them</span></div>
+                <div class="sx-table-wrap">
+                    <table class="wh">
+                        <thead><tr><th>Printed on</th><th data-col="company_name">Name</th><th data-col="company_tagline">Line</th><th data-col="company_address">Address</th><th data-col="logo">Logo</th></tr></thead>
+                        <tbody>
+                            <tr><td>Payslips — batch print<span class="s">every payslip in a run</span></td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="y"></span></td><td data-col="company_address"><span class="c"></span></td><td data-col="logo"><span class="y"></span></td></tr>
+                            <tr><td>Payslip — single view</td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="n"></span></td><td data-col="company_address"><span class="n"></span></td><td data-col="logo"><span class="y"></span></td></tr>
+                            <tr><td>Payroll receipt<span class="s">Payroll Processing &amp; Payroll Records</span></td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="y"></span></td><td data-col="company_address"><span class="n"></span></td><td data-col="logo"><span class="y"></span></td></tr>
+                            <tr><td>Sidebar</td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="n"></span></td><td data-col="company_address"><span class="n"></span></td><td data-col="logo"><span class="y"></span></td></tr>
+                            <tr><td>Sign-in page</td><td data-col="company_name"><span class="y"></span></td><td data-col="company_tagline"><span class="n"></span></td><td data-col="company_address"><span class="n"></span></td><td data-col="logo"><span class="c"></span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="wh-leg">
+                    <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--brand)"></span>Always</span>
+                    <span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;border:2px solid var(--brand)"></span>Only when set / uploaded</span>
+                    <span><span style="display:inline-block;width:10px;height:2px;background:var(--border-md)"></span>Not printed</span>
+                </div>
+            </div>
+
+            @include('settings._savebar')
         </form>
     </div>
 </div>
@@ -223,6 +245,7 @@
     const saved = {};
     ['company_name', 'company_tagline', 'company_address'].forEach(n => { saved[n] = form.elements[n].dataset.saved || ''; });
     const originalLogo = document.querySelector('[data-logo]')?.getAttribute('src');
+    const signinLogo = document.querySelector('[data-logo-signin]')?.getAttribute('src');
     const fileInput = document.getElementById('logo');
     const drop = document.querySelector('[data-drop]');
     const dropText = document.querySelector('[data-drop-text]');
@@ -230,6 +253,7 @@
 
     function draw() {
         document.querySelector('[data-pv="company_name"]').textContent = val('company_name');
+        document.querySelector('[data-pv="signin_name"]').textContent = val('company_name');
         document.querySelector('[data-pv="company_tagline"]').textContent = val('company_tagline');
         const addr = val('company_address').trim();
         const a = document.querySelector('[data-pv="company_address"]');
@@ -253,6 +277,7 @@
     function showFile() {
         const f = fileInput.files[0];
         document.querySelectorAll('[data-logo]').forEach(img => { img.src = f ? URL.createObjectURL(f) : originalLogo; });
+        document.querySelectorAll('[data-logo-signin]').forEach(img => { img.src = f ? URL.createObjectURL(f) : signinLogo; });
         document.querySelector('[data-logo-label]').textContent = f ? 'NEW' : 'CURRENT';
         dropText.innerHTML = f ? 'Chosen: <u>' + f.name.replace(/[<>&]/g, '') + '</u>' : dropDefault;
     }

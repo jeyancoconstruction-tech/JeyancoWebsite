@@ -141,7 +141,7 @@
     ])
 
     <div class="st-wrap">
-        @include('settings._hub')
+        @include('settings._side')
 
         <div>
             <form method="POST" action="{{ route('system-settings.kiosk.update') }}" data-sx-form>
