@@ -46,7 +46,7 @@ class PasswordResetController extends Controller
         if (! $this->canSendMail()) {
             Log::warning('Password reset requested, but this deployment cannot send mail.', [
                 'mailer' => config('mail.default'),
-                'hint'   => 'Set MAIL_MAILER=smtp and the MAIL_* settings, then run: php artisan mail:test <address>',
+                'hint'   => 'Set MAIL_MAILER=gmail (Railway blocks SMTP; see php artisan mail:gmail-connect), then run: php artisan mail:test <address>',
             ]);
 
             return back()->withErrors(['login' =>

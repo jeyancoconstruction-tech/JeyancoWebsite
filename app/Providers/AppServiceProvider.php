@@ -100,6 +100,14 @@ class AppServiceProvider extends ServiceProvider
         // enough to have a second page, the pager alone was 3,000 pixels tall.
         \Illuminate\Pagination\Paginator::useBootstrapFive();
 
+        // MAIL_MAILER=gmail: the Gmail API over HTTPS, because Railway blocks
+        // outgoing SMTP. See App\Mail\GmailApiTransport.
+        \Illuminate\Support\Facades\Mail::extend('gmail', fn () => new \App\Mail\GmailApiTransport(
+            config('services.google.client_id'),
+            config('services.google.client_secret'),
+            config('services.gmail.refresh_token'),
+        ));
+
         // Every change, sign-in and write request goes into the Audit Log.
         \App\Support\ActivityRecorder::listen();
 

@@ -52,6 +52,13 @@ return [
         'redirect'      => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
     ],
 
+    // Sending mail through the Gmail API (MAIL_MAILER=gmail), on the same
+    // OAuth client as Sign in with Google. The refresh token comes from
+    // `php artisan mail:gmail-connect`.
+    'gmail' => [
+        'refresh_token' => env('GMAIL_REFRESH_TOKEN'),
+    ],
+
     // Google Calendar API — fills the Holidays tab from Google's public
     // "Holidays in Philippines" calendar. Without a key the tab keeps the
     // holidays it computes offline. See App\Support\GoogleHolidays.

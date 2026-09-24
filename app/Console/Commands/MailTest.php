@@ -36,7 +36,14 @@ class MailTest extends Command
 
         $this->newLine();
         $this->line('  <options=bold>Mail settings in force</>');
-        $this->table(['Setting', 'Value'], [
+        $this->table(['Setting', 'Value'], $mailer === 'gmail' ? [
+            ['MAIL_MAILER',         'gmail (Gmail API over HTTPS)'],
+            ['GOOGLE_CLIENT_ID',    config('services.google.client_id') ? '(set)' : '(not set)'],
+            ['GOOGLE_CLIENT_SECRET', config('services.google.client_secret') ? '(set, hidden)' : '(not set)'],
+            ['GMAIL_REFRESH_TOKEN', config('services.gmail.refresh_token') ? '(set, hidden)' : '(not set)'],
+            ['MAIL_FROM_ADDRESS',   $from ?: '(not set)'],
+            ['APP_URL',             config('app.url')],
+        ] : [
             ['MAIL_MAILER',       $mailer],
             ['MAIL_HOST',         config('mail.mailers.smtp.host')   ?: '(not set)'],
             ['MAIL_PORT',         config('mail.mailers.smtp.port')   ?: '(not set)'],
@@ -83,9 +90,15 @@ class MailTest extends Command
             $this->error('  Send failed: ' . $e->getMessage());
             $this->newLine();
             $this->line('  Common causes:');
-            $this->line('   • Gmail needs an App Password (16 characters), not the account password.');
-            $this->line('   • 2-Step Verification must be on before App Passwords can be created.');
-            $this->line('   • MAIL_SCHEME is smtp (port 587) or smtps (port 465) — never "tls".');
+            if ($mailer === 'gmail') {
+                $this->line('   • "invalid_grant": the Gmail password changed or access was removed — run mail:gmail-connect again.');
+                $this->line('   • "Gmail API has not been used in project": enable the Gmail API in Google Cloud.');
+            } else {
+                $this->line('   • "Connection timed out" on Railway: its plans below Pro block SMTP — use MAIL_MAILER=gmail.');
+                $this->line('   • Gmail needs an App Password (16 characters), not the account password.');
+                $this->line('   • 2-Step Verification must be on before App Passwords can be created.');
+                $this->line('   • MAIL_SCHEME is smtp (port 587) or smtps (port 465) — never "tls".');
+            }
             $this->newLine();
 
             return self::FAILURE;

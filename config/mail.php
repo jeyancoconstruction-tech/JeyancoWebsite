@@ -65,6 +65,12 @@ return [
             'transport' => 'resend',
         ],
 
+        // The Gmail API over HTTPS, for hosts that block SMTP (Railway does
+        // below the Pro plan). See App\Mail\GmailApiTransport.
+        'gmail' => [
+            'transport' => 'gmail',
+        ],
+
         'sendmail' => [
             'transport' => 'sendmail',
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
