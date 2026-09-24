@@ -129,7 +129,6 @@ Route::middleware(['auth', 'active'])->group(function () {
     // ATTENDANCE
     Route::get   ('/attendance',                     [AttendanceController::class, 'index'])->name('attendance');
     Route::delete('/attendance/history/bulk-delete', [AttendanceController::class, 'bulkDeleteHistory'])->name('attendance.history.bulk-delete');
-    Route::delete('/attendance/history/delete-all',  [AttendanceController::class, 'deleteAllHistory'])->name('attendance.history.delete-all');
 
     // --- INSIGHTS & AI ROUTES ---
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics');

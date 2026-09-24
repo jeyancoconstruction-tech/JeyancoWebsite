@@ -184,8 +184,6 @@
     .att-del-sel-btn { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-size:12.5px; font-weight:700; border-radius:7px; padding:5px 12px; cursor:pointer; transition:background .15s; }
     .att-del-sel-btn:not(:disabled):hover { background:#fee2e2; }
     .att-del-sel-btn:disabled { opacity:.5; cursor:not-allowed; }
-    .att-del-all-btn { background:#dc2626; color:#fff; border:none; font-size:12.5px; font-weight:700; border-radius:7px; padding:5px 14px; cursor:pointer; transition:background .15s; }
-    .att-del-all-btn:hover { background:#b91c1c; }
     [data-bs-theme="dark"] .att-mark-btn, [data-bs-theme="dark"] .att-cancel-btn { background:#1c2740; color:#9fb0c7; border-color:#283449; }
     [data-bs-theme="dark"] .att-mark-btn:hover { background:#283449; }
     [data-bs-theme="dark"] .att-del-sel-btn { background:#450a0a; color:#fca5a5; border-color:#7f1d1d; }
@@ -404,9 +402,9 @@
             <button id="cancelMarkBtn" type="button" class="att-cancel-btn" style="display:none;">
                 {{ __('Cancel') }}
             </button>
-            <button id="deleteAllBtn" type="button" class="att-del-all-btn">
-                <i class="fas fa-trash-alt me-1"></i>{{ __('Delete all') }}
-            </button>
+            {{-- No Delete all. One click from wiping every day payroll is
+                 counted from was too close at hand; a removal now starts
+                 from the rows you tick. --}}
         </div>
     </div>
 
@@ -618,7 +616,6 @@
         const markBtn      = document.getElementById('markModeBtn');
         const cancelBtn    = document.getElementById('cancelMarkBtn');
         const delSelBtn    = document.getElementById('deleteSelectedBtn');
-        const delAllBtn    = document.getElementById('deleteAllBtn');
         const selCountEl   = document.getElementById('selCount');
         const selectAllChk = document.getElementById('selectAllChk');
 
@@ -730,17 +727,6 @@
             });
             if (!ok) return;
             doDelete('{{ route("attendance.history.bulk-delete") }}', { ids }, 'Deleted {n} record(s).');
-        });
-
-        delAllBtn.addEventListener('click', async function () {
-            const ok = await Notify.confirm({
-                title:        'Delete ALL history?',
-                message:      'Every attendance record in the history is deleted. This cannot be undone.',
-                confirmLabel: 'Delete everything',
-                tone:         'danger',
-            });
-            if (!ok) return;
-            doDelete('{{ route("attendance.history.delete-all") }}', null, 'Deleted {n} record(s).');
         });
     })();
 </script>

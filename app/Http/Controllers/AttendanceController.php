@@ -265,11 +265,4 @@ class AttendanceController extends Controller
             ->delete();
         return response()->json(['success' => true, 'deleted' => $deleted]);
     }
-
-    /** Delete every history record (finished workdays only). */
-    public function deleteAllHistory()
-    {
-        $deleted = Attendance::beforeWorkday()->delete();
-        return response()->json(['success' => true, 'deleted' => $deleted]);
-    }
 }

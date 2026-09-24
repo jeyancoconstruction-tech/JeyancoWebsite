@@ -103,7 +103,6 @@ final class ActivityRecorder
     /** Routes that change data without a model event, in their own words. */
     private const ROUTES = [
         'attendance.history.bulk-delete' => ['Attendance', 'deleted', 'Deleted selected attendance history'],
-        'attendance.history.delete-all'  => ['Attendance', 'deleted', 'Deleted all attendance history'],
         'employees.bulk-delete'          => ['Employees', 'deleted', 'Moved selected employees to Removed'],
         'employees.delete-all'           => ['Employees', 'deleted', 'Moved every employee to Removed'],
         'holidays.bulk-toggle'           => ['Holidays', 'updated', 'Turned holidays on or off in bulk'],

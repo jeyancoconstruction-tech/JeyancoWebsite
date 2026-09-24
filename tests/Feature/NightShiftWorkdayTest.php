@@ -173,15 +173,16 @@ class NightShiftWorkdayTest extends TestCase
             'they have not failed to clock out — they have not finished');
     }
 
-    public function test_clearing_the_history_leaves_a_running_night_shift_alone(): void
+    public function test_deleting_history_leaves_a_running_night_shift_alone(): void
     {
         $emp = $this->worker('Night Crew', true);
         $this->clock($emp, 'time_in', self::EVENING);
+        $ids = Attendance::where('employee_id', $emp->id)->pluck('id')->all();
 
         // Two in the morning: to the calendar this row is already yesterday's.
         $this->at('2026-09-12 02:00:00');
         $this->actingAs($this->admin())
-             ->deleteJson(route('attendance.history.delete-all'))
+             ->deleteJson(route('attendance.history.bulk-delete'), ['ids' => $ids])
              ->assertOk()
              ->assertJson(['deleted' => 0]);
 
