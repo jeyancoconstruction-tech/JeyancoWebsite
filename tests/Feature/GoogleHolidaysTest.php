@@ -326,6 +326,23 @@ class GoogleHolidaysTest extends TestCase
         $this->assertArrayHasKey('2026-11-30', $this->byDate(2026));
     }
 
+    public function test_the_command_syncs_and_reports(): void
+    {
+        $this->googleSays($this->calendar());
+
+        $this->artisan('holidays:sync')
+             ->expectsOutputToContain('Synced from Google Calendar:')
+             ->assertExitCode(0);
+
+        $this->assertArrayHasKey('2026-12-24', $this->byDate(2026));
+
+        config(['services.google_calendar.key' => null]);
+
+        $this->artisan('holidays:sync')
+             ->expectsOutputToContain('GOOGLE_CALENDAR_API_KEY')
+             ->assertExitCode(1);
+    }
+
     public function test_without_a_key_nothing_is_asked_of_google(): void
     {
         config(['services.google_calendar.key' => null]);
