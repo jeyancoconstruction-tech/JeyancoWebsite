@@ -74,14 +74,14 @@ return [
 
     'sites' => [
         'en' => ['title' => 'Site Management', 'lines' => [
-            'Add Site creates one. The name is what shows everywhere a site is chosen.',
-            'Removing a site reassigns its employees automatically, so nobody is left without one.',
-            'Rename changes the label wherever the site appears.',
+            'Add site takes a project name and a location: pick a place from the suggestions, type the address, or tap the map to drop a pin.',
+            'The pin and its radius are where GPS attendance counts as on-site. A site with no pin is not checked, and its card says so.',
+            'The pencil opens a site in the form to rename it, move its pin or change its radius. Removing a site moves its employees to Unassigned.',
         ]],
         'tl' => ['title' => 'Pamamahala ng Site', 'lines' => [
-            'Ang Add Site ang gumagawa ng bago. Ang pangalan ang lalabas saanman pumipili ng site.',
-            'Kapag inalis ang isang site, awtomatikong nailipat ang mga empleyado nito, kaya walang maiiwan.',
-            'Ang Rename ang nagpapalit ng pangalan saanman lumalabas ang site.',
+            'Ang Add site ay humihingi ng pangalan ng proyekto at lokasyon: pumili sa mga mungkahi, i-type ang address, o i-tap ang mapa para maglagay ng pin.',
+            'Ang pin at ang radius nito ang hangganan kung saan tinatanggap ang GPS attendance bilang nasa site. Hindi sinusuri ang site na walang pin, at nakasulat iyon sa card nito.',
+            'Binubuksan ng lapis ang site sa form para palitan ang pangalan, ilipat ang pin o baguhin ang radius. Kapag inalis ang site, mapupunta sa Unassigned ang mga empleyado nito.',
         ]],
     ],
 

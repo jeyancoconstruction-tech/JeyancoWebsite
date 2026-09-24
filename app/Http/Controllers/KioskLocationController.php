@@ -237,7 +237,9 @@ class KioskLocationController extends Controller
             'online'            => $state['presence'] === 'online',
             'in_geofence'       => $state['geofence'] === 'unknown' ? null : ($state['geofence'] === 'inside'),
             'distance_m'        => $state['distance'],
-            'geofence_radius_m' => (int) config('kiosk.geofence_radius'),
+            // The ring the dashboard draws round the site picked on the kiosk,
+            // so it is that site's radius; failing that, the one measured by.
+            'geofence_radius_m' => $kiosk?->site?->geofenceRadius() ?? $state['radius'],
             'alert'             => $state['alert'],
 
             // The dashboard map reads recorded_at for its "Live · time" label.
@@ -260,7 +262,7 @@ class KioskLocationController extends Controller
     private function computeState(string $kioskId, array $rec): array
     {
         $offlineAfter = (int) config('kiosk.offline_after');
-        $radius       = (int) config('kiosk.geofence_radius');
+        $radius       = (int) config('kiosk.geofence_radius');   // until a site says otherwise
 
         $seconds  = $rec['last_seen'] ? Carbon::parse($rec['last_seen'])->diffInSeconds(now()) : PHP_INT_MAX;
         $presence = $seconds <= $offlineAfter ? 'online' : 'offline';
@@ -276,8 +278,9 @@ class KioskLocationController extends Controller
         $anchor = null;
         $siteId = $rec['active_site_id'] ?? $rec['detected_site_id'] ?? null;
         if ($siteId && $site = Site::find($siteId)) {
-            if ($site->latitude !== null && $site->longitude !== null) {
+            if ($site->isPinned()) {
                 $anchor = ['lat' => $site->latitude, 'lng' => $site->longitude];
+                $radius = $site->geofenceRadius();
             }
         }
         $anchor ??= Cache::get(self::HOME_PREFIX . $kioskId);
@@ -294,7 +297,7 @@ class KioskLocationController extends Controller
             default => 'online',
         };
 
-        return compact('seconds', 'presence', 'geofence', 'distance', 'alert') + ['seconds_since' => $seconds];
+        return compact('seconds', 'presence', 'geofence', 'distance', 'alert', 'radius') + ['seconds_since' => $seconds];
     }
 
     /**
@@ -330,7 +333,7 @@ class KioskLocationController extends Controller
             if (in_array($prev['geofence'], ['inside', 'unknown'], true) && $now['geofence'] === 'outside') {
                 $d = $now['distance'] !== null ? number_format($now['distance']) . 'm' : '?';
                 $this->alertAdmins('kiosk_geofence', "Kiosk left its location: {$label}",
-                    "{$label} is {$d} from its set location (limit " . config('kiosk.geofence_radius') . "m). It may have been moved or taken.");
+                    "{$label} is {$d} from its set location (limit {$now['radius']}m). It may have been moved or taken.");
             } elseif ($prev['geofence'] === 'outside' && $now['geofence'] === 'inside') {
                 $this->alertAdmins('kiosk_geofence_ok', "Kiosk back at its location: {$label}",
                     "{$label} is inside the geofence again.");

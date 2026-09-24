@@ -35,12 +35,6 @@ return [
         ],
     ],
 
-    // Google Maps JavaScript API (Places + Geocoding) — powers the site
-    // location picker. Add GOOGLE_MAPS_API_KEY to your .env to enable it.
-    'google_maps' => [
-        'key' => env('GOOGLE_MAPS_API_KEY'),
-    ],
-
     // Sign in with Google (Laravel Socialite). Only a Google account whose
     // verified email is on an account an admin created gets in — nobody is
     // registered by signing in. Without both values the button is hidden.

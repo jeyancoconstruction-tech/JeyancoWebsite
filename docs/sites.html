@@ -1,0 +1,421 @@
+<title>Jeyanco Site Management</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0a0f1e; --surface:#111a2e; --inset:#0d1526; --line:#1f2a44; --line2:#25324f;
+  --text:#e6ecf7; --muted:#a3aec6; --faint:#8a97b3; --ghost:#5d6b88;
+  --brand:#1E5C9B; --accent:#4f8ff0; --accentText:#7fb0ff; --chip:#16284a; --selBg:#13254a;
+  --ok:#86efac; --okBg:#10301f; --warn:#fcd34d; --warnBg:#3a2a0a; --bad:#fca5a5; --badBg:#3a1216; --req:#f87171;
+  --pin:#ef4444;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{margin:0 auto;padding:24px 28px 32px;display:flex;flex-direction:column;gap:18px}
+.crumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--faint)}
+.crumb b{color:var(--accentText);font-weight:600}
+.titlerow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+h1{margin:6px 0 4px;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.count{font-size:13px;font-weight:700;color:#a9c9ff;background:var(--chip);border:1px solid #23406f;padding:4px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
+.sub{margin:0;color:var(--muted);max-width:70ch}
+.grid{display:grid;grid-template-columns:400px minmax(0,1fr);gap:18px;align-items:stretch}
+.mapcard{display:flex;flex-direction:column;overflow:hidden}
+.sites{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 22px;border-bottom:1px solid var(--line)}
+.ch h2{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:10px}
+.ch h2 svg{color:var(--accentText)}
+.hint{font-size:12px;color:var(--faint)}
+.body{padding:22px;display:flex;flex-direction:column;gap:20px}
+.field{display:flex;flex-direction:column;gap:8px}
+label.l{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+.req{color:var(--req)}
+input[type=text]{height:48px;width:100%;padding:0 16px;border-radius:12px;border:1px solid var(--line2);background:var(--inset);color:var(--text);font:15px 'Plus Jakarta Sans',sans-serif}
+input::placeholder{color:var(--ghost)}
+input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,143,240,.18)}
+button{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.loc{position:relative}
+.loc .lead{position:absolute;left:15px;top:15px;color:var(--faint);pointer-events:none}
+.loc input{padding-left:44px;padding-right:44px}
+.loc .clear{position:absolute;right:8px;top:8px;width:32px;height:32px;border-radius:8px;border:0;background:transparent;color:var(--faint);cursor:pointer;display:grid;place-items:center}
+.loc .clear:hover{background:var(--chip);color:var(--text)}
+.sugg{position:absolute;left:0;right:0;top:54px;z-index:20;background:#0f1830;border:1px solid var(--line2);border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.45);padding:6px;max-height:320px;overflow:auto}
+.sugg button{width:100%;display:flex;gap:12px;align-items:flex-start;text-align:left;padding:10px 12px;border:0;border-radius:10px;background:transparent;color:var(--text);cursor:pointer}
+.sugg button[aria-selected=true],.sugg button:hover{background:var(--selBg)}
+.sugg .pi{width:30px;height:30px;border-radius:8px;background:var(--chip);color:var(--accentText);display:grid;place-items:center;flex-shrink:0}
+.sugg .n{font-weight:600;font-size:14px}
+.sugg .n mark{background:none;color:var(--accentText)}
+.sugg .a{font-size:12px;color:var(--faint)}
+.sugg .typed .pi{background:var(--warnBg);color:var(--warn)}
+.sugg .foot{font-size:11px;color:var(--ghost);padding:6px 12px 4px}
+
+.mapwrap{background:#0c1426;display:flex;flex-direction:column;flex:1}
+.mapbar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--faint);flex-wrap:wrap}
+.mapbar b{color:var(--text);font-weight:600}
+.map{position:relative;flex:1;min-height:clamp(420px,calc(100vh - 230px),820px);width:100%;cursor:crosshair;touch-action:manipulation}
+.map > svg{position:absolute;inset:0;display:block;width:100%;height:100%}
+[hidden]{display:none!important}
+.veil{position:absolute;inset:0;background:rgba(10,15,30,.72);display:grid;place-items:center;text-align:center;padding:24px;cursor:pointer}
+.veil div{max-width:34ch;color:var(--muted);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.veil b{color:var(--text);font-size:16px}
+.mapctl{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;border-radius:10px;overflow:hidden;border:1px solid var(--line2)}
+.mapctl button{width:36px;height:36px;border:0;background:#111a2e;color:var(--text);font-size:18px;font-weight:700;cursor:pointer}
+.mapctl button+button{border-top:1px solid var(--line2)}
+.mapctl button:hover{background:var(--chip)}
+.maptip{position:absolute;left:10px;bottom:10px;font-size:12px;background:rgba(10,15,30,.85);border:1px solid var(--line2);color:var(--muted);padding:6px 10px;border-radius:8px;pointer-events:none}
+.collapsed{display:flex;align-items:center;gap:12px;padding:16px;border:1px dashed var(--line2);border-radius:14px;color:var(--faint);font-size:13px;background:var(--inset);cursor:pointer;text-align:left;width:100%}
+.collapsed svg{color:var(--accentText);flex-shrink:0}
+
+.picked{display:flex;flex-direction:column;gap:14px;padding:16px;border-radius:14px;background:var(--inset);border:1px solid var(--line)}
+.picked .top{display:flex;gap:12px;align-items:flex-start}
+.picked .pi{width:36px;height:36px;border-radius:10px;background:#3a1216;color:#fca5a5;display:grid;place-items:center;flex-shrink:0}
+.picked .n{font-weight:700}
+.picked .a{font-size:13px;color:var(--muted)}
+.coord{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accentText)}
+.warnrow{font-size:12px;color:var(--warn);background:var(--warnBg);padding:8px 10px;border-radius:10px}
+.radius{display:flex;flex-direction:column;gap:8px}
+.radius .rl{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.radius .rl b{color:var(--text);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 18px;border-radius:12px;font:600 14px 'Plus Jakarta Sans',sans-serif;cursor:pointer;border:1px solid var(--line2);background:var(--surface);color:var(--text)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700;width:100%}
+.btn.primary:hover{background:#2468ad}
+.btn.small{height:36px;padding:0 12px;font-size:13px}
+.btn.danger{background:#b42335;border-color:#b42335;color:#fff}
+.err{font-size:12px;color:var(--bad)}
+
+.sites{display:flex;flex-direction:column;gap:10px;padding:16px}
+.site{padding:14px 16px;border-radius:14px;background:var(--inset);border:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.site.new{border-color:#2e5fae;background:#0f1d38}
+.srow{display:flex;align-items:flex-start;gap:12px}
+.smark{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex-shrink:0}
+.smark.has{background:#3a1216;color:#fca5a5}
+.smark.none{background:var(--chip);color:var(--ghost)}
+.sinfo{flex:1;min-width:0}
+.sname{font-weight:700;font-size:15px}
+.saddr{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.smeta{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:var(--faint);align-items:center}
+.nogps{color:var(--warn)}
+.emps{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.emps.some{background:var(--okBg);color:var(--ok)}
+.emps.zero{background:var(--chip);color:var(--faint)}
+.icbtn{width:34px;height:34px;border-radius:9px;border:1px solid transparent;background:transparent;display:grid;place-items:center;cursor:pointer}
+.icbtn.edit{color:#f5a524}.icbtn.del{color:#f87171}
+.icbtn:hover{background:var(--chip);border-color:var(--line2)}
+.acts{display:flex;align-items:center;gap:4px}
+.confirm{font-size:13px;color:#f5c2c7;background:#2a1117;border:1px solid #4a2228;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.confirm div{display:flex;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:var(--okBg);color:var(--ok);border:1px solid #1e5b39;padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px;z-index:50}
+.note{font-size:12px;color:var(--ghost);text-align:center}
+
+@media (max-width:1050px){.grid{grid-template-columns:1fr}.map{min-height:420px}}
+@media (max-width:640px){.sites{grid-template-columns:1fr!important}.map{min-height:340px}}
+@media (max-width:640px){.wrap{padding:20px 16px 28px}h1{font-size:26px}.body{padding:16px}.ch{padding:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@keyframes drop{0%{transform:translateY(-18px);opacity:0}100%{transform:translateY(0);opacity:1}}
+.pinanim{animation:drop .25s ease-out}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="crumb"><span>Project</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+      <b>Sites</b></div>
+    <div class="titlerow"><h1>Site Management</h1><span class="count" id="count">3 sites</span></div>
+    <p class="sub">Add a project site and pin its exact spot. The pin and radius set where GPS attendance counts as on-site.</p>
+  </header>
+
+  <div class="grid">
+    <form class="card" id="form" novalidate>
+      <div class="ch"><h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Add New Site</h2><span class="hint">Step 1 name · Step 2 location</span></div>
+      <div class="body">
+        <div class="field">
+          <label class="l" for="pname">Project name <span class="req">*</span></label>
+          <input id="pname" type="text" placeholder="e.g., Tower 2 — Riverside" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label class="l" for="loc">Location <span class="req">*</span></label>
+          <div class="loc">
+            <svg class="lead" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input id="loc" type="text" placeholder="Type a place or address, or pin it on the map" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sugg" aria-autocomplete="list">
+            <button type="button" class="clear" id="clear" aria-label="Clear location" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            <div class="sugg" id="sugg" role="listbox" hidden></div>
+          </div>
+        </div>
+
+        <div class="picked" id="picked" hidden>
+          <div class="top">
+            <span class="pi"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></span>
+            <div style="min-width:0">
+              <div class="n" id="pkName"></div>
+              <div class="a" id="pkAddr"></div>
+              <div class="coord" id="pkCoord"></div>
+            </div>
+          </div>
+          <div class="warnrow" id="pkWarn" hidden>No GPS point yet. Tap the map to pin the exact spot, or GPS attendance can't check this site.</div>
+          <div class="radius" id="radiusBox">
+            <div class="rl"><label for="radius">On-site radius (GPS geofence)</label><b id="rval">150 m</b></div>
+            <input id="radius" type="range" min="50" max="500" step="25" value="150">
+          </div>
+        </div>
+
+        <div class="err" id="err" hidden></div>
+        <button type="submit" class="btn primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span id="submitLabel">Add site</span></button>
+        <span class="note">Map preview. The live page uses Google Maps with Places search.</span>
+      </div>
+    </form>
+
+    <section class="card mapcard" aria-label="Map">
+<div class="mapwrap" id="mapwrap">
+          <div class="mapbar"><span id="mapArea">Map · <b>Naga City, Camarines Sur</b></span><span>Tap anywhere to move the pin</span></div>
+          <div class="map" id="map">
+            <svg id="svg" viewBox="0 0 1000 600" role="img" aria-label="Map. Click to place the site pin."></svg>
+            <div class="mapctl"><button type="button" id="zin" aria-label="Zoom in">+</button><button type="button" id="zout" aria-label="Zoom out">−</button></div>
+            <div class="maptip" id="maptip">Tap to drop a pin</div>
+            <div class="veil" id="veil"><div><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7fb0ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg><b>Add a project name to open the map</b><span>Then search for a place, or tap the map to drop a pin.</span></div></div>
+          </div>
+        </div>
+    </section>
+  </div>
+
+  <section class="card">
+      <div class="ch"><h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg>All Sites</h2><span class="hint">Employees move to Unassigned when a site is removed</span></div>
+      <div class="sites" id="sites"></div>
+  </section>
+</div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const NS='http://www.w3.org/2000/svg';
+  // Sample places for the suggestion preview (approximate coordinates)
+  const PLACES=[
+    {n:'Naga City Hall',a:'J. Miranda Ave, Naga City, Camarines Sur',lat:13.6218,lng:123.1948},
+    {n:'SM City Naga',a:'CBD II, Triangulo, Naga City, Camarines Sur',lat:13.6193,lng:123.1866},
+    {n:'Naga Metropolitan Cathedral',a:'Elias Angeles St, Naga City, Camarines Sur',lat:13.6262,lng:123.1905},
+    {n:'Pili Capitol Complex',a:'Cadlan, Pili, Camarines Sur',lat:13.5829,lng:123.2733},
+    {n:'Calamba City Hall',a:'Chipeco Ave, Calamba, Laguna',lat:14.2117,lng:121.1653},
+    {n:'SM City Calamba',a:'National Hwy, Real, Calamba, Laguna',lat:14.2027,lng:121.1557},
+    {n:'Nuvali',a:'Santa Rosa, Laguna',lat:14.2386,lng:121.0569},
+    {n:'San Pablo City Plaza',a:'San Pablo City, Laguna',lat:14.0683,lng:121.3256},
+    {n:'Lipa City Hall',a:'B. Morada Ave, Lipa, Batangas',lat:13.9411,lng:121.1631},
+    {n:'Batangas City Grand Terminal',a:'Alangilan, Batangas City',lat:13.7565,lng:121.0583},
+    {n:'Tagaytay Rotonda',a:'Silang Crossing, Tagaytay, Cavite',lat:14.1100,lng:120.9620},
+    {n:'Dasmariñas City Hall',a:'Congressional Rd, Dasmariñas, Cavite',lat:14.3294,lng:120.9367},
+    {n:'Antipolo Cathedral',a:'P. Oliveros St, Antipolo, Rizal',lat:14.5869,lng:121.1753},
+    {n:'Lucena Grand Terminal',a:'Ibabang Dupay, Lucena, Quezon',lat:13.9510,lng:121.6300}
+  ];
+  const SITES=[
+    {name:'Site A',addr:'Near Naga City Hall, Naga City, Camarines Sur',lat:13.6224,lng:123.1941,r:150,emps:5},
+    {name:'Site B',addr:'',lat:null,lng:null,r:150,emps:0},
+    {name:'Site C',addr:'',lat:null,lng:null,r:150,emps:1}
+  ];
+  const ZOOMS=[16,8,4,2]; // meters per svg px
+  const S={center:{lat:PLACES[0].lat,lng:PLACES[0].lng,label:'Naga City, Camarines Sur',n:PLACES[0].n},zoom:1,pin:null,addr:'',name:'',typed:false,radius:150,active:-1,editing:null,confirm:null,newIdx:null};
+
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fmt=(lat,lng)=>lat.toFixed(5)+'° N, '+lng.toFixed(5)+'° E';
+  const mpp=()=>ZOOMS[S.zoom];
+  const cosl=()=>Math.cos(S.center.lat*Math.PI/180);
+  let W=1000,H=600;
+  function toPx(lat,lng){return{x:W/2+(lng-S.center.lng)*111320*cosl()/mpp(),y:H/2-(lat-S.center.lat)*111320/mpp()};}
+  function toLL(x,y){return{lat:S.center.lat-(y-H/2)*mpp()/111320,lng:S.center.lng+(x-W/2)*mpp()/(111320*cosl())};}
+  function dist(a,b){const dy=(a.lat-b.lat)*111320,dx=(a.lng-b.lng)*111320*Math.cos(a.lat*Math.PI/180);return Math.hypot(dx,dy);}
+
+  function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  let FEAT=null;
+  function build(){
+    const r=rng(Math.round(S.center.lat*1e4)*31+Math.round(S.center.lng*1e4));
+    const F={minorV:[],minorH:[],major:[],parks:[],river:[]};
+    for(let m=-14000;m<14000;m+=110+r()*120)F.minorV.push(m);
+    for(let m=-9000;m<9000;m+=110+r()*120)F.minorH.push(m);
+    for(let i=0;i<5;i++){const ang=(r()-.5)*1.2+(i%2?Math.PI/2:0);const off=(r()-.5)*5000;F.major.push({ang,off});}
+    for(let i=0;i<14;i++)F.parks.push({x:(r()-.5)*14000,y:(r()-.5)*9000,w:150+r()*350,h:120+r()*260});
+    let y=(r()-.5)*2400;for(let x=-15000;x<=15000;x+=220){y+=(r()-.5)*260;F.river.push([x,y]);}
+    FEAT=F;
+  }
+  function el(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e;}
+  function draw(){
+    const svg=$('svg');const bb=$('map').getBoundingClientRect();if(bb.width){W=bb.width;H=bb.height;}svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.innerHTML='';const k=1/mpp();
+    const X=m=>W/2+m*k, Y=m=>H/2-m*k;
+    svg.appendChild(el('rect',{x:0,y:0,width:W,height:H,fill:'#0e1830'}));
+    FEAT.parks.forEach(p=>svg.appendChild(el('rect',{x:X(p.x),y:Y(p.y),width:p.w*k,height:p.h*k,rx:4,fill:'#11301f'})));
+    svg.appendChild(el('polyline',{points:FEAT.river.map(([x,y])=>X(x)+','+Y(y)).join(' '),fill:'none',stroke:'#16325c',"stroke-width":Math.max(6,70*k),"stroke-linecap":'round',"stroke-linejoin":'round'}));
+    const mw=Math.max(.6,Math.min(3,9*k));
+    FEAT.minorV.forEach(m=>svg.appendChild(el('line',{x1:X(m),y1:0,x2:X(m),y2:H,stroke:'#1c2a4a',"stroke-width":mw})));
+    FEAT.minorH.forEach(m=>svg.appendChild(el('line',{x1:0,y1:Y(m),x2:W,y2:Y(m),stroke:'#1c2a4a',"stroke-width":mw})));
+    FEAT.major.forEach(r=>{const dx=Math.cos(r.ang),dy=Math.sin(r.ang),nx=-dy*r.off,ny=dx*r.off,L=30000;
+      svg.appendChild(el('line',{x1:X(nx-dx*L),y1:Y(ny-dy*L),x2:X(nx+dx*L),y2:Y(ny+dy*L),stroke:'#3a4a6e',"stroke-width":Math.max(3,22*k),"stroke-linecap":'round'}));
+      svg.appendChild(el('line',{x1:X(nx-dx*L),y1:Y(ny-dy*L),x2:X(nx+dx*L),y2:Y(ny+dy*L),stroke:'#e2b64a',"stroke-opacity":.35,"stroke-width":Math.max(1,3*k)}));});
+    // center landmark
+    const c=toPx(S.center.lat,S.center.lng);
+    svg.appendChild(el('circle',{cx:c.x,cy:c.y,r:4,fill:'#7fb0ff'}));
+    const t=el('text',{x:c.x+8,y:c.y-8,fill:'#a9c9ff',"font-size":11,"font-family":'Plus Jakarta Sans, sans-serif',"font-weight":600});t.textContent=S.center.n;svg.appendChild(t);
+    // scale bar
+    const sm=[50,100,200,500,1000].find(v=>v/mpp()>=60)||1000;const sw=sm/mpp();
+    svg.appendChild(el('rect',{x:12,y:12,width:sw+16,height:24,rx:6,fill:'rgba(10,15,30,.85)',stroke:'#25324f'}));
+    svg.appendChild(el('line',{x1:20,y1:28,x2:20+sw,y2:28,stroke:'#e6ecf7',"stroke-width":2}));
+    const st=el('text',{x:20,y:23,fill:'#e6ecf7',"font-size":10,"font-family":'JetBrains Mono, monospace'});st.textContent=sm>=1000?(sm/1000)+' km':sm+' m';svg.appendChild(st);
+    if(S.pin){
+      const p=toPx(S.pin.lat,S.pin.lng);
+      svg.appendChild(el('circle',{cx:p.x,cy:p.y,r:S.radius/mpp(),fill:'rgba(79,143,240,.14)',stroke:'#4f8ff0',"stroke-width":1.5,"stroke-dasharray":'5 4'}));
+      const g=el('g',{class:S.dropped?'pinanim':''});S.dropped=false;
+      g.appendChild(el('ellipse',{cx:p.x,cy:p.y+2,rx:7,ry:3,fill:'rgba(0,0,0,.45)'}));
+      g.appendChild(el('path',{d:`M${p.x} ${p.y} C${p.x-4} ${p.y-10} ${p.x-13} ${p.y-16} ${p.x-13} ${p.y-26} A13 13 0 1 1 ${p.x+13} ${p.y-26} C${p.x+13} ${p.y-16} ${p.x+4} ${p.y-10} ${p.x} ${p.y}Z`,fill:'#ef4444',stroke:'#fff',"stroke-width":1.5}));
+      g.appendChild(el('circle',{cx:p.x,cy:p.y-26,r:5,fill:'#fff'}));
+      svg.appendChild(g);
+    }
+  }
+
+  let opened=false;
+  function openMap(){ opened=true; $('veil').hidden=true; draw(); }
+  function recenter(pl){S.center={lat:pl.lat,lng:pl.lng,label:pl.a.split(',').slice(-2).join(',').trim(),n:pl.n};$('mapArea').innerHTML='Map · <b>'+esc(S.center.label)+'</b>';build();}
+
+  function setPicked(){
+    const box=$('picked');
+    if(!S.pin&&!S.typed){box.hidden=true;return;}
+    box.hidden=false;
+    $('pkName').textContent=S.name;
+    $('pkAddr').textContent=S.addr;
+    $('pkCoord').textContent=S.pin?fmt(S.pin.lat,S.pin.lng):'';
+    $('pkWarn').hidden=!!S.pin;
+    $('radiusBox').hidden=!S.pin;
+    $('maptip').textContent=S.pin?'Drag isn’t needed. Tap again to move the pin.':'Tap to drop a pin';
+  }
+
+  // suggestions
+  function hl(s,q){if(!q)return esc(s);const i=s.toLowerCase().indexOf(q.toLowerCase());if(i<0)return esc(s);return esc(s.slice(0,i))+'<mark>'+esc(s.slice(i,i+q.length))+'</mark>'+esc(s.slice(i+q.length));}
+  let items=[];
+  function suggest(){
+    const q=$('loc').value.trim();$('clear').hidden=!q;
+    const box=$('sugg');
+    if(!q){box.hidden=true;$('loc').setAttribute('aria-expanded','false');return;}
+    const ql=q.toLowerCase();
+    let list=PLACES.filter(p=>(p.n+' '+p.a).toLowerCase().includes(ql));
+    list.sort((a,b)=>dist(a,S.center)-dist(b,S.center));
+    list=list.slice(0,5);
+    items=list.map(p=>({type:'place',p})).concat([{type:'typed',q}]);
+    S.active=items.length>1?0:-1;
+    renderSugg();
+    box.hidden=false;$('loc').setAttribute('aria-expanded','true');
+  }
+  function renderSugg(){
+    const q=$('loc').value.trim();
+    const PIN='<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+    const PEN='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
+    $('sugg').innerHTML=items.map((it,i)=>{
+      if(it.type==='place'){const d=dist(it.p,S.center);const ds=d<1000?Math.round(d)+' m':(d/1000).toFixed(d<10000?1:0)+' km';
+        return '<button type="button" role="option" id="opt'+i+'" data-i="'+i+'" aria-selected="'+(i===S.active)+'"><span class="pi">'+PIN+'</span><span><span class="n">'+hl(it.p.n,q)+'</span><br><span class="a">'+esc(it.p.a)+' · '+ds+' away</span></span></button>';}
+      return '<button type="button" role="option" class="typed" id="opt'+i+'" data-i="'+i+'" aria-selected="'+(i===S.active)+'"><span class="pi">'+PEN+'</span><span><span class="n">Use “'+esc(it.q)+'” as typed</span><br><span class="a">Then tap the map to pin the exact spot</span></span></button>';
+    }).join('')+'<div class="foot">Closest to the map area first</div>';
+    $('sugg').querySelectorAll('button').forEach(b=>b.addEventListener('mousedown',e=>{e.preventDefault();choose(+b.dataset.i);}));
+    if(S.active>=0)$('loc').setAttribute('aria-activedescendant','opt'+S.active);
+  }
+  function closeSugg(){$('sugg').hidden=true;$('loc').setAttribute('aria-expanded','false');}
+  function choose(i){
+    const it=items[i];if(!it)return;
+    openMap();
+    if(it.type==='place'){
+      recenter(it.p);S.pin={lat:it.p.lat,lng:it.p.lng};S.name=it.p.n;S.addr=it.p.a;S.typed=false;S.dropped=true;
+      $('loc').value=it.p.n+', '+it.p.a;
+    }else{
+      S.name=it.q;S.addr='Typed address';S.typed=true;S.pin=null;
+    }
+    closeSugg();draw();setPicked();hideErr();
+  }
+
+  $('loc').addEventListener('focus',()=>{openMap();if($('loc').value.trim()&&!S.pin&&!S.typed)suggest();});
+  $('loc').addEventListener('input',()=>{S.typed=false;suggest();});
+  $('loc').addEventListener('keydown',e=>{
+    if($('sugg').hidden)return;
+    if(e.key==='ArrowDown'){e.preventDefault();S.active=(S.active+1)%items.length;renderSugg();}
+    else if(e.key==='ArrowUp'){e.preventDefault();S.active=(S.active-1+items.length)%items.length;renderSugg();}
+    else if(e.key==='Enter'){e.preventDefault();choose(Math.max(0,S.active));}
+    else if(e.key==='Escape'){closeSugg();}
+  });
+  $('loc').addEventListener('blur',()=>setTimeout(closeSugg,120));
+  $('clear').onclick=()=>{$('loc').value='';S.pin=null;S.typed=false;S.name='';S.addr='';$('clear').hidden=true;closeSugg();draw();setPicked();$('loc').focus();};
+  $('pname').addEventListener('change',()=>{if($('pname').value.trim())openMap();});
+  $('veil').onclick=()=>{ if($('pname').value.trim()){openMap();$('loc').focus();} else $('pname').focus(); };
+  $('pname').addEventListener('input',()=>{if($('pname').value.trim().length>1&&!opened)openMap();});
+  if(window.ResizeObserver)new ResizeObserver(()=>draw()).observe($('map'));else addEventListener('resize',draw);
+
+  $('map').addEventListener('click',e=>{
+    if(e.target.closest('.mapctl')||e.target.closest('.veil'))return;
+    const r=$('svg').getBoundingClientRect();
+    if(!opened)return;const x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height;
+    const ll=toLL(x,y);S.pin=ll;S.dropped=true;
+    const d=Math.round(dist(ll,S.center));
+    if(!S.typed){
+      S.name='Pinned location';
+      S.addr=(d<30?'At ':'~'+(d<1000?d+' m':(d/1000).toFixed(1)+' km')+' from ')+S.center.n+', '+S.center.label;
+      $('loc').value=S.addr;$('clear').hidden=false;
+    }
+    closeSugg();draw();setPicked();hideErr();
+  });
+  $('zin').onclick=()=>{if(S.zoom<ZOOMS.length-1){S.zoom++;draw();}};
+  $('zout').onclick=()=>{if(S.zoom>0){S.zoom--;draw();}};
+  $('radius').addEventListener('input',e=>{S.radius=+e.target.value;$('rval').textContent=S.radius+' m';draw();});
+
+  function showErr(m){$('err').textContent=m;$('err').hidden=false;}
+  function hideErr(){$('err').hidden=true;}
+
+  // sites list
+  const PINS='<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+  function renderSites(){
+    $('count').textContent=SITES.length+(SITES.length===1?' site':' sites');
+    $('sites').innerHTML=SITES.map((s,i)=>{
+      const has=s.lat!=null;
+      return '<div class="site'+(i===S.newIdx?' new':'')+'"><div class="srow">'+
+        '<span class="smark '+(has?'has':'none')+'">'+PINS+'</span>'+
+        '<div class="sinfo"><div class="sname">'+esc(s.name)+'</div>'+
+        '<div class="saddr">'+(s.addr?esc(s.addr):'<span class="nogps">No location set</span>')+'</div>'+
+        '<div class="smeta">'+(has?'<span class="coord">'+fmt(s.lat,s.lng)+'</span><span>· '+s.r+' m radius</span>':'<span class="nogps">GPS check off until a pin is added</span>')+'</div></div>'+
+        '<span class="emps '+(s.emps?'some':'zero')+'">'+s.emps+(s.emps===1?' emp':' emps')+'</span>'+
+        '<div class="acts"><button type="button" class="icbtn edit" data-edit="'+i+'" aria-label="Edit '+esc(s.name)+'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>'+
+        '<button type="button" class="icbtn del" data-del="'+i+'" aria-label="Remove '+esc(s.name)+'"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></div></div>'+
+        (S.confirm===i?'<div class="confirm" role="alert">Remove '+esc(s.name)+'?'+(s.emps?' '+s.emps+(s.emps===1?' employee moves':' employees move')+' to Unassigned.':'')+' Past attendance keeps the site name.<div><button type="button" class="btn small danger" data-yes="'+i+'">Remove site</button><button type="button" class="btn small" data-no>Cancel</button></div></div>':'')+
+        '</div>';
+    }).join('');
+    $('sites').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.confirm=+b.dataset.del;renderSites();});
+    $('sites').querySelectorAll('[data-no]').forEach(b=>b.onclick=()=>{S.confirm=null;renderSites();});
+    $('sites').querySelectorAll('[data-yes]').forEach(b=>b.onclick=()=>{const s=SITES.splice(+b.dataset.yes,1)[0];S.editing=null;$('submitLabel').textContent='Add site';S.confirm=null;S.newIdx=null;renderSites();toast(s.name+' removed');});
+    $('sites').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{
+      S.editing=+b.dataset.edit;$('submitLabel').textContent='Save changes';const s=SITES[S.editing];$('pname').value=s.name;openMap();
+      if(s.lat!=null){S.pin={lat:s.lat,lng:s.lng};S.name=s.name;S.addr=s.addr;S.radius=s.r;$('radius').value=s.r;$('rval').textContent=s.r+' m';$('loc').value=s.addr;$('clear').hidden=false;}
+      else{S.pin=null;S.typed=false;$('loc').value='';}
+      draw();setPicked();$('pname').scrollIntoView({behavior:'smooth',block:'center'});toast('Editing '+s.name+'. Change the pin, then save.');
+    });
+  }
+
+  let tt;function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2600);}
+
+  $('form').addEventListener('submit',e=>{
+    e.preventDefault();
+    const name=$('pname').value.trim();
+    if(!name){showErr('Add a project name first.');$('pname').focus();return;}
+    if(!S.pin&&!S.typed){showErr('Pick a place from the suggestions, type an address, or tap the map to pin it.');$('loc').focus();return;}
+    const addr=S.typed?S.name:S.addr.startsWith('~')||S.addr.startsWith('At ')?S.addr:(S.name+', '+S.addr);
+    const rec={name,addr,lat:S.pin?S.pin.lat:null,lng:S.pin?S.pin.lng:null,r:S.radius,emps:0};
+    if(S.editing!=null&&SITES[S.editing]){rec.emps=SITES[S.editing].emps;SITES[S.editing]=rec;S.newIdx=S.editing;toast(name+' saved');}
+    else{SITES.unshift(rec);S.newIdx=0;toast(name+' added'+(S.pin?'':' · pin still needed for GPS'));}
+    S.editing=null;$('submitLabel').textContent='Add site';S.confirm=null;renderSites();
+    $('pname').value='';$('loc').value='';$('clear').hidden=true;S.pin=null;S.typed=false;S.name='';S.addr='';hideErr();draw();setPicked();
+  });
+
+  build();renderSites();
+  // Start in a realistic working state: map open with a sample pin
+  $('pname').value='Tower 2 — Riverside';
+  openMap();
+  S.pin={lat:13.6207,lng:123.1968};S.name='Pinned location';
+  S.addr='~250 m from Naga City Hall, Naga City, Camarines Sur';$('loc').value=S.addr;$('clear').hidden=false;
+  draw();setPicked();
+})();
+</script>

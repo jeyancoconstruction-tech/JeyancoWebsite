@@ -69,7 +69,7 @@ class KioskController extends Controller
      */
     public function getSites()
     {
-        $sites = Site::orderBy('name')->get(['id', 'name', 'location', 'latitude', 'longitude']);
+        $sites = Site::orderBy('name')->get(['id', 'name', 'location', 'latitude', 'longitude', 'geofence_radius']);
 
         return response()->json([
             'success' => true,
@@ -83,10 +83,12 @@ class KioskController extends Controller
                 'longitude' => $s->longitude,
                 // Geofence radius in metres, so the tracker stops carrying its
                 // own hard-coded copy of coordinates that drift out of step with
-                // whatever the admin set on the dashboard map.
-                'radius'    => (int) config('kiosk.geofence_radius'),
+                // whatever the admin set on the dashboard map. Each site's own,
+                // as set on the Sites page.
+                'radius'    => $s->geofenceRadius(),
             ])->values(),
             'count'   => $sites->count(),
+            // The office-wide figure, for a site that was never given one.
             'radius'  => (int) config('kiosk.geofence_radius'),
         ]);
     }
@@ -192,7 +194,7 @@ class KioskController extends Controller
         }
 
         $distance = $this->haversineMeters((float) $curLat, (float) $curLng, (float) $destLat, (float) $destLng);
-        $radius   = (int) config('kiosk.geofence_radius');
+        $radius   = $site->geofenceRadius();
 
         if ($distance > $radius) {
             return [
