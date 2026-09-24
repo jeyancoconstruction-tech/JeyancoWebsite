@@ -18,8 +18,8 @@ use Illuminate\Database\QueryException;
  * listed directly; movable ones are derived:
  *   - Maundy Thursday / Good Friday / Black Saturday → from Easter (computus)
  *   - National Heroes Day → last Monday of August
- * Proclamation-based holidays are missing from that list; admins add those
- * manually in the Holidays tab when there is no Google Calendar key.
+ * Proclamation-based holidays are missing from that list, which is why the
+ * Google Calendar key matters: there is no way to add a holiday by hand.
  */
 class PhilippineHolidays
 {
@@ -184,18 +184,6 @@ class PhilippineHolidays
         $year = (int) substr($date, 0, 4);
 
         return self::forYear($year)[$date] ?? null;
-    }
-
-    /**
-     * Human-readable label for a holiday type.
-     */
-    public static function typeLabel(?string $type): string
-    {
-        return match ($type) {
-            self::REGULAR => 'Regular Holiday',
-            self::SPECIAL => 'Special (Non-Working)',
-            default       => 'Custom Holiday',
-        };
     }
 
     /**

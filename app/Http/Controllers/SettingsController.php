@@ -69,23 +69,11 @@ class SettingsController extends Controller
         // that says whether the split is actually being used.
         $shifts = Shift::withCount(['employees' => fn ($q) => $q->active()])->orderBy('id')->get();
 
-        // Holiday calendar: official PH holidays for the selected year merged
-        // with manual entries (auto-recognised, admin-overridable).
+        // Holiday calendar: the official PH holidays for the selected year,
+        // each on or off as the admin has set it.
         $holidayYear = (int) $request->input('year', now()->year);
         $holidayCalendar = Holiday::calendarFor($holidayYear);
         $holidayYearOptions = range(now()->year - 2, now()->year + 2);
-
-        // Official holiday map for the next few years — powers the "recognised
-        // holiday" auto-fill when an admin picks a date in the Add form.
-        $officialMap = [];
-        foreach (range(now()->year - 1, now()->year + 1) as $y) {
-            foreach (PhilippineHolidays::forYear($y) as $date => $info) {
-                $officialMap[$date] = [
-                    'title' => $info['title'],
-                    'type'  => PhilippineHolidays::typeLabel($info['type']),
-                ];
-            }
-        }
 
         // Google Calendar: whether it is connected and when it last synced.
         // A stale calendar is refreshed after this page has been sent.
@@ -115,7 +103,7 @@ class SettingsController extends Controller
         }
 
         return view('settings.index', compact(
-            'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap', 'holidaySync',
+            'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'holidaySync',
             'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system', 'bonusGrants', 'valeAdvances', 'activeEmployees', 'shifts'
         ));
     }
@@ -346,45 +334,12 @@ class SettingsController extends Controller
     }
 
     /**
-     * Add a global holiday date. Applies the holiday pay multiplier to all
-     * employees for that date. Non-destructive: attendance logs are untouched.
-     *
-     * If the chosen date is a recognised official Philippine holiday, it is
-     * stored as such (and re-activated); otherwise it is saved as a custom
-     * holiday. Always created active.
-     */
-    public function storeHoliday(Request $request)
-    {
-        $request->validate([
-            'date' => 'required|date',
-            'title' => 'nullable|string|max:100',
-        ]);
-
-        $date = Carbon::parse($request->date)->toDateString();
-        $official = PhilippineHolidays::infoFor($date);
-
-        Holiday::updateOrCreate(
-            ['date' => $date],
-            [
-                'title'       => $request->title ?: ($official['title'] ?? null),
-                'type'        => $official['type'] ?? 'custom',
-                'is_official' => $official !== null,
-                'is_active'   => true,
-            ]
-        );
-
-        return redirect()->route('settings.index', ['tab' => 'holiday'])
-            ->with('success', 'Holiday added successfully!');
-    }
-
-    /**
      * Enable / disable a holiday for payroll without deleting attendance data.
      *
-     * - Official holiday: the calendar says whether it counts (on, except a
-     *   past day Google named late). Flipping it away from that writes an
-     *   override row; flipping it back removes the row, so the day follows
-     *   the calendar again.
-     * - Custom holiday → flip is_active.
+     * The calendar says whether a holiday counts (on, except a past day Google
+     * named late). Flipping it away from that writes an override row; flipping
+     * it back removes the row, so the day follows the calendar again. Only
+     * official holidays can be toggled — there are no custom ones.
      */
     public function toggleHoliday(Request $request)
     {
@@ -394,29 +349,31 @@ class SettingsController extends Controller
 
         $date     = Carbon::parse($request->date)->toDateString();
         $official = PhilippineHolidays::infoFor($date);
-        $holiday  = Holiday::whereDate('date', $date)->first();
-        $newState = true;
 
-        if ($official) {
-            $default  = $official['is_active'];
-            $newState = ! ($holiday ? (bool) $holiday->is_active : $default);
-
-            if ($holiday && $holiday->is_official && $newState === $default) {
-                $holiday->delete();   // back to what the calendar says
-            } elseif ($holiday) {
-                $holiday->update(['is_active' => $newState]);
-            } else {
-                Holiday::create([
-                    'date'        => $date,
-                    'title'       => $official['title'],
-                    'type'        => $official['type'],
-                    'is_official' => true,
-                    'is_active'   => $newState,
-                ]);
+        if (! $official) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'That date is not a holiday.'], 422);
             }
+
+            return back()->withErrors(['date' => 'That date is not a holiday.']);
+        }
+
+        $holiday  = Holiday::whereDate('date', $date)->first();
+        $default  = $official['is_active'];
+        $newState = ! ($holiday ? (bool) $holiday->is_active : $default);
+
+        if ($holiday && $newState === $default) {
+            $holiday->delete();   // back to what the calendar says
         } elseif ($holiday) {
-            $holiday->update(['is_active' => ! $holiday->is_active]);
-            $newState = $holiday->is_active;
+            $holiday->update(['is_active' => $newState]);
+        } else {
+            Holiday::create([
+                'date'        => $date,
+                'title'       => $official['title'],
+                'type'        => $official['type'],
+                'is_official' => true,
+                'is_active'   => $newState,
+            ]);
         }
 
         if ($request->wantsJson()) {
@@ -450,7 +407,7 @@ class SettingsController extends Controller
         $now = now();
         foreach (PhilippineHolidays::forYear($year) as $date => $info) {
             $row = $existing->get($date);
-            if ($row && $row->is_official && $info['is_active'] === $enable) {
+            if ($row && $info['is_active'] === $enable) {
                 $row->delete();
             } elseif ($row) {
                 if ((bool) $row->is_active !== $enable) {
@@ -467,9 +424,6 @@ class SettingsController extends Controller
         if ($inserts) {
             Holiday::insert($inserts);
         }
-
-        // Custom holidays follow along.
-        Holiday::whereYear('date', $year)->where('is_official', false)->update(['is_active' => $enable]);
 
         return response()->json([
             'success'  => true,
@@ -513,58 +467,6 @@ class SettingsController extends Controller
             'calendar'  => Holiday::calendarFor($year),
             'synced_at' => GoogleHolidays::syncedAt()?->toIso8601String(),
         ]);
-    }
-
-    /**
-     * Edit the label of a custom (non-official) holiday.
-     */
-    public function editHoliday(Request $request, $id)
-    {
-        $request->validate(['title' => 'required|string|max:100']);
-
-        $holiday = Holiday::findOrFail($id);
-
-        if ($holiday->is_official) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Official holidays cannot be renamed.'], 422);
-            }
-            return back()->withErrors(['title' => 'Official holidays cannot be renamed.']);
-        }
-
-        $holiday->update(['title' => $request->title]);
-
-        if ($request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'holiday' => [
-                    'id'          => $holiday->id,
-                    'date'        => Carbon::parse($holiday->date)->toDateString(),
-                    'title'       => $holiday->title,
-                    'type'        => $holiday->type,
-                    'is_official' => false,
-                    'is_active'   => (bool) $holiday->is_active,
-                ],
-            ]);
-        }
-
-        return redirect()->route('settings.index', ['tab' => 'holiday'])->with('success', 'Holiday updated.');
-    }
-
-    /**
-     * Remove a global holiday date (custom holidays / disable-overrides).
-     */
-    public function deleteHoliday($id)
-    {
-        $holiday = Holiday::findOrFail($id);
-        $date    = Carbon::parse($holiday->date)->toDateString();
-        $holiday->delete();
-
-        if (request()->wantsJson()) {
-            return response()->json(['success' => true, 'date' => $date]);
-        }
-
-        return redirect()->route('settings.index', ['tab' => 'holiday'])
-            ->with('success', 'Holiday removed successfully!');
     }
 
     /**

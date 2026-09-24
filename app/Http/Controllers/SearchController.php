@@ -150,8 +150,8 @@ class SearchController extends Controller
         }
 
         // ===== HOLIDAYS =====
-        $holidays = Holiday::where('date', 'LIKE', $like)
-            ->orWhere('title', 'LIKE', $like)
+        $holidays = Holiday::where('is_official', true)
+            ->where(fn ($q) => $q->where('date', 'LIKE', $like)->orWhere('title', 'LIKE', $like))
             ->orderBy('date', 'desc')
             ->limit($perType)
             ->get();

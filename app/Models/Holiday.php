@@ -23,7 +23,7 @@ class Holiday extends Model
     ];
 
     /**
-     * Return all ACTIVE holidays as ['Y-m-d' => 'regular'|'special'|'custom'].
+     * Return all ACTIVE holidays as ['Y-m-d' => 'regular'|'special'].
      * Used by PayrollService to apply the correct type-based multiplier.
      */
     public static function typeMap(): array
@@ -33,7 +33,7 @@ class Holiday extends Model
         foreach (self::relevantYears() as $year) {
             foreach (self::calendarFor($year) as $holiday) {
                 if ($holiday['is_active']) {
-                    $map[$holiday['date']] = $holiday['type'] ?? 'custom';
+                    $map[$holiday['date']] = $holiday['type'];
                 }
             }
         }
@@ -51,9 +51,14 @@ class Holiday extends Model
     }
 
     /**
-     * Build the merged holiday calendar for a single year: every official
-     * Philippine holiday plus any manual entries, each annotated with its
-     * effective active/disabled status and DB id (if a row exists).
+     * Build the holiday calendar for a single year: every official Philippine
+     * holiday, each annotated with its effective active/disabled status and
+     * the id of the admin's override row, if there is one.
+     *
+     * There are no custom holidays. A row in `holidays` is only ever the on/off
+     * an admin chose for an official day; one left on a date that is no longer
+     * official — a custom holiday from before they were removed, or an Eid
+     * Google has since moved — neither shows nor counts.
      *
      * @return array<int, array{date:string,title:string,type:string,is_official:bool,is_active:bool,id:?int}>
      */
@@ -66,8 +71,8 @@ class Holiday extends Model
 
         $calendar = [];
 
-        // Official holidays — as the calendar has them (on, except a past day
-        // Google named late) unless an admin override row says otherwise.
+        // As the calendar has them (on, except a past day Google named late)
+        // unless an admin override row says otherwise.
         foreach ($official as $date => $info) {
             $row = $rows->get($date);
             $calendar[$date] = [
@@ -77,28 +82,6 @@ class Holiday extends Model
                 'is_official' => true,
                 'is_active'   => $row ? (bool) $row->is_active : ($info['is_active'] ?? true),
                 'id'          => $row?->id,
-            ];
-        }
-
-        // Manual (custom) holidays that aren't part of the official list.
-        foreach ($rows as $date => $row) {
-            if (isset($calendar[$date])) {
-                continue;
-            }
-
-            // "Don't count this official holiday", for a date that is no
-            // longer one — Google moved a tentative Eid, or the year now comes
-            // from Google instead of the offline list. It turns off nothing.
-            if ($row->is_official && ! $row->is_active) {
-                continue;
-            }
-            $calendar[$date] = [
-                'date'        => $date,
-                'title'       => $row->title ?: 'Custom Holiday',
-                'type'        => $row->type ?: 'custom',
-                'is_official' => false,
-                'is_active'   => (bool) $row->is_active,
-                'id'          => $row->id,
             ];
         }
 

@@ -204,7 +204,7 @@ html[data-bs-theme="dark"] .form-select {
 .form-select:disabled { background-image: none !important; opacity: .65; }
 
 
-/* Flatpickr (payroll records, Add Custom Holiday) renders its calendar into
+/* Flatpickr (payroll records) renders its calendar into
    <body> at z-index 999 — under the modal at 1130, so inside the holiday modal
    the picker opened invisibly behind the dialog. */
 .flatpickr-calendar { z-index: 1200 !important; }

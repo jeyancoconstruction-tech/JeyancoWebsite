@@ -641,9 +641,9 @@
             <div class="hc-info-banner mb-4">
                 <i class="fas fa-magic" style="margin-top:1px;flex-shrink:0;"></i>
                 @if($holidaySync['configured'])
-                    <span>{{ __('Holidays come from') }} <strong>{{ __('Google Calendar') }}</strong> {{ __('and refresh every day. Click a holiday to toggle it on/off; click any blank date to add a custom holiday. Holidays Google adds for past dates, and the extra day it lists beside some (like "Eid al-Adha Holiday"), come in switched off.') }} <span id="hc-sync-status"></span></span>
+                    <span>{{ __('Holidays come from') }} <strong>{{ __('Google Calendar') }}</strong> {{ __('and refresh every day. Click a holiday to toggle it on/off. Holidays Google adds for past dates, and the extra day it lists beside some (like "Eid al-Adha Holiday"), come in switched off.') }} <span id="hc-sync-status"></span></span>
                 @else
-                    <span>{{ __('Official Philippine holidays are loaded automatically. Click a holiday to toggle it on/off; click any blank date to add a custom holiday. Use') }} <strong>{{ __('Enable All / Disable All') }}</strong> {{ __('for bulk year-wide changes.') }} <span id="hc-sync-status"></span></span>
+                    <span>{{ __('Official Philippine holidays are loaded automatically. Click a holiday to toggle it on/off. Use') }} <strong>{{ __('Enable All / Disable All') }}</strong> {{ __('for bulk year-wide changes.') }} <span id="hc-sync-status"></span></span>
                 @endif
             </div>
 
@@ -702,9 +702,6 @@
                         <button id="hcal-disable-all" class="hc-pill hc-pill-red">
                             <i class="fas fa-ban"></i> {{ __('Disable All') }}
                         </button>
-                        <button class="hc-pill hc-pill-indigo" data-bs-toggle="modal" data-bs-target="#addHolidayModal">
-                            <i class="fas fa-plus"></i> {{ __('Add Custom') }}
-                        </button>
                     </div>
                 </div>
 
@@ -734,61 +731,11 @@
                 <div class="hc-legend">
                     <span class="hc-leg-item hc-leg-regular"><span class="hc-leg-dot"></span>{{ __('Regular Holiday') }}</span>
                     <span class="hc-leg-item hc-leg-special"><span class="hc-leg-dot"></span>{{ __('Special (Non-Working)') }}</span>
-                    <span class="hc-leg-item hc-leg-custom"><span class="hc-leg-dot"></span>{{ __('Custom Holiday') }}</span>
                     <span class="hc-leg-item hc-leg-off"><i class="fas fa-ban" style="font-size:9px;margin-right:4px;"></i>{{ __('Disabled') }}</span>
                 </div>
                 <div class="hc-rates">
                     <span class="hc-rate hc-rate-regular">{{ __('Regular —') }} <strong>200%</strong></span>
                     <span class="hc-rate hc-rate-special">{{ __('Special —') }} <strong>130%</strong></span>
-                    <span class="hc-rate hc-rate-custom">{{ __('Custom —') }} <strong>200%</strong></span>
-                </div>
-            </div>
-
-            {{-- Add Custom Holiday Modal --}}
-            <div class="modal fade" id="addHolidayModal" tabindex="-1" aria-labelledby="addHolidayModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content border-0" style="border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.14);">
-                        <div class="modal-header border-0" style="background:linear-gradient(135deg,#1e3a8a,#1e40af);color:white;border-radius:14px 14px 0 0;padding:20px 24px;">
-                            <h5 class="modal-title fw-bold mb-0" id="addHolidayModalLabel">
-                                <i class="fas fa-plus-circle me-2"></i>{{ __('Add Custom Holiday') }}
-                            </h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
-                        </div>
-                        <form method="POST" action="{{ route('holidays.store') }}">
-                            @csrf
-                            <div class="modal-body p-4">
-                                <div class="mb-3">
-                                    <label class="form-label fw-600">{{ __('Date') }} <span style="color:#dc2626;">*</span></label>
-                                    <input type="date" id="hmod-date" name="date"
-                                           class="form-control @error('date') is-invalid @enderror"
-                                           value="{{ old('date') }}" required>
-                                    @error('date')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-600">{{ __('Label') }} <span class="text-muted fw-400">{{ __('(optional)') }}</span></label>
-                                    <input type="text" id="hmod-title" name="title" class="form-control"
-                                           placeholder="{{ __('e.g., Company Foundation Day') }}"
-                                           value="{{ old('title') }}">
-                                </div>
-                                <div id="hmod-recognized" class="mt-2" style="display:none;">
-                                    <span class="d-inline-flex align-items-center gap-2 px-3 py-2" style="background:#dbeafe;border-radius:8px;color:#1e40af;font-size:13px;font-weight:600;">
-                                        <i class="fas fa-check-circle"></i>
-                                        Official PH holiday: <span id="hmod-recognized-text"></span>
-                                    </span>
-                                </div>
-                                <div class="mt-3 p-3" style="background:#dbeafe;border-radius:8px;font-size:13px;color:#1e40af;">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Applies the <strong>{{ __('Holiday Pay Multiplier') }}</strong> {{ __('to all employees for that day. Attendance logs are not modified.') }}
-                                </div>
-                            </div>
-                            <div class="modal-footer border-0 p-3" style="background:#f8fafc;border-radius:0 0 14px 14px;">
-                                <button type="button" class="btn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:8px;" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                                <button type="submit" class="btn fw-600" style="background:#16a34a;color:white;border:none;padding:8px 22px;border-radius:8px;">
-                                    <i class="fas fa-plus me-1"></i>{{ __('Add Holiday') }}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
                 </div>
             </div>
 
@@ -797,50 +744,6 @@
                 <div id="hcal-tip-name" style="font-weight:700;font-size:13px;"></div>
                 <div id="hcal-tip-type" style="opacity:0.65;font-size:11px;"></div>
                 <div id="hcal-tip-action" style="margin-top:3px;font-size:11px;color:#93c5fd;"></div>
-            </div>
-
-            {{-- Context panel (custom holidays) --}}
-            <div id="hcal-ctx" class="hc-ctx" style="display:none;">
-                <div id="hcal-ctx-title" class="hc-ctx-title"></div>
-                <div id="hcal-ctx-meta"  class="hc-ctx-meta"></div>
-                <div style="display:flex;flex-direction:column;gap:7px;">
-                    <button id="hcal-ctx-toggle" class="hc-ctx-btn"></button>
-                    <button id="hcal-ctx-edit"   class="hc-ctx-btn" style="background:#f59e0b;">
-                        <i class="fas fa-edit me-1"></i>{{ __('Edit Label') }}
-                    </button>
-                    <button id="hcal-ctx-del"    class="hc-ctx-btn" style="background:#dc2626;">
-                        <i class="fas fa-trash me-1"></i>{{ __('Remove Holiday') }}
-                    </button>
-                </div>
-            </div>
-
-            {{-- Edit custom holiday modal --}}
-            <div class="modal fade" id="editHolidayModal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
-                    <div class="modal-content border-0" style="border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.14);">
-                        <div class="modal-header border-0" style="background:linear-gradient(135deg,#1e3a8a,#1e40af);color:white;border-radius:14px 14px 0 0;padding:18px 22px;">
-                            <h5 class="modal-title fw-bold mb-0"><i class="fas fa-edit me-2"></i>{{ __('Edit Custom Holiday') }}</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
-                        </div>
-                        <div class="modal-body p-4">
-                            <input type="hidden" id="hmod-eid">
-                            <div class="mb-3">
-                                <label class="form-label fw-600 small text-muted text-uppercase" style="letter-spacing:.5px;">{{ __('Date') }}</label>
-                                <div id="hmod-edate" class="fw-700" style="color:#1e3a8a;font-size:1rem;"></div>
-                            </div>
-                            <div class="mb-0">
-                                <label class="form-label fw-600">{{ __('Holiday Label') }} <span style="color:#dc2626;">*</span></label>
-                                <input type="text" id="hmod-etitle" class="form-control" placeholder="{{ __('e.g., Company Anniversary') }}" maxlength="100">
-                            </div>
-                        </div>
-                        <div class="modal-footer border-0 px-4 pb-4 pt-0">
-                            <button type="button" class="btn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:8px;" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                            <button type="button" id="hmod-esave" class="btn fw-600" style="background:#1e3a8a;color:#fff;border:none;padding:8px 22px;border-radius:8px;">
-                                <i class="fas fa-save me-1"></i>{{ __('Save Changes') }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </div>
 
 @push('styles')
@@ -947,10 +850,8 @@
             .hc-list-typetag { font-size:10px; padding:2px 8px; border-radius:99px; font-weight:700; white-space:nowrap; }
             .hlt-regular { background:#dbeafe; color:#1e40af; }
             .hlt-special { background:#ffedd5; color:#c2410c; }
-            .hlt-custom  { background:#ede9fe; color:#6d28d9; }
             [data-bs-theme="dark"] .hlt-regular { background:#172554; color:#93c5fd; }
             [data-bs-theme="dark"] .hlt-special { background:#431407; color:#fdba74; }
-            [data-bs-theme="dark"] .hlt-custom  { background:#2e1065; color:#c4b5fd; }
             .hc-list-tgl { height:26px; padding:0 11px; font-size:11px; font-weight:700; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; transition:background .15s; }
             .hlt-btn-enable  { background:#dcfce7; color:#15803d; }
             .hlt-btn-enable:hover { background:#bbf7d0; }
@@ -1027,11 +928,6 @@
             .hc-cell.ht-special .hc-cell-name { color: #92400e; }
             .hc-cell.ht-special .hc-dot       { background: #d97706; }
 
-            .hc-cell.ht-custom { background: #ede9fe; }
-            .hc-cell.ht-custom .hc-cell-num  { color: #5b21b6; }
-            .hc-cell.ht-custom .hc-cell-name { color: #5b21b6; }
-            .hc-cell.ht-custom .hc-dot       { background: #7c3aed; }
-
             .hc-cell.ht-disabled { background: #f1f5f9; }
             .hc-cell.ht-disabled .hc-cell-num  { color: #94a3b8; text-decoration: line-through; }
             .hc-cell.ht-disabled .hc-cell-name { color: #94a3b8; text-decoration: line-through; }
@@ -1039,8 +935,6 @@
 
             .hc-cell.hc-today { outline: 2px solid #6366f1; outline-offset: -2px; }
             .hc-cell.hc-today:not(.hday) .hc-cell-num { color: #4f46e5; font-weight: 800; }
-            .hc-cell.hc-blank:hover { background: #f0f9ff; cursor: pointer; }
-            [data-bs-theme="dark"] .hc-cell.hc-blank:hover { background: #172554; }
 
             [data-bs-theme="dark"] .hc-cell.ht-regular { background: rgba(30,58,138,.28); }
             [data-bs-theme="dark"] .hc-cell.ht-regular .hc-cell-num  { color: #93c5fd; }
@@ -1048,9 +942,6 @@
             [data-bs-theme="dark"] .hc-cell.ht-special { background: rgba(120,53,15,.32); }
             [data-bs-theme="dark"] .hc-cell.ht-special .hc-cell-num  { color: #fbbf24; }
             [data-bs-theme="dark"] .hc-cell.ht-special .hc-cell-name { color: #fbbf24; }
-            [data-bs-theme="dark"] .hc-cell.ht-custom  { background: rgba(76,29,149,.32); }
-            [data-bs-theme="dark"] .hc-cell.ht-custom  .hc-cell-num  { color: #c4b5fd; }
-            [data-bs-theme="dark"] .hc-cell.ht-custom  .hc-cell-name { color: #c4b5fd; }
             [data-bs-theme="dark"] .hc-cell.ht-disabled { background: #283449; }
             [data-bs-theme="dark"] .hc-cell.ht-disabled .hc-cell-num { color: #475569; }
             [data-bs-theme="dark"] .hc-cell.hc-today { outline-color: #818cf8; }
@@ -1074,12 +965,9 @@
             .hc-leg-regular .hc-leg-dot { background:#1e40af; }
             .hc-leg-special { background:#fef3c7; color:#92400e; border-left:3px solid #d97706; }
             .hc-leg-special .hc-leg-dot { background:#d97706; }
-            .hc-leg-custom  { background:#ede9fe; color:#5b21b6; border-left:3px solid #7c3aed; }
-            .hc-leg-custom  .hc-leg-dot { background:#7c3aed; }
             .hc-leg-off     { background:#f1f5f9; color:#64748b; border-left:3px solid #94a3b8; }
             [data-bs-theme="dark"] .hc-leg-regular { background:rgba(30,58,138,.2); color:#93c5fd; }
             [data-bs-theme="dark"] .hc-leg-special { background:rgba(120,53,15,.2); color:#fbbf24; }
-            [data-bs-theme="dark"] .hc-leg-custom  { background:rgba(76,29,149,.2); color:#c4b5fd; }
             [data-bs-theme="dark"] .hc-leg-off     { background:#283449; color:#64748b; }
 
             .hc-rates { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
@@ -1087,42 +975,16 @@
             .hc-rate::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; flex-shrink:0; }
             .hc-rate-regular { color:#1e40af; } .hc-rate-regular::before { background:#1e40af; }
             .hc-rate-special { color:#92400e; } .hc-rate-special::before { background:#d97706; }
-            .hc-rate-custom  { color:#5b21b6; } .hc-rate-custom::before  { background:#7c3aed; }
             [data-bs-theme="dark"] .hc-rate-regular { color:#93c5fd; }
             [data-bs-theme="dark"] .hc-rate-special { color:#fbbf24; }
-            [data-bs-theme="dark"] .hc-rate-custom  { color:#c4b5fd; }
-
-            /* ── Context panel ───────────────────────────────────────────── */
-            .hc-ctx {
-                position: fixed; z-index: 9998; background: #fff;
-                border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;
-                min-width: 220px; box-shadow: 0 10px 32px rgba(0,0,0,0.14);
-            }
-            .hc-ctx-title { font-weight: 700; font-size: 13px; color: #1e3a8a; margin-bottom: 3px; }
-            .hc-ctx-meta  { font-size: 11px; color: #64748b; margin-bottom: 14px; }
-            .hc-ctx-btn {
-                width: 100%; padding: 7px 12px; font-weight: 600; font-size: 13px;
-                cursor: pointer; border: none; border-radius: 7px; color: #fff;
-                display: flex; align-items: center; justify-content: center;
-            }
-            [data-bs-theme="dark"] .hc-ctx { background: #1c2740; border-color: #283449; box-shadow: 0 10px 32px rgba(0,0,0,0.4); }
-            [data-bs-theme="dark"] .hc-ctx-title { color: #93c5fd; }
-            [data-bs-theme="dark"] .hc-ctx-meta  { color: #64748b; }
 
             </style>
 @endpush
-
-            {{-- Flatpickr (date picker for Add Custom Holiday modal) --}}
-@push('styles')
-            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-@endpush
-            <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 
             {{-- Calendar JavaScript --}}
             <script>
             (function () {
                 // ── Server-side data ──────────────────────────────────────────────
-                const officialMap = @json($officialMap);
                 let   calData     = @json($holidayCalendar);
                 let   holidayMap  = toMap(calData);
                 let   calYear     = {{ $holidayYear }};
@@ -1170,7 +1032,7 @@
                         const h    = holidayMap[date];
                         const tc   = date === TODAY ? ' hc-today' : '';
                         if (h) {
-                            const cls  = 'ht-' + (h.is_active ? (h.type || 'custom') : 'disabled');
+                            const cls  = 'ht-' + (h.is_active ? h.type : 'disabled');
                             const name = h.title.length > 13 ? h.title.slice(0, 12) + '…' : h.title;
                             html += `<div class="hc-cell hday ${cls}${tc}" data-date="${date}">` +
                                     `<span class="hc-cell-num">${d}</span>` +
@@ -1191,22 +1053,8 @@
                         cell.addEventListener('mouseenter', e => showTip(e, holiday));
                         cell.addEventListener('mousemove',  e => moveTip(e));
                         cell.addEventListener('mouseleave', hideTip);
-                        cell.addEventListener('click',      () => doClick(date, cell, holiday));
+                        cell.addEventListener('click',      () => doToggle(date, cell, holiday));
                     });
-                    view.querySelectorAll('.hc-blank').forEach(cell => {
-                        cell.addEventListener('click', () => openAddModal(cell.dataset.date));
-                    });
-                }
-
-                let hmodFp = null;
-
-                function openAddModal(date) {
-                    if (hmodFp) { hmodFp.setDate(date, true); }
-                    else {
-                        const inp = document.getElementById('hmod-date');
-                        if (inp) { inp.value = date; }
-                    }
-                    new bootstrap.Modal(document.getElementById('addHolidayModal')).show();
                 }
 
                 // ── Header + quick-jump controls ──────────────────────────────────
@@ -1265,7 +1113,7 @@
                 const listPanel = document.getElementById('hc-list-panel');
                 const listTitle = document.getElementById('hc-list-title');
                 const listBody  = document.getElementById('hc-list-body');
-                let   listFilter = null; // 'active'|'disabled'|'regular'|'special'|'custom'|null
+                let   listFilter = null; // 'active'|'disabled'|'regular'|'special'|null
 
                 document.getElementById('hc-list-close')?.addEventListener('click', closeListPanel);
                 document.querySelector('.hc-stat-on') .addEventListener('click', () => toggleListPanel('active'));
@@ -1274,7 +1122,6 @@
                 // Legend items act as type filters for the list panel.
                 document.querySelector('.hc-leg-regular')?.addEventListener('click', () => toggleListPanel('regular'));
                 document.querySelector('.hc-leg-special')?.addEventListener('click', () => toggleListPanel('special'));
-                document.querySelector('.hc-leg-custom') .addEventListener('click', () => toggleListPanel('custom'));
                 document.querySelector('.hc-leg-off')    .addEventListener('click', () => toggleListPanel('disabled'));
 
                 function toggleListPanel(filter) {
@@ -1291,23 +1138,21 @@
                 }
 
                 function renderListPanel() {
-                    const TYPE_LABEL = { regular:'Regular', special:'Special', custom:'Custom' };
+                    const TYPE_LABEL = { regular:'Regular', special:'Special' };
 
                     // Predicate per filter. Type filters show ACTIVE holidays of that
                     // type (disabled ones have their own "Disabled" category/colour).
                     const matches = {
                         active:   h => h.is_active,
                         disabled: h => !h.is_active,
-                        regular:  h => h.is_active && (h.type || 'custom') === 'regular',
-                        special:  h => h.is_active && (h.type || 'custom') === 'special',
-                        custom:   h => h.is_active && (h.type || 'custom') === 'custom',
+                        regular:  h => h.is_active && h.type === 'regular',
+                        special:  h => h.is_active && h.type === 'special',
                     };
                     const TITLE = {
                         active:   'Active Holidays',
                         disabled: 'Disabled Holidays',
                         regular:  'Regular Holidays',
                         special:  'Special (Non-Working) Holidays',
-                        custom:   'Custom Holidays',
                     };
 
                     const holidays = Object.values(holidayMap)
@@ -1323,13 +1168,13 @@
 
                     listBody.innerHTML = holidays.map(h => {
                         const [y, m, d] = h.date.split('-');
-                        const label = TYPE_LABEL[h.type] || 'Custom';
+                        const label = TYPE_LABEL[h.type];
                         const btnCls  = h.is_active ? 'hlt-btn-disable' : 'hlt-btn-enable';
                         const btnText = h.is_active ? '⊗ Disable' : '✓ Enable';
                         return `<div class="hc-list-row">
                             <span class="hc-list-date">${m}/${d}/${y}</span>
                             <span class="hc-list-name">${h.title}</span>
-                            <span class="hc-list-typetag hlt-${h.type || 'custom'}">${label}</span>
+                            <span class="hc-list-typetag hlt-${h.type}">${label}</span>
                             <button class="hc-list-tgl ${btnCls}" data-date="${h.date}">${btnText}</button>
                         </div>`;
                     }).join('');
@@ -1365,12 +1210,12 @@
                 const tipName = document.getElementById('hcal-tip-name');
                 const tipType = document.getElementById('hcal-tip-type');
                 const tipAct  = document.getElementById('hcal-tip-action');
-                const TL = { regular:'Regular Holiday', special:'Special (Non-Working)', custom:'Custom Holiday' };
+                const TL = { regular:'Regular Holiday', special:'Special (Non-Working)' };
 
                 function showTip(e, h) {
                     tipName.textContent = h.title;
                     tipType.textContent = TL[h.type] || 'Holiday';
-                    tipAct.textContent  = h.is_official ? (h.is_active ? 'Click to disable' : 'Click to enable') : 'Click for options';
+                    tipAct.textContent  = h.is_active ? 'Click to disable' : 'Click to enable';
                     tip.style.display = 'block'; moveTip(e);
                 }
                 function moveTip(e) {
@@ -1378,108 +1223,6 @@
                     tip.style.top  = (e.clientY - 10) + 'px';
                 }
                 function hideTip() { tip.style.display = 'none'; }
-
-                // ── Click dispatcher ──────────────────────────────────────────────
-                function doClick(date, cell, holiday) {
-                    hideTip();
-                    if (holiday.is_official) doToggle(date, cell, holiday);
-                    else showCtx(date, cell, holiday);
-                }
-
-                // ── Context panel ─────────────────────────────────────────────────
-                const ctx      = document.getElementById('hcal-ctx');
-                const ctxTitle = document.getElementById('hcal-ctx-title');
-                const ctxMeta  = document.getElementById('hcal-ctx-meta');
-                const ctxTgl   = document.getElementById('hcal-ctx-toggle');
-                const ctxEdit  = document.getElementById('hcal-ctx-edit');
-                const ctxDel   = document.getElementById('hcal-ctx-del');
-                let   ctxState = null;
-
-                function showCtx(date, cell, holiday) {
-                    ctxState = { date, cell, holiday };
-                    ctxTitle.textContent = holiday.title;
-                    ctxMeta.textContent  = 'Custom Holiday · ' + (holiday.is_active ? 'Active' : 'Disabled');
-                    ctxTgl.style.background = holiday.is_active ? '#f59e0b' : '#16a34a';
-                    ctxTgl.innerHTML = holiday.is_active
-                        ? '<i class="fas fa-ban" style="margin-right:5px;"></i>Disable'
-                        : '<i class="fas fa-check" style="margin-right:5px;"></i>Enable';
-                    const rect = cell.getBoundingClientRect();
-                    let x = rect.right + 10, y = rect.top - 4;
-                    if (x + 250 > window.innerWidth)  x = rect.left - 260;
-                    if (y + 195 > window.innerHeight) y = window.innerHeight - 205;
-                    if (x < 6) x = 6;
-                    ctx.style.left = x + 'px'; ctx.style.top = y + 'px'; ctx.style.display = 'block';
-                }
-
-                function hideCtx() { ctx.style.display = 'none'; ctxState = null; }
-
-                document.addEventListener('click', e => {
-                    if (ctx.style.display !== 'none' && !ctx.contains(e.target)) hideCtx();
-                }, { capture: true });
-
-                ctxTgl.addEventListener('click', () => { const s = ctxState; hideCtx(); if (s) doToggle(s.date, s.cell, s.holiday); });
-                ctxEdit.addEventListener('click', () => { const s = ctxState; hideCtx(); if (s) openEdit(s.holiday); });
-                ctxDel.addEventListener('click', async () => {
-                    const s = ctxState; hideCtx();
-                    if (!s) return;
-                    const ok = await Notify.confirm({
-                        title:        `Remove "${s.holiday.title}"?`,
-                        message:      'The holiday premium will no longer apply on that date.',
-                        confirmLabel: 'Remove',
-                        tone:         'danger',
-                    });
-                    if (!ok) return;
-                    await doDelete(s.date, s.cell, s.holiday);
-                });
-
-                // ── AJAX delete ───────────────────────────────────────────────────
-                async function doDelete(date, cell, holiday) {
-                    cell.style.opacity = '0.35'; cell.style.pointerEvents = 'none';
-                    try {
-                        const r = await httpReq(`/holidays/${holiday.id}`, {}, 'DELETE');
-                        if (r.success) {
-                            delete holidayMap[date]; renderCalendar();
-                            flash(`"${holiday.title}" removed.`, 'success');
-                        } else { cell.style.opacity = ''; cell.style.pointerEvents = ''; flash('Delete failed.', 'error'); }
-                    } catch { cell.style.opacity = ''; cell.style.pointerEvents = ''; flash('Network error.', 'error'); }
-                }
-
-                // ── Edit custom holiday ────────────────────────────────────────────
-                const editModalEl = document.getElementById('editHolidayModal');
-                const hmodEid     = document.getElementById('hmod-eid');
-                const hmodEdate   = document.getElementById('hmod-edate');
-                const hmodEtitle  = document.getElementById('hmod-etitle');
-                const hmodEsave   = document.getElementById('hmod-esave');
-
-                function fmtDate(d) { const [y,m,dd]=d.split('-'); return `${m}/${dd}/${y}`; }
-
-                function openEdit(holiday) {
-                    hmodEid.value = holiday.id;
-                    hmodEdate.textContent = fmtDate(holiday.date);
-                    hmodEtitle.value = holiday.title;
-                    hmodEtitle.classList.remove('is-invalid');
-                    new bootstrap.Modal(editModalEl).show();
-                }
-
-                if (hmodEsave) {
-                    hmodEsave.addEventListener('click', async () => {
-                        const id = hmodEid.value, title = hmodEtitle.value.trim();
-                        if (!title) { hmodEtitle.classList.add('is-invalid'); hmodEtitle.focus(); return; }
-                        hmodEtitle.classList.remove('is-invalid');
-                        hmodEsave.disabled = true;
-                        try {
-                            const data = await httpReq(`/holidays/${id}`, { title }, 'PUT');
-                            if (data.success) {
-                                const h = data.holiday;
-                                if (holidayMap[h.date]) holidayMap[h.date].title = h.title;
-                                renderCalendar();
-                                bootstrap.Modal.getInstance(editModalEl)?.hide();
-                                flash(`Label updated to "${h.title}".`, 'success');
-                            } else { flash(data.message || 'Update failed.', 'error'); }
-                        } catch { flash('Network error.', 'error'); }
-                        finally  { hmodEsave.disabled = false; }
-                    });
-                }
 
                 // ── Single toggle ──────────────────────────────────────────────────
                 async function doToggle(date, cell, holiday) {
@@ -1489,7 +1232,7 @@
                         if (r.success) {
                             holiday.is_active = r.is_active;
                             if (holidayMap[date]) holidayMap[date].is_active = r.is_active;
-                            cell.className = `hc-cell hday ht-${r.is_active ? (holiday.type||'custom') : 'disabled'}${date===TODAY?' hc-today':''}`;
+                            cell.className = `hc-cell hday ht-${r.is_active ? holiday.type : 'disabled'}${date===TODAY?' hc-today':''}`;
                             updateStats();
                             flash(r.is_active ? 'Holiday enabled.' : 'Holiday disabled.', r.is_active ? 'success' : 'warn');
                         } else { flash('Update failed.', 'error'); }
@@ -1583,28 +1326,6 @@
                     Notify[tone](msg);
                 }
 
-                // ── Add modal: Flatpickr (MM-DD-YYYY display) + PH holiday auto-fill ──
-                const hmodDateEl = document.getElementById('hmod-date');
-                const hmodTitle  = document.getElementById('hmod-title');
-                const hmodRec    = document.getElementById('hmod-recognized');
-                const hmodRecTx  = document.getElementById('hmod-recognized-text');
-                if (hmodDateEl) {
-                    hmodFp = flatpickr(hmodDateEl, {
-                        dateFormat: 'Y-m-d',
-                        altInput:   true,
-                        altFormat:  'm-d-Y',
-                        allowInput: true,
-                        onChange: function (selectedDates, dateStr) {
-                            const info = officialMap[dateStr];
-                            if (info) {
-                                hmodRec.style.display = 'block';
-                                hmodRecTx.textContent  = info.title + ' — ' + info.type;
-                                if (!hmodTitle.value.trim()) hmodTitle.value = info.title;
-                            } else { hmodRec.style.display = 'none'; }
-                        },
-                    });
-                }
-
                 // ── Touch swipe (mobile) ───────────────────────────────────────────
                 const vpEl = document.getElementById('hc-viewport');
                 let touchX = 0;
@@ -1620,14 +1341,6 @@
                     if (e.key === 'ArrowLeft')  navMonth(-1);
                     if (e.key === 'ArrowRight') navMonth(1);
                 });
-
-                // ── Auto-open Add modal on validation error ────────────────────────
-                @if($errors->has('date'))
-                window.addEventListener('load', () => {
-                    const el = document.getElementById('addHolidayModal');
-                    if (el) new bootstrap.Modal(el).show();
-                });
-                @endif
 
                 // ── Init ───────────────────────────────────────────────────────────
                 renderCalendar();
