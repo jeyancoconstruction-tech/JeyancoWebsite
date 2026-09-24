@@ -103,6 +103,7 @@ final class ActivityRecorder
         'employees.bulk-delete'          => ['Employees', 'deleted', 'Moved selected employees to Removed'],
         'employees.delete-all'           => ['Employees', 'deleted', 'Moved every employee to Removed'],
         'holidays.bulk-toggle'           => ['Holidays', 'updated', 'Turned holidays on or off in bulk'],
+        'holidays.sync'                  => ['Holidays', 'updated', 'Synced holidays from Google Calendar'],
     ];
 
     /**

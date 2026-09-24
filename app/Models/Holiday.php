@@ -66,7 +66,8 @@ class Holiday extends Model
 
         $calendar = [];
 
-        // Official holidays — active unless an explicit disable override exists.
+        // Official holidays — as the calendar has them (on, except a past day
+        // Google named late) unless an admin override row says otherwise.
         foreach ($official as $date => $info) {
             $row = $rows->get($date);
             $calendar[$date] = [
@@ -74,7 +75,7 @@ class Holiday extends Model
                 'title'       => $row && $row->title ? $row->title : $info['title'],
                 'type'        => $info['type'],
                 'is_official' => true,
-                'is_active'   => $row ? (bool) $row->is_active : true,
+                'is_active'   => $row ? (bool) $row->is_active : ($info['is_active'] ?? true),
                 'id'          => $row?->id,
             ];
         }
@@ -82,6 +83,13 @@ class Holiday extends Model
         // Manual (custom) holidays that aren't part of the official list.
         foreach ($rows as $date => $row) {
             if (isset($calendar[$date])) {
+                continue;
+            }
+
+            // "Don't count this official holiday", for a date that is no
+            // longer one — Google moved a tentative Eid, or the year now comes
+            // from Google instead of the offline list. It turns off nothing.
+            if ($row->is_official && ! $row->is_active) {
                 continue;
             }
             $calendar[$date] = [

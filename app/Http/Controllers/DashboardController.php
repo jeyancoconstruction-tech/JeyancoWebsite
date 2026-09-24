@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\Kiosk;
 use App\Services\PayrollService;
+use App\Support\GoogleHolidays;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
@@ -16,6 +17,10 @@ class DashboardController extends Controller
     {
         // Active workforce only — pending kiosk detections and archived/removed
         // workers are excluded so the dashboard reflects current employees.
+        // The holiday calendar's daily refresh from Google Calendar rides on
+        // the page opened most, and runs after it has been sent.
+        GoogleHolidays::syncIfStale();
+
         $employees = Employee::active()->get();
 
         $totalEmployees = $employees->count();

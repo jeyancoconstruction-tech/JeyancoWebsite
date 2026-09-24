@@ -640,7 +640,11 @@
             {{-- Info banner --}}
             <div class="hc-info-banner mb-4">
                 <i class="fas fa-magic" style="margin-top:1px;flex-shrink:0;"></i>
-                <span>{{ __('Official Philippine holidays are loaded automatically. Click a holiday to toggle it on/off; click any blank date to add a custom holiday. Use') }} <strong>{{ __('Enable All / Disable All') }}</strong> {{ __('for bulk year-wide changes.') }}</span>
+                @if($holidaySync['configured'])
+                    <span>{{ __('Holidays come from') }} <strong>{{ __('Google Calendar') }}</strong> {{ __('and refresh every day. Click a holiday to toggle it on/off; click any blank date to add a custom holiday. Holidays Google adds for past dates, and the extra day it lists beside some (like "Eid al-Adha Holiday"), come in switched off.') }} <span id="hc-sync-status"></span></span>
+                @else
+                    <span>{{ __('Official Philippine holidays are loaded automatically. Click a holiday to toggle it on/off; click any blank date to add a custom holiday. Use') }} <strong>{{ __('Enable All / Disable All') }}</strong> {{ __('for bulk year-wide changes.') }} <span id="hc-sync-status"></span></span>
+                @endif
             </div>
 
             {{-- Calendar card --}}
@@ -689,6 +693,9 @@
                         </span>
                     </div>
                     <div class="hc-btn-group">
+                        <button id="hcal-sync" class="hc-pill hc-pill-blue" title="{{ __('Pull the holidays from Google Calendar now') }}">
+                            <i class="fab fa-google"></i> {{ __('Sync Google') }}
+                        </button>
                         <button id="hcal-enable-all" class="hc-pill hc-pill-green">
                             <i class="fas fa-check-double"></i> {{ __('Enable All') }}
                         </button>
@@ -964,6 +971,7 @@
             .hc-pill-green  { background: #16a34a; }
             .hc-pill-red    { background: #dc2626; }
             .hc-pill-indigo { background: #6366f1; }
+            .hc-pill-blue   { background: #2563eb; }
 
             /* ── Day-of-week header ──────────────────────────────────────── */
             .hc-dow {
@@ -1123,6 +1131,8 @@
                 const toggleUrl   = '{{ route("holidays.toggle") }}';
                 const bulkUrl     = '{{ route("holidays.bulk-toggle") }}';
                 const calApiUrl   = '{{ route("holidays.calendar") }}';
+                const syncUrl     = '{{ route("holidays.sync") }}';
+                const syncInfo    = @json($holidaySync);
 
                 const MONTHS = ['January','February','March','April','May','June',
                                 'July','August','September','October','November','December'];
@@ -1514,6 +1524,47 @@
                     finally  { vp.style.opacity = ''; btns.forEach(b => b.disabled = false); }
                 }
 
+                // ── Google Calendar sync ───────────────────────────────────────────
+                function showSyncStatus() {
+                    const el = document.getElementById('hc-sync-status');
+                    if (!el) return;
+                    el.textContent = !syncInfo.configured ? 'Google Calendar is not connected yet.'
+                        : syncInfo.synced_at
+                            ? 'Last synced ' + new Date(syncInfo.synced_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }) + '.'
+                            : 'The first sync runs in the background — this calendar updates by itself when it lands.';
+                }
+
+                document.getElementById('hcal-sync')?.addEventListener('click', async function () {
+                    const btn = this, icon = btn.querySelector('i');
+                    btn.disabled = true; icon.className = 'fas fa-spinner fa-spin';
+                    const vp = document.getElementById('hc-viewport');
+                    vp.style.opacity = '0.4';
+                    try {
+                        const r = await post(syncUrl, { year: calYear });
+                        if (r.success) {
+                            calData = r.calendar; holidayMap = toMap(calData); renderCalendar();
+                            syncInfo.synced_at = r.synced_at; showSyncStatus();
+                            const c = r.counts, n = c.added + c.updated + c.removed;
+                            flash(n ? `Synced from Google Calendar: ${c.added} added, ${c.updated} updated, ${c.removed} removed.`
+                                    : 'Synced from Google Calendar. Already up to date.', 'success');
+                        } else { flash(r.message || 'Sync failed.', 'error'); }
+                    } catch { flash('Network error.', 'error'); }
+                    finally  { vp.style.opacity = ''; btn.disabled = false; icon.className = 'fab fa-google'; }
+                });
+
+                // The daily sync runs after a page has been sent, so the calendar
+                // on screen catches up when it lands — as it does for any other
+                // holiday change made elsewhere.
+                Live.on('settings', async () => {
+                    try {
+                        const r    = await fetch(`${calApiUrl}?year=${calYear}`, { headers: { 'Accept':'application/json' } });
+                        const data = await r.json();
+                        if (data.year !== calYear) return;
+                        calData = data.calendar; holidayMap = toMap(calData); renderCalendar();
+                        if (data.synced_at) { syncInfo.synced_at = data.synced_at; showSyncStatus(); }
+                    } catch { /* the next change tries again */ }
+                });
+
                 // ── Fetch helpers ──────────────────────────────────────────────────
                 async function post(url, body) { return httpReq(url, body, 'POST'); }
                 async function httpReq(url, body, method) {
@@ -1580,6 +1631,7 @@
 
                 // ── Init ───────────────────────────────────────────────────────────
                 renderCalendar();
+                showSyncStatus();
             })();
             </script>
         </div>

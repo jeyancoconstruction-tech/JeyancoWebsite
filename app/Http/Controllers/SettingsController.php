@@ -16,6 +16,7 @@ use App\Models\PayrollRate;
 use App\Notifications\SettingsChanged;
 use App\Notifications\EmployeeAlert;
 use App\Notifications\HolidayReminder;
+use App\Support\GoogleHolidays;
 use App\Support\PhilippineHolidays;
 use Carbon\Carbon;
 
@@ -86,6 +87,14 @@ class SettingsController extends Controller
             }
         }
 
+        // Google Calendar: whether it is connected and when it last synced.
+        // A stale calendar is refreshed after this page has been sent.
+        GoogleHolidays::syncIfStale();
+        $holidaySync = [
+            'configured' => GoogleHolidays::configured(),
+            'synced_at'  => GoogleHolidays::syncedAt()?->toIso8601String(),
+        ];
+
         // ── Holiday reminders ──────────────────────────────────────────────
         $user = auth()->user();
 
@@ -106,7 +115,7 @@ class SettingsController extends Controller
         }
 
         return view('settings.index', compact(
-            'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap',
+            'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'officialMap', 'holidaySync',
             'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system', 'bonusGrants', 'valeAdvances', 'activeEmployees', 'shifts'
         ));
     }
@@ -371,9 +380,10 @@ class SettingsController extends Controller
     /**
      * Enable / disable a holiday for payroll without deleting attendance data.
      *
-     * - Official holiday with no row yet (active by default) → create a disable
-     *   override. Disabling/enabling toggles is_active; re-enabling an official
-     *   holiday removes the override row so it returns to its default state.
+     * - Official holiday: the calendar says whether it counts (on, except a
+     *   past day Google named late). Flipping it away from that writes an
+     *   override row; flipping it back removes the row, so the day follows
+     *   the calendar again.
      * - Custom holiday → flip is_active.
      */
     public function toggleHoliday(Request $request)
@@ -387,24 +397,26 @@ class SettingsController extends Controller
         $holiday  = Holiday::whereDate('date', $date)->first();
         $newState = true;
 
-        if ($holiday) {
-            if ($holiday->is_official && ! $holiday->is_active) {
-                $holiday->delete();   // re-enable: remove disable override → auto-active
-                $newState = true;
+        if ($official) {
+            $default  = $official['is_active'];
+            $newState = ! ($holiday ? (bool) $holiday->is_active : $default);
+
+            if ($holiday && $holiday->is_official && $newState === $default) {
+                $holiday->delete();   // back to what the calendar says
+            } elseif ($holiday) {
+                $holiday->update(['is_active' => $newState]);
             } else {
-                $holiday->is_active = ! $holiday->is_active;
-                $holiday->save();
-                $newState = $holiday->is_active;
+                Holiday::create([
+                    'date'        => $date,
+                    'title'       => $official['title'],
+                    'type'        => $official['type'],
+                    'is_official' => true,
+                    'is_active'   => $newState,
+                ]);
             }
-        } elseif ($official) {
-            Holiday::create([
-                'date'        => $date,
-                'title'       => $official['title'],
-                'type'        => $official['type'],
-                'is_official' => true,
-                'is_active'   => false,
-            ]);
-            $newState = false;
+        } elseif ($holiday) {
+            $holiday->update(['is_active' => ! $holiday->is_active]);
+            $newState = $holiday->is_active;
         }
 
         if ($request->wantsJson()) {
@@ -429,40 +441,62 @@ class SettingsController extends Controller
         $year   = (int) $request->year;
         $enable = $request->action === 'enable';
 
-        if ($enable) {
-            // Delete disable-override rows for official holidays → restores auto-active default
-            Holiday::whereYear('date', $year)->where('is_official', true)->where('is_active', false)->delete();
-            // Re-enable any manually disabled custom holidays
-            Holiday::whereYear('date', $year)->where('is_official', false)->update(['is_active' => true]);
-        } else {
-            // Official holidays: insert disable overrides for dates with no row yet
-            $existing = Holiday::whereYear('date', $year)->get()
-                ->keyBy(fn ($h) => Carbon::parse($h->date)->toDateString());
+        // Official holidays: an override only where the wanted state differs
+        // from what the calendar says; where it agrees, the row goes.
+        $existing = Holiday::whereYear('date', $year)->get()
+            ->keyBy(fn ($h) => Carbon::parse($h->date)->toDateString());
 
-            $inserts = [];
-            $now = now();
-            foreach (PhilippineHolidays::forYear($year) as $date => $info) {
-                $row = $existing->get($date);
-                if (! $row) {
-                    $inserts[] = [
-                        'date' => $date, 'title' => $info['title'], 'type' => $info['type'],
-                        'is_official' => true, 'is_active' => false,
-                        'created_at' => $now, 'updated_at' => $now,
-                    ];
-                } elseif ($row->is_active) {
-                    $row->update(['is_active' => false]);
+        $inserts = [];
+        $now = now();
+        foreach (PhilippineHolidays::forYear($year) as $date => $info) {
+            $row = $existing->get($date);
+            if ($row && $row->is_official && $info['is_active'] === $enable) {
+                $row->delete();
+            } elseif ($row) {
+                if ((bool) $row->is_active !== $enable) {
+                    $row->update(['is_active' => $enable]);
                 }
+            } elseif ($info['is_active'] !== $enable) {
+                $inserts[] = [
+                    'date' => $date, 'title' => $info['title'], 'type' => $info['type'],
+                    'is_official' => true, 'is_active' => $enable,
+                    'created_at' => $now, 'updated_at' => $now,
+                ];
             }
-            if ($inserts) {
-                Holiday::insert($inserts);
-            }
-            // Disable custom holidays too
-            Holiday::whereYear('date', $year)->where('is_official', false)->update(['is_active' => false]);
         }
+        if ($inserts) {
+            Holiday::insert($inserts);
+        }
+
+        // Custom holidays follow along.
+        Holiday::whereYear('date', $year)->where('is_official', false)->update(['is_active' => $enable]);
 
         return response()->json([
             'success'  => true,
             'calendar' => Holiday::calendarFor($year),
+        ]);
+    }
+
+    /**
+     * Pull the holidays from Google Calendar now, rather than waiting for the
+     * daily refresh. Returns the year on screen, rebuilt from the new list.
+     */
+    public function syncHolidays(Request $request)
+    {
+        $year = max(2000, min(2100, (int) $request->input('year', now()->year)));
+
+        try {
+            $counts = GoogleHolidays::sync();
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'success'   => true,
+            'counts'    => $counts,
+            'synced_at' => GoogleHolidays::syncedAt()?->toIso8601String(),
+            'year'      => $year,
+            'calendar'  => Holiday::calendarFor($year),
         ]);
     }
 
@@ -475,8 +509,9 @@ class SettingsController extends Controller
         $year = max(2000, min(2100, (int) $request->input('year', now()->year)));
 
         return response()->json([
-            'year'     => $year,
-            'calendar' => Holiday::calendarFor($year),
+            'year'      => $year,
+            'calendar'  => Holiday::calendarFor($year),
+            'synced_at' => GoogleHolidays::syncedAt()?->toIso8601String(),
         ]);
     }
 

@@ -193,10 +193,11 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::delete('/labor-types/{id}', [SettingsController::class, 'deleteLaborType'])->name('labor-types.delete');
     Route::get('/labor-types/{id}/rates', [SettingsController::class, 'getLaborTypeRates'])->name('labor-types.rates');
 
-    // Holidays (global, date-based; auto-synced with the official PH calendar)
+    // Holidays (global, date-based; synced from Google Calendar when a key is set)
     Route::post('/holidays', [SettingsController::class, 'storeHoliday'])->name('holidays.store');
     Route::post('/holidays/toggle', [SettingsController::class, 'toggleHoliday'])->name('holidays.toggle');
     Route::post('/holidays/bulk-toggle', [SettingsController::class, 'bulkToggleHolidays'])->name('holidays.bulk-toggle');
+    Route::post('/holidays/sync', [SettingsController::class, 'syncHolidays'])->name('holidays.sync');
     Route::get('/holidays/calendar', [SettingsController::class, 'holidayCalendar'])->name('holidays.calendar');
     Route::put('/holidays/{id}', [SettingsController::class, 'editHoliday'])->name('holidays.edit');
     Route::delete('/holidays/{id}', [SettingsController::class, 'deleteHoliday'])->name('holidays.delete');

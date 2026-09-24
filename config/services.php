@@ -41,6 +41,14 @@ return [
         'key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    // Google Calendar API — fills the Holidays tab from Google's public
+    // "Holidays in Philippines" calendar. Without a key the tab keeps the
+    // holidays it computes offline. See App\Support\GoogleHolidays.
+    'google_calendar' => [
+        'key'      => env('GOOGLE_CALENDAR_API_KEY'),
+        'holidays' => env('GOOGLE_HOLIDAY_CALENDAR_ID', 'en.philippines#holiday@group.v.calendar.google.com'),
+    ],
+
     // Anthropic (Claude) — powers the kiosk payroll assistant.
     // Always read via config('services.anthropic.key'), never env() directly,
     // so the value survives config caching in production.
