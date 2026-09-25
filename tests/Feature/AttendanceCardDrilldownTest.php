@@ -162,20 +162,25 @@ class AttendanceCardDrilldownTest extends TestCase
     }
 
     /**
-     * The page opens on who is working now: the Working card is on and the
-     * status control says so, with nothing in the address bar. History opens
-     * on every day — a working day in the past has almost no answers.
+     * The page opens on everybody present today: the Present today card is
+     * on, with nothing in the address bar. The status control has no button
+     * for Present, so none of its buttons is lit. (It opened on Working until
+     * Michael asked for Present, 2026-09-25.) History opens on every day — a
+     * working day in the past has almost no answers.
      */
-    public function test_the_page_opens_on_who_is_working(): void
+    public function test_the_page_opens_on_everybody_present_today(): void
     {
         $this->seedCrew();
 
         $page = $this->page();
         $html = $page->getContent();
 
-        $this->assertSame(['Alice Still In'], $page->viewData('todayAttendances')->map(fn ($d) => $d->employee()->name)->all());
-        $this->assertMatchesRegularExpression('#<a class="atm-stat is-good is-active"#', $html);
-        $this->assertStringContainsString('name="view" value="clocked-in" checked', $html);
+        $names = $page->viewData('todayAttendances')->map(fn ($d) => $d->employee()->name)->sort()->values()->all();
+        $this->assertSame(['Alice Still In', 'Ben Went Home'], $names, 'still in and gone home alike: both scanned today');
+        $this->assertMatchesRegularExpression('#<a class="atm-stat is-brand is-active"#', $html);
+        $this->assertDoesNotMatchRegularExpression('#<a class="atm-stat is-good is-active"#', $html, 'Working is not the default any more');
+        $this->assertDoesNotMatchRegularExpression('#name="view" value="[^"]+" checked#', $html);
+        $this->assertStringContainsString("const DEFAULTS = { today: 'present', history: 'all' };", $html, 'the page script agrees');
 
         $history = $this->page(['tab' => 'history'])->getContent();
         $this->assertStringContainsString('name="view" value="all" checked', $history);

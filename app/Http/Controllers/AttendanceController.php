@@ -38,8 +38,8 @@ class AttendanceController extends Controller
         'done'       => ['done'],
     ];
 
-    /** What each tab opens on when nobody has chosen: who is on site now, and every past day. */
-    private const TODAY_DEFAULT   = 'clocked-in';
+    /** What each tab opens on when nobody has chosen: everybody who scanned today, and every past day. */
+    private const TODAY_DEFAULT   = 'present';
     private const HISTORY_DEFAULT = 'all';
 
     /** What the lists load with every row: who, where, under which shift, and from which kiosk. */
@@ -120,10 +120,12 @@ class AttendanceController extends Controller
         // narrows the lists and deliberately NOT the cards: clicking Working
         // now must not go on to rewrite Present today as the same number.
         //
-        // Nobody choosing is not the same as choosing All. Today opens on who
-        // is working now, the question the page is mostly opened to answer;
-        // History opens on every day, since "working" in the past is a
-        // question with almost no answers.
+        // Nobody choosing is not the same as choosing All. Today opens on
+        // Present — everybody who scanned today, working, on break, finished
+        // or waiting on a review — the Present today card (Michael's call,
+        // 2026-09-25; it opened on Working before). History opens on every
+        // day, since "working" in the past is a question with almost no
+        // answers.
         $view = array_key_exists((string) $request->query('view'), self::VIEWS)
             ? (string) $request->query('view')
             : null;

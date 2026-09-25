@@ -145,7 +145,8 @@ class AttendanceListLayoutTest extends TestCase
         preg_match('#id="attTodayList".*?</table>\s*(.*?)</div>\s*</div>#s', $this->page(), $today);
         $this->assertNotEmpty($today, "Today's list should be on the page");
         $this->assertStringContainsString('<div class="atm-empty-state">', $today[1]);
-        $this->assertStringContainsString('Nobody is clocked in right now.', $today[1]);
+        // The page opens on Present today, so an empty day says nobody scanned.
+        $this->assertStringContainsString('No fingerprint scans yet today.', $today[1]);
     }
 
     /**

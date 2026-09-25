@@ -755,9 +755,9 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     // the parts that changed: the cards and both lists. The address bar
     // follows, so a refresh or a copied link lands on the same view.
     // Whether somebody has picked a status. Until they do, each tab shows its
-    // own default — who is working now, and every past day — and the address
-    // bar carries no status at all.
-    const DEFAULTS = { today: 'clocked-in', history: 'all' };
+    // own default — everybody present today, and every past day — and the
+    // address bar carries no status at all.
+    const DEFAULTS = { today: 'present', history: 'all' };
     let chosen = new URL(location).searchParams.get('view');
 
     function showStatus(v) {
