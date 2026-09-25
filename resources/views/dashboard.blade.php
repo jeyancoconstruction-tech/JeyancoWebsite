@@ -567,11 +567,16 @@
         }
         map.on('zoomend moveend', declutter);
 
+        // How close the map opens on a site and its kiosks. 16 was street
+        // level and felt cramped; 15 shows the neighbourhood around the site
+        // with its range ring still clear. The + button still goes closer.
+        const FIT_ZOOM = 15;
+
         function fitAll() {
             const points = Object.values(siteMarks).map(m => m.pin.getLatLng())
                 .concat(Object.values(kioskMarks).map(m => m.getLatLng()));
-            if (points.length === 1) map.setView(points[0], 16);
-            else if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 16 });
+            if (points.length === 1) map.setView(points[0], FIT_ZOOM);
+            else if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: FIT_ZOOM });
         }
 
         // The header says how the kiosks stand, worst news first.

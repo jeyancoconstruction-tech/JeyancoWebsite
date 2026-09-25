@@ -122,6 +122,12 @@ class DashboardLayoutTest extends TestCase
         $this->assertStringNotContainsString("map.on('click'", $html, 'a click on the map drops no pin');
         $this->assertStringContainsString('data-sites-url="' . route('sites.index') . '"', $html, 'the key points to the Sites page');
 
+        // It opens a step back from street level, so the site sits in its
+        // neighbourhood rather than filling the card.
+        $this->assertStringContainsString('const FIT_ZOOM = 15;', $html);
+        $this->assertStringContainsString('map.setView(points[0], FIT_ZOOM)', $html);
+        $this->assertStringContainsString('maxZoom: FIT_ZOOM', $html);
+
         // Dark tiles in the dark theme, as on the Sites page.
         $this->assertStringContainsString('html[data-bs-theme="dark"] #kioskMap .leaflet-tile-pane { filter: invert(1)', $html);
     }
