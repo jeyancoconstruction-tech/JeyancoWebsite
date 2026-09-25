@@ -15,7 +15,7 @@
     'use strict';
 
     var phone  = window.matchMedia('(max-width: 767.98px)');
-    var TABLES = '.mod-table, .emp-table, .rmx-table, .atm-table, #roleList > .sx-table';
+    var TABLES = '.mod-table, .rmx-table, .atm-table, #roleList > .sx-table';
     var TABS   = '.mod-tabs, .settings-tabs';
 
     // The heading over each column, a colspan counting once per column it

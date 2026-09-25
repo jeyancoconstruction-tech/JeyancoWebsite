@@ -77,40 +77,6 @@ class ShiftAssignmentTest extends TestCase
 
     // ── Assigning ────────────────────────────────────────────────────────────
 
-    public function test_a_worker_is_moved_between_shifts(): void
-    {
-        $emp = $this->worker('Juan', $this->day()->id);
-
-        $this->actingAs($this->admin())
-             ->patch(route('employees.shift', $emp), ['shift_id' => $this->night()->id])
-             ->assertOk()
-             ->assertJson(['success' => true, 'name' => $this->night()->name]);
-
-        $this->assertSame($this->night()->id, $emp->fresh()->shift_id);
-    }
-
-    /** A shift that does not exist is a typo or a stale page, not an assignment. */
-    public function test_an_unknown_shift_is_refused(): void
-    {
-        $emp = $this->worker('Pedro', $this->day()->id);
-
-        $this->actingAs($this->admin())
-             ->patchJson(route('employees.shift', $emp), ['shift_id' => 9999])
-             ->assertStatus(422);
-
-        $this->assertSame($this->day()->id, $emp->fresh()->shift_id);
-    }
-
-    public function test_a_guest_cannot_move_anybody(): void
-    {
-        $emp = $this->worker('Maria', $this->day()->id);
-
-        $this->patch(route('employees.shift', $emp), ['shift_id' => $this->night()->id])
-             ->assertRedirect();
-
-        $this->assertSame($this->day()->id, $emp->fresh()->shift_id);
-    }
-
     /**
      * Moving somebody takes effect from the next day worked. Every day already
      * recorded keeps the shift it was stamped with, so last month's arrivals do
@@ -130,9 +96,8 @@ class ShiftAssignmentTest extends TestCase
 
         $this->assertSame($this->day()->id, $rec->shift_id);
 
-        $this->actingAs($this->admin())
-             ->patch(route('employees.shift', $emp), ['shift_id' => $this->night()->id])
-             ->assertOk();
+        // The edit form writes the same column.
+        $emp->update(['shift_id' => $this->night()->id]);
 
         $this->assertSame($this->day()->id, $rec->fresh()->shift_id,
             'a day already worked keeps the shift it was worked under');
@@ -163,19 +128,6 @@ class ShiftAssignmentTest extends TestCase
     }
 
     // ── Showing it ───────────────────────────────────────────────────────────
-
-    /** A tag nothing displays is a tag nobody can act on. */
-    public function test_the_directory_shows_the_shift(): void
-    {
-        $this->worker('Nakikita', $this->night()->id);
-
-        $this->actingAs($this->admin())
-             ->get(route('employees.index'))
-             ->assertOk()
-             ->assertSee('emp-shift')
-             ->assertSee('shiftFilter')
-             ->assertSee($this->night()->name);
-    }
 
     public function test_the_profile_shows_the_shift(): void
     {

@@ -213,7 +213,7 @@ class NotificationSystemTest extends TestCase
     public function test_the_notifier_is_on_every_page_that_uses_the_main_layout(): void
     {
         $html = $this->actingAs($this->admin())
-            ->get(route('employees.index'))
+            ->get(route('employees.register'))
             ->assertOk()
             ->getContent();
 
@@ -233,7 +233,7 @@ class NotificationSystemTest extends TestCase
     public function test_notify_is_defined_before_the_page_content(): void
     {
         $html = $this->actingAs($this->admin())
-            ->get(route('employees.index'))
+            ->get(route('employees.register'))
             ->assertOk()
             ->getContent();
 
@@ -248,7 +248,7 @@ class NotificationSystemTest extends TestCase
     {
         $html = $this->actingAs($this->admin())
             ->withSession(['success' => 'Employee removed.'])
-            ->get(route('employees.index'))
+            ->get(route('employees.register'))
             ->assertOk()
             ->getContent();
 
@@ -265,7 +265,7 @@ class NotificationSystemTest extends TestCase
     {
         $html = $this->actingAs($this->admin())
             ->withSession(['success' => 'Removed O\'Brien & <b>Sons</b>.'])
-            ->get(route('employees.index'))
+            ->get(route('employees.register'))
             ->assertOk()
             ->getContent();
 

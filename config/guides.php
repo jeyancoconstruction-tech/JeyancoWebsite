@@ -47,15 +47,15 @@ return [
     ],
 
     'employees' => [
-        'en' => ['title' => 'Employee Directory', 'lines' => [
-            'Add Employee creates the record. The tabs above the list filter it: All, Regular, Contractual.',
-            'Export downloads the list as you are looking at it, with whatever filters are applied.',
-            'Delete asks to confirm first, and takes the employee out of every list that reads this directory.',
+        'en' => ['title' => 'Register & Manage', 'lines' => [
+            'Register employee creates the record. A worker detected at the kiosk waits in Pending until the fingerprint is enrolled.',
+            'Export to Excel downloads the active workforce. The gift on a row adds a bonus to this pay period.',
+            'Remove asks to confirm first, and moves the worker to Removed, where they can be restored.',
         ]],
-        'tl' => ['title' => 'Direktoryo ng Empleyado', 'lines' => [
-            'Ang Add Employee ang gumagawa ng record. Ang mga tab sa itaas ang sumasala: All, Regular, Contractual.',
-            'Ang Export ay ida-download ang listahan gaya ng nakikita mo, kasama ang mga filter.',
-            'Magtatanong muna ang Delete, at aalisin ang empleyado sa lahat ng listahang bumabasa sa direktoryong ito.',
+        'tl' => ['title' => 'Register & Manage', 'lines' => [
+            'Ang Register employee ang gumagawa ng record. Ang worker na nakita ng kiosk ay nasa Pending hanggang ma-enroll ang fingerprint.',
+            'Ang Export to Excel ay ida-download ang aktibong workforce. Ang regalo sa hanay ay nagdadagdag ng bonus sa pay period na ito.',
+            'Magtatanong muna ang Remove, at ililipat ang worker sa Removed, kung saan puwede itong ibalik.',
         ]],
     ],
 

@@ -11,22 +11,22 @@ class EmployeeAlert extends Notification
         'new_employee' => [
             'icon'  => 'fa-user-plus',
             'color' => '#1e3a8a',
-            'link'  => '/employees',
+            'link'  => '/employees/register',
         ],
         'missing_fingerprint' => [
             'icon'  => 'fa-fingerprint',
             'color' => '#f97316',
-            'link'  => '/employees',
+            'link'  => '/employees/register',
         ],
         'unassigned_site' => [
             'icon'  => 'fa-map-marker-alt',
             'color' => '#d97706',
-            'link'  => '/employees',
+            'link'  => '/employees/register',
         ],
         'unassigned_labor_type' => [
             'icon'  => 'fa-briefcase',
             'color' => '#dc2626',
-            'link'  => '/employees',
+            'link'  => '/employees/register',
         ],
     ];
 

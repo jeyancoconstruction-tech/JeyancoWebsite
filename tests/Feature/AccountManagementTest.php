@@ -185,7 +185,7 @@ class AccountManagementTest extends TestCase
         $staff = $this->staff();
 
         $this->actingAs($staff)->get(route('sites.index'))->assertSuccessful();
-        $this->actingAs($staff)->get(route('employees.index'))->assertSuccessful();
+        $this->actingAs($staff)->get(route('employees.register'))->assertSuccessful();
         $this->actingAs($staff)->get(route('accounts.index'))->assertForbidden();
         $this->actingAs($staff)->get(route('settings.index'))->assertForbidden();
         $this->actingAs($staff)->post(route('accounts.store'), [])->assertForbidden();

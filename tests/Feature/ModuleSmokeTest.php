@@ -118,7 +118,6 @@ class ModuleSmokeTest extends TestCase
     {
         $urls = [
             '/dashboard',
-            '/employees',
             '/employees/create',
             '/employees/register',
             '/attendance',
@@ -295,7 +294,7 @@ class ModuleSmokeTest extends TestCase
             'role' => User::ROLE_HR, 'is_active' => true,
         ]);
 
-        foreach (['/dashboard', '/employees', '/attendance', '/sites',
+        foreach (['/dashboard', '/employees/register', '/attendance', '/sites',
                   '/payroll-records', '/analytics'] as $url) {
             $this->assertSame(200, $this->actingAs($staff)->get($url)->getStatusCode(),
                 "staff lost access to {$url}");

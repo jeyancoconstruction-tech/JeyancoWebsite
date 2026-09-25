@@ -18,11 +18,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * A bonus given from a worker's own row on Employees, for the pay period
- * running now.
+ * A bonus given from a worker's own row, for the pay period running now.
  *
- * The row menu used to offer Set Vale and Copy ID. Michael: "remove set vale
- * and copy id, instead make it add bonus for that period." The record it
+ * It started on the Employee Directory's row menu, in place of Set Vale and
+ * Copy ID (Michael: "remove set vale and copy id, instead make it add bonus
+ * for that period"). When the directory was retired it moved to Register &
+ * Manage, as a gift button on each active worker's row. The record it
  * writes is the one Payroll Settings has always made — a grant naming one
  * worker on one date — so payroll pays it as it pays any other: onto the net
  * of the week that date falls in, untaxed.
@@ -86,7 +87,7 @@ class EmployeeBonusTest extends TestCase
     private function give(Employee $e, $amount = 500, ?string $note = null)
     {
         return $this->actingAs($this->admin)
-            ->from(route('employees.index'))
+            ->from(route('employees.register'))
             ->post(route('employees.bonus.store', $e), ['amount' => $amount, 'note' => $note]);
     }
 
@@ -99,17 +100,19 @@ class EmployeeBonusTest extends TestCase
 
     // ── The menu ─────────────────────────────────────────────────────────
 
-    /** Add bonus is on the row menu; Set Vale and Copy ID are gone. */
-    public function test_the_row_menu_offers_add_bonus_and_no_longer_set_vale_or_copy_id(): void
+    /** Add bonus is on each active row of Register & Manage; Set Vale and Copy ID stay gone. */
+    public function test_each_active_row_offers_add_bonus(): void
     {
         $this->worker();
 
-        $html = $this->actingAs($this->admin)->get(route('employees.index'))->assertOk()->getContent();
+        $html = $this->actingAs($this->admin)->get(route('employees.register'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('class="emp-more-item js-add-bonus"', $html);
+        $this->assertStringContainsString('class="rmx-icon-btn rmx-gift js-add-bonus"', $html);
         $this->assertStringContainsString('id="empBonusModal"', $html);
         $this->assertStringContainsString('Add bonus', $html);
-        $this->assertStringContainsString('Remove employee', $html, 'Delete is still offered');
+        $this->assertStringContainsString('Remove this worker?', $html, 'Remove is still offered');
+        // The dialog is built on the first click, after Bootstrap has loaded.
+        $this->assertStringContainsString('if (!modal && window.bootstrap) modal = new bootstrap.Modal(modalEl);', $html);
 
         $this->assertStringNotContainsString('Set Vale', $html);
         $this->assertStringNotContainsString('Copy ID', $html);
@@ -128,9 +131,9 @@ class EmployeeBonusTest extends TestCase
 
         // The button and the dialog, not the words: the page's own stylesheet
         // and script mention them whoever is reading.
-        $html = $this->actingAs($staff)->get(route('employees.index'))->assertOk()->getContent();
+        $html = $this->actingAs($staff)->get(route('employees.register'))->assertOk()->getContent();
 
-        $this->assertStringNotContainsString('class="emp-more-item js-add-bonus"', $html);
+        $this->assertStringNotContainsString('js-add-bonus"', $html);
         $this->assertStringNotContainsString('id="empBonusModal"', $html);
 
         $this->actingAs($staff)->post(route('employees.bonus.store', $e), ['amount' => 500])->assertForbidden();
@@ -145,7 +148,7 @@ class EmployeeBonusTest extends TestCase
         $e = $this->worker(['2026-09-15']);
 
         $this->give($e, 500, 'Finished the slab early')
-            ->assertRedirect(route('employees.index'))
+            ->assertRedirect(route('employees.register'))
             ->assertSessionHas('success', "₱500.00 bonus added to Lawrence Bernas's pay for Sep 14 – Sep 20, 2026.");
 
         $bonus = Bonus::sole();
@@ -262,9 +265,9 @@ class EmployeeBonusTest extends TestCase
         $bonus = Bonus::sole();
 
         $this->actingAs($this->admin)
-            ->from(route('employees.index'))
+            ->from(route('employees.register'))
             ->delete(route('employees.bonus.destroy', [$e, $bonus]))
-            ->assertRedirect(route('employees.index'))
+            ->assertRedirect(route('employees.register'))
             ->assertSessionHas('success', '₱500.00 bonus for Lawrence Bernas was removed.');
 
         $this->assertSame(0, Bonus::count());
@@ -272,7 +275,7 @@ class EmployeeBonusTest extends TestCase
 
         // The page offers it back while it is there, and not once it is gone.
         $this->give($e, 700);
-        $this->actingAs($this->admin)->get(route('employees.index'))->assertOk()->assertSee('Given this period');
+        $this->actingAs($this->admin)->get(route('employees.register'))->assertOk()->assertSee('Given this period');
     }
 
     /** A period that has closed keeps what it paid, and so does somebody else's grant. */

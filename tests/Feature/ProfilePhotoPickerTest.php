@@ -159,7 +159,6 @@ class ProfilePhotoPickerTest extends TestCase
         $this->employee('employees/gone-with-a-deploy.jpg');
 
         foreach ([
-            route('employees.index'),
             route('employees.register'),
         ] as $url) {
             $html = $this->actingAs($this->admin())->get($url)->assertOk()->getContent();

@@ -184,14 +184,16 @@ class PendingEmployeeIsNotWorkforceTest extends TestCase
         }
     }
 
-    public function test_the_directory_and_its_counts_leave_them_out(): void
+    /** The workforce export, on Register & Manage, lists registered workers only. */
+    public function test_the_export_leaves_them_out(): void
     {
         $this->employee('Waiting', Employee::STATUS_PENDING);
         $this->employee('Registered', Employee::STATUS_ACTIVE);
 
-        $page = $this->actingAs($this->admin())->get('/employees')->assertOk();
+        $csv = $this->actingAs($this->admin())->get(route('employees.export'))->assertOk()->streamedContent();
 
-        $this->assertSame(['Registered'], collect($page->viewData('employees'))->pluck('name')->all());
+        $this->assertStringContainsString('Registered', $csv);
+        $this->assertStringNotContainsString('Waiting', $csv);
     }
 
     protected function tearDown(): void

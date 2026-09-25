@@ -54,7 +54,7 @@
          is open, so they are re-read the moment any of it does. --}}
     <div class="dash-kpis" id="dash-kpis"
          data-live="attendance employees payroll advances devices leave">
-        <a class="kpi" href="{{ url('/employees') }}">
+        <a class="kpi" href="{{ route('employees.register') }}">
             <span class="kpi-ic blue"><i class="fas fa-helmet-safety"></i></span>
             <span class="kpi-body">
                 <p class="kpi-label">{{ __('Active Workers') }}</p>

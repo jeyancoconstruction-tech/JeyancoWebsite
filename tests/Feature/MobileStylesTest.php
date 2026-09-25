@@ -79,7 +79,7 @@ class MobileStylesTest extends TestCase
     {
         $admin = $this->admin();
 
-        foreach (['/dashboard', '/employees', '/attendance', '/leave-advances', '/payroll-records', '/settings', '/users-roles'] as $url) {
+        foreach (['/dashboard', '/employees/register', '/attendance', '/leave-advances', '/payroll-records', '/settings', '/users-roles'] as $url) {
             $html = $this->actingAs($admin)->get($url)->assertOk()->getContent();
             $head = substr($html, 0, strpos($html, '</head>'));
 
@@ -106,7 +106,7 @@ class MobileStylesTest extends TestCase
         $admin = $this->admin();
         $css = file_get_contents(public_path('mobile.css'));
 
-        foreach (['/leave-advances' => 'mod-table', '/employees' => 'emp-table', '/employees/register' => 'rmx-table', '/attendance' => 'atm-table'] as $url => $table) {
+        foreach (['/leave-advances' => 'mod-table', '/employees/register' => 'rmx-table', '/attendance' => 'atm-table'] as $url => $table) {
             $html = $this->actingAs($admin)->get($url)->assertOk()->getContent();
 
             $this->assertMatchesRegularExpression('/<table class="' . $table . '[^"]*"[^>]*>\s*<thead>/', $html, "{$url}: {$table} has a header to name its lines");

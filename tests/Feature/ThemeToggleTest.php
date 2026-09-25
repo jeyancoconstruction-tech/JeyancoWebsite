@@ -33,7 +33,7 @@ class ThemeToggleTest extends TestCase
     {
         $admin = $this->admin();
 
-        foreach (['/dashboard', '/employees', '/attendance', '/leave-advances', '/payroll-records', '/settings'] as $url) {
+        foreach (['/dashboard', '/employees/register', '/attendance', '/leave-advances', '/payroll-records', '/settings'] as $url) {
             $html = $this->actingAs($admin)->get($url)->assertOk()->getContent();
 
             $this->assertStringContainsString('id="themeToggle"', $html, $url);

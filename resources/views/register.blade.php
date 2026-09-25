@@ -60,6 +60,8 @@ html[data-bs-theme="dark"] .rmx {
     text-decoration: none; transition: filter .15s; }
 .rmx-primary:hover, .rmx-primary:focus { color: #fff; text-decoration: none; filter: brightness(1.1); }
 .rmx-primary i { font-size: 16px; }
+.rmx-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rmx-head-actions .rmx-outline { height: 38px; text-decoration: none; }
 
 /* Stat cards — they also switch tabs */
 .rmx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.25rem; }
@@ -175,6 +177,9 @@ html[data-bs-theme="dark"] .rmx {
 .rmx-icon-btn:hover, .rmx-text-btn:hover { filter: brightness(1.15); text-decoration: none; }
 .rmx-edit, .rmx-edit:hover       { background: var(--rmx-accent-bg); color: var(--rmx-accent-fg); border: var(--rmx-bw) solid var(--rmx-accent-line); }
 .rmx-del, .rmx-del:hover         { background: var(--rmx-danger-bg); color: var(--rmx-danger-fg); border: var(--rmx-bw) solid var(--rmx-danger-line); }
+.rmx-gift, .rmx-gift:hover       { background: var(--rmx-warn-bg); color: var(--rmx-warn-fg); border: var(--rmx-bw) solid var(--rmx-warn-line); position: relative; }
+.rmx-gift-n { position: absolute; top: -6px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+    background: var(--rmx-warn-fg); color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
 .rmx-restore, .rmx-restore:hover { background: var(--rmx-ok-bg);     color: var(--rmx-ok-fg);     border: var(--rmx-bw) solid var(--rmx-ok-line); }
 
 /* Empty tab */
@@ -184,6 +189,20 @@ html[data-bs-theme="dark"] .rmx {
     justify-content: center; font-size: 24px; color: var(--rmx-txt-3); margin-bottom: 12px; }
 .rmx-empty-title { font-size: 14.5px; font-weight: 500; color: var(--rmx-txt); margin: 0 0 4px; }
 .rmx-empty-sub { font-size: 12.5px; color: var(--rmx-txt-3); margin: 0; max-width: 380px; }
+
+/* ── A bonus already given this period, inside the Add bonus dialog ──── */
+.emp-bonus-given {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 7px 0; font-size: 12.5px; color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+}
+.emp-bonus-given:last-child { border-bottom: none; }
+.emp-bonus-remove {
+    border: none; background: none; padding: 0;
+    font-size: 12px; font-weight: 600; color: var(--danger); cursor: pointer;
+}
+.emp-bonus-remove:hover     { text-decoration: underline; }
+.emp-bonus-remove:disabled  { opacity: .55; cursor: not-allowed; }
 </style>
 @endpush
 
@@ -222,12 +241,19 @@ html[data-bs-theme="dark"] .rmx {
             <h1 class="rmx-title">{{ __('Register & manage employees') }}</h1>
             <p class="rmx-sub">{{ __('New workers and kiosk detections stay in Pending until a fingerprint is enrolled.') }}</p>
         </div>
-        {{-- The full registration form, not the compact modal: a complete
-             worker profile does not fit in a dialog. The modal stays for
-             confirming and completing kiosk detections. --}}
-        <a href="{{ route('employees.create') }}" class="rmx-primary" id="rmAddBtn">
-            <i class="ti ti-user-plus" aria-hidden="true"></i>{{ __('Register employee') }}
-        </a>
+        <div class="rmx-head-actions">
+            {{-- The active workforce as a spreadsheet Excel opens. It came
+                 over from the Employee Directory when that page was retired. --}}
+            <a href="{{ route('employees.export') }}" class="rmx-outline" id="rmExportBtn">
+                <i class="ti ti-file-spreadsheet" aria-hidden="true"></i>{{ __('Export to Excel') }}
+            </a>
+            {{-- The full registration form, not the compact modal: a complete
+                 worker profile does not fit in a dialog. The modal stays for
+                 confirming and completing kiosk detections. --}}
+            <a href="{{ route('employees.create') }}" class="rmx-primary" id="rmAddBtn">
+                <i class="ti ti-user-plus" aria-hidden="true"></i>{{ __('Register employee') }}
+            </a>
+        </div>
     </div>
 
     {{-- ── Stat cards (also switch tabs) ───────────────────────────────────── --}}
@@ -299,6 +325,28 @@ html[data-bs-theme="dark"] .rmx {
                             <td class="rmx-center"><span class="rmx-logs">{{ $e->attendances_count }}</span></td>
                             <td class="rmx-actions">
                                 <div class="rmx-actions-inner">
+                                    {{-- A bonus for the pay period running now. Only for
+                                         whoever may already give one in Payroll Settings:
+                                         it is money on a payslip. The count is what this
+                                         worker was already given this period. --}}
+                                    @if(auth()->user()?->isAdmin())
+                                        @php $given = $bonuses[$e->id] ?? collect(); @endphp
+                                        <button type="button" class="rmx-icon-btn rmx-gift js-add-bonus"
+                                                title="{{ __('Add bonus') }}" aria-label="{{ __('Add bonus') }} — {{ $e->name }}"
+                                                data-id="{{ $e->id }}"
+                                                data-name="{{ $e->name }}"
+                                                data-given="{{ json_encode($given->map(fn ($b) => [
+                                                    'id'     => $b->id,
+                                                    'amount' => '₱' . number_format((float) $b->amount, 2),
+                                                    'note'   => $b->note,
+                                                    'on'     => $b->effective_on->format('M d'),
+                                                ])->values()) }}">
+                                            <i class="ti ti-gift" aria-hidden="true"></i>
+                                            @if($given->count())
+                                                <span class="rmx-gift-n">{{ $given->count() }}</span>
+                                            @endif
+                                        </button>
+                                    @endif
                                     {{-- Edit opens the full Register Employee form, not
                                          the quick modal: a five-field dialog could
                                          correct a record without ever showing the
@@ -639,8 +687,127 @@ html[data-bs-theme="dark"] .rmx {
   </div>
 </div>
 
+{{-- ── Add bonus ───────────────────────────────────────────────────────────
+     One worker, the pay period running now. The period is shown rather than
+     asked for: this is the bonus for the week being worked, and a date box
+     would only invite a bonus dated into a week already paid. --}}
+@if(auth()->user()?->isAdmin())
+<div class="modal fade" id="empBonusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered emp-dialog" style="max-width:460px;">
+        <div class="modal-content emp-modal">
+            <form method="POST" id="empBonusForm" data-once>
+                @csrf
+                <div class="emp-head">
+                    <span class="emp-head-icon"><i class="fas fa-gift"></i></span>
+                    <div class="emp-head-text">
+                        <h6 class="emp-head-title">{{ __('Add bonus') }}</h6>
+                        <p class="emp-head-sub"><span id="bonusModalName">—</span> &middot; {{ $bonusPeriod }}</p>
+                    </div>
+                    <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body emp-body">
+                    <div class="emp-field">
+                        <label class="ep-label" for="bonusAmount">{{ __('Amount') }} <span class="ep-req">*</span></label>
+                        <input class="form-control" id="bonusAmount" type="number" step="0.01" min="0.01" name="amount" required>
+                        <span class="ep-hint">{{ __('Paid with this period, on top of the net. A bonus is not wages, so nothing is withheld on it.') }}</span>
+                    </div>
+                    <div class="emp-field">
+                        <label class="ep-label" for="bonusNote">{{ __('Note') }}</label>
+                        <input class="form-control" id="bonusNote" type="text" name="note" maxlength="160" placeholder="{{ __('What it is for') }}">
+                    </div>
+                </div>
+            </form>
+            {{-- Given already this period, each with a way back while the
+                 period is still running. --}}
+            <div class="modal-body emp-body pt-0" id="bonusGivenWrap" hidden>
+                <p class="ep-label">{{ __('Given this period') }}</p>
+                <div id="bonusGiven"></div>
+            </div>
+            <div class="emp-foot">
+                <p class="emp-foot-note"><span class="ep-req">*</span> {{ __('Required') }}</p>
+                <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                <button type="submit" form="empBonusForm" class="emp-btn-save"><i class="fas fa-check"></i> <span>{{ __('Add bonus') }}</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- ── Script ──────────────────────────────────────────────────────────────── --}}
 <script>
+// ── Add bonus (for the pay period running now) ───────────────────────────────
+// The form posts and the page comes back with a toast, the way the rest of the
+// money screens work; what it already gave this period is listed with a way to
+// take it back while the period is still open.
+(function () {
+    const modalEl = document.getElementById('empBonusModal');
+    if (!modalEl) return;
+    let modal = null;
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.js-add-bonus');
+        if (!btn) return;
+
+        const id   = btn.dataset.id;
+        const form = document.getElementById('empBonusForm');
+
+        form.action = `{{ url('employees') }}/${id}/bonus`;
+        form.reset();
+        delete form.dataset.sent;
+        document.getElementById('bonusModalName').textContent = btn.dataset.name;
+
+        // What this worker was already given this period.
+        let given = [];
+        try { given = JSON.parse(btn.dataset.given || '[]'); } catch (err) {}
+
+        const wrap = document.getElementById('bonusGivenWrap');
+        const list = document.getElementById('bonusGiven');
+        list.textContent = '';
+
+        given.forEach(b => {
+            const row = document.createElement('div');
+            row.className = 'emp-bonus-given';
+
+            const what = document.createElement('span');
+            what.textContent = b.amount + ' · ' + b.on + (b.note ? ' · ' + b.note : '');
+            row.appendChild(what);
+
+            const take = document.createElement('form');
+            take.method = 'POST';
+            take.action = `{{ url('employees') }}/${id}/bonus/${b.id}`;
+            take.dataset.once = '';
+            take.innerHTML = '@csrf' + '<input type="hidden" name="_method" value="DELETE">';
+
+            const remove = document.createElement('button');
+            remove.type = 'submit';
+            remove.className = 'emp-bonus-remove';
+            remove.textContent = '{{ __('Remove') }}';
+            take.appendChild(remove);
+            row.appendChild(take);
+            list.appendChild(row);
+        });
+
+        wrap.hidden = given.length === 0;
+
+        if (!modal && window.bootstrap) modal = new bootstrap.Modal(modalEl);
+        if (modal) modal.show();
+        setTimeout(() => document.getElementById('bonusAmount').focus(), 250);
+    });
+
+    // Sent once: a second click on Add bonus would give a second bonus.
+    document.addEventListener('submit', function (e) {
+        const form = e.target.closest('form[data-once]');
+        if (!form) return;
+        if (form.dataset.sent) { e.preventDefault(); return; }
+        form.dataset.sent = '1';
+        form.querySelectorAll('button[type="submit"]').forEach(b => { b.disabled = true; });
+        // The modal's own button sits in the footer, outside the form it sends.
+        if (form.id) {
+            document.querySelectorAll(`button[form="${form.id}"]`).forEach(b => { b.disabled = true; });
+        }
+    }, true);
+})();
+
 (function () {
     // ── Tabs + stat cards ────────────────────────────────────────────────────
     // Leaving a tab is announced, so the selection module can put away a

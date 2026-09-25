@@ -10,15 +10,13 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * The directory splits the workforce by how a worker is PAID, not by how they
- * clock in. A contractual worker is settled against their contract total and
- * never lands on a payslip — only their attendance is tracked — so the office
- * needs the two apart without opening each record.
+ * A worker is split by how they are PAID, not by how they clock in. A
+ * contractual worker is settled against their contract total and never lands
+ * on a payslip; only their attendance is tracked.
  *
- * Worth pinning down: the split lives in three places that cannot see each
- * other — the counts in EmployeeController, the tab markup, and the per-row
- * data-type the filter reads. A change to any one of them silently stops the
- * tabs agreeing with the rows.
+ * The Employee Directory that showed the split as tabs was retired for
+ * Register & Manage. What is left here is the worker's profile page, which
+ * still labels the two apart, and the payroll rule behind the split.
  */
 class EmployeeDirectorySplitTest extends TestCase
 {
@@ -66,111 +64,11 @@ class EmployeeDirectorySplitTest extends TestCase
         ]);
     }
 
-    public function test_the_directory_counts_regular_and_contractual_apart(): void
-    {
-        $this->regular('Ana Reyes');
-        $this->regular('Ben Cruz');
-        $this->contractual('Carlo Diaz');
-
-        $this->actingAs($this->admin())
-            ->get(route('employees.index'))
-            ->assertOk()
-            ->assertViewHas('stats', fn (array $stats) => $stats['total'] === 3
-                && $stats['regular'] === 2
-                && $stats['contractual'] === 1);
-    }
-
-    public function test_every_row_carries_the_type_the_tabs_filter_on(): void
-    {
-        $this->regular('Ana Reyes');
-        $this->contractual('Carlo Diaz');
-
-        $html = $this->actingAs($this->admin())
-            ->get(route('employees.index'))
-            ->assertOk()
-            ->getContent();
-
-        // The tab sets dirScope to these exact strings, so the rows must spell
-        // them the same way or a tab filters everything out.
-        $this->assertStringContainsString('data-type="regular"', $html);
-        $this->assertStringContainsString('data-type="contractual"', $html);
-    }
-
-    public function test_a_contractual_worker_shows_the_contract_total_not_a_zero_hourly_rate(): void
-    {
-        $this->contractual('Carlo Diaz', 50000);
-
-        $html = $this->actingAs($this->admin())
-            ->get(route('employees.index'))
-            ->assertOk()
-            ->getContent();
-
-        // rate_per_hour is 0 for contract work. Printing it in the rate column
-        // would read as "unpaid" rather than "paid outside payroll", so the
-        // cell carries the contract total and says what the figure is.
-        // (A bare ₱0.00 check would not do — the vale column prints one.)
-        $this->assertStringContainsString('<span class="emp-rate-contract">₱50,000.00</span>', $html);
-        $this->assertStringContainsString('<span class="emp-rate-note">contract</span>', $html);
-    }
-
-    public function test_the_toolbar_offers_both_layouts(): void
-    {
-        $this->regular('Ana Reyes');
-
-        $html = $this->actingAs($this->admin())
-            ->get(route('employees.index'))
-            ->assertOk()
-            ->getContent();
-
-        // The script toggles on these exact values.
-        $this->assertStringContainsString('data-view="table"', $html);
-        $this->assertStringContainsString('data-view="grid"', $html);
-    }
-
-    public function test_the_directory_carries_no_bulk_selection_machinery(): void
-    {
-        $this->regular('Ana Reyes');
-
-        $html = $this->actingAs($this->admin())
-            ->get(route('employees.index'))
-            ->assertOk()
-            ->getContent();
-
-        // Bulk select was removed from this page; deleting is one row at a
-        // time through the Remove modal. Half-removing it once left the grid
-        // showing checkboxes nothing could act on, so the absence is pinned.
-        $this->assertStringNotContainsString('selectionModeBtn', $html);
-        $this->assertStringNotContainsString('bulkActionBar', $html);
-        $this->assertStringNotContainsString('emp-row-check', $html);
-    }
-
-    public function test_a_row_opens_the_record_before_it_offers_to_change_it(): void
-    {
-        $employee = $this->regular('Ana Reyes');
-
-        $html = $this->actingAs($this->admin())
-            ->get(route('employees.index'))
-            ->assertOk()
-            ->getContent();
-
-        // The way into a record is spelled out, not drawn as an eye.
-        $this->assertStringContainsString('View Details', $html);
-        $this->assertStringNotContainsString('fa-eye', $html);
-
-        // And editing is not offered from the row: it starts on the details
-        // page, where the whole record is in front of you first.
-        $this->assertStringNotContainsString(
-            route('employees.edit', $employee->id),
-            $html
-        );
-    }
-
     public function test_the_details_page_is_where_editing_starts(): void
     {
         $employee = $this->regular('Ana Reyes');
 
-        // The directory now leans on this button existing. If it ever goes,
-        // there is no route to editing left anywhere.
+        // The profile's way into editing.
         $this->actingAs($this->admin())
             ->get(route('employees.show', $employee->id))
             ->assertOk()

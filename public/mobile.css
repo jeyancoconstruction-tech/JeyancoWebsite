@@ -99,35 +99,34 @@
    On a phone a wide list showed its first column and hid the rest off to the
    right. Each row becomes a card instead: the person (or the run, or the
    site) at the top, then one line per column, its name on the left and its
-   value on the right, the way the Employee Directory's grid view already
-   draws a card. The names come from the table's own header; mobile.js copies
-   them onto the cells as data-mlabel. Tables not named here — payroll
-   records, the dashboard's registry, reports inside dialogs — keep their
-   columns and scroll sideways inside their own box. */
+   value on the right, with dashed rules between the lines. The names come
+   from the table's own header; mobile.js copies them onto the cells as
+   data-mlabel. Tables not named here — payroll records, the dashboard's
+   registry, reports inside dialogs — keep their columns and scroll sideways
+   inside their own box. */
 @media (max-width: 767.98px) {
     .mod-table,
-    .emp-table:not(.view-grid),
     .rmx-table { display: block; width: 100% !important; min-width: 0 !important; }
 
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) thead { display: none; }
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) :is(tbody, tfoot) { display: block; }
+    :is(.mod-table, .rmx-table) thead { display: none; }
+    :is(.mod-table, .rmx-table) :is(tbody, tfoot) { display: block; }
 
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) tr {
+    :is(.mod-table, .rmx-table) tr {
         display: flex; flex-direction: column; position: relative;
         padding: 12px 14px; border-bottom: 1px solid var(--border);
     }
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) tr:last-child { border-bottom: 0; }
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) tr[hidden] { display: none !important; }
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) tfoot tr { background: var(--bg-subtle); }
+    :is(.mod-table, .rmx-table) tr:last-child { border-bottom: 0; }
+    :is(.mod-table, .rmx-table) tr[hidden] { display: none !important; }
+    :is(.mod-table, .rmx-table) tfoot tr { background: var(--bg-subtle); }
 
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td {
+    :is(.mod-table, .rmx-table) td {
         display: flex; align-items: center; justify-content: space-between; gap: 12px;
         min-width: 0; padding: 7px 0 !important;
         border: 0 !important; border-top: 1px dashed var(--border) !important;
         background: transparent !important;
         text-align: right !important; white-space: normal;
     }
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td::before {
+    :is(.mod-table, .rmx-table) td::before {
         content: attr(data-mlabel);
         flex: none; margin-right: auto; max-width: 45%;
         text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .02em;
@@ -135,23 +134,23 @@
     }
 
     /* The first cell heads the card. */
-    :is(.mod-table, .emp-table:not(.view-grid)) td:first-child,
+    .mod-table td:first-child,
     .rmx-table td:nth-child(2) {
         justify-content: flex-start; text-align: left !important;
         padding-top: 0 !important; padding-bottom: 8px !important; border-top: 0 !important;
     }
-    :is(.mod-table, .emp-table:not(.view-grid)) td:first-child::before,
+    .mod-table td:first-child::before,
     .rmx-table td:nth-child(2)::before { display: none; }
 
     /* A column with no name is the row's buttons: along the foot, right. */
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td[data-mlabel=""] { justify-content: flex-end; }
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td[data-mlabel=""]::before { display: none; }
+    :is(.mod-table, .rmx-table) td[data-mlabel=""] { justify-content: flex-end; }
+    :is(.mod-table, .rmx-table) td[data-mlabel=""]::before { display: none; }
 
     /* "Nothing here yet" is a message across the card, not a line in it. */
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td[colspan] {
+    :is(.mod-table, .rmx-table) td[colspan] {
         display: block; text-align: center !important; border-top: 0 !important;
     }
-    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td[colspan]::before { display: none; }
+    :is(.mod-table, .rmx-table) td[colspan]::before { display: none; }
 
     /* Register & Manage: the tick box is a column only while selecting. On a
        card it sits in the top corner. */
@@ -162,11 +161,6 @@
     }
     .rmx-table td.rmx-check-col::before { display: none; }
     .rm-pane.selecting .rmx-table td:nth-child(2) { padding-right: 34px !important; }
-
-    /* Employee Directory: a person's shift is picked right on the row. */
-    .emp-table:not(.view-grid) .emp-shift-wrap { min-width: 150px; }
-    .emp-table:not(.view-grid) td.emp-actions-cell { justify-content: flex-end; gap: 8px; padding-top: 10px !important; }
-    .emp-table:not(.view-grid) .emp-name { white-space: normal; }
 
     /* Users & Roles: the accounts. Written out on its own rather than added
        to the lists above, where the id would outweigh the Register rules. A
@@ -267,9 +261,6 @@
     .mod-filters input[type="date"] { min-width: 0 !important; }
     .mod-filter-actions > * { flex: 1 1 0; justify-content: center; }
 
-    .dir-toolbar-right .emp-search,
-    .dir-toolbar-right .emp-select { width: 100%; }
-
     /* Register / Edit Employee: the Back button goes under the heading
        instead of being squeezed beside it onto four lines. */
     .employee-container > .d-flex.justify-content-between:first-child { flex-wrap: wrap; gap: 12px; }
@@ -343,7 +334,7 @@
     .sx-btn.sm, .mod-btn.sm, .hc-pill, .ai-btn, .cat-btn, .ur-pick,
     .map-btn, .st-btn, .btn-sm, .atm-btn { min-height: 36px; }
     .hc-yr-btn { min-width: 32px; min-height: 32px; }
-    .map-input, .hc-sel, .emp-shift,
+    .map-input, .hc-sel,
     .stepper input, .sx-input { min-height: 38px; }
     .guide-btn { width: 38px; height: 38px; }
     .sx-seg > a, .sx-seg > button, .sx-seg > span,

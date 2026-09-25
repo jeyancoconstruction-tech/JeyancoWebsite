@@ -46,7 +46,7 @@ class LoadingScreenTest extends TestCase
     private function appPage(): string
     {
         return $this->actingAs($this->admin())
-            ->get(route('employees.index'))
+            ->get(route('employees.register'))
             ->assertOk()
             ->getContent();
     }

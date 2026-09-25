@@ -27,8 +27,8 @@
             </p>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('employees.index') }}" class="btn btn-outline-secondary shadow-sm px-4">
-                <i class="fas fa-arrow-left me-2"></i>{{ __('Employee Directory') }}
+            <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
+                <i class="fas fa-arrow-left me-2"></i>{{ __('Register & Manage') }}
             </a>
             <a href="{{ route('employees.edit', $employee->id) }}" class="btn btn-primary shadow-sm px-4">
                 <i class="fas fa-pen me-2"></i>{{ __('Edit') }}

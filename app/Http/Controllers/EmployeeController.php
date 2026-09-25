@@ -19,18 +19,27 @@ use App\Notifications\EmployeeAlert;
 
 class EmployeeController extends Controller
 {
+    /**
+     * The Employee Directory was retired: Register & Manage lists the same
+     * workers and now carries the directory's Export and Add bonus. The
+     * address stays and leads there, so an old link, a bookmark or a
+     * notification still lands somewhere useful.
+     */
     public function index()
     {
-        // Directory shows the live workforce (active). Pending kiosk detections,
-        // archived leavers and removed records live on the Register & Manage hub.
-        $employees = Employee::active()->with(['laborType', 'site', 'shift'])->get();
-        $sites     = Site::orderBy('name')->get();
-        $shifts    = Shift::orderBy('id')->get();
+        return redirect()->route('employees.register');
+    }
 
-        // ── Notifications ──────────────────────────────────────────────────
-        $user              = auth()->user();
-        $missingFp         = Employee::active()->whereNull('fingerprint_id')->count();
-        $unassignedSite    = Employee::active()->whereNull('site_id')->count();
+    /**
+     * Tell whoever is looking at the workforce what is missing from it: a
+     * worker with no fingerprint cannot clock in, and one with no site is not
+     * on any site's roster. Each alert is sent once, not on every visit.
+     */
+    private function alertMissingSetup(): void
+    {
+        $user           = auth()->user();
+        $missingFp      = Employee::active()->whereNull('fingerprint_id')->count();
+        $unassignedSite = Employee::active()->whereNull('site_id')->count();
 
         if ($missingFp > 0) {
             EmployeeAlert::fireOnce($user, 'missing_fingerprint',
@@ -45,31 +54,21 @@ class EmployeeController extends Controller
                 "{$unassignedSite} employee" . ($unassignedSite > 1 ? 's are' : ' is') . " not assigned to any site."
             );
         }
+    }
 
-        // Figures for the summary card and the tabs. Counted from the same
-        // collection the table renders, so a number on screen can never
-        // disagree with the rows underneath it.
-        //
-        // Regular and contractual are counted apart because they are PAID
-        // apart: a contractual worker is settled against their contract total
-        // and earns nothing through this payroll, so only their attendance is
-        // tracked here. Splitting them at the directory lets the office see
-        // who actually lands on a payslip without opening each record.
-        $contractual = $employees->filter(fn ($e) => $e->isContractual())->count();
-
-        $stats = [
-            'total'       => $employees->count(),
-            'regular'     => $employees->count() - $contractual,
-            'contractual' => $contractual,
-        ];
-
-        // The pay period running now, and the bonuses already given in it from
-        // this page, so a row can offer to take one back. Loaded once for the
-        // whole table rather than per row, and only for whoever may give one.
+    /**
+     * The pay period running now, and the bonuses already given in it one
+     * worker at a time, so a row can offer to take one back. Loaded once for
+     * the whole list rather than per row, and only for whoever may give one.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: string}  [bonuses by employee id, the period as words]
+     */
+    private function bonusesThisPeriod(): array
+    {
         [$periodOpens, $periodCloses] = self::payPeriod();
 
-        $bonusPeriod = Carbon::parse($periodOpens)->format('M d') . ' – ' . Carbon::parse($periodCloses)->format('M d, Y');
-        $bonuses     = auth()->user()?->isAdmin()
+        $period  = Carbon::parse($periodOpens)->format('M d') . ' – ' . Carbon::parse($periodCloses)->format('M d, Y');
+        $bonuses = auth()->user()?->isAdmin()
             ? Bonus::with('employees:id')
                 ->where('all_employees', false)
                 ->whereBetween('effective_on', [$periodOpens, $periodCloses])
@@ -79,7 +78,7 @@ class EmployeeController extends Controller
                 ->groupBy(fn (Bonus $b) => $b->employees->first()->id)
             : collect();
 
-        return view('employees.index', compact('employees', 'sites', 'shifts', 'stats', 'bonuses', 'bonusPeriod'));
+        return [$bonuses, $period];
     }
 
     /**
@@ -393,7 +392,7 @@ class EmployeeController extends Controller
 
         $employee->update($updateData);
 
-        return redirect()->route('employees.index')->with('success', 'Employee updated successfully!');
+        return redirect()->route('employees.register')->with('success', 'Employee updated successfully!');
     }
 
     // ── Worker profile (Register Employee form) ───────────────────────────────
@@ -694,6 +693,9 @@ class EmployeeController extends Controller
         $shifts            = Shift::orderBy('id')->get();
         $nextFingerprintId = $this->nextFingerprintId();
 
+        $this->alertMissingSetup();
+        [$bonuses, $bonusPeriod] = $this->bonusesThisPeriod();
+
         $liveSignature = $this->registerSignature($pending, [
             'pending'  => $pending->count(),
             'active'   => $active->count(),
@@ -703,7 +705,8 @@ class EmployeeController extends Controller
 
         return view('register', compact(
             'pending', 'active', 'archived', 'removed',
-            'laborTypes', 'sites', 'shifts', 'nextFingerprintId', 'liveSignature'
+            'laborTypes', 'sites', 'shifts', 'nextFingerprintId', 'liveSignature',
+            'bonuses', 'bonusPeriod'
         ));
     }
 
@@ -855,36 +858,6 @@ class EmployeeController extends Controller
             'success'   => true,
             'vale'      => (float) $employee->vale,
             'formatted' => '₱' . number_format($employee->vale, 2),
-        ]);
-    }
-
-    /**
-     * Move one worker between shifts, from the directory.
-     *
-     * The full edit form can do this too, but tagging a whole crew through it
-     * means opening and re-saving every field of every worker to change one
-     * dropdown. This writes the single column and nothing else.
-     *
-     * It takes effect from the next day worked: an attendance record keeps the
-     * shift it was stamped with, so moving somebody to the night crew does not
-     * reach back and make last month's arrivals late.
-     */
-    public function updateShift(Request $request, $id)
-    {
-        $employee = Employee::findOrFail($id);
-
-        $data = $request->validate([
-            'shift_id' => 'nullable|exists:shifts,id',
-        ]);
-
-        $employee->update(['shift_id' => $data['shift_id'] ?: null]);
-
-        $shift = $employee->shift()->first();
-
-        return response()->json([
-            'success'  => true,
-            'shift_id' => $employee->shift_id,
-            'name'     => $shift?->name,
         ]);
     }
 

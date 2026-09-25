@@ -85,10 +85,6 @@ class LivePagesTest extends TestCase
                 'dash-live-attendance' => ['attendance'],
                 'dash-chart'           => ['attendance'],
             ],
-            '/employees' => [
-                'empTabs'      => ['employees'],
-                'empTableWrap' => ['employees'],
-            ],
             '/attendance' => [
                 'attStats'        => ['attendance'],
                 'attTodayList'    => ['attendance'],
