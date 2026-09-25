@@ -223,7 +223,7 @@
         @keyframes seam { 0% { left: 100%; opacity: 1; } 100% { left: 53%; opacity: 1; } }
         @keyframes seamOut { to { opacity: 0; } }
 
-        .lp { position: relative; overflow: hidden; min-height: 0; padding: 48px 56px; display: flex; flex-direction: column; gap: 40px; }
+        .lp { position: relative; overflow: hidden; min-height: 0; padding: 48px 56px; display: flex; flex-direction: column; gap: 40px; container-type: inline-size; }
         .lp::before {
             content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity 1s ease .9s;
             background: linear-gradient(180deg, rgba(7,16,36,.8) 0%, rgba(7,16,36,.55) 55%, rgba(7,16,36,.35) 85%, rgba(7,16,36,.15) 100%);
@@ -437,6 +437,59 @@
         @media (min-width: 901px) and (max-height: 680px) {
             .feats { display: none; }
             .notice { display: none; }
+        }
+
+        /* ── A large screen: the words take the room it has ─────────────────
+           On a big desktop the page ran small inside a lot of space — a
+           54px headline in a 900px panel, a 450px form in one as wide. The
+           headline follows its panel's width (cqi: the longest line, "Every
+           peso accounted for.", is about 12.4 font-sizes long, so 7.6cqi
+           keeps it on one line), and the form, its card and everything on
+           it grow with it. Only where there is height for it too; a shorter
+           screen keeps the compact sizes above. */
+        @media (min-width: 1500px) and (min-height: 821px) {
+            :root { --control: 56px; }
+            .lp { padding: 56px 72px; gap: 48px; }
+            .lgo, .lgo svg { width: 66px; height: 66px; }
+            .lgo img { inset: 6px; width: 54px; height: 54px; }
+            .lbrand { gap: 16px; }
+            .lbrand b { font-size: 31px; }
+            .lbrand small { font-size: 13.5px; }
+            .pitch { gap: 30px; margin-top: 5vh; }
+            .lp h1 { font-size: clamp(54px, 7.6cqi, 78px); }
+            .lead { margin-top: 18px; max-width: 44ch; font-size: 20px; }
+            .feats { gap: 18px; }
+            .feats li { gap: 16px; font-size: 18px; }
+            .feats .ic { width: 48px; height: 48px; border-radius: 12px; }
+            .feats .ic svg { width: 22px; height: 22px; }
+            /* The drawing a little smaller, so the larger words above it
+               keep clear of the crane and the worker's hat. */
+            .in svg.scene { transform: translate(-1%, -1%) scale(.5); }
+
+            .rp { padding: 32px 64px; }
+            .rtop { font-size: 15px; }
+            .rbody { max-width: 548px; gap: 22px; }
+            .card { gap: 26px; padding: 42px 46px 38px; border-radius: 20px; }
+            .eyebrow { padding: 6px 13px; font-size: 12px; }
+            .eyebrow svg { width: 14px; height: 14px; }
+            .card-head h2 { font-size: 40px; }
+            .card-head .sub { font-size: 17px; }
+            form { gap: 21px; }
+            .fld { gap: 9px; }
+            .fld label { font-size: 15px; }
+            .inp { gap: 13px; padding-left: 16px; }
+            .inp > .i { width: 20px; height: 20px; }
+            .inp input { font-size: 16.5px; }
+            .row { font-size: 15px; }
+            .remember input { width: 20px; height: 20px; }
+            .signin { font-size: 17px; }
+            .signin .arrow { width: 20px; height: 20px; }
+            .or { font-size: 12.5px; }
+            .google { font-size: 16.5px; }
+            .google svg { width: 20px; height: 20px; }
+            .notice { font-size: 14px; }
+            .notice .i { width: 17px; height: 17px; }
+            .rfoot { font-size: 14px; }
         }
 
         /* ── A phone: one column, the brand over the form ────────────────── */
