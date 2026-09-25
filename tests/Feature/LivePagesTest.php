@@ -83,8 +83,6 @@ class LivePagesTest extends TestCase
             '/dashboard' => [
                 'dash-kpis'            => ['attendance', 'employees', 'payroll'],
                 'dash-live-attendance' => ['attendance'],
-                'dash-attention'       => ['attendance', 'leave'],
-                'dash-activity'        => ['audit'],
                 'dash-chart'           => ['attendance'],
             ],
             '/employees' => [

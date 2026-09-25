@@ -23,13 +23,13 @@ return [
     'dashboard' => [
         'en' => ['title' => 'Dashboard', 'lines' => [
             'The tiles read today: who is active, who is present, who is still timed in, and what this week has cost so far.',
-            'Needs Attention lists what is waiting on somebody — kiosk registrations, leave to decide, payroll runs to review — and each row opens the screen that clears it.',
-            'Nothing is entered here. Every figure comes from another section, so a wrong number is corrected where it was recorded.',
+            'Live Attendance lists today\'s time-ins as the kiosks send them. Project Sites shows every site on the map: pick a site, search or click the map, then Save to pin it.',
+            'The figures are not entered here. Each comes from another section, so a wrong number is corrected where it was recorded.',
         ]],
         'tl' => ['title' => 'Dashboard', 'lines' => [
             'Ang mga tile ay para sa ngayong araw: sino ang aktibo, sino ang present, sino ang naka-time in pa, at magkano na ang gastos ngayong linggo.',
-            'Nasa Needs Attention ang mga naghihintay ng aksyon — rehistro mula sa kiosk, leave na dedesisyunan, payroll run na rerepasuhin — at bawat hanay ay nagbubukas ng screen na tatapos dito.',
-            'Walang inilalagay dito. Galing sa ibang section ang bawat numero, kaya doon itama ang mali.',
+            'Nasa Live Attendance ang mga nag-time in ngayong araw, habang ipinapadala ng kiosk. Nasa Project Sites ang bawat site sa mapa: pumili ng site, maghanap o mag-click sa mapa, saka Save para ma-pin ito.',
+            'Hindi dito inilalagay ang mga numero. Galing sa ibang section ang bawat isa, kaya doon itama ang mali.',
         ]],
     ],
 

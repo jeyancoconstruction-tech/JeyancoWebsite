@@ -101,8 +101,9 @@ a.kpi:hover { border-color: var(--brand); background: var(--brand-subtle); }
 .dash-grid {
     display: grid;
     grid-template-columns: 1.25fr 1fr 1fr;
-    /* The map earns the taller half: a seven-point line reads fine short, a
-       map at 100px does not. */
+    /* On the left, the chart over live attendance: the list earns the taller
+       half, a seven-point line reads fine short. The map takes the two
+       columns on the right at full height. */
     grid-template-rows: 0.88fr 1.12fr;
     gap: var(--dash-gap);
     flex: 1 1 auto;
@@ -110,10 +111,8 @@ a.kpi:hover { border-color: var(--brand); background: var(--brand-subtle); }
 }
 .dash-grid > * { min-height: 0; min-width: 0; }
 .area-chart { grid-column: 1; grid-row: 1; }
-.area-map   { grid-column: 1; grid-row: 2; }
-.area-live  { grid-column: 2; grid-row: 1 / span 2; }
-.area-todo  { grid-column: 3; grid-row: 1; }
-.area-feed  { grid-column: 3; grid-row: 2; }
+.area-live  { grid-column: 1; grid-row: 2; }
+.area-map   { grid-column: 2 / span 2; grid-row: 1 / span 2; }
 
 /* ── Panel: fixed head, scrolling body ────────────────────────────────── */
 .panel {
@@ -237,10 +236,12 @@ a.row-item:hover, .row-item.hoverable:hover { background: var(--bg-subtle); }
         min-height: 0;
     }
     .dash-grid > * { min-height: 260px; }
-    .area-chart, .area-map, .area-live, .area-todo, .area-feed {
+    .area-chart, .area-live {
         grid-column: auto; grid-row: auto;
     }
     .area-live { min-height: 320px; }
+    /* The chart and live attendance side by side, the map across both. */
+    .area-map { grid-column: 1 / -1; grid-row: auto; min-height: 420px; }
 }
 @media (max-width: 767px) {
     .dash-kpis { grid-template-columns: repeat(2, 1fr); }

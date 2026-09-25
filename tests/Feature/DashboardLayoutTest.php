@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\LaborType;
-use App\Models\LeaveRequest;
 use App\Models\Shift;
 use App\Models\Site;
 use App\Models\User;
@@ -82,7 +81,7 @@ class DashboardLayoutTest extends TestCase
     public function test_dashboard_renders_empty_and_populated(): void
     {
         $this->actingAs($this->admin)->get('/dashboard')->assertOk()
-            ->assertSee('Active Workers')->assertSee('Needs Attention');
+            ->assertSee('Active Workers')->assertSee('Live Attendance')->assertSee('Project Sites');
 
         $this->seedWorkforce();
 
@@ -108,25 +107,31 @@ class DashboardLayoutTest extends TestCase
         }
     }
 
-    /** An outstanding item appears, links somewhere real, and clears. */
-    public function test_needs_attention_reflects_real_work(): void
+    /**
+     * The chart over live attendance on the left, the map across the right
+     * two columns at full height. Needs Attention and Recent Activity came
+     * off the page to make room for it.
+     */
+    public function test_the_map_takes_the_right_of_the_screen(): void
     {
-        $emp = $this->seedWorkforce();
+        $this->seedWorkforce();
 
-        $this->actingAs($this->admin)->get('/dashboard')
-            ->assertSee('Workers still timed in');
+        $html = $this->actingAs($this->admin)->get('/dashboard')->assertOk()
+            ->assertSee('Juan Dela Cruz')
+            ->assertDontSee('Needs Attention')->assertDontSee('Recent Activity')
+            ->getContent();
 
-        // Filed leave is not work outstanding. There is no approval step —
-        // the owner, HR and staff who file it are the ones who would approve
-        // it — so nothing about a leave waits on anybody.
-        LeaveRequest::create([
-            'employee_id' => $emp->id, 'leave_type' => 'sick',
-            'starts_on' => now()->toDateString(), 'ends_on' => now()->toDateString(),
-            'days' => 1, 'is_paid' => true,
-        ]);
+        $this->assertStringNotContainsString('id="dash-attention"', $html);
+        $this->assertStringNotContainsString('id="dash-activity"', $html);
 
-        $this->actingAs($this->admin)->get('/dashboard')
-            ->assertDontSee('Leave requests awaiting a decision');
+        // Stacked on a narrower screen in this order: chart, live, map.
+        $chart = strpos($html, 'id="dash-chart"');
+        $live  = strpos($html, 'id="dash-live-attendance"');
+        $map   = strpos($html, 'id="siteTrackerCard"');
+        $this->assertTrue($chart < $live && $live < $map, 'chart, then live attendance, then the map');
+
+        $this->assertStringContainsString('.area-live  { grid-column: 1; grid-row: 2; }', $html);
+        $this->assertStringContainsString('.area-map   { grid-column: 2 / span 2; grid-row: 1 / span 2; }', $html);
     }
 
     /**

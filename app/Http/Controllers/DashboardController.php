@@ -9,7 +9,6 @@ use App\Services\PayrollService;
 use App\Support\GoogleHolidays;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -74,38 +73,10 @@ class DashboardController extends Controller
         // ── Live Attendance (today) ────────────────────────────────────────
         $todayAttendance = $todayRows()->with(['employee', 'shift'])
             ->orderByDesc('time_in')
-            // The panel is full height on the one-screen layout and scrolls its
-            // own body, so six rows left a third of it empty. Twelve fills it
-            // and the rest is a scroll away rather than a page away.
+            // The panel scrolls its own body. Twelve rows fill it, and the
+            // rest are a scroll away rather than a page away.
             ->take(12)
             ->get();
-
-        // ── Recent Activities feed (derived from real records) ─────────────
-        $recentActivities = collect();
-        Employee::active()->latest()->take(4)->get()->each(function ($e) use ($recentActivities) {
-            $recentActivities->push([
-                'icon'     => 'fa-user-plus',
-                'color'    => '#6366f1',
-                'title'    => 'Employee registered',
-                'subtitle' => $e->name . ' added',
-                'time'     => $e->created_at,
-            ]);
-        });
-        Attendance::with('employee')->ofRegistered()->whereNotNull('time_in')->latest('created_at')->take(4)->get()
-            ->each(function ($a) use ($recentActivities) {
-                $recentActivities->push([
-                    'icon'     => 'fa-clock',
-                    'color'    => '#22c55e',
-                    'title'    => 'Attendance recorded',
-                    'subtitle' => (optional($a->employee)->name ?: 'A worker') . ' timed in',
-                    'time'     => $a->created_at,
-                ]);
-            });
-        $recentActivities = $recentActivities
-            ->filter(fn ($a) => $a['time'] !== null)
-            ->sortByDesc('time')
-            ->take(8)
-            ->values();
 
         // Attendance chart — workers present on each workday, counted by
         // person like the tiles. It counted rows and its tooltip called them
@@ -128,9 +99,8 @@ class DashboardController extends Controller
             ->distinct('employee_id')
             ->count('employee_id');
 
-        // ── The action queue, and the counters beside it ───────────────────
-        $attention = $this->buildAttention($stillIn);
-        $devices   = $this->deviceSummary();
+        // ── Kiosks reporting ───────────────────────────────────────────────
+        $devices = $this->deviceSummary();
 
         return view('dashboard', compact(
             'employees',
@@ -142,78 +112,11 @@ class DashboardController extends Controller
             'lastWeekPayroll',
             'newThisWeek',
             'todayAttendance',
-            'recentActivities',
             'attendanceLabels',
             'attendanceData',
             'stillIn',
-            'attention',
             'devices'
         ));
-    }
-
-    /**
-     * What is waiting for someone to act on it.
-     *
-     * Every row is a real count over real records and links to the screen that
-     * clears it; a row with nothing outstanding is left out entirely rather
-     * than shown as a zero. The extension modules are consulted only once
-     * their tables exist, so a server that has not run the new migrations yet
-     * still renders this page — it simply has fewer rows.
-     */
-    private function buildAttention(int $stillIn): array
-    {
-        $rows = [];
-
-        $pendingKiosk = Employee::pending()->count();
-        if ($pendingKiosk > 0) {
-            $rows[] = [
-                'icon'  => 'fa-user-plus',
-                'tone'  => 'warn',
-                'label' => 'Kiosk registrations to complete',
-                'count' => $pendingKiosk,
-                'url'   => route('employees.register'),
-            ];
-        }
-
-        if ($stillIn > 0) {
-            $rows[] = [
-                'icon'  => 'fa-user-clock',
-                'tone'  => 'info',
-                'label' => 'Workers still timed in',
-                'count' => $stillIn,
-                'url'   => url('/attendance'),
-            ];
-        }
-
-        // Once the table is there it stays there, so only "not yet" is asked
-        // again — on MySQL each asking is a trip to information_schema.
-        static $runsTable = false;
-
-        if ($runsTable || ($runsTable = Schema::hasTable('payroll_runs'))) {
-            $open = \App\Models\PayrollRun::whereIn('status', ['draft', 'calculated'])->count();
-            if ($open > 0) {
-                $rows[] = [
-                    'icon'  => 'fa-calculator',
-                    'tone'  => 'info',
-                    'label' => 'Payroll runs open for review',
-                    'count' => $open,
-                    'url'   => route('payroll-processing.index', ['status' => 'calculated']),
-                ];
-            }
-
-            $toFinalize = \App\Models\PayrollRun::where('status', 'approved')->count();
-            if ($toFinalize > 0) {
-                $rows[] = [
-                    'icon'  => 'fa-lock',
-                    'tone'  => 'ok',
-                    'label' => 'Approved runs ready to finalise',
-                    'count' => $toFinalize,
-                    'url'   => route('payroll-processing.index', ['status' => 'approved']),
-                ];
-            }
-        }
-
-        return $rows;
     }
 
     /**

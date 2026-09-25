@@ -132,7 +132,47 @@
             </div>
         </section>
 
-        {{-- Project Sites — the existing tracker, in a tighter frame --}}
+        {{-- Live attendance, under the chart. A clock-in at the site
+             appears here as it happens. --}}
+        <section class="panel area-live" id="dash-live-attendance"
+                 data-live="attendance employees">
+            <div class="panel-head">
+                <h2><i class="fas fa-user-clock"></i> {{ __('Live Attendance') }}</h2>
+                <span class="panel-tag live">{{ __('TODAY') }}</span>
+            </div>
+            <div class="panel-body">
+                @forelse($todayAttendance as $att)
+                    <div class="row-item hoverable">
+                        <div class="row-av">{{ strtoupper(substr(optional($att->employee)->name ?? 'W', 0, 1)) }}</div>
+                        <div class="row-main">
+                            <p class="row-title">{{ optional($att->employee)->name ?? __('Worker') }}</p>
+                            <p class="row-sub">{{ optional($att->employee)->position ?? __('On site') }}</p>
+                        </div>
+                        <div class="row-right {{ $att->time_out ? '' : 'ok' }}">
+                            {{ \Carbon\Carbon::parse($att->time_in)->format('g:i A') }}
+                            @if(! $att->time_out)
+                                <div class="row-sub" style="text-align:right;color:var(--success);">{{ __('in') }}</div>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <div class="panel-empty">
+                        <i class="fas fa-user-clock"></i>
+                        <p>{{ __('Nobody has timed in yet today.') }}</p>
+                        <p style="font-size:10.5px;">{{ __('Records appear here as the kiosk sends them.') }}</p>
+                    </div>
+                @endforelse
+            </div>
+            @if($todayAttendance->count())
+                <div class="panel-head" style="border-top:1px solid var(--border);border-bottom:none;">
+                    <span class="row-sub">{{ $presentToday }} {{ __('timed in today') }}</span>
+                    <a class="panel-link" href="{{ url('/attendance') }}">{{ __('View all') }} <i class="fas fa-arrow-right"></i></a>
+                </div>
+            @endif
+        </section>
+
+        {{-- Project Sites — the existing tracker, across the right two
+             thirds of the screen and its full height. --}}
         <section class="panel area-map site-tracker" id="siteTrackerCard">
             <div class="panel-head table-card-header" style="padding:8px 12px;">
                 <h2><i class="fas fa-map-location-dot"></i> {{ __('Project Sites') }}</h2>
@@ -171,103 +211,6 @@
                     </div>
                     <div id="siteMapHint" class="map-hint">{{ __('Search or click the map, then Save.') }}</div>
                     <div id="kioskMap" class="rounded-3 overflow-hidden flex-grow-1"></div>
-            </div>
-        </section>
-
-        {{-- Live attendance, full height. Named for what it now is: a
-             clock-in at the site appears here as it happens. --}}
-        <section class="panel area-live" id="dash-live-attendance"
-                 data-live="attendance employees">
-            <div class="panel-head">
-                <h2><i class="fas fa-user-clock"></i> {{ __('Live Attendance') }}</h2>
-                <span class="panel-tag live">{{ __('TODAY') }}</span>
-            </div>
-            <div class="panel-body">
-                @forelse($todayAttendance as $att)
-                    <div class="row-item hoverable">
-                        <div class="row-av">{{ strtoupper(substr(optional($att->employee)->name ?? 'W', 0, 1)) }}</div>
-                        <div class="row-main">
-                            <p class="row-title">{{ optional($att->employee)->name ?? __('Worker') }}</p>
-                            <p class="row-sub">{{ optional($att->employee)->position ?? __('On site') }}</p>
-                        </div>
-                        <div class="row-right {{ $att->time_out ? '' : 'ok' }}">
-                            {{ \Carbon\Carbon::parse($att->time_in)->format('g:i A') }}
-                            @if(! $att->time_out)
-                                <div class="row-sub" style="text-align:right;color:var(--success);">{{ __('in') }}</div>
-                            @endif
-                        </div>
-                    </div>
-                @empty
-                    <div class="panel-empty">
-                        <i class="fas fa-user-clock"></i>
-                        <p>{{ __('Nobody has timed in yet today.') }}</p>
-                        <p style="font-size:10.5px;">{{ __('Records appear here as the kiosk sends them.') }}</p>
-                    </div>
-                @endforelse
-            </div>
-            @if($todayAttendance->count())
-                <div class="panel-head" style="border-top:1px solid var(--border);border-bottom:none;">
-                    <span class="row-sub">{{ $presentToday }} {{ __('timed in today') }}</span>
-                    <a class="panel-link" href="{{ url('/attendance') }}">{{ __('View all') }} <i class="fas fa-arrow-right"></i></a>
-                </div>
-            @endif
-        </section>
-
-        {{-- What is waiting for someone. Every row is a real count and a real link. --}}
-        <section class="panel area-todo" id="dash-attention"
-                 data-live="attendance leave advances payroll employees">
-            <div class="panel-head">
-                <h2><i class="fas fa-clipboard-check"></i> {{ __('Needs Attention') }}</h2>
-                @if(count($attention ?? []))
-                    <span class="panel-tag muted">{{ count($attention) }}</span>
-                @endif
-            </div>
-            <div class="panel-body">
-                @forelse($attention ?? [] as $a)
-                    <a class="row-item" href="{{ $a['url'] }}">
-                        <div class="row-av {{ $a['tone'] }}"><i class="fas {{ $a['icon'] }}"></i></div>
-                        <div class="row-main">
-                            <p class="row-title">{{ __($a['label']) }}</p>
-                        </div>
-                        <span class="row-count {{ $a['tone'] }}">{{ $a['count'] }}</span>
-                    </a>
-                @empty
-                    <div class="panel-empty">
-                        <i class="fas fa-circle-check ok"></i>
-                        <p>{{ __('Nothing waiting.') }}</p>
-                        <p style="font-size:10.5px;">{{ __('Approvals and open payroll runs show up here.') }}</p>
-                    </div>
-                @endforelse
-            </div>
-        </section>
-
-        {{-- Recent activity --}}
-        <section class="panel area-feed" id="dash-activity"
-                 data-live="audit attendance employees payroll leave advances">
-            <div class="panel-head">
-                <h2><i class="fas fa-wave-square"></i> {{ __('Recent Activity') }}</h2>
-                <a class="panel-link" href="{{ auth()->user()?->isAdmin() ? route('audit-logs.index') : url('/employees') }}">
-                    {{ auth()->user()?->isAdmin() ? __('Audit log') : __('Employees') }} <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
-            <div class="panel-body">
-                @forelse($recentActivities as $act)
-                    <div class="row-item hoverable">
-                        <div class="row-av" style="background:{{ $act['color'] }}1f;color:{{ $act['color'] }};">
-                            <i class="fas {{ $act['icon'] }}"></i>
-                        </div>
-                        <div class="row-main">
-                            <p class="row-title">{{ $act['title'] }}</p>
-                            <p class="row-sub">{{ $act['subtitle'] }}</p>
-                        </div>
-                        <span class="row-sub" style="flex:none;">{{ $act['time']->diffForHumans(null, true) }}</span>
-                    </div>
-                @empty
-                    <div class="panel-empty">
-                        <i class="fas fa-clock-rotate-left"></i>
-                        <p>{{ __('No activity yet.') }}</p>
-                    </div>
-                @endforelse
             </div>
         </section>
     </div>
