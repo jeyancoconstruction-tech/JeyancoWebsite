@@ -31,6 +31,12 @@
 (function () {
   var d = document.documentElement, internal = false;
   try { internal = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (e) {}
+  /* The first page after signing in is not an arrival either — the sign-in
+     page was, and after Sign in there is the button's spinner and nothing
+     more. Through Google the referrer is Google's page, which read as
+     somebody opening the site; the sign-in's own flash says otherwise,
+     whichever way they came in. */
+  if (@json(session()->has('force_theme'))) internal = true;
   var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || {};
   if (!internal && nav.type !== 'back_forward') d.classList.add('jp-loading');
 })();

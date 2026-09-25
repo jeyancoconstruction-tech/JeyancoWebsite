@@ -66,13 +66,56 @@ class LoginPageTest extends TestCase
     {
         $html = $this->page();
 
-        $this->assertStringContainsString('<button class="skip" id="skip" type="button">Skip</button>', $html);
-        $this->assertStringContainsString("skip.addEventListener('click', show)", $html);
+        $this->assertStringContainsString('<button class="skip" id="skip" type="button" aria-label="Skip the intro">', $html);
+        $this->assertStringContainsString('Skip intro', $html);
+        $this->assertStringContainsString("skip.addEventListener('click', function () { show(true); })", $html);
+        $this->assertStringContainsString("e.key === 'Escape'", $html, 'Esc skips too');
         $this->assertStringNotContainsString('Replay', $html);
         $this->assertStringNotContainsString('id="replay"', $html);
     }
 
+    /**
+     * Skip lands on the finished page at once — the same page a reload
+     * shows — rather than starting the hand-over, which ran on for seconds
+     * and read as Skip not working.
+     */
+    public function test_skip_goes_straight_to_the_finished_page(): void
+    {
+        $src = File::get(resource_path('views/login.blade.php'));
+
+        $fast = substr($src, strpos($src, 'if (fast) {'));
+        $fast = substr($fast, 0, strpos($fast, 'return;'));
+
+        $this->assertStringContainsString("d.classList.remove('intro')", $fast, 'it becomes the no-intro page');
+        $this->assertStringContainsString("d.classList.add('in', 'landed')", $fast);
+        $this->assertStringNotContainsString('flyTitle', $fast, 'no hand-over');
+        $this->assertStringContainsString('.snap *, .snap *::before, .snap *::after { transition: none !important; }', $src);
+    }
+
     // ── Signing in ───────────────────────────────────────────────────────
+
+    /**
+     * After Sign in there is the button's spinner and nothing more — the
+     * dashboard's arrival splash does not play on the page it lands on.
+     * Through Google that page's referrer is Google, which read as somebody
+     * opening the site; the sign-in's own flash now says otherwise.
+     */
+    public function test_the_page_after_signing_in_has_no_splash(): void
+    {
+        \App\Models\User::create([
+            'name' => 'Sign In', 'username' => 'sign.in', 'password' => \Illuminate\Support\Facades\Hash::make('secret123'),
+            'role' => \App\Models\User::ROLE_ADMIN, 'is_admin' => true, 'is_active' => true,
+        ]);
+
+        $this->post(route('login.post'), ['username' => 'sign.in', 'password' => 'secret123'])
+             ->assertRedirect(route('dashboard'));
+
+        $first = $this->get(route('dashboard'))->assertOk()->getContent();
+        $this->assertStringContainsString('if (true) internal = true;', $first, 'the first page after signing in is not an arrival');
+
+        $later = $this->get(route('dashboard'))->assertOk()->getContent();
+        $this->assertStringContainsString('if (false) internal = true;', $later, 'opening the site later still is');
+    }
 
     /** The spinner, and only the spinner — the intro is not played again. */
     public function test_signing_in_shows_only_a_spinner_in_the_button(): void
@@ -113,7 +156,7 @@ class LoginPageTest extends TestCase
 
         $html = $this->page();
 
-        $this->assertMatchesRegularExpression('#<a class="google enter" id="google" href="' . preg_quote(route('login.google'), '#') . '"#', $html);
+        $this->assertMatchesRegularExpression('#<a class="google" id="google" href="' . preg_quote(route('login.google'), '#') . '"#', $html);
         $this->assertStringContainsString('Sign in with Google', $html);
         $this->assertStringContainsString('<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85', $html);
     }

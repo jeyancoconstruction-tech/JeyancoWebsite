@@ -32,6 +32,9 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="64x64" href="{{ asset('favicon-64.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicon-180.png') }}">
+    {{-- The mark is on screen from the first frame without the intro; asked
+         for early, so the ring is never seen empty while it downloads. --}}
+    <link rel="preload" as="image" href="{{ $mark }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Big+Shoulders+Stencil+Display:wght@800;900&family=Big+Shoulders+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -73,7 +76,7 @@
             --danger: #F08A8A;
             --success: #5FCB9F;
             --warn: #E7C07A;
-            --control: 56px;
+            --control: 50px;
             --sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
             --stencil: "Big Shoulders Stencil Display", "Arial Narrow", Impact, sans-serif;
             --cond: "Big Shoulders Display", "Arial Narrow", sans-serif;
@@ -183,14 +186,24 @@
             animation-delay: -30s !important;
         }
 
-        /* Skip: only while the intro plays. */
+        /* Skip: only while the intro plays, and plain to see. It goes
+           straight to the finished page (see show(true) below). */
         .skip {
-            position: fixed; right: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); z-index: 4;
-            display: none; padding: 6px 10px; border: 0; border-radius: 8px; background: none; cursor: pointer;
-            font: 600 13px var(--sans); color: var(--muted);
+            position: fixed; right: 20px; top: calc(20px + env(safe-area-inset-top, 0px)); z-index: 4;
+            display: none; align-items: center; gap: 8px; height: 38px; padding: 0 14px 0 16px;
+            border: 1px solid rgba(127,176,255,.3); border-radius: 999px; cursor: pointer;
+            background: rgba(8,20,44,.62); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+            font: 700 13px var(--sans); letter-spacing: .02em; color: #d6e4f7;
+            transition: background .15s, border-color .15s, color .15s;
         }
-        .skip:hover { color: var(--ink); background: rgba(127,176,255,.08); }
-        .intro:not(.in) .skip { display: block; }
+        .skip:hover { border-color: #7fb0ff; background: rgba(20,44,90,.72); color: #fff; }
+        .skip kbd { padding: 1px 6px; border: 1px solid rgba(127,176,255,.3); border-radius: 5px; font: 600 10.5px var(--sans); color: var(--muted); }
+        .intro:not(.in) .skip { display: inline-flex; }
+
+        /* The jump itself: for the one frame it takes to land on the finished
+           page, nothing transitions — the panel does not slide, the drawing
+           does not shrink, the words do not arrive. It is simply there. */
+        .snap *, .snap *::before, .snap *::after { transition: none !important; }
 
         /* ── The sign-in page ──────────────────────────────────────────── */
         .login {
@@ -258,28 +271,44 @@
             transform: translateX(100%); transition: transform 1.3s cubic-bezier(.76,0,.24,1);
         }
         .in .rp { transform: none; }
-        .rtop { text-align: right; font-size: 14px; color: var(--soft); }
-        .rbody { margin: auto; width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 18px; padding-block: 28px; }
-        .rbody h2 { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -.01em; }
-        .rbody .sub { margin: -8px 0 6px; font-size: 16px; color: var(--soft); }
+        .rtop { text-align: right; font-size: 13.5px; color: var(--soft); }
+        .rbody { margin: auto; width: 100%; max-width: 452px; display: flex; flex-direction: column; gap: 18px; padding-block: 24px; }
+
+        /* The form on a card of its own: one clear place to look, with the
+           heading, the fields and the two ways in held together. */
+        .card {
+            display: flex; flex-direction: column; gap: 22px; padding: 34px 34px 30px;
+            border: 1px solid rgba(127,176,255,.15); border-radius: 18px;
+            background: linear-gradient(180deg, rgba(16,32,64,.74), rgba(9,18,38,.78));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 30px 70px -24px rgba(0,0,0,.6);
+        }
+        .card-head { display: flex; flex-direction: column; gap: 8px; }
+        .eyebrow {
+            display: inline-flex; align-items: center; gap: 7px; width: max-content; padding: 5px 11px;
+            border: 1px solid rgba(127,176,255,.22); border-radius: 999px; background: rgba(47,111,200,.16);
+            font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #a9cbf0;
+        }
+        .card-head h2 { margin: 6px 0 0; font-size: 30px; font-weight: 800; line-height: 1.15; letter-spacing: -.02em; }
+        .card-head .sub { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--soft); }
         form { display: flex; flex-direction: column; gap: 18px; }
 
         .alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; font-size: 13.5px; font-weight: 600; line-height: 1.45; }
         .alert-error   { background: rgba(240,138,138,.1); border: 1px solid rgba(240,138,138,.28); color: var(--danger); }
         .alert-success { background: rgba(95,203,159,.1);  border: 1px solid rgba(95,203,159,.28);  color: var(--success); }
 
-        .fld { display: flex; flex-direction: column; gap: 8px; }
-        .fld label { font-size: 14.5px; font-weight: 600; }
+        .fld { display: flex; flex-direction: column; gap: 7px; }
+        .fld label { font-size: 13px; font-weight: 600; letter-spacing: .01em; color: #c9d4e6; }
         .inp {
-            display: flex; align-items: center; gap: 12px; height: var(--control); padding: 0 8px 0 16px;
-            border: 1px solid rgba(127,176,255,.18); border-radius: 10px; background: rgba(10,22,46,.45);
+            display: flex; align-items: center; gap: 11px; height: var(--control); padding: 0 6px 0 14px;
+            border: 1px solid rgba(148,178,230,.2); border-radius: 11px; background: rgba(6,14,30,.55);
             transition: border-color .2s, box-shadow .2s, background .2s;
         }
-        .inp:focus-within { border-color: #5b93e0; background: rgba(14,30,62,.6); box-shadow: 0 0 0 3px rgba(79,134,214,.22); }
+        .inp:hover { border-color: rgba(148,178,230,.34); }
+        .inp:focus-within { border-color: #5b93e0; background: rgba(10,24,52,.7); box-shadow: 0 0 0 3px rgba(79,134,214,.22); }
         .inp:has(input.invalid) { border-color: rgba(240,138,138,.6); }
         .inp:has(input.invalid):focus-within { box-shadow: 0 0 0 3px rgba(240,138,138,.16); }
         .inp > .i { color: #7d8fab; }
-        .inp input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: 500 15.5px var(--sans); }
+        .inp input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: 500 15px var(--sans); }
         .inp input::placeholder { color: #6b7c98; }
         .inp input:focus-visible { outline: 0; }
         /* Chrome paints its own near-white block over an autofilled box. */
@@ -299,20 +328,36 @@
         .caps { display: none; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--warn); }
         .caps.show { display: flex; }
 
-        .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 14.5px; }
-        .remember { display: flex; gap: 10px; align-items: center; cursor: pointer; user-select: none; }
-        .remember input { width: 18px; height: 18px; margin: 0; accent-color: #2f6fc0; cursor: pointer; }
+        .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: -2px; font-size: 13.5px; }
+        .row a { font-weight: 700; }
+        .remember { display: flex; gap: 10px; align-items: center; color: #c9d4e6; cursor: pointer; user-select: none; }
+        /* The box drawn to match the fields rather than left to the browser. */
+        .remember input {
+            appearance: none; -webkit-appearance: none; display: grid; place-content: center;
+            width: 18px; height: 18px; margin: 0; flex: none; cursor: pointer;
+            border: 1.5px solid rgba(148,178,230,.45); border-radius: 5px; background: rgba(6,14,30,.6);
+            transition: background .15s, border-color .15s;
+        }
+        .remember input::after {
+            content: ""; width: 9px; height: 5px; margin-top: -2px;
+            border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+            transform: rotate(-45deg) scale(0); transition: transform .12s ease;
+        }
+        .remember input:hover { border-color: #7fb0ff; }
+        .remember input:checked { background: #2f6fc0; border-color: #2f6fc0; }
+        .remember input:checked::after { transform: rotate(-45deg) scale(1); }
+        .remember input:focus-visible { outline: 2px solid var(--ln); outline-offset: 2px; }
 
         .signin {
             position: relative; overflow: hidden; height: var(--control);
             display: flex; gap: 10px; align-items: center; justify-content: center;
-            border: 1px solid rgba(160,200,255,.25); border-radius: 10px; cursor: pointer;
-            background: linear-gradient(180deg, rgba(47,111,200,.95), rgba(33,86,168,.95));
-            color: #fff; font: 700 16px var(--sans);
-            box-shadow: 0 10px 30px rgba(37,99,184,.3);
-            transition: background .2s, transform .1s;
+            margin-top: 2px; border: 1px solid rgba(160,200,255,.28); border-radius: 11px; cursor: pointer;
+            background: linear-gradient(180deg, #2f72cf, #2259b0);
+            color: #fff; font: 700 15px var(--sans); letter-spacing: .01em;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 12px 28px -10px rgba(37,99,184,.75);
+            transition: background .2s, transform .1s, box-shadow .2s;
         }
-        .signin:hover { background: #2c6fcc; }
+        .signin:hover { background: linear-gradient(180deg, #3a7fdd, #2663c2); box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 14px 32px -10px rgba(37,99,184,.9); }
         .signin:active { transform: translateY(1px); }
         .signin .arrow { transition: transform .18s cubic-bezier(.2,.8,.2,1); }
         .signin:hover .arrow { transform: translateX(2px); }
@@ -329,7 +374,7 @@
         }
         @keyframes shine { to { transform: translateX(100%); } }
 
-        .or { display: flex; align-items: center; gap: 14px; color: #6b7c98; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .or { display: flex; align-items: center; gap: 14px; color: #6b7c98; font-size: 11.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
         .or::before, .or::after { content: ""; flex: 1; height: 1px; background: rgba(127,176,255,.16); }
 
         /* The Google button, as it was: the second way in, quieter than
@@ -344,9 +389,10 @@
         .google:hover { background: #131C33; border-color: rgba(255,255,255,.24); color: #E6EDF7; }
         .google:active { transform: translateY(1px); }
 
-        .notice { display: flex; gap: 14px; align-items: center; padding: 16px 20px; border: 1px solid rgba(127,176,255,.12); border-radius: 10px; background: rgba(8,18,38,.35); color: #8e9db6; font-size: 13.5px; line-height: 1.5; }
-        .notice .i { color: #34d399; }
-        .rfoot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13.5px; color: #7d8fab; }
+        /* Said once, quietly, under the card — a caption, not another box. */
+        .notice { display: flex; gap: 9px; align-items: flex-start; justify-content: center; margin: 0; padding: 0 8px; color: #7f90ab; font-size: 12.5px; line-height: 1.5; text-align: left; }
+        .notice .i { margin-top: 1px; color: #34d399; }
+        .rfoot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: #7d8fab; }
         .rfoot a { color: var(--soft); font-weight: 500; }
 
         /* The words of the heading arrive one at a time after the intro. */
@@ -374,18 +420,19 @@
 
         /* A shorter screen: the same page, closer together. */
         @media (min-width: 901px) and (max-height: 820px) {
-            :root { --control: 48px; }
+            :root { --control: 44px; }
             .lp { padding: 36px 48px; gap: 26px; }
             .pitch { margin-top: 1vh; gap: 16px; }
             .lp h1 { font-size: clamp(28px, 3.1vw, 44px); }
             .lead { font-size: 15.5px; }
             .feats { gap: 10px; }
             .rp { padding: 22px 48px; }
-            .rbody { gap: 13px; padding-block: 16px; }
-            .rbody h2 { font-size: 28px; }
-            .rbody .sub { font-size: 15px; }
+            .rbody { gap: 12px; padding-block: 10px; }
+            .card { gap: 16px; padding: 24px 28px 22px; }
+            .card-head { gap: 6px; }
+            .card-head h2 { margin-top: 2px; font-size: 25px; }
+            .card-head .sub { font-size: 13.5px; }
             form { gap: 13px; }
-            .notice { padding: 11px 16px; font-size: 12.5px; }
         }
         @media (min-width: 901px) and (max-height: 680px) {
             .feats { display: none; }
@@ -410,12 +457,13 @@
             .feats { display: none; }
             .rp { transform: none; overflow: visible; padding: 20px; border-left: 0; box-shadow: none; }
             .intro .rp .enter { transform: translateY(18px); }
-            .rbody { padding-block: 16px; }
+            .rbody { padding-block: 8px; }
+            .card { padding: 24px 18px 20px; border-radius: 16px; }
             .seam { display: none; }
         }
         @keyframes stageFade { to { opacity: 0; visibility: hidden; } }
         @media (max-width: 480px) {
-            .rbody h2 { font-size: 28px; }
+            .card-head h2 { font-size: 26px; }
             .rfoot { flex-direction: column; align-items: center; gap: 6px; }
         }
 
@@ -518,7 +566,11 @@
     </svg>
 </div>
 
-<button class="skip" id="skip" type="button">{{ __('Skip') }}</button>
+<button class="skip" id="skip" type="button" aria-label="{{ __('Skip the intro') }}">
+    {{ __('Skip intro') }}
+    <svg class="i" width="14" height="14" viewBox="0 0 24 24" style="stroke-width:2.2"><path d="M5 5l7 7-7 7M13 5l7 7-7 7"/></svg>
+    <kbd>Esc</kbd>
+</button>
 <div class="seam" aria-hidden="true"></div>
 
 <div class="login" id="login">
@@ -561,10 +613,15 @@
         <div class="rtop enter" style="--i:1">{{ __('Need an account?') }} <a href="{{ route('password.request') }}">{{ __('Contact your administrator') }}</a></div>
 
         <div class="rbody">
-            <div class="enter" style="--i:2">
+          <div class="card enter" style="--i:2">
+            <div class="card-head">
+                <span class="eyebrow">
+                    <svg class="i" width="13" height="13" viewBox="0 0 24 24" style="stroke-width:2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                    {{ __('Secure sign-in') }}
+                </span>
                 <h2>{{ __('Welcome back') }}</h2>
+                <p class="sub">{{ __('Sign in to the Jeyanco management dashboard.') }}</p>
             </div>
-            <p class="sub enter" style="--i:2">{{ __('Sign in to the Jeyanco management dashboard.') }}</p>
 
             @if(session('success'))
                 <div class="alert alert-success" role="status">
@@ -585,7 +642,7 @@
             <form action="{{ route('login.post') }}" method="POST" id="login-form" novalidate>
                 @csrf
 
-                <div class="fld enter" style="--i:3">
+                <div class="fld">
                     <label for="username">{{ __('Username or email') }}</label>
                     <div class="inp">
                         <svg class="i" width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6 8-6s8 2 8 6"/></svg>
@@ -603,7 +660,7 @@
                     @enderror
                 </div>
 
-                <div class="fld enter" style="--i:4">
+                <div class="fld">
                     <label for="password">{{ __('Password') }}</label>
                     <div class="inp">
                         <svg class="i" width="18" height="18" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
@@ -627,14 +684,14 @@
                     </span>
                 </div>
 
-                <div class="row enter" style="--i:5">
+                <div class="row">
                     <label class="remember">
                         <input type="checkbox" name="remember" {{ old('remember') ? 'checked' : '' }}>{{ __('Remember me') }}
                     </label>
                     <a href="{{ route('password.request') }}">{{ __('Forgot password?') }}</a>
                 </div>
 
-                <button class="signin enter" id="submit" type="submit" style="--i:6">
+                <button class="signin" id="submit" type="submit">
                     <span class="spin" aria-hidden="true"></span>
                     <span class="label">{{ __('Sign in') }}</span>
                     <svg class="i arrow" width="18" height="18" viewBox="0 0 24 24" style="stroke-width:2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -643,18 +700,20 @@
 
                 {{-- Only an address an admin has put on an account gets in this way. --}}
                 @if($googleSignIn ?? false)
-                    <div class="or enter" style="--i:7">{{ __('or') }}</div>
-                    <a class="google enter" id="google" href="{{ route('login.google') }}" style="--i:7">
+                    <div class="or">{{ __('or') }}</div>
+                    <a class="google" id="google" href="{{ route('login.google') }}">
                         <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
                         {{ __('Sign in with Google') }}
                     </a>
                 @endif
 
-                <div class="notice enter" style="--i:8">
-                    <svg class="i" width="20" height="20" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
-                    {{ __('For authorized Jeyanco personnel only. Every sign-in is recorded in the audit log.') }}
-                </div>
             </form>
+          </div>
+
+            <p class="notice enter" style="--i:4">
+                <svg class="i" width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+                {{ __('For authorized Jeyanco personnel only. Every sign-in is recorded in the audit log.') }}
+            </p>
         </div>
 
         <footer class="rfoot enter" style="--i:9">
@@ -727,11 +786,28 @@
     setTimeout(function () { land(); layer.remove(); }, 1450);
   }
 
-  function show() {
+  function show(fast) {
     if (d.classList.contains('in')) return;
     clearTimeout(timer);
     login.inert = false;
     login.removeAttribute('aria-hidden');
+
+    // Skip: straight to the finished page, with nothing left to watch — no
+    // hand-over, no logo building itself, no words arriving one by one. The
+    // intro class goes, so the page is exactly what a reload would show,
+    // and for that one frame nothing is allowed to transition.
+    if (fast) {
+      d.classList.add('snap');
+      d.classList.remove('intro');
+      d.classList.add('in', 'landed');
+      void d.offsetWidth;
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { d.classList.remove('snap'); });
+      });
+      focusForm();
+      return;
+    }
+
     d.classList.add('in');
     if (window.matchMedia('(max-width: 900px)').matches) { d.classList.add('landed'); }
     else { flyTitle(); }
@@ -759,8 +835,11 @@
     login.inert = true;
     login.setAttribute('aria-hidden', 'true');
     splitWords(login.querySelector('.lp h1'));
-    skip.addEventListener('click', show);
-    timer = setTimeout(show, DUR);
+    skip.addEventListener('click', function () { show(true); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !d.classList.contains('in')) show(true);
+    });
+    timer = setTimeout(function () { show(false); }, DUR);
   } else {
     focusForm();
   }
@@ -820,7 +899,7 @@
     if (!e.persisted) return;
     btn.classList.remove('loading');
     said.textContent = '';
-    if (intro) show();
+    if (intro) show(true);
   });
 })();
 </script>
