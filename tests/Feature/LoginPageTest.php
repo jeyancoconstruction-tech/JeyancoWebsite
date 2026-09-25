@@ -177,6 +177,23 @@ class LoginPageTest extends TestCase
         $this->assertMatchesRegularExpression('/\.notice \{[^}]*justify-content: center;[^}]*text-align: center;/s', $html);
     }
 
+    /**
+     * The card opens straight on its heading — no "Secure sign-in" label —
+     * and the left panel's words are sized to the panel they are in, so
+     * they fill it on a large screen and still fit on a small one.
+     */
+    public function test_the_card_has_no_label_and_the_words_fit_their_panel(): void
+    {
+        $html = $this->page();
+
+        $this->assertStringNotContainsString('Secure sign-in', $html);
+        $this->assertStringNotContainsString('eyebrow', $html);
+        $this->assertMatchesRegularExpression('#<div class="card-head">\s*<h2>Welcome back</h2>#', $html);
+
+        $this->assertStringContainsString('container-type: inline-size;', $html, 'the left panel is what the words are sized to');
+        $this->assertStringContainsString('font-size: clamp(30px, min(7.6cqi, 7.6vh), 80px);', $html, 'the headline as wide as the panel, as tall as the screen allows');
+    }
+
     // ── The page ─────────────────────────────────────────────────────────
 
     /** The real logo, served as a file. */

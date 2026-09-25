@@ -76,7 +76,7 @@
             --danger: #F08A8A;
             --success: #5FCB9F;
             --warn: #E7C07A;
-            --control: 50px;
+            --control: 52px;
             --sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
             --stencil: "Big Shoulders Stencil Display", "Arial Narrow", Impact, sans-serif;
             --cond: "Big Shoulders Display", "Arial Narrow", sans-serif;
@@ -112,7 +112,7 @@
             transform-origin: 0 100%;
             transition: opacity 1s ease, transform 1.3s cubic-bezier(.76,0,.24,1);
         }
-        .in svg.scene { opacity: .5; transform: translate(-1%, -1%) scale(.56); }
+        .in svg.scene { opacity: .5; transform: translate(-1%, -1%) scale(.5); }
         svg.scene .title, svg.scene .hud { transition: opacity .45s ease; }
         .in svg.scene .title, .in svg.scene .hud { opacity: 0; }
 
@@ -223,7 +223,7 @@
         @keyframes seam { 0% { left: 100%; opacity: 1; } 100% { left: 53%; opacity: 1; } }
         @keyframes seamOut { to { opacity: 0; } }
 
-        .lp { position: relative; overflow: hidden; min-height: 0; padding: 48px 56px; display: flex; flex-direction: column; gap: 40px; container-type: inline-size; }
+        .lp { position: relative; overflow: hidden; min-height: 0; padding: 48px 56px; display: flex; flex-direction: column; gap: clamp(18px, 3vh, 32px); container-type: inline-size; }
         .lp::before {
             content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity 1s ease .9s;
             background: linear-gradient(180deg, rgba(7,16,36,.8) 0%, rgba(7,16,36,.55) 55%, rgba(7,16,36,.35) 85%, rgba(7,16,36,.15) 100%);
@@ -233,15 +233,15 @@
         .lp .bp { display: none; }
 
         .lbrand { display: flex; gap: 14px; align-items: center; }
-        .lbrand b { display: block; width: max-content; font-family: var(--stencil); font-weight: 900; font-size: 26px; line-height: 1; letter-spacing: .12em; }
-        .lbrand small { display: block; margin-top: 4px; font-family: var(--cond); font-weight: 700; font-size: 12px; letter-spacing: .42em; color: #a9bbd9; }
+        .lbrand b { display: block; width: max-content; font-family: var(--stencil); font-weight: 900; font-size: clamp(22px, min(3.8cqi, 3.4vh), 32px); line-height: 1; letter-spacing: .12em; }
+        .lbrand small { display: block; margin-top: 4px; font-family: var(--cond); font-weight: 700; font-size: clamp(10.5px, min(1.65cqi, 1.5vh), 14px); letter-spacing: .42em; color: #a9bbd9; }
         .lbrand b, .lbrand small { opacity: 0; }
         .landed .lbrand b, .landed .lbrand small { opacity: 1; }
 
         /* The logo: our mark, with a ring that draws itself round it. */
-        .lgo { position: relative; width: 58px; height: 58px; flex: none; }
-        .lgo img { position: absolute; inset: 5px; width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
-        .lgo svg { position: absolute; inset: 0; width: 58px; height: 58px; overflow: visible; }
+        .lgo { --lgo: clamp(50px, min(8.4cqi, 7.4vh), 68px); position: relative; width: var(--lgo); height: var(--lgo); flex: none; }
+        .lgo img { position: absolute; inset: 9%; width: 82%; height: 82%; border-radius: 50%; object-fit: cover; }
+        .lgo svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
         .lgo .ring { fill: none; stroke: #8cc0ff; stroke-width: 2; stroke-dasharray: 1; stroke-dashoffset: 0; }
         .lgo .tick { stroke: #8cc0ff; stroke-width: 1.5; opacity: 0; }
         .intro:not(.in) .lgo { visibility: hidden; }
@@ -253,13 +253,19 @@
         @keyframes disc { to { opacity: 1; transform: none; } }
         @keyframes tickOut { to { opacity: 0; } }
 
-        .pitch { display: flex; flex-direction: column; gap: 22px; margin-top: 4vh; }
-        .lp h1 { margin: 0; font-size: clamp(30px, 3.6vw, 54px); line-height: 1.08; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; --base: 3.25s; --step: 60ms; }
+        /* Sized to the panel, not to a fixed scale: the headline as wide as
+           the panel allows (its longest line, "Every peso accounted for.",
+           is about 12.4 font-sizes long, so 7.6cqi keeps it on one line) and
+           no taller than the screen allows, so the words stay clear of the
+           drawing under them. The lead, the list and the logo follow. */
+        .pitch { display: flex; flex-direction: column; gap: clamp(14px, 2.6vh, 28px); margin-top: 0; }
+        .lp h1 { margin: 0; font-size: clamp(30px, min(7.6cqi, 7.6vh), 80px); line-height: 1.08; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; --base: 3.25s; --step: 60ms; }
         .lp h1 .w { margin-right: .22em; }
-        .lead { margin: 14px 0 0; max-width: 46ch; font-size: 17px; line-height: 1.6; color: #b7c6de; }
-        .feats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-        .feats li { display: flex; gap: 14px; align-items: center; font-size: 15.5px; }
-        .feats .ic { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 10px; border: 1px solid rgba(111,163,234,.3); background: rgba(20,50,100,.45); color: #9cc0f2; }
+        .lead { margin: clamp(10px, 1.6vh, 18px) 0 0; max-width: 46ch; font-size: clamp(15px, min(2.6cqi, 2.3vh), 21px); line-height: 1.6; color: #b7c6de; }
+        .feats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: clamp(8px, 1.5vh, 16px); }
+        .feats li { display: flex; gap: .85em; align-items: center; font-size: clamp(14px, min(2.4cqi, 2.1vh), 19px); }
+        .feats .ic svg { width: 1.15em; height: 1.15em; }
+        .feats .ic { width: 2.55em; height: 2.55em; flex: none; display: grid; place-items: center; border-radius: .62em; border: 1px solid rgba(111,163,234,.3); background: rgba(20,50,100,.45); color: #9cc0f2; }
 
         .rp {
             position: relative; min-height: 0; overflow-y: auto;
@@ -282,14 +288,9 @@
             background: linear-gradient(180deg, rgba(16,32,64,.74), rgba(9,18,38,.78));
             box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 30px 70px -24px rgba(0,0,0,.6);
         }
-        .card-head { display: flex; flex-direction: column; gap: 8px; }
-        .eyebrow {
-            display: inline-flex; align-items: center; gap: 7px; width: max-content; padding: 5px 11px;
-            border: 1px solid rgba(127,176,255,.22); border-radius: 999px; background: rgba(47,111,200,.16);
-            font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #a9cbf0;
-        }
-        .card-head h2 { margin: 6px 0 0; font-size: 30px; font-weight: 800; line-height: 1.15; letter-spacing: -.02em; }
-        .card-head .sub { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--soft); }
+        .card-head { display: flex; flex-direction: column; gap: 10px; }
+        .card-head h2 { margin: 0; font-size: 34px; font-weight: 800; line-height: 1.12; letter-spacing: -.02em; }
+        .card-head .sub { margin: 0; font-size: 15.5px; line-height: 1.55; color: var(--soft); }
         form { display: flex; flex-direction: column; gap: 18px; }
 
         .alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; font-size: 13.5px; font-weight: 600; line-height: 1.45; }
@@ -424,18 +425,15 @@
 
         /* A shorter screen: the same page, closer together. */
         @media (min-width: 901px) and (max-height: 820px) {
-            :root { --control: 44px; }
-            .lp { padding: 36px 48px; gap: 26px; }
-            .pitch { margin-top: 1vh; gap: 16px; }
-            .lp h1 { font-size: clamp(28px, 3.1vw, 44px); }
-            .lead { font-size: 15.5px; }
-            .feats { gap: 10px; }
+            :root { --control: 46px; }
+            .lp { padding: 36px 48px; }
+            .pitch { margin-top: 1vh; }
             .rp { padding: 22px 48px; }
             .rbody { gap: 12px; padding-block: 10px; }
             .card { gap: 16px; padding: 24px 28px 22px; }
             .card-head { gap: 6px; }
-            .card-head h2 { margin-top: 2px; font-size: 25px; }
-            .card-head .sub { font-size: 13.5px; }
+            .card-head h2 { font-size: 28px; }
+            .card-head .sub { font-size: 14.5px; }
             form { gap: 13px; }
         }
         @media (min-width: 901px) and (max-height: 680px) {
@@ -452,32 +450,16 @@
            it grow with it. Only where there is height for it too; a shorter
            screen keeps the compact sizes above. */
         @media (min-width: 1500px) and (min-height: 821px) {
-            :root { --control: 56px; }
-            .lp { padding: 56px 72px; gap: 48px; }
-            .lgo, .lgo svg { width: 66px; height: 66px; }
-            .lgo img { inset: 6px; width: 54px; height: 54px; }
+            :root { --control: 58px; }
+            .lp { padding: 44px 64px; }
             .lbrand { gap: 16px; }
-            .lbrand b { font-size: 31px; }
-            .lbrand small { font-size: 13.5px; }
-            .pitch { gap: 30px; margin-top: 5vh; }
-            .lp h1 { font-size: clamp(54px, 7.6cqi, 78px); }
-            .lead { margin-top: 18px; max-width: 44ch; font-size: 20px; }
-            .feats { gap: 18px; }
-            .feats li { gap: 16px; font-size: 18px; }
-            .feats .ic { width: 48px; height: 48px; border-radius: 12px; }
-            .feats .ic svg { width: 22px; height: 22px; }
-            /* The drawing a little smaller, so the larger words above it
-               keep clear of the crane and the worker's hat. */
-            .in svg.scene { transform: translate(-1%, -1%) scale(.5); }
 
             .rp { padding: 32px 64px; }
             .rtop { font-size: 15px; }
             .rbody { max-width: 548px; gap: 22px; padding-block: 14px; }
             .card { gap: 24px; padding: 38px 46px 32px; border-radius: 20px; }
-            .eyebrow { padding: 6px 13px; font-size: 12px; }
-            .eyebrow svg { width: 14px; height: 14px; }
-            .card-head h2 { font-size: 40px; }
-            .card-head .sub { font-size: 17px; }
+            .card-head h2 { font-size: 44px; }
+            .card-head .sub { font-size: 18px; }
             form { gap: 21px; }
             .fld { gap: 9px; }
             .fld label { font-size: 15px; }
@@ -520,7 +502,7 @@
         }
         @keyframes stageFade { to { opacity: 0; visibility: hidden; } }
         @media (max-width: 480px) {
-            .card-head h2 { font-size: 26px; }
+            .card-head h2 { font-size: 28px; }
             .rfoot { flex-direction: column; align-items: center; gap: 6px; }
         }
 
@@ -672,10 +654,6 @@
         <div class="rbody">
           <div class="card enter" style="--i:2">
             <div class="card-head">
-                <span class="eyebrow">
-                    <svg class="i" width="13" height="13" viewBox="0 0 24 24" style="stroke-width:2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-                    {{ __('Secure sign-in') }}
-                </span>
                 <h2>{{ __('Welcome back') }}</h2>
                 <p class="sub">{{ __('Sign in to the Jeyanco management dashboard.') }}</p>
             </div>
