@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\Attendance;
+use App\Models\Employee;
+use App\Models\Shift;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -29,9 +31,35 @@ use Illuminate\Support\Collection;
  */
 class AttendanceDay
 {
-    /** @param Collection<int, Attendance> $rows one employee, one workday, in time order */
-    private function __construct(public readonly Collection $rows)
+    /**
+     * @param Collection<int, Attendance> $rows one employee, one workday, in time order
+     *
+     * The rest is for a day with no rows at all — a worker on the roster who
+     * has not scanned yet — which has to say whose day it is and which.
+     */
+    private function __construct(
+        public readonly Collection $rows,
+        private readonly ?Employee $who = null,
+        private readonly ?Shift $under = null,
+        private readonly ?string $on = null,
+    ) {
+    }
+
+    /** A worker on the roster with nothing scanned for the workday. */
+    public static function unscanned(Employee $employee, ?Shift $shift, string $date): self
     {
+        return new self(collect(), $employee, $shift, $date);
+    }
+
+    /** Nothing scanned: a name on the roster, not yet an attendance. */
+    public function isUnscanned(): bool
+    {
+        return $this->rows->isEmpty();
+    }
+
+    public function employeeId(): int
+    {
+        return (int) ($this->who?->id ?? $this->first()->employee_id);
     }
 
     /**
@@ -122,14 +150,14 @@ class AttendanceDay
     }
 
     /** The row every day-level question is answered from: the first one worked. */
-    public function first(): Attendance
+    public function first(): ?Attendance
     {
         return $this->rows->first();
     }
 
     public function employee()
     {
-        return $this->first()->employee;
+        return $this->first()?->employee ?? $this->who;
     }
 
     /**
@@ -141,7 +169,8 @@ class AttendanceDay
      */
     public function site()
     {
-        return $this->rows->first(fn (Attendance $r) => $r->site)?->site;
+        return $this->rows->first(fn (Attendance $r) => $r->site)?->site
+            ?? ($this->rows->isEmpty() ? $this->who?->site : null);
     }
 
     /**
@@ -153,12 +182,12 @@ class AttendanceDay
      */
     public function shift()
     {
-        return $this->rows->first(fn (Attendance $r) => $r->shift)?->shift;
+        return $this->rows->first(fn (Attendance $r) => $r->shift)?->shift ?? $this->under;
     }
 
     public function date(): Carbon
     {
-        return Carbon::parse($this->first()->date);
+        return Carbon::parse($this->first()?->date ?? $this->on);
     }
 
     /** Every attendance row behind this day — what a delete has to take. */

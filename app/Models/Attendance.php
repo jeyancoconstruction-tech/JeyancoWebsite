@@ -233,20 +233,28 @@ class Attendance extends Model
         $bounds = [0 => $now->toDateString()];
 
         foreach (Shift::lookup() as $id => $schedule) {
-            if (! \App\Support\WorkSchedule::has($schedule)) {
-                $bounds[$id] = $now->toDateString();
-                continue;
-            }
-
-            $day  = \App\Support\WorkSchedule::shiftDayFor($schedule, $now);
-            $ends = \App\Support\WorkSchedule::windows($schedule, $day)['PM'][1];
-
-            $bounds[$id] = $now->greaterThanOrEqualTo($ends)
-                ? Carbon::parse($day)->addDay()->toDateString()
-                : $day;
+            $bounds[$id] = self::workdayOf($schedule, $now);
         }
 
         return $bounds;
+    }
+
+    /**
+     * The workday a shift is on at $now, by the line the day view draws: the
+     * day it is working, or — once that day has run its course — the next.
+     */
+    public static function workdayOf(?array $schedule, Carbon $now): string
+    {
+        if (! \App\Support\WorkSchedule::has($schedule)) {
+            return $now->toDateString();
+        }
+
+        $day  = \App\Support\WorkSchedule::shiftDayFor($schedule, $now);
+        $ends = \App\Support\WorkSchedule::windows($schedule, $day)['PM'][1];
+
+        return $now->greaterThanOrEqualTo($ends)
+            ? Carbon::parse($day)->addDay()->toDateString()
+            : $day;
     }
 
     /**

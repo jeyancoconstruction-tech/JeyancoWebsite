@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use App\Models\Attendance;
+use App\Models\Employee;
+use App\Models\Shift;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -26,6 +28,12 @@ use Illuminate\Support\Collection;
 final class AttendanceDayView
 {
     public const SLOTS = ['in', 'bo', 'bi', 'out'];
+
+    /**
+     * How long after the shift starts somebody with no scan is still "not in
+     * yet" rather than absent.
+     */
+    public const NOT_IN_YET_FOR = 120;
 
     /** The shift's schedule, or null for a day worked before shifts had one. */
     private ?array $sched = null;
@@ -58,6 +66,7 @@ final class AttendanceDayView
         private readonly Carbon $now,
         private readonly bool $live = false,
         private readonly array $priced = [],
+        private readonly ?string $off = null,
     ) {
         $schedule = $day->shift()?->schedule();
 
@@ -83,6 +92,18 @@ final class AttendanceDayView
     public static function all(Collection $days, Carbon $now, bool $live, array $priced): Collection
     {
         return $days->map(fn (AttendanceDay $d) => new self($d, $now, $live, $priced))->values();
+    }
+
+    /**
+     * A worker on the roster who has not scanned for the workday — on the list
+     * when the office asks for everybody, so a gap is seen rather than
+     * inferred from a name that is missing.
+     *
+     * $off says why nobody is expected: leave, the rest day, a holiday.
+     */
+    public static function unscanned(Employee $employee, ?Shift $shift, string $date, Carbon $now, ?string $off = null): self
+    {
+        return new self(AttendanceDay::unscanned($employee, $shift, $date), $now, true, [], $off);
     }
 
     // ── The day's shape ──────────────────────────────────────────────────────
@@ -204,6 +225,10 @@ final class AttendanceDayView
 
     private function readStatus(): array
     {
+        if ($this->day->isUnscanned()) {
+            return $this->unscannedStatus();
+        }
+
         $problem = $this->problems()->first();
 
         if ($problem) {
@@ -242,6 +267,32 @@ final class AttendanceDayView
         }
 
         return ['key' => 'done', 'label' => __('Present'), 'tone' => 'good', 'live' => false];
+    }
+
+    /**
+     * Nothing scanned yet: expected later, late getting in, or absent — or
+     * not expected at all today.
+     */
+    private function unscannedStatus(): array
+    {
+        if ($this->off) {
+            return ['key' => 'off', 'label' => $this->off, 'tone' => 'neutral', 'live' => false];
+        }
+
+        if (! $this->w) {
+            return ['key' => 'absent', 'label' => __('No scans'), 'tone' => 'neutral', 'live' => false];
+        }
+
+        $start = $this->w['AM'][0];
+
+        return match (true) {
+            $this->now->lessThan($start)
+                => ['key' => 'sched', 'label' => __('Scheduled'), 'tone' => 'neutral', 'live' => false],
+            $this->now->lessThanOrEqualTo($start->copy()->addMinutes(self::NOT_IN_YET_FOR))
+                => ['key' => 'notin', 'label' => __('Not in yet'), 'tone' => 'warn', 'live' => false],
+            default
+                => ['key' => 'absent', 'label' => __('Absent'), 'tone' => 'bad', 'live' => false],
+        };
     }
 
     /**
@@ -317,6 +368,18 @@ final class AttendanceDayView
     /** What an empty slot says: missing, due, expected — or nothing. */
     private function placeholder(string $slot): ?array
     {
+        if ($this->day->isUnscanned()) {
+            if ($slot !== 'in' || ! $this->w) {
+                return null;
+            }
+
+            return match ($this->status['key']) {
+                'sched', 'notin' => ['text' => __('exp.') . ' ' . WorkSchedule::label($this->w['AM'][0]), 'tone' => 'mute'],
+                'absent'         => ['text' => __('No scan'), 'tone' => 'bad'],
+                default          => null,
+            };
+        }
+
         if ($this->status['key'] === 'review' && $slot === $this->missing) {
             return ['text' => __('Missing'), 'tone' => 'bad'];
         }
@@ -362,7 +425,7 @@ final class AttendanceDayView
      */
     public function hours(): ?array
     {
-        if ($this->day->isOpen()) {
+        if ($this->day->isUnscanned() || $this->day->isOpen()) {
             return null;
         }
 

@@ -142,12 +142,11 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
 .atm-card.is-loading .tab-content { opacity:.55; transition:opacity .15s; }
 
 /* ── The list ────────────────────────────────────────────────────────────
-   Boxed to the screen: the card runs to the bottom, the rows scroll inside
-   it, and the heads stay (see modules/_fill_screen). Wide enough for its
-   columns; narrower than that, it scrolls sideways inside the card. */
+   In the page, not boxed: the whole section scrolls with it, cards and
+   filters included, and the list is as long as the crew. Wide enough for
+   its columns; narrower than that, it scrolls sideways inside the card. */
 .atm-scroll { overflow-x:auto; }
 .atm-table { width:100%; min-width:1180px; border-collapse:separate; border-spacing:0; }
-.atm-table thead { position:sticky; top:0; z-index:2; }
 .atm-table thead th {
     padding:10px 12px; text-align:left; white-space:nowrap;
     font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
@@ -325,10 +324,15 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
 @php
     // A card is a question, and its answer is a list of people. Clicking one
     // narrows both tables to the rows behind its number; clicking it again
-    // puts them back. The site, shift and search already chosen are carried
+    // shows everybody. The site, shift and search already chosen are carried
     // along; the page number is not.
     $cardBase = request()->except(['view', 'tab', 'page']);
-    $cardUrl  = fn (?string $v) => route('attendance', $v === null ? $cardBase : $cardBase + ['view' => $v]);
+    $cardUrl  = fn (string $v) => route('attendance', $cardBase + ['view' => $todayView === $v ? 'all' : $v]);
+    $cardOn   = fn (string $v) => $todayView === $v;
+
+    // The status the control shows is the open tab's: each has its own
+    // default until somebody picks one.
+    $shownView = $openTab === 'history' ? $historyView : $todayView;
 
     // The shifts in a line: each one's hours, then the break and the regular
     // hours when every shift agrees on them.
@@ -344,7 +348,7 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
     $canEdit = auth()->user()?->isAdmin();
 
     $statuses = [
-        ''           => __('All'),
+        'all'        => __('All'),
         'clocked-in' => __('Working'),
         'break'      => __('On break'),
         'missed'     => __('Needs review'),
@@ -382,17 +386,17 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
          rows always describe the same crew. They do not follow the status or
          the search, which narrow the lists to a question about that crew. --}}
     <div class="atm-stats" id="attStats" data-live="attendance employees">
-        <a class="atm-stat is-brand {{ $view === null ? 'is-active' : '' }}" href="{{ $cardUrl(null) }}" data-view=""
-           @if($view === null) aria-current="true" @endif>
+        <a class="atm-stat is-brand {{ $cardOn('present') ? 'is-active' : '' }}" href="{{ $cardUrl('present') }}" data-view="present"
+           @if($cardOn('present')) aria-current="true" @endif>
             <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('Present today') }}</span>
             <span class="atm-stat-num">{{ $presentToday }}</span>
             <span class="atm-stat-sub">
                 {{ __('Scanned in') }}@if($presentToday) · {{ max(0, $presentToday - $nightCrew) }} {{ __('day') }}, {{ $nightCrew }} {{ __('night') }}@endif
             </span>
         </a>
-        <a class="atm-stat is-good {{ $view === 'clocked-in' ? 'is-active' : '' }}"
-           href="{{ $cardUrl($view === 'clocked-in' ? null : 'clocked-in') }}" data-view="clocked-in"
-           @if($view === 'clocked-in') aria-current="true" @endif>
+        <a class="atm-stat is-good {{ $cardOn('clocked-in') ? 'is-active' : '' }}"
+           href="{{ $cardUrl('clocked-in') }}" data-view="clocked-in"
+           @if($cardOn('clocked-in')) aria-current="true" @endif>
             <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('Working now') }}</span>
             <span class="atm-stat-num">{{ $clockedIn }}</span>
             <span class="atm-stat-sub">
@@ -403,25 +407,25 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
                 @endif
             </span>
         </a>
-        <a class="atm-stat is-brk {{ $view === 'break' ? 'is-active' : '' }}"
-           href="{{ $cardUrl($view === 'break' ? null : 'break') }}" data-view="break"
-           @if($view === 'break') aria-current="true" @endif>
+        <a class="atm-stat is-brk {{ $cardOn('break') ? 'is-active' : '' }}"
+           href="{{ $cardUrl('break') }}" data-view="break"
+           @if($cardOn('break')) aria-current="true" @endif>
             <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('On break') }}</span>
             <span class="atm-stat-num">{{ $onBreak }}</span>
             <span class="atm-stat-sub">
                 {{ $overBreak ? $overBreak . ' ' . __('past the break') : __('Between sessions') }}
             </span>
         </a>
-        <a class="atm-stat is-bad {{ $view === 'missed' ? 'is-active' : '' }}"
-           href="{{ $cardUrl($view === 'missed' ? null : 'missed') }}" data-view="missed"
-           @if($view === 'missed') aria-current="true" @endif>
+        <a class="atm-stat is-bad {{ $cardOn('missed') ? 'is-active' : '' }}"
+           href="{{ $cardUrl('missed') }}" data-view="missed"
+           @if($cardOn('missed')) aria-current="true" @endif>
             <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('Needs review') }}</span>
             <span class="atm-stat-num">{{ $invalidCount }}</span>
             <span class="atm-stat-sub">{{ $reviewToday }} {{ __('today') }} · {{ $reviewEarlier }} {{ __('earlier this week') }}</span>
         </a>
     </div>
 
-    <section class="atm-card" data-fill-screen aria-label="{{ __('Attendance records') }}">
+    <section class="atm-card" aria-label="{{ __('Attendance records') }}">
 
         <div class="atm-tabs" role="tablist">
             <button class="atm-tab {{ $openTab === 'today' ? 'active' : '' }}" type="button" role="tab"
@@ -476,7 +480,7 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
             <div class="atm-seg" role="radiogroup" aria-label="{{ __('Filter by status') }}">
                 @foreach($statuses as $value => $label)
                     <label>
-                        <input type="radio" name="view" value="{{ $value }}" @checked((string) $view === $value)>
+                        <input type="radio" name="view" value="{{ $value }}" @checked($shownView === $value)>
                         <span>{{ $label }}</span>
                     </label>
                 @endforeach
@@ -545,7 +549,7 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
 
             <!-- ===== TODAY ===== -->
             <div class="tab-pane {{ $openTab === 'today' ? 'active' : '' }}" id="att-today" role="tabpanel">
-                <div class="atm-scroll" id="attTodayList" data-fill-scroll data-live="attendance employees sites">
+                <div class="atm-scroll" id="attTodayList" data-live="attendance employees sites">
                     <table class="atm-table" id="todayTable">
                         <thead>
                             {!! $groupHead(false) !!}
@@ -558,9 +562,14 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
                                 <tr>
                                     <td colspan="9" class="atm-empty">
                                         <i class="fas fa-fingerprint"></i>
-                                        {{ $view || $search !== ''
-                                            ? __('Nobody on today\'s list matches these filters.')
-                                            : __('No fingerprint scans yet today.') }}
+                                        {{ $search !== '' ? __('Nobody on today\'s list matches these filters.') : match ($todayView) {
+                                            'clocked-in' => __('Nobody is clocked in right now.'),
+                                            'break'      => __('Nobody is on break right now.'),
+                                            'missed'     => __('Nothing on today\'s list is waiting on a review.'),
+                                            'done'       => __('No finished days yet today.'),
+                                            'all'        => __('Nobody on the roster matches these filters.'),
+                                            default      => __('No fingerprint scans yet today.'),
+                                        } }}
                                     </td>
                                 </tr>
                             @endforelse
@@ -571,7 +580,7 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
 
             <!-- ===== HISTORY ===== -->
             <div class="tab-pane {{ $openTab === 'history' ? 'active' : '' }}" id="att-history" role="tabpanel">
-                <div class="atm-scroll" id="attHistoryList" data-fill-scroll data-live="attendance employees sites">
+                <div class="atm-scroll" id="attHistoryList" data-live="attendance employees sites">
                         <table class="atm-table" id="historyTable">
                             <thead>
                                 {!! $groupHead(true) !!}
@@ -627,8 +636,6 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
     </section>
 </div>
 
-@include('modules._fill_screen')
-
 @push('scripts')
 <script>
 (function () {
@@ -679,11 +686,23 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
     // Any choice asks the server for the page as it would be, and swaps in
     // the parts that changed: the cards and both lists. The address bar
     // follows, so a refresh or a copied link lands on the same view.
+    // Whether somebody has picked a status. Until they do, each tab shows its
+    // own default — who is working now, and every past day — and the address
+    // bar carries no status at all.
+    const DEFAULTS = { today: 'clocked-in', history: 'all' };
+    let chosen = new URL(location).searchParams.get('view');
+
+    function showStatus(v) {
+        document.querySelectorAll('input[name="view"]').forEach(r => { r.checked = r.value === v; });
+    }
+
     function urlOf() {
         const params = new URLSearchParams(new FormData(form));
         for (const [k, v] of [...params]) {
             if (v === '' || (k === 'range' && v === 'all') || (k === 'tab' && v === 'today')) params.delete(k);
         }
+        params.delete('view');
+        if (chosen) params.set('view', chosen);
         const q = params.toString();
         return form.action + (q ? '?' + q : '');
     }
@@ -716,7 +735,6 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
             history.replaceState(null, '', url);
             applyOpen();
             markReset();
-            document.dispatchEvent(new CustomEvent('fill-screen:refit'));
         } catch (err) {
             if (err.name !== 'AbortError') location.href = url;
         } finally {
@@ -729,6 +747,7 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
 
     form.addEventListener('change', e => {
         if (e.target === search) return;
+        if (e.target.name === 'view') chosen = e.target.value;
         reload(urlOf());
     });
 
@@ -743,14 +762,14 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
     });
 
     // A card sets the status control, and the control fetches — so both
-    // always show the same thing. Clicking the card that is on turns it off.
+    // always show the same thing. Clicking the card that is on shows everybody.
+    // Present has no button of its own, so while it is on none is lit.
     document.getElementById('attStats')?.addEventListener('click', e => {
         const a = e.target.closest('a[data-view]');
         if (!a || e.ctrlKey || e.metaKey || e.shiftKey) return;
         e.preventDefault();
-        const want  = a.classList.contains('is-active') ? '' : a.dataset.view;
-        const radio = document.querySelector(`input[name="view"][value="${want}"]`);
-        if (radio) radio.checked = true;
+        chosen = a.classList.contains('is-active') ? 'all' : a.dataset.view;
+        showStatus(chosen);
         reload(urlOf());
     });
 
@@ -773,8 +792,8 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
             else                   url.searchParams.delete('tab');
             history.replaceState(null, '', url);
 
-            // The pane that was hidden had no height to measure.
-            document.dispatchEvent(new CustomEvent('fill-screen:refit'));
+            // Until somebody picks a status, each tab shows its own default.
+            if (!chosen) showStatus(DEFAULTS[tab]);
         });
     });
 

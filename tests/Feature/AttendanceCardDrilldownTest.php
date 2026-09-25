@@ -146,18 +146,41 @@ class AttendanceCardDrilldownTest extends TestCase
     {
         $this->seedCrew();
 
-        $this->page()
+        $this->page(['view' => 'all'])
+             ->assertSee('view=present', false)
              ->assertSee('view=clocked-in', false)
              ->assertSee('view=break', false)
              ->assertSee('view=missed', false);
 
-        // The card in force says so, and now links back to everybody; the
-        // status control under the tabs shows the same choice.
+        // The card in force says so, and now links to everybody; the status
+        // control under the tabs shows the same choice.
         $html = $this->page(['view' => 'missed'])->getContent();
 
         $this->assertMatchesRegularExpression(
-            '#<a class="atm-stat is-bad is-active"\s+href="[^"?]*/attendance"[^>]*aria-current="true"#', $html);
+            '#<a class="atm-stat is-bad is-active"\s+href="[^"]*view=all"[^>]*aria-current="true"#', $html);
         $this->assertStringContainsString('name="view" value="missed" checked', $html);
+    }
+
+    /**
+     * The page opens on who is working now: the Working card is on and the
+     * status control says so, with nothing in the address bar. History opens
+     * on every day — a working day in the past has almost no answers.
+     */
+    public function test_the_page_opens_on_who_is_working(): void
+    {
+        $this->seedCrew();
+
+        $page = $this->page();
+        $html = $page->getContent();
+
+        $this->assertSame(['Alice Still In'], $page->viewData('todayAttendances')->map(fn ($d) => $d->employee()->name)->all());
+        $this->assertMatchesRegularExpression('#<a class="atm-stat is-good is-active"#', $html);
+        $this->assertStringContainsString('name="view" value="clocked-in" checked', $html);
+
+        $history = $this->page(['tab' => 'history'])->getContent();
+        $this->assertStringContainsString('name="view" value="all" checked', $history);
+        $this->assertSame(1, $this->page(['tab' => 'history'])->viewData('historyAttendances')->total(),
+            'the history is not narrowed to who is working');
     }
 
     /** A card click must not throw away the site and shift already chosen. */
@@ -166,10 +189,9 @@ class AttendanceCardDrilldownTest extends TestCase
         $this->seedCrew();
         $shift = Shift::where('crosses_midnight', false)->firstOrFail();
 
-        $html = $this->page(['shift' => $shift->id])->getContent();
+        $html = $this->page(['shift' => $shift->id, 'view' => 'all'])->getContent();
 
-        $this->assertStringContainsString('shift=' . $shift->id, $html);
-        $this->assertStringContainsString('view=clocked-in', $html);
+        $this->assertMatchesRegularExpression('#href="[^"]*shift=' . $shift->id . '[^"]*view=clocked-in"#', $html);
     }
 
     public function test_the_history_pages_keep_the_clicked_card(): void

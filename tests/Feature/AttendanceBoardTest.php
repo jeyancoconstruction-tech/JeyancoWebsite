@@ -98,7 +98,7 @@ class AttendanceBoardTest extends TestCase
 
     private function page(array $query = [])
     {
-        return $this->actingAs($this->admin())->get(route('attendance', $query))->assertOk();
+        return $this->actingAs($this->admin())->get(route('attendance', $query + ['view' => 'all']))->assertOk();
     }
 
     /** The one row a worker's name is on, from the table asked for. */
@@ -219,6 +219,85 @@ class AttendanceBoardTest extends TestCase
 
         $this->assertStringContainsString('Late 25m', $row, 'under the first time in');
         $this->assertStringContainsString('Overbreak 20m', $row, 'under the time back from the break');
+    }
+
+    // ── All: the whole roster ────────────────────────────────────────────
+
+    /**
+     * All is everybody on the roster, whether they scanned or not, each with
+     * where they stand: expected later, not in yet, absent — or not expected
+     * today at all. Nobody pending or archived.
+     */
+    public function test_all_lists_everybody_with_where_they_stand(): void
+    {
+        $night = Shift::where('crosses_midnight', true)->firstOrFail();
+        $night->forceFill(Shift::layOut('20:00', '05:00', '00:00', '01:00') + ['regular_minutes' => 480])->save();
+
+        $this->stretch($this->worker('In On Time'), '2026-09-15', 'AM', '08:00:00', null);
+        $this->worker('Not Yet Here');
+        $this->worker('Night Later')->forceFill(['shift_id' => $night->id])->save();
+
+        $away = $this->worker('Away On Leave');
+        \App\Models\LeaveRequest::create([
+            'employee_id' => $away->id, 'leave_type' => 'vacation',
+            'starts_on' => '2026-09-15', 'ends_on' => '2026-09-16', 'days' => 2,
+            'is_paid' => true, 'status' => 'approved',
+        ]);
+
+        $this->worker('Still Pending')->forceFill(['status' => Employee::STATUS_PENDING])->save();
+        $this->worker('Long Gone')->forceFill(['status' => Employee::STATUS_ARCHIVED])->save();
+
+        $this->at('2026-09-15 09:00:00');
+        $html = $this->page(['view' => 'all'])->getContent();
+
+        $this->assertStringContainsString('Working · AM', $this->row($html, 'In On Time'));
+
+        $notYet = $this->row($html, 'Not Yet Here');
+        $this->assertStringContainsString('Not in yet', $notYet);
+        $this->assertStringContainsString('exp. 8:00 AM', $notYet);
+
+        $night = $this->row($html, 'Night Later');
+        $this->assertStringContainsString('Scheduled', $night);
+        $this->assertStringContainsString('exp. 8:00 PM', $night);
+
+        $this->assertStringContainsString('On leave', $this->row($html, 'Away On Leave'));
+
+        $this->assertStringNotContainsString('Still Pending', $html);
+        $this->assertStringNotContainsString('Long Gone', $html);
+
+        // Two hours past the start with no scan is absent.
+        $this->at('2026-09-15 10:30:00');
+        $absent = $this->row($this->page(['view' => 'all'])->getContent(), 'Not Yet Here');
+        $this->assertStringContainsString('Absent', $absent);
+        $this->assertStringContainsString('No scan', $absent);
+    }
+
+    /** The roster follows the site, shift and search like everything else on the list. */
+    public function test_the_roster_follows_the_filters(): void
+    {
+        $other = Site::firstOrCreate(['name' => 'Site B']);
+
+        $this->worker('Here At A')->forceFill(['site_id' => $this->site->id])->save();
+        $this->worker('Over At B')->forceFill(['site_id' => $other->id])->save();
+
+        $html = $this->page(['view' => 'all', 'site' => $this->site->id])->getContent();
+        $this->assertStringContainsString('<b>Here At A</b>', $html);
+        $this->assertStringNotContainsString('<b>Over At B</b>', $html);
+
+        $html = $this->page(['view' => 'all', 'q' => 'over'])->getContent();
+        $this->assertStringContainsString('<b>Over At B</b>', $html);
+        $this->assertStringNotContainsString('<b>Here At A</b>', $html);
+    }
+
+    /** Nobody who has not scanned is on any list but All. */
+    public function test_only_all_lists_those_who_have_not_scanned(): void
+    {
+        $this->worker('Not Yet Here');
+
+        foreach (['present', 'clocked-in', 'break', 'missed', 'done'] as $view) {
+            $this->assertStringNotContainsString('<b>Not Yet Here</b>',
+                $this->page(['view' => $view])->getContent(), $view);
+        }
     }
 
     // ── Hours are payroll's ──────────────────────────────────────────────

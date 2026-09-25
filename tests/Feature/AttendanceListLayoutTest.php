@@ -84,36 +84,25 @@ class AttendanceListLayoutTest extends TestCase
             ->getContent();
     }
 
-    // ── Boxed to the screen ──────────────────────────────────────────────
+    // ── In the page ──────────────────────────────────────────────────────
 
     /**
-     * One card holds the tabs, the filters and both lists; each list scrolls
-     * inside it. The scrolling box is itself the live region, so a patch from
-     * the feed replaces what is in it and never the height it was fitted to.
+     * One card holds the tabs, the filters and both lists, and it sits in the
+     * page: the whole section scrolls up together, as the design has it,
+     * rather than the list scrolling in a box fitted to the screen.
      */
-    public function test_both_lists_scroll_inside_one_card(): void
+    public function test_the_whole_section_scrolls_with_the_page(): void
     {
         $html = $this->page();
 
-        $this->assertSame(1, substr_count($html, '<section class="atm-card" data-fill-screen'), 'one card reaches the bottom of the screen');
-        $this->assertMatchesRegularExpression('#class="atm-scroll" id="attTodayList" data-fill-scroll data-live="#', $html);
-        $this->assertMatchesRegularExpression('#class="atm-scroll" id="attHistoryList" data-fill-scroll data-live="#', $html);
-    }
+        $this->assertSame(1, substr_count($html, '<section class="atm-card" aria-label='), 'one card');
+        $this->assertStringNotContainsString('data-fill-screen', $html, 'not boxed to the screen');
+        $this->assertStringNotContainsString('data-fill-scroll', $html);
+        $this->assertStringNotContainsString('position:sticky', $html, 'nothing pinned inside the list');
 
-    public function test_the_shared_fill_screen_script_is_on_the_page(): void
-    {
-        $html = $this->page();
-
-        $this->assertStringContainsString('[data-fill-screen] [data-fill-scroll]', $html,
-            'the shared measuring script should be included');
-        $this->assertStringContainsString('fill-screen:refit', $html,
-            'switching tabs and swapping in a filtered list ask for a re-measure');
-    }
-
-    /** Boxing the list is pointless if the heads scroll away with the rows. */
-    public function test_the_column_heads_stay_while_the_rows_move(): void
-    {
-        $this->assertStringContainsString('.atm-table thead { position:sticky; top:0;', $this->page());
+        // Each list is still its own live region.
+        $this->assertMatchesRegularExpression('#class="atm-scroll" id="attTodayList" data-live="#', $html);
+        $this->assertMatchesRegularExpression('#class="atm-scroll" id="attHistoryList" data-live="#', $html);
     }
 
     // ── The columns ──────────────────────────────────────────────────────

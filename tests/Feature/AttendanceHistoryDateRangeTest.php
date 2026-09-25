@@ -267,7 +267,7 @@ class AttendanceHistoryDateRangeTest extends TestCase
         $this->seedLadder();
 
         $res = $this->actingAs($this->admin())
-            ->get(route('attendance', ['range' => '7']))
+            ->get(route('attendance', ['range' => '7', 'view' => 'present']))
             ->assertOk();
 
         $res->assertSee('On Site Now');

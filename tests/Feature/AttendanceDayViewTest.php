@@ -77,7 +77,7 @@ class AttendanceDayViewTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse($at, 'Asia/Manila'));
 
-        return $this->actingAs($this->admin())->get(route('attendance'))->assertOk();
+        return $this->actingAs($this->admin())->get(route('attendance', ['view' => 'present']))->assertOk();
     }
 
     // ── 1. The sensor reading the same finger twice ──────────────────────

@@ -138,7 +138,7 @@ class AttendanceGlobalFiltersTest extends TestCase
         $this->seedTodayAndHistory();
 
         $this->actingAs($this->admin())
-             ->get(route('attendance'))
+             ->get(route('attendance', ['view' => 'present']))
              ->assertOk()
              ->assertSee('Ana Day A')
              ->assertSee('Ben Night A')
@@ -150,7 +150,7 @@ class AttendanceGlobalFiltersTest extends TestCase
         $this->seedTodayAndHistory();
 
         $this->actingAs($this->admin())
-             ->get(route('attendance', ['site' => $this->siteA->id]))
+             ->get(route('attendance', ['view' => 'present', 'site' => $this->siteA->id]))
              ->assertOk()
              // Today
              ->assertSee('Ana Day A')
@@ -166,7 +166,7 @@ class AttendanceGlobalFiltersTest extends TestCase
         $this->seedTodayAndHistory();
 
         $this->actingAs($this->admin())
-             ->get(route('attendance', ['shift' => $this->night->id]))
+             ->get(route('attendance', ['view' => 'present', 'shift' => $this->night->id]))
              ->assertOk()
              ->assertSee('Ben Night A')
              ->assertDontSee('Ana Day A')
@@ -180,7 +180,7 @@ class AttendanceGlobalFiltersTest extends TestCase
         $this->seedTodayAndHistory();
 
         $this->actingAs($this->admin())
-             ->get(route('attendance', ['site' => $this->siteA->id, 'shift' => $this->day->id]))
+             ->get(route('attendance', ['view' => 'present', 'site' => $this->siteA->id, 'shift' => $this->day->id]))
              ->assertOk()
              ->assertSee('Ana Day A')
              ->assertDontSee('Ben Night A')   // right site, wrong shift
@@ -225,7 +225,7 @@ class AttendanceGlobalFiltersTest extends TestCase
         $this->seedTodayAndHistory();
 
         $res = $this->actingAs($this->admin())
-            ->get(route('attendance', ['site' => 9999, 'shift' => 9999]))
+            ->get(route('attendance', ['view' => 'present', 'site' => 9999, 'shift' => 9999]))
             ->assertOk()
             ->assertSee('Ana Day A')
             ->assertSee('Carl Day B');

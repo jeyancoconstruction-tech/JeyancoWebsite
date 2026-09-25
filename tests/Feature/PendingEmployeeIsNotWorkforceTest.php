@@ -152,7 +152,7 @@ class PendingEmployeeIsNotWorkforceTest extends TestCase
             ]);
         }
 
-        $page = $this->actingAs($this->admin())->get(route('attendance'))->assertOk();
+        $page = $this->actingAs($this->admin())->get(route('attendance', ['view' => 'present']))->assertOk();
 
         $this->assertCount(1, $page->viewData('todayAttendances'));
         $this->assertSame(1, $page->viewData('presentToday'));

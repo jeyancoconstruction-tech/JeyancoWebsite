@@ -16,7 +16,7 @@
     $status  = $d->status();
     $hours   = $d->hours();
     $tl      = $d->timeline();
-    $key     = 'day-' . $day->first()->employee_id . '-' . $day->date()->toDateString();
+    $key     = 'day-' . $day->employeeId() . '-' . $day->date()->toDateString();
     $ids     = implode(',', $day->ids());
     $name    = $emp->name ?? __('Unknown');
     $role    = $emp?->laborType?->name ?: $emp?->position;
@@ -116,6 +116,8 @@
                 <span class="atm-tag good">+{{ WorkSchedule::duration($hours['ot']) }} {{ __('OT') }}</span>
             @endif
             <small>{{ $review ? __('Pending review') : WorkSchedule::duration($hours['worked']) . ' ' . __('worked') }}</small>
+        @elseif($day->isUnscanned())
+            <span class="atm-t is-mute">&mdash;</span>
         @else
             &mdash;
             <small>{{ $review ? __('Pending review') : __('In progress') }}</small>
@@ -206,7 +208,9 @@
             @else
                 <div class="atm-dbox">
                     <h4>{{ __('Hours') }}</h4>
-                    <p class="atm-note">{{ __('The hours are worked out once the day\'s last time out is scanned.') }}</p>
+                    <p class="atm-note">{{ $day->isUnscanned()
+                        ? __('Nothing scanned for this workday yet.')
+                        : __('The hours are worked out once the day\'s last time out is scanned.') }}</p>
                     @if($rule = $d->hoursRule())
                         <p class="atm-note">{{ $rule }}</p>
                     @endif
