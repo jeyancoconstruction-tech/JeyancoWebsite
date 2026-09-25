@@ -35,9 +35,6 @@ final class AttendanceDayView
      */
     public const NOT_IN_YET_FOR = 120;
 
-    /** Where every shift starts on its timeline, in percent; it ends as far in from the right. */
-    public const TIMELINE_PAD = 10;
-
     /** The shift's schedule, or null for a day worked before shifts had one. */
     private ?array $sched = null;
 
@@ -481,8 +478,8 @@ final class AttendanceDayView
     // ── The timeline ─────────────────────────────────────────────────────────
 
     /**
-     * The day drawn against its shift, with a margin either side: what was
-     * worked, the break window, lateness, a stretch still running, and now.
+     * The day drawn against its shift, an hour either side: what was worked,
+     * the break window, lateness, a stretch still running, and now.
      *
      * Positions are percentages of the span, worked out here so the row is
      * drawn by CSS alone.
@@ -493,16 +490,11 @@ final class AttendanceDayView
             return null;
         }
 
-        // Every shift is drawn to the same frame: its start at PAD% and its
-        // end at 100 - PAD%, whatever its length, so the rows line up under
-        // each other — a ten-hour day crew and a nine-hour night crew start
-        // and finish at the same place. The margin either side is room for
-        // an early arrival or overtime; anything further out sits at the edge.
-        $pad   = self::TIMELINE_PAD;
-        $shift = max(1, $this->w['AM'][0]->diffInMinutes($this->w['PM'][1]));
-        $raw   = fn (Carbon $t) => $pad + $this->w['AM'][0]->diffInMinutes($t, false) / $shift * (100 - 2 * $pad);
+        $lo   = $this->w['AM'][0]->copy()->subHour();
+        $hi   = $this->w['PM'][1]->copy()->addHour();
+        $span = max(1, $lo->diffInMinutes($hi));
 
-        $at  = fn (Carbon $t) => max(0, min(100, round($raw($t), 2)));
+        $at  = fn (Carbon $t) => max(0, min(100, round($lo->diffInMinutes($t, false) / $span * 100, 2)));
         $bar = function (?Carbon $from, ?Carbon $to, string $cls) use ($at) {
             if (! $from || ! $to || ! $to->greaterThan($from)) {
                 return null;
@@ -515,6 +507,7 @@ final class AttendanceDayView
         };
 
         $pieces = [
+            $bar($this->w['AM'][0], $this->w['PM'][1], 'base'),
             $bar($this->w['AM'][1], $this->w['PM'][0], 'bw'),
         ];
 
@@ -545,7 +538,7 @@ final class AttendanceDayView
 
         // The times written under the bar are the shift's own, as Payroll
         // Settings has them — its start, its break and its end — each placed
-        // where it falls. The margin either side is room for an early arrival
+        // where it falls. The hour either side is room for an early arrival
         // or overtime to show, not a time anybody set, so it has no label.
         [$start, $breakFrom, $breakTo, $end] = [$this->w['AM'][0], $this->w['AM'][1], $this->w['PM'][0], $this->w['PM'][1]];
 
@@ -555,8 +548,7 @@ final class AttendanceDayView
 
         return [
             'pieces' => array_values(array_filter($pieces)),
-            'now'    => $this->live && $raw($this->now) >= 0 && $raw($this->now) <= 100 ? $at($this->now) : null,
-            'marks'  => [$pad, 100 - $pad],
+            'now'    => $this->live && $this->now->between($lo, $hi) ? $at($this->now) : null,
             'ticks'  => [
                 ['left' => $at($start), 'label' => WorkSchedule::label($start), 'align' => 'is-start'],
                 ['left' => $at($breakFrom->copy()->addMinutes(intdiv((int) $breakFrom->diffInMinutes($breakTo), 2))),
