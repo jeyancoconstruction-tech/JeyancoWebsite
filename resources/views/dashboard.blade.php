@@ -199,18 +199,10 @@
                     </div>
             </div>
             <div class="panel-body flexcol st-body">
-
-                    {{-- One row. Two stacked rows plus a wrapping hint left the
-                         map about 100px tall, which is not a map. Every id is
-                         exactly as it was — the Leaflet code is untouched. --}}
-                    <div class="map-ctl">
-                        <input id="siteSearch" class="map-input" type="text" placeholder="{{ __('Search a place…') }}">
-                        <button id="siteSearchBtn" class="map-btn secondary" type="button" title="{{ __('Search') }}"><i class="fas fa-search"></i></button>
-                        <select id="siteSelect" class="map-select" title="{{ __('Choose the site to place') }}"></select>
-                        <button id="siteSaveBtn" class="map-btn primary" type="button" title="{{ __('Save location') }}"><i class="fas fa-map-pin"></i> {{ __('Save') }}</button>
-                    </div>
-                    <div id="siteMapHint" class="map-hint">{{ __('Search or click the map, then Save.') }}</div>
-                    <div id="kioskMap" class="rounded-3 overflow-hidden flex-grow-1"></div>
+                {{-- Read-only: every site with its range, and every kiosk where
+                     its GPS last put it. Sites are pinned on the Sites page. --}}
+                <div id="kioskMap" class="rounded-3 overflow-hidden flex-grow-1"
+                     data-map-url="{{ route('dashboard.map') }}" data-sites-url="{{ route('sites.index') }}"></div>
             </div>
         </section>
     </div>
@@ -361,13 +353,18 @@
         });
     }
 
-    // ---- PROJECT SITE MAP (Leaflet / OpenStreetMap — libre, walang API key) ----
+    // ---- PROJECT SITES MAP (Leaflet / OpenStreetMap — libre, walang API key) ----
+    // Read-only. Every pinned site with its range, and every kiosk where its
+    // GPS last put it, marked by whether that is inside its site's range.
+    // Sites are pinned and moved on the Sites page, not here.
     (function () {
         const mapEl = document.getElementById('kioskMap');
         if (!mapEl) return;
 
-        const NAGA = [13.6218, 123.1948];   // Naga City, Camarines Sur — default center
-        const csrf = document.querySelector('meta[name="csrf-token"]').content;
+        const NAGA      = [13.6218, 123.1948];   // Naga City, Camarines Sur — default center
+        const MAP_URL   = mapEl.dataset.mapUrl;
+        const SITES_URL = mapEl.dataset.sitesUrl;
+        const statusEl  = document.getElementById('kiosk-status');
 
         const map = L.map('kioskMap').setView(NAGA, 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -397,248 +394,244 @@
             });
         });
 
-        const siteSelect  = document.getElementById('siteSelect');
-        const saveBtn     = document.getElementById('siteSaveBtn');
-        const searchInput = document.getElementById('siteSearch');
-        const searchBtn   = document.getElementById('siteSearchBtn');
-        const hintEl      = document.getElementById('siteMapHint');
-        const setHint = (msg, color) => { hintEl.textContent = msg; hintEl.style.color = color || '#94a3b8'; };
-        const selectedName = () => (siteSelect.options[siteSelect.selectedIndex]?.text || 'site').replace(' 📍','');
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const far = m => m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' km';
+        const ago = s => s == null ? 'never' : s < 60 ? s + 's ago' : s < 3600 ? Math.round(s / 60) + ' min ago'
+                       : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago';
+        const plural = (n, one) => n + ' ' + one + (n === 1 ? '' : 's');
+        const brand = () => getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#1668DC';
 
-        let siteMarkers = {};     // id -> saved-location marker
-        let sitesById   = {};     // id -> site record
-        let placing     = null;   // { lat, lng } pending pin
-        let placingMarker = null;
-
-        // ---- load all sites, drop markers, populate the picker ----
-        async function loadSites(fit = true) {
-            try {
-                const res = await fetch('/sites/list', { headers: { 'Accept': 'application/json' } });
-                const d = await res.json();
-                const sites = d.sites || [];
-                Object.values(siteMarkers).forEach(m => map.removeLayer(m));
-                siteMarkers = {}; sitesById = {};
-                const prev = siteSelect.value;
-                siteSelect.innerHTML = '';
-                const bounds = [];
-                sites.forEach(s => {
-                    sitesById[s.id] = s;
-                    const hasLoc = s.latitude != null && s.longitude != null;
-                    const opt = document.createElement('option');
-                    opt.value = s.id;
-                    opt.textContent = s.name + (hasLoc ? ' 📍' : '');
-                    siteSelect.appendChild(opt);
-                    if (hasLoc) {
-                        const lat = parseFloat(s.latitude), lng = parseFloat(s.longitude);
-                        siteMarkers[s.id] = L.marker([lat, lng]).addTo(map)
-                            .bindPopup(`<b>${s.name}</b>${s.location ? '<br>' + s.location : ''}`);
-                        bounds.push([lat, lng]);
-                    }
-                });
-                // keep previous selection, else default to "Site A"
-                if (prev && sitesById[prev]) siteSelect.value = prev;
-                else {
-                    const a = sites.find(s => s.name.trim().toLowerCase() === 'site a');
-                    if (a) siteSelect.value = a.id;
-                }
-                if (fit) {
-                    if (bounds.length === 1) map.setView(bounds[0], 16);
-                    else if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40] });
-                }
-                setHint('Choose a site, click the map, then Save.');
-            } catch (e) {
-                setHint('Could not load the list of sites.', '#ef4444');
+        // The line under a kiosk's name, and the first line of its popup.
+        function kioskLine(k) {
+            switch (k.state) {
+                case 'in':        return k.distance_m != null ? `In range · ${far(k.distance_m)}` : `In range of ${k.at_site}`;
+                case 'elsewhere': return `At ${k.at_site} · set to ${k.site}`;
+                case 'out':       return k.distance_m != null ? `Out of range · ${far(k.distance_m)}` : 'Out of range';
+                case 'nogps':     return 'No GPS signal';
+                default:          return 'Offline · ' + ago(k.seen_ago);
             }
         }
 
-        // ---- click / drag to place the pin ----
-        function placePin(latlng) {
-            placing = { lat: latlng.lat, lng: latlng.lng };
-            if (placingMarker) placingMarker.setLatLng(latlng);
-            else {
-                placingMarker = L.marker(latlng, { draggable: true, zIndexOffset: 1000, opacity: 0.85 }).addTo(map);
-                placingMarker.on('dragend', ev => {
-                    const p = ev.target.getLatLng();
-                    placing = { lat: p.lat, lng: p.lng };
-                    setHint(`Pin for "${selectedName()}": ${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)} — press Save.`, '#22c55e');
-                });
-            }
-            setHint(`Pin for "${selectedName()}": ${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)} — press Save.`, '#22c55e');
-        }
-        map.on('click', e => placePin(e.latlng));
+        // The same red pin the Sites page puts down.
+        const PIN = '<svg width="28" height="38" viewBox="0 0 28 38" aria-hidden="true"><path d="M14 37C14 37 1.5 22.6 1.5 13.8a12.5 12.5 0 0 1 25 0C26.5 22.6 14 37 14 37z" fill="#ef4444" stroke="#fff" stroke-width="1.6"/><circle cx="14" cy="13.5" r="4.6" fill="#fff"/></svg>';
 
-        // ---- free place search via Nominatim (OpenStreetMap) ----
-        async function doSearch() {
-            const q = searchInput.value.trim();
-            if (!q) return;
-            setHint('Searching for a place…');
-            try {
-                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q=${encodeURIComponent(q)}`;
-                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-                const arr = await res.json();
-                if (!arr.length) { setHint('No place found. Try a different name.', '#ef4444'); return; }
-                const lat = parseFloat(arr[0].lat), lng = parseFloat(arr[0].lon);
-                map.setView([lat, lng], 16);
-                placePin(L.latLng(lat, lng));   // auto-drop pin at the result
-            } catch (e) {
-                setHint('The search did not work. Try again.', '#ef4444');
-            }
-        }
-        searchBtn.addEventListener('click', doSearch);
-        searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
-
-        // ---- save the pin as the selected site's location ----
-        saveBtn.addEventListener('click', async () => {
-            const id = siteSelect.value;
-            if (!id) { setHint('No site is selected.', '#ef4444'); return; }
-            if (!placing) { setHint('Click the map, or search for a place, to drop a pin first.', '#ef4444'); return; }
-            const site = sitesById[id];
-            saveBtn.disabled = true; setHint('Saving the location…');
-            try {
-                const res = await fetch(`/sites/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
-                    body: JSON.stringify({
-                        name: site.name,
-                        location: (searchInput.value.trim() || `${placing.lat.toFixed(5)}, ${placing.lng.toFixed(5)}`),
-                        latitude: placing.lat,
-                        longitude: placing.lng,
-                    }),
-                });
-                const d = await res.json();
-                if (!res.ok || !d.success) throw new Error((d.message) || 'Save failed');
-                if (placingMarker) { map.removeLayer(placingMarker); placingMarker = null; }
-                placing = null;
-                await loadSites(false);
-                setHint(`Saved the location of "${site.name}".`, '#22c55e');
-            } catch (e) {
-                setHint('Could not save: ' + e.message, '#ef4444');
-            } finally {
-                saveBtn.disabled = false;
-            }
+        const siteIcon = s => L.divIcon({
+            className: 'dm-mark', iconSize: null, iconAnchor: [14, 37], popupAnchor: [0, -34],
+            html: `<div class="dm-site">${PIN}<span class="dm-chip"><b>${esc(s.name)}</b>` +
+                  `<small>${s.radius_m} m range · ${plural(s.kiosks, 'kiosk')}</small></span></div>`,
         });
 
-        loadSites();
-
-        // ---- live kiosk GPS overlay (Raspberry Pi) — distinct red dot ----
-        const KIOSK_ID = 'jeyanco-01';
-        const statusEl  = document.getElementById('kiosk-status');
-        const liveIcon  = L.divIcon({
-            className: '',
-            html: '<div style="width:14px;height:14px;background:#ef4444;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 4px rgba(239,68,68,.25)"></div>',
-            iconSize: [14, 14], iconAnchor: [7, 7],
+        const kioskIcon = k => L.divIcon({
+            className: 'dm-mark', iconSize: null, iconAnchor: [16, 16], popupAnchor: [0, -14],
+            html: `<div class="dm-kiosk is-${k.state}" data-state="${k.state}"><span class="dm-av"><i class="fas fa-fingerprint"></i></span>` +
+                  `<span class="dm-chip"><b>${esc(k.name)}</b><small>${esc(kioskLine(k))}</small></span></div>`,
         });
-        let liveMarker = null;
-        let liveCentred = false;     // isang beses lang tayo mang-aagaw ng view
-        let heardAt = 0;             // when the kiosk last reported
 
-        // Ang mapa ay naka-zoom sa mga site pin (zoom 16 = ilang daang metro).
-        // Ang kiosk ay pwedeng kilometro ang layo — naidadagdag ang marker pero
-        // wala sa screen, kaya mukhang "walang lumalabas sa mapa". Isama ito sa
-        // tanaw sa unang fix, at gawing clickable ang status para makabalik.
-        function revealKiosk(pos, zoomIn) {
-            const siteLatLngs = Object.values(siteMarkers).map(m => m.getLatLng());
-            if (zoomIn || siteLatLngs.length === 0) {
-                map.setView(pos, 16);
+        function sitePopup(s, kiosks) {
+            const here = kiosks.filter(k => k.site_id === s.id);
+            return `<div class="dm-pop"><b>${esc(s.name)}</b>` +
+                (s.location ? `<div class="dm-pop-sub">${esc(s.location)}</div>` : '') +
+                `<div>Range: ${s.radius_m} m from the pin</div>` +
+                (here.length
+                    ? here.map(k => `<div class="dm-pop-k is-${k.state}"><i class="fas fa-fingerprint"></i> ${esc(k.name)} · ${esc(kioskLine(k))}</div>`).join('')
+                    : '<div class="dm-pop-sub">No kiosk is set to this site.</div>') +
+                '</div>';
+        }
+
+        function kioskPopup(k) {
+            const gps = { fix: 'GPS fix', stale: 'Last known position', none: 'No position yet' }[k.gps];
+            return `<div class="dm-pop"><b>${esc(k.name)}</b> <span class="dm-pop-sub">${esc(k.code)}</span>` +
+                `<div class="dm-pop-k is-${k.state}">${esc(kioskLine(k))}</div>` +
+                `<div>Set to ${k.site ? '<b>' + esc(k.site) + '</b>' + (k.radius_m ? ` · ${k.radius_m} m range` : ' · not pinned') : 'no site'}</div>` +
+                `<div class="dm-pop-sub">${gps} · heard ${ago(k.seen_ago)}</div></div>`;
+        }
+
+        // A key to the colours, what is not on the map, and where pins are set.
+        const legend = L.control({ position: 'bottomleft' });
+        legend.onAdd = () => {
+            const box = L.DomUtil.create('div', 'dm-legend');
+            L.DomEvent.disableClickPropagation(box);
+            L.DomEvent.disableScrollPropagation(box);
+            return box;
+        };
+        legend.addTo(map);
+
+        function drawLegend(sites, kiosks) {
+            const unplaced = kiosks.filter(k => k.lat == null).length;
+            const unpinned = sites.filter(s => s.lat == null).length;
+            const missing = [
+                unplaced ? plural(unplaced, 'kiosk') + ' with no position' : '',
+                unpinned ? plural(unpinned, 'site') + ' not pinned' : '',
+            ].filter(Boolean).join(' · ');
+            legend.getContainer().innerHTML =
+                '<div class="dm-legend-keys">' +
+                    '<span class="is-in"><i></i>In range</span>' +
+                    '<span class="is-out"><i></i>Out of range</span>' +
+                    '<span class="is-nogps"><i></i>No GPS</span>' +
+                    '<span class="is-offline"><i></i>Offline</span>' +
+                '</div>' +
+                (missing ? `<div class="dm-legend-note">Not on the map: ${missing}</div>` : '') +
+                `<a href="${SITES_URL}">Pins are set on the Sites page <i class="fas fa-arrow-right"></i></a>`;
+        }
+
+        // One marker per site and per kiosk, kept between refreshes and moved,
+        // so a popup somebody has open does not close on every heartbeat.
+        const siteMarks = {}, kioskMarks = {};
+        let fitted = false;
+
+        function draw(sites, kiosks) {
+            const seen = new Set();
+            sites.filter(s => s.lat != null && s.lng != null).forEach(s => {
+                seen.add(s.id);
+                const at = [s.lat, s.lng];
+                let m = siteMarks[s.id];
+                if (!m) {
+                    m = siteMarks[s.id] = {
+                        circle: L.circle(at, { radius: s.radius_m, color: brand(), weight: 1.5, dashArray: '5 4', fillColor: brand(), fillOpacity: .12, interactive: false }).addTo(map),
+                        pin: L.marker(at, { icon: siteIcon(s), keyboard: false }).addTo(map).bindPopup(''),
+                    };
+                } else {
+                    m.circle.setLatLng(at).setRadius(s.radius_m);
+                    m.pin.setLatLng(at).setIcon(siteIcon(s));
+                }
+                m.pin.setPopupContent(sitePopup(s, kiosks));
+            });
+            Object.keys(siteMarks).forEach(id => {
+                if (seen.has(+id)) return;
+                map.removeLayer(siteMarks[id].circle); map.removeLayer(siteMarks[id].pin);
+                delete siteMarks[id];
+            });
+
+            const placed = new Set();
+            kiosks.filter(k => k.lat != null && k.lng != null).forEach(k => {
+                placed.add(k.id);
+                const at = [k.lat, k.lng];
+                const m = kioskMarks[k.id];
+                if (!m) {
+                    kioskMarks[k.id] = L.marker(at, { icon: kioskIcon(k), zIndexOffset: 1000, keyboard: false })
+                        .addTo(map).bindPopup(kioskPopup(k));
+                } else {
+                    m.setLatLng(at).setIcon(kioskIcon(k)).setPopupContent(kioskPopup(k));
+                }
+            });
+            Object.keys(kioskMarks).forEach(id => {
+                if (placed.has(+id)) return;
+                map.removeLayer(kioskMarks[id]);
+                delete kioskMarks[id];
+            });
+
+            drawLegend(sites, kiosks);
+            drawStatus(kiosks);
+
+            // The first time, show everything there is: every site and every
+            // kiosk that has a position.
+            if (!fitted) {
+                fitted = true;
+                fitAll();
+            }
+            declutter();
+        }
+
+        // Names that would land on top of one another. Each name tries its
+        // usual side, then the others; one with no free side steps back
+        // until hovered. A kiosk out of range is placed first, a site last.
+        // Every badge and pin stays, and no name is put over one.
+        const URGENCY = { out: 0, elsewhere: 0, nogps: 1, offline: 2, in: 3 };
+        const SIDES = { kiosk: ['', 'at-left'], site: ['', 'at-below', 'at-right', 'at-left'] };
+        function declutter() {
+            const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+            const kiosks = Object.values(kioskMarks)
+                .map(m => m.getElement()?.querySelector('.dm-kiosk'))
+                .filter(Boolean)
+                .sort((a, b) => URGENCY[a.dataset.state] - URGENCY[b.dataset.state]);
+            const sites = Object.values(siteMarks).map(m => m.pin.getElement()?.querySelector('.dm-site')).filter(Boolean);
+            // The map's own controls — zoom, the key, the credit — are in the way too.
+            const taken = kiosks.map(k => k.querySelector('.dm-av').getBoundingClientRect())
+                .concat(sites.map(s => s.querySelector('svg').getBoundingClientRect()))
+                .concat([...mapEl.querySelectorAll('.leaflet-control')].map(c => c.getBoundingClientRect()));
+            const frame = mapEl.getBoundingClientRect();
+            const inside = r => r.left >= frame.left + 2 && r.right <= frame.right - 2 && r.top >= frame.top + 2 && r.bottom <= frame.bottom - 2;
+
+            const place = (chip, sides) => {
+                for (const side of sides) {
+                    chip.classList.remove('is-hidden', 'at-below', 'at-right', 'at-left');
+                    if (side) chip.classList.add(side);
+                    const r = chip.getBoundingClientRect();
+                    if (inside(r) && !taken.some(t => hit(t, r))) { taken.push(r); return; }
+                }
+                chip.classList.remove('at-below', 'at-right', 'at-left');
+                chip.classList.add('is-hidden');
+            };
+            kiosks.forEach(k => place(k.querySelector('.dm-chip'), SIDES.kiosk));
+            sites.forEach(s => place(s.querySelector('.dm-chip'), SIDES.site));
+        }
+        map.on('zoomend moveend', declutter);
+
+        function fitAll() {
+            const points = Object.values(siteMarks).map(m => m.pin.getLatLng())
+                .concat(Object.values(kioskMarks).map(m => m.getLatLng()));
+            if (points.length === 1) map.setView(points[0], 16);
+            else if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 16 });
+        }
+
+        // The header says how the kiosks stand, worst news first.
+        function drawStatus(kiosks) {
+            if (!kiosks.length) {
+                statusEl.innerHTML = '<i class="dm-dot is-offline"></i> No kiosks registered';
                 return;
             }
-            map.fitBounds([pos].concat(siteLatLngs.map(p => [p.lat, p.lng])),
-                          { padding: [50, 50], maxZoom: 16 });
+            const n = s => kiosks.filter(k => s.includes(k.state)).length;
+            const out = n(['out', 'elsewhere']), inn = n(['in']), nogps = n(['nogps']), off = n(['offline']);
+            const tone = out ? 'is-out' : (nogps || off) ? 'is-nogps' : 'is-in';
+            const parts = [
+                inn ? `${inn} in range` : '',
+                out ? `${out} out of range` : '',
+                nogps ? `${nogps} no GPS` : '',
+                off ? `${off} offline` : '',
+            ].filter(Boolean).join(' · ');
+            statusEl.innerHTML = `<i class="dm-dot ${tone}"></i> ${plural(kiosks.length, 'kiosk')}: ${parts}`;
         }
 
         statusEl.style.cursor = 'pointer';
-        statusEl.title = 'Click to find the kiosk on the map';
-        statusEl.addEventListener('click', () => {
-            if (liveMarker) {
-                revealKiosk(liveMarker.getLatLng(), true);
-                liveMarker.openPopup();
-            }
-        });
+        statusEl.title = 'Show every site and kiosk on the map';
+        statusEl.addEventListener('click', fitAll);
 
-        // The site picked on the kiosk, ringed on the map — which pin the kiosk
-        // is filing attendance against is visible at a glance, GPS or not.
-        let setCircle = null, setCircleFor = null;
-        function showSetSite(siteId, radius) {
-            if (siteId === setCircleFor) return;
-            if (setCircle) { map.removeLayer(setCircle); setCircle = null; }
-            setCircleFor = siteId;
-            const m = siteMarkers[siteId];
-            if (!m) return;
-            setCircle = L.circle(m.getLatLng(), {
-                radius: radius || 150, color: '#2f81f7', weight: 2, fillOpacity: 0.08,
-            }).addTo(map);
-        }
+        // The tracker's own heartbeat, read as the dashboard always has.
+        // Reading it is what notices a kiosk that has gone quiet: the offline
+        // alert is raised lazily, on read, since nothing here runs on a timer
+        // (KioskLocationController).
+        const TRACKER_ID = 'jeyanco-01';
 
-        async function refreshLive() {
+        let busy = false;
+        async function refresh() {
+            if (busy) return;
+            busy = true;
+            fetch(`/api/location/latest?kiosk_id=${TRACKER_ID}`).catch(() => {});
             try {
-                const res = await fetch(`/api/location/latest?kiosk_id=${KIOSK_ID}`);
+                const res = await fetch(MAP_URL, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error(res.status);
                 const d = await res.json();
-                heardAt = Date.now();
-                // What the operator picked on the kiosk comes first; the GPS
-                // guess is the second opinion.
-                const setTo = d.set_site || d.active_site || '—';
-                showSetSite(d.set_site_id, d.geofence_radius_m);
-                if (d.lat && d.lng) {
-                    const pos = [d.lat, d.lng];
-                    const where = d.detected_site || 'Out of range';
-                    const pop = `Kiosk set to <b>${setTo}</b> &middot; GPS: ${where}`;
-                    if (liveMarker) liveMarker.setLatLng(pos).setPopupContent(pop);
-                    else liveMarker = L.marker(pos, { icon: liveIcon }).addTo(map).bindPopup(pop);
-
-                    // Unang fix: iangat ang tanaw para makita mo talaga.
-                    if (!liveCentred) {
-                        liveCentred = true;
-                        revealKiosk(pos, false);
-                    }
-
-                    const t = d.recorded_at ? new Date(d.recorded_at).toLocaleTimeString() : '';
-
-                    // One kiosk is carried between sites, so "where does the GPS
-                    // say it is" and "which site did the operator select" can
-                    // disagree — and when they do, attendance is being filed
-                    // against the wrong site. Say so instead of just "Live".
-                    if (d.site_match === false) {
-                        statusEl.innerHTML =
-                            `<i class="fas fa-triangle-exclamation text-danger" style="font-size:9px;"></i> ` +
-                            `Set to ${setTo} &middot; GPS says ${where}`;
-                    } else if (d.alert === 'outside_geofence') {
-                        statusEl.innerHTML =
-                            `<i class="fas fa-circle text-danger" style="font-size:8px;"></i> ` +
-                            `Set to ${setTo} &middot; outside the site &middot; ${Math.round(d.distance_m || 0)}m &middot; ${t}`;
-                    } else {
-                        statusEl.innerHTML =
-                            `<i class="fas fa-circle text-success" style="font-size:8px;"></i> ` +
-                            `Set to ${setTo} &middot; GPS: ${where} &middot; ${t}`;
-                    }
-                } else if (d.status === 'no_fix') {
-                    // Buhay ang kiosk, walang satellite lock. Ibang-iba ito sa
-                    // katahimikan, na ibig sabihin nawawala ang kiosk.
-                    statusEl.innerHTML =
-                        `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Set to ${setTo} &middot; powered on, no GPS signal`;
-                } else {
-                    statusEl.innerHTML = `<i class="fas fa-circle text-warning" style="font-size:8px;"></i> Waiting for GPS`;
-                }
+                draw(d.sites || [], d.kiosks || []);
             } catch (e) {
-                statusEl.innerHTML = `<i class="fas fa-circle text-secondary" style="font-size:8px;"></i> No live GPS`;
+                statusEl.innerHTML = '<i class="dm-dot is-offline"></i> Could not load the map';
+            } finally {
+                busy = false;
             }
         }
-        refreshLive();
+        refresh();
 
-        // The kiosk's fix is cached rather than saved, and the API says so the
-        // moment one lands — so the pin moves when the kiosk moves instead of
-        // ten seconds later, and a kiosk sitting still costs nothing.
-        Live.on('kiosk devices sites', refreshLive);
+        // A fix is cached rather than saved, and the API says so the moment
+        // one lands, so a kiosk's marker moves when the kiosk does. Silence
+        // announces nothing, so the map also looks again every minute: that is
+        // how a kiosk that stopped talking turns grey.
+        Live.on('kiosk devices sites', refresh);
+        setInterval(() => { if (!document.hidden) refresh(); }, 60000);
 
-        // Silence is the other thing worth showing, and nothing announces
-        // silence. This asks nobody: it only greys the status once nothing has
-        // arrived for longer than a kiosk's heartbeat.
-        setInterval(function () {
-            if (!heardAt || Date.now() - heardAt < 150000) { return; }
-
-            statusEl.innerHTML =
-                '<i class="fas fa-circle text-secondary" style="font-size:8px;"></i> ' +
-                'No word from the kiosk since ' + new Date(heardAt).toLocaleTimeString();
-        }, 15000);
+        // The rings take the theme's brand colour; the tiles and the labels
+        // follow the theme through CSS.
+        new MutationObserver(() => {
+            Object.values(siteMarks).forEach(m => m.circle.setStyle({ color: brand(), fillColor: brand() }));
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
     })();
 </script>
 @endsection

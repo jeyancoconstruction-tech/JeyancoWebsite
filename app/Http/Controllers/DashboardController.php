@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use App\Models\Attendance;
 use App\Models\Kiosk;
+use App\Models\Site;
 use App\Services\PayrollService;
 use App\Support\GoogleHolidays;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
@@ -117,6 +119,86 @@ class DashboardController extends Controller
             'stillIn',
             'devices'
         ));
+    }
+
+    /**
+     * GET /dashboard/map: what the Project Sites map draws. It shows every
+     * pinned site with its range, and every kiosk where its GPS last put it,
+     * inside its site's range or not.
+     *
+     * Read-only. Sites are pinned on the Sites page and nowhere else. The fix
+     * is the one KioskLocationController caches from the Pi's heartbeat.
+     *
+     * A kiosk is measured against the site it is set to. Failing that, it
+     * counts as at whichever site's range it is standing in.
+     */
+    public function map(): JsonResponse
+    {
+        $sites  = Site::withCount('kiosks')->orderBy('name')->get();
+        $pinned = $sites->filter->isPinned();
+        $quiet  = (int) config('kiosk.offline_after');
+        $now    = now();
+
+        $kiosks = Kiosk::with('site')->orderBy('name')->get()->map(function (Kiosk $kiosk) use ($pinned, $quiet, $now) {
+            // The Pi may be keyed by id or by code (DeviceMonitoringController).
+            $fix  = Cache::get('kiosk_location_' . $kiosk->id) ?? Cache::get('kiosk_location_' . $kiosk->code) ?? [];
+            $seen = ! empty($fix['last_seen']) ? Carbon::parse($fix['last_seen']) : null;
+            $ago  = $seen ? (int) $seen->diffInSeconds($now, true) : null;
+            $online = $ago !== null && $ago <= $quiet;
+
+            $lat = isset($fix['lat']) ? (float) $fix['lat'] : null;
+            $lng = isset($fix['lng']) ? (float) $fix['lng'] : null;
+            $located = $lat !== null && $lng !== null;
+            $gps = match (true) {
+                ! $located                                        => 'none',
+                ($fix['status'] ?? null) === 'fix' && $online     => 'fix',
+                default                                           => 'stale',
+            };
+
+            $set      = $kiosk->site?->isPinned() ? $kiosk->site : null;
+            $distance = $located && $set ? $set->metresFrom($lat, $lng) : null;
+            $at       = $located
+                ? $pinned->filter(fn (Site $s) => $s->holds($lat, $lng))->sortBy(fn (Site $s) => $s->metresFrom($lat, $lng))->first()
+                : null;
+
+            $state = match (true) {
+                ! $online                                  => 'offline',
+                $gps !== 'fix'                             => 'nogps',
+                $set && $set->holds($lat, $lng)            => 'in',
+                $at && $set                                => 'elsewhere',
+                (bool) $at                                 => 'in',
+                default                                    => 'out',
+            };
+
+            return [
+                'id'         => $kiosk->id,
+                'name'       => $kiosk->name,
+                'code'       => $kiosk->code,
+                'site'       => $kiosk->site?->name,
+                'site_id'    => $kiosk->site_id,
+                'lat'        => $lat,
+                'lng'        => $lng,
+                'state'      => $state,
+                'gps'        => $gps,
+                'seen_ago'   => $ago,
+                'distance_m' => $distance !== null ? (int) round($distance) : null,
+                'radius_m'   => $set?->geofenceRadius(),
+                'at_site'    => $at?->name,
+            ];
+        })->values();
+
+        return response()->json([
+            'sites' => $sites->map(fn (Site $s) => [
+                'id'       => $s->id,
+                'name'     => $s->name,
+                'location' => $s->location,
+                'lat'      => $s->latitude,
+                'lng'      => $s->longitude,
+                'radius_m' => $s->geofenceRadius(),
+                'kiosks'   => $s->kiosks_count,
+            ])->values(),
+            'kiosks' => $kiosks,
+        ]);
     }
 
     /**

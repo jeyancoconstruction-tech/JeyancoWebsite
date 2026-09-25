@@ -199,28 +199,86 @@ a.row-item:hover, .row-item.hoverable:hover { background: var(--bg-subtle); }
 .panel-body.flexcol { display: flex; flex-direction: column; overflow: hidden; padding: 10px 12px; gap: 7px; }
 #attendanceChart { flex: 1 1 auto; min-height: 0; width: 100% !important; }
 
-/* The Site Tracker keeps every id and control it already had; only the box
-   around it is tighter. Its maximise still lifts it out of this grid. */
-/* One control row, not two: search, site and Save side by side, so the map
-   keeps the height instead of the chrome. */
-.area-map .st-body { gap: 6px; padding: 8px 10px; }
-.area-map .map-ctl { flex-wrap: nowrap; gap: 6px; }
-.area-map .map-input { flex: 1 1 auto; min-width: 70px; }
-.area-map .map-select { flex: 1 1 90px; min-width: 0; }
-.area-map .map-input, .area-map .map-select { height: 29px; font-size: 12px; padding: 0 8px; }
-.area-map .map-select { padding-right: 22px !important; background-position: right 6px center !important; }
-.area-map .map-btn { height: 29px; padding: 0 9px; font-size: 11.5px; flex: 0 0 auto; }
-
-/* The hint changes length as you search and save; one reserved line keeps the
-   map from resizing under it. */
-.area-map .map-hint {
-    min-height: 15px; max-height: 15px; font-size: 10px; line-height: 15px;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
-}
+/* The Site Tracker keeps its minimise and maximise; the map is read-only and
+   takes the whole body. Sites are pinned on the Sites page. */
+.area-map .st-body { padding: 8px 10px; }
 .area-map #kioskMap {
     flex: 1 1 auto; min-height: 118px !important; height: auto !important;
     border-radius: var(--radius-sm);
 }
+
+/* Dark tiles in the dark theme, as on the Sites page, so the map is not a
+   white slab on a navy page. The light theme keeps OpenStreetMap's colours. */
+html[data-bs-theme="dark"] #kioskMap .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.88) saturate(.55); }
+html[data-bs-theme="dark"] #kioskMap { background: var(--bg-subtle); }
+html[data-bs-theme="dark"] #kioskMap .leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--text-muted); }
+html[data-bs-theme="dark"] #kioskMap .leaflet-control-attribution a { color: var(--brand); }
+
+/* A site: the red pin, with its name and range beside it. A kiosk: a round
+   badge in the colour of where it stands, with its name and that state. */
+.dm-mark { background: none; border: 0; }
+.dm-kiosk { position: relative; width: 32px; height: 32px; white-space: nowrap; }
+.dm-site { position: relative; width: 28px; height: 38px; white-space: nowrap; }
+.dm-site svg { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+/* A site's name sits over its pin, a kiosk's to the right of its badge, so a
+   kiosk standing at its own site does not bury the site's name. Where one
+   would land on another, it tries the other sides first (declutter() in
+   dashboard.blade.php). */
+.dm-chip { position: absolute; }
+.dm-site .dm-chip { bottom: 40px; left: 50%; transform: translateX(-50%); align-items: center; text-align: center; }
+.dm-site .dm-chip.at-below { bottom: auto; top: 40px; }
+.dm-site .dm-chip.at-right { bottom: auto; top: 2px; left: 32px; transform: none; align-items: flex-start; text-align: left; }
+.dm-site .dm-chip.at-left  { bottom: auto; top: 2px; left: auto; right: 32px; transform: none; align-items: flex-end; text-align: right; }
+.dm-kiosk .dm-chip { left: 40px; top: 50%; transform: translateY(-50%); }
+.dm-kiosk .dm-chip.at-left { left: auto; right: 40px; align-items: flex-end; text-align: right; }
+/* Where no side is free, the less urgent name steps back and comes out on
+   hover. The pins and badges themselves always show. */
+.dm-chip.is-hidden { display: none; }
+.leaflet-marker-icon.dm-mark:hover { z-index: 10000 !important; }
+.dm-mark:hover .dm-chip.is-hidden { display: flex; }
+.dm-chip {
+    display: flex; flex-direction: column; max-width: 200px; overflow: hidden;
+    padding: 3px 8px 4px; border-radius: 8px; line-height: 1.25;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    border: 1px solid var(--border-md); box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+.dm-chip b { font-size: 11.5px; font-weight: 700; color: var(--text-primary); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.dm-chip small { font-size: 10.5px; font-weight: 600; color: var(--text-secondary); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.dm-av {
+    flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+    font-size: 14px; color: var(--dm-c); background: var(--surface); border: 2.5px solid var(--dm-c);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--dm-c) 22%, transparent), 0 2px 6px rgba(0,0,0,.3);
+}
+.dm-kiosk .dm-chip small { color: var(--dm-c); }
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-in        { --dm-c: var(--success); }
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot):is(.is-out, .is-elsewhere) { --dm-c: var(--danger); }
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-nogps     { --dm-c: var(--warning); }
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-offline   { --dm-c: var(--text-muted); }
+/* The header's dot. Not Bootstrap's text-* colours, which the dark theme
+   turns all to one colour. */
+.dm-dot { display: inline-block; width: 8px; height: 8px; margin-right: 3px; border-radius: 50%; background: var(--dm-c); vertical-align: 1px; }
+.dm-kiosk.is-offline .dm-av { opacity: .75; }
+
+/* The key, bottom left, and the way to the Sites page. */
+.dm-legend {
+    max-width: 280px; padding: 7px 10px; border-radius: 8px;
+    font-size: 10.5px; line-height: 1.5; color: var(--text-secondary);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    border: 1px solid var(--border-md); box-shadow: var(--shadow-sm);
+}
+.dm-legend-keys { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.dm-legend-keys span { display: inline-flex; align-items: center; gap: 5px; }
+.dm-legend-keys i { width: 8px; height: 8px; border-radius: 50%; background: var(--dm-c); }
+.dm-legend-note { margin-top: 3px; color: var(--text-muted); }
+.dm-legend a { display: inline-block; margin-top: 3px; font-weight: 600; color: var(--brand); text-decoration: none; }
+.dm-legend a i { font-size: 9px; }
+
+/* What a click on a pin or a kiosk opens. */
+.dm-pop { display: flex; flex-direction: column; gap: 3px; min-width: 190px; font-size: 12px; line-height: 1.4; }
+.dm-pop b { font-size: 12.5px; }
+.dm-pop-sub { font-size: 11px; color: var(--text-muted); }
+.dm-pop-k { font-weight: 600; color: var(--dm-c); }
+.dm-pop-k i { width: 14px; }
 
 /* ── Below a laptop, one screen stops being the right answer ───────────
    A phone cannot hold six panels legibly, so the page is allowed to scroll
@@ -248,5 +306,11 @@ a.row-item:hover, .row-item.hoverable:hover { background: var(--bg-subtle); }
     .dash-grid { grid-template-columns: 1fr; }
     .dash-bar { flex-direction: column; align-items: stretch; }
     .dash-bar-right { justify-content: space-between; }
+    /* The map gets the height a phone can give it, and the kiosk count
+       its own line under the title rather than an ellipsis beside it. */
+    .area-map { min-height: 520px; }
+    .area-map.site-tracker .panel-head.table-card-header { flex-wrap: wrap; row-gap: 4px; }
+    .area-map #kiosk-status { order: 3; flex: 1 1 100%; }
+    .dm-legend { max-width: 230px; font-size: 10px; }
 }
 </style>

@@ -23,12 +23,12 @@ return [
     'dashboard' => [
         'en' => ['title' => 'Dashboard', 'lines' => [
             'The tiles read today: who is active, who is present, who is still timed in, and what this week has cost so far.',
-            'Live Attendance lists today\'s time-ins as the kiosks send them. Project Sites shows every site on the map: pick a site, search or click the map, then Save to pin it.',
+            'Live Attendance lists today\'s time-ins as the kiosks send them. Project Sites shows each site\'s range and each kiosk: green inside its site\'s range, red outside. Sites are pinned on the Sites page.',
             'The figures are not entered here. Each comes from another section, so a wrong number is corrected where it was recorded.',
         ]],
         'tl' => ['title' => 'Dashboard', 'lines' => [
             'Ang mga tile ay para sa ngayong araw: sino ang aktibo, sino ang present, sino ang naka-time in pa, at magkano na ang gastos ngayong linggo.',
-            'Nasa Live Attendance ang mga nag-time in ngayong araw, habang ipinapadala ng kiosk. Nasa Project Sites ang bawat site sa mapa: pumili ng site, maghanap o mag-click sa mapa, saka Save para ma-pin ito.',
+            'Nasa Live Attendance ang mga nag-time in ngayong araw, habang ipinapadala ng kiosk. Nasa Project Sites ang range ng bawat site at ang bawat kiosk: berde kung nasa loob ng range ng site nito, pula kung nasa labas. Sa Sites page nilalagay ang pin ng site.',
             'Hindi dito inilalagay ang mga numero. Galing sa ibang section ang bawat isa, kaya doon itama ang mali.',
         ]],
     ],

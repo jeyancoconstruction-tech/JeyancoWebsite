@@ -71,6 +71,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     // DASHBOARD
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/map', [DashboardController::class, 'map'])->name('dashboard.map');   // JSON, read-only
 
     // EMPLOYEES (CRUD + Biometric Register)
     // The bulk-delete and enrollment routes are declared before the resource so they

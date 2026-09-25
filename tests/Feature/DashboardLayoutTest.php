@@ -98,13 +98,32 @@ class DashboardLayoutTest extends TestCase
 
         foreach ([
             'id="current-time"', 'id="current-date"', 'id="clockWidget"', 'id="miniCal"',
-            'id="attendanceChart"', 'id="kioskMap"', 'id="siteSearch"', 'id="siteSearchBtn"',
-            'id="siteSelect"', 'id="siteSaveBtn"', 'id="siteMapHint"', 'id="kiosk-status"',
+            'id="attendanceChart"', 'id="kioskMap"', 'id="kiosk-status"',
             'id="siteTrackerCard"', 'id="siteTrackerMin"', 'id="siteTrackerMax"',
             'id="employeeModal"', 'st-body',
+            'data-map-url="' . route('dashboard.map') . '"',
         ] as $needle) {
             $this->assertStringContainsString($needle, $html, "dashboard lost {$needle}");
         }
+    }
+
+    /**
+     * The Project Sites map only shows. Sites are pinned on the Sites page:
+     * no search, no site picker, no Save, nothing that writes a site.
+     */
+    public function test_the_project_sites_map_is_read_only(): void
+    {
+        $html = $this->actingAs($this->admin)->get('/dashboard')->getContent();
+
+        foreach (['id="siteSearch"', 'id="siteSearchBtn"', 'id="siteSelect"', 'id="siteSaveBtn"', 'id="siteMapHint"'] as $gone) {
+            $this->assertStringNotContainsString($gone, $html);
+        }
+        $this->assertStringNotContainsString("method: 'PUT'", $html, 'nothing on the dashboard writes a site');
+        $this->assertStringNotContainsString("map.on('click'", $html, 'a click on the map drops no pin');
+        $this->assertStringContainsString('data-sites-url="' . route('sites.index') . '"', $html, 'the key points to the Sites page');
+
+        // Dark tiles in the dark theme, as on the Sites page.
+        $this->assertStringContainsString('html[data-bs-theme="dark"] #kioskMap .leaflet-tile-pane { filter: invert(1)', $html);
     }
 
     /**
