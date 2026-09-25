@@ -139,6 +139,18 @@ class AttendanceDay
         return $this->rows->first(fn (Attendance $r) => $r->site)?->site;
     }
 
+    /**
+     * The shift the day was worked under — the one stamped on the record, not
+     * the worker's shift today, which may have changed since.
+     *
+     * The first stretch's, for the same reason as site(). Null on a record
+     * from before shifts were stamped.
+     */
+    public function shift()
+    {
+        return $this->rows->first(fn (Attendance $r) => $r->shift)?->shift;
+    }
+
     public function date(): Carbon
     {
         return Carbon::parse($this->first()->date);

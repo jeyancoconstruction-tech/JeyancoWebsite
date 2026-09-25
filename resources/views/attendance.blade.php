@@ -133,6 +133,7 @@
 .attendance-table thead th { white-space:nowrap; }
 .att-col-employee { min-width:190px; }
 .att-col-site     { min-width:160px; }
+.att-col-shift    { min-width:130px; }
 .att-col-date     { min-width:112px; }
 .att-col-session  { min-width:120px; }
 .att-col-status   { min-width:170px; }
@@ -168,6 +169,13 @@
 .att-site { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600;
     color:#0f766e; background:#f0fdfa; border:1px solid #ccfbf1; border-radius:8px; padding:2px 8px; white-space:nowrap; }
 .att-site i { font-size:10px; }
+
+/* The shift the day was worked under, read off the record. Plain text beside
+   the Site pill and the Session pills — a third coloured chip in a row reads
+   as one more status. The moon marks the crew whose day crosses midnight. */
+.att-shift { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600;
+    color:var(--text-secondary,#344054); white-space:nowrap; }
+.att-shift i { font-size:11px; color:var(--text-muted,#667085); }
 
     .att-tabs { border-bottom: 2px solid #e5e7eb; gap: 4px; margin-bottom: 18px; }
     .att-tabs .nav-link { color: #64748b; border: none; font-weight: 700; padding: 10px 18px; }
@@ -434,6 +442,7 @@
                         <tr>
                             <th class="p-2 text-start att-col-employee">{{ __('Employee') }}</th>
                             <th class="p-2 text-start att-col-site">{{ __('Site') }}</th>
+                            <th class="p-2 text-start att-col-shift">{{ __('Shift') }}</th>
                             <th class="p-2 text-start att-col-date">{{ __('Date') }}</th>
                             <th class="p-2 text-start att-col-session">{{ __('Session') }}</th>
                             <th class="p-2 text-start att-col-time">{{ __('Time In / Out') }}</th>
@@ -455,6 +464,13 @@
                                     <span class="text-muted">&mdash;</span>
                                 @endif
                             </td>
+                            <td class="p-2">
+                                @if($day->shift())
+                                    <span class="att-shift"><i class="fas {{ $day->shift()->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i> {{ $day->shift()->name }}</span>
+                                @else
+                                    <span class="text-muted">&mdash;</span>
+                                @endif
+                            </td>
                             <td class="p-2">{{ $day->date()->format('m/d/Y') }}</td>
                             @include('partials.attendance-day-cells', ['day' => $day])
                             <td class="text-center p-2">
@@ -469,7 +485,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
+                            <td colspan="7" class="text-center py-5 text-muted">
                                 <i class="fas fa-user-clock mb-2 d-block" style="font-size: 1.75rem; opacity: 0.3;"></i>
                                 No employees have clocked in today yet.
                             </td>
@@ -499,6 +515,7 @@
                             </th>
                             <th class="p-2 text-start att-col-employee">{{ __('Employee') }}</th>
                             <th class="p-2 text-start att-col-site">{{ __('Site') }}</th>
+                            <th class="p-2 text-start att-col-shift">{{ __('Shift') }}</th>
                             <th class="p-2 text-start att-col-date">{{ __('Date') }}</th>
                             <th class="p-2 text-start att-col-session">{{ __('Session') }}</th>
                             <th class="p-2 text-start att-col-time">{{ __('Time In / Out') }}</th>
@@ -526,6 +543,13 @@
                                     <span class="text-muted">&mdash;</span>
                                 @endif
                             </td>
+                            <td class="p-2">
+                                @if($day->shift())
+                                    <span class="att-shift"><i class="fas {{ $day->shift()->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i> {{ $day->shift()->name }}</span>
+                                @else
+                                    <span class="text-muted">&mdash;</span>
+                                @endif
+                            </td>
                             <td class="p-2">{{ $day->date()->format('m/d/Y') }}</td>
                             @include('partials.attendance-day-cells', ['day' => $day])
                             <td class="text-center p-2">
@@ -540,7 +564,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
+                            <td colspan="8" class="text-center py-5 text-muted">
                                 {{-- "Nothing here" and "nothing here lately"
                                      are different answers, and a reader who
                                      forgot the range is on would read the

@@ -150,6 +150,7 @@ class AttendanceListLayoutTest extends TestCase
         foreach ([
             'att-col-employee' => '190px',
             'att-col-site'     => '160px',
+            'att-col-shift'    => '130px',
             'att-col-date'     => '112px',
             'att-col-session'  => '120px',
             'att-col-status'   => '170px',
@@ -185,7 +186,7 @@ class AttendanceListLayoutTest extends TestCase
     {
         $html = $this->page();
 
-        foreach (['att-col-employee', 'att-col-site', 'att-col-date',
+        foreach (['att-col-employee', 'att-col-site', 'att-col-shift', 'att-col-date',
                   'att-col-session', 'att-col-time', 'att-col-status'] as $class) {
             $this->assertSame(2, substr_count($html, $class . '"'),
                 "{$class} belongs to both tables");
@@ -201,7 +202,7 @@ class AttendanceListLayoutTest extends TestCase
         }, $heads[0]);
 
         $this->assertSame(
-            ['employee', 'site', 'date', 'session', 'time', 'status'],
+            ['employee', 'site', 'shift', 'date', 'session', 'time', 'status'],
             $order[0]
         );
         $this->assertSame($order[0], $order[1], 'the tabs must not shuffle the columns between them');
@@ -216,10 +217,40 @@ class AttendanceListLayoutTest extends TestCase
         $this->assertNotEmpty($today, "Today's table should be on the page");
 
         preg_match_all('#<th[ >]#', $today[0], $th);
-        $this->assertCount(6, $th[0], 'Employee, Site, Date, Session, Time, Status');
+        $this->assertCount(7, $th[0], 'Employee, Site, Shift, Date, Session, Time, Status');
 
         // The empty state has to reach across all of them.
-        $this->assertStringContainsString('colspan="6"', $today[0]);
+        $this->assertStringContainsString('colspan="7"', $today[0]);
+    }
+
+    /**
+     * The Shift column names the shift the day was worked under, which is
+     * stamped on the record — not the worker's shift today. Moving a man to
+     * the night crew must not rewrite last week's day shifts.
+     */
+    public function test_the_shift_column_reads_the_record_not_the_worker(): void
+    {
+        $this->seedCrew();
+
+        $day   = Shift::where('crosses_midnight', false)->firstOrFail();
+        $night = Shift::firstOrCreate(['name' => 'Night Crew'],
+            ['starts_at' => '18:00:00', 'grace_period_minutes' => 10, 'crosses_midnight' => true]);
+
+        Employee::query()->update(['shift_id' => $night->id]);
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('attendance', ['tab' => 'history']))
+            ->assertOk()
+            ->getContent();
+
+        preg_match('#<table class="attendance-table w-100" id="historyTable">.*?</table>#s', $html, $history);
+        $this->assertNotEmpty($history, 'the History table should be on the page');
+
+        $this->assertMatchesRegularExpression(
+            '#<span class="att-shift"><i class="fas fa-sun"></i> ' . preg_quote(e($day->name), '#') . '</span>#',
+            $history[0], 'each day names the shift it was worked under');
+        $this->assertStringNotContainsString('Night Crew', $history[0],
+            "the worker's shift today is not the shift those days were worked");
     }
 
     /**
