@@ -130,6 +130,13 @@ class AttendanceController extends Controller
         $todayView   = $view ?? self::TODAY_DEFAULT;
         $historyView = $view ?? self::HISTORY_DEFAULT;
 
+        // Working and On break are questions about now. A finished day is
+        // neither, and History has no buttons for them, so there they read
+        // as everybody rather than as an empty list.
+        if (in_array($historyView, ['clocked-in', 'break'], true)) {
+            $historyView = 'all';
+        }
+
         // A name typed into the search box. Like the status, it narrows the
         // lists only — it asks "where is this person", not "how many".
         $search = mb_substr(trim((string) $request->query('q', '')), 0, 60);
@@ -198,12 +205,7 @@ class AttendanceController extends Controller
             ->beforeWorkday($now)
             ->when($search !== '', fn ($q) => $q->whereHas('employee',
                 fn ($e) => $e->withTrashed()->where('name', 'like', '%' . $search . '%')))
-            ->when($historyView === 'clocked-in',
-                fn ($q) => $q->whereNotNull('time_in')->whereNull('time_out'))
             ->when($historyView === 'missed', fn ($q) => $q->missedSignOut($now))
-            // A break is only ever running today; a finished day that stopped
-            // at lunch is a half day, and is read as one.
-            ->when($historyView === 'break', fn ($q) => $q->whereRaw('1 = 0'))
             ->when($rangeStart, fn ($q) => $q->where('date', '>=', $rangeStart->toDateString()));
 
         $daysQuery = $historyFilters(Attendance::query())
@@ -324,7 +326,7 @@ class AttendanceController extends Controller
         // is always on the day view. Landing on an empty table and leaving
         // the reader to find the other one is not an answer to "show me who".
         $openTab = $request->query('tab') === 'history' ? 'history' : 'today';
-        if ($view && $view !== 'all' && $todayAttendances->isEmpty() && $historyAttendances->total() > 0) {
+        if (in_array($view, ['missed', 'done'], true) && $todayAttendances->isEmpty() && $historyAttendances->total() > 0) {
             $openTab = 'history';
         }
 

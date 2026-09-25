@@ -87,7 +87,6 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
 .atm-count[hidden] { display:none; }
 
 .atm-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0; padding:14px 16px; }
-.atm-toolbar .atm-sp { flex:1; }
 .atm-field {
     display:flex; align-items:center; gap:8px; height:38px; padding:0 10px;
     border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface);
@@ -114,6 +113,7 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
    submits them like any other field and the keyboard moves between them. */
 .atm-seg { display:flex; overflow:hidden; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface); }
 .atm-seg label { margin:0; }
+.atm-seg label[hidden] { display:none; }
 .atm-seg input { position:absolute; opacity:0; pointer-events:none; }
 .atm-seg span {
     display:flex; align-items:center; gap:6px; height:36px; padding:0 12px; cursor:pointer;
@@ -134,8 +134,6 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
 .atm-btn.danger { background:var(--danger-soft); border-color:color-mix(in srgb, var(--danger) 35%, transparent); color:var(--danger); }
 .atm-btn:disabled { opacity:.5; cursor:not-allowed; }
 .atm-toolbar .atm-btn { height:38px; }
-#attHistoryActions { display:flex; gap:8px; }
-#attHistoryActions[hidden] { display:none; }
 
 /* While a filter is being fetched the lists dim, so the reader does not take
    the old rows for the answer. */
@@ -290,12 +288,6 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
 .att-pager nav { padding-top:10px; }
 .att-pager .pagination { margin-bottom:0; }
 
-/* Mark for deletion: a checkbox column that shows only while marking. */
-.att-check-col { display:none; width:36px; text-align:center; }
-.att-check-col input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:var(--danger); }
-body.att-mark-mode .att-check-col { display:table-cell; }
-body.att-mark-mode tr.atm-row { cursor:default; }
-body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger) 9%, var(--surface)); }
 
 /* A laptop screen: the times, the hours and the status are what the row is
    for, so the timeline gives way and the cells close up rather than
@@ -483,8 +475,14 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
             </div>
 
             <div class="atm-seg" role="radiogroup" aria-label="{{ __('Filter by status') }}">
+                {{-- Working and On break are questions about now, so History,
+                     where every day is over, has no buttons for them. --}}
                 @foreach($statuses as $value => $label)
-                    <label>
+                    @php
+                        $todayOnly = in_array($value, ['clocked-in', 'break'], true);
+                        $labelAttr = $todayOnly ? ' data-today-only' . ($openTab === 'history' ? ' hidden' : '') : '';
+                    @endphp
+                    <label{!! $labelAttr !!}>
                         <input type="radio" name="view" value="{{ $value }}" @checked($shownView === $value)>
                         <span>{{ $label }}</span>
                     </label>
@@ -520,25 +518,13 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
             <input type="hidden" name="tab" id="attTabField" value="{{ $openTab }}">
             <noscript><button type="submit" class="atm-btn">{{ __('Apply') }}</button></noscript>
 
-            <span class="atm-sp"></span>
-
-            <div id="attHistoryActions" @if($openTab !== 'history') hidden @endif>
-                <button id="markModeBtn" type="button" class="atm-btn">
-                    <i class="fas fa-check-square"></i>{{ __('Mark for Deletion') }}
-                </button>
-                <button id="deleteSelectedBtn" type="button" class="atm-btn danger" style="display:none;" disabled>
-                    <i class="fas fa-trash"></i>{{ __('Delete Selected (') }}<span id="selCount">0</span>)
-                </button>
-                <button id="cancelMarkBtn" type="button" class="atm-btn" style="display:none;">{{ __('Cancel') }}</button>
-                {{-- No Delete all. One click from wiping every day payroll is
-                     computed from is not a button this page offers. --}}
-            </div>
+            {{-- No deleting from here. Every past day is what payroll is
+                 computed from; a missing time out is fixed under its row. --}}
         </form>
 
         @php
-            $groupHead = function (bool $check) {
+            $groupHead = function () {
                 return '<tr class="atm-grp">'
-                    . ($check ? '<th class="att-check-col"></th>' : '')
                     . '<th colspan="2"></th>'
                     . '<th colspan="2" class="s"><span>' . e(__('1st session')) . '</span></th>'
                     . '<th colspan="2" class="s atm-sep"><span>' . e(__('2nd session')) . '</span></th>'
@@ -557,7 +543,7 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
                 <div class="atm-scroll" id="attTodayList" data-live="attendance employees sites">
                     <table class="atm-table" id="todayTable">
                         <thead>
-                            {!! $groupHead(false) !!}
+                            {!! $groupHead() !!}
                             <tr>{!! $heads !!}</tr>
                         </thead>
                         <tbody>
@@ -588,25 +574,20 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
                 <div class="atm-scroll" id="attHistoryList" data-live="attendance employees sites">
                         <table class="atm-table" id="historyTable">
                             <thead>
-                                {!! $groupHead(true) !!}
-                                <tr>
-                                    <th class="att-check-col">
-                                        <input type="checkbox" id="selectAllChk" title="{{ __('Select all on this page') }}">
-                                    </th>
-                                    {!! $heads !!}
-                                </tr>
+                                {!! $groupHead() !!}
+                                <tr>{!! $heads !!}</tr>
                             </thead>
                             <tbody>
                                 @forelse($historyBoard->groupBy(fn ($d) => $d->day->date()->toDateString()) as $date => $group)
                                     <tr class="atm-dayhead" data-live-key="date-{{ $date }}">
-                                        <td colspan="10">{{ \Carbon\Carbon::parse($date)->format('l, m/d/Y') }}</td>
+                                        <td colspan="9">{{ \Carbon\Carbon::parse($date)->format('l, m/d/Y') }}</td>
                                     </tr>
                                     @foreach($group as $d)
                                         @include('attendance._day', ['d' => $d, 'tab' => 'history'])
                                     @endforeach
                                 @empty
                                     <tr>
-                                        <td colspan="10" class="atm-empty">
+                                        <td colspan="9" class="atm-empty">
                                             <i class="fas fa-clock-rotate-left"></i>
                                             {{-- "Nothing here" and "nothing here lately" are
                                                  different answers, and a reader who forgot
@@ -675,7 +656,7 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
 
     document.addEventListener('click', e => {
         const tr = e.target.closest('tr.atm-row');
-        if (!tr || document.body.classList.contains('att-mark-mode')) return;
+        if (!tr) return;
         if (e.target.closest('input, button, a, label, select')) return;
         toggle(tr);
     });
@@ -739,7 +720,6 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
 
             history.replaceState(null, '', url);
             applyOpen();
-            markReset();
         } catch (err) {
             if (err.name !== 'AbortError') location.href = url;
         } finally {
@@ -779,26 +759,29 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
     });
 
     // ── Tabs ────────────────────────────────────────────────────────────────
-    // The range and the delete controls only mean anything on History, so
-    // they come and go with it; the tab rides in the address bar too.
-    const historyActions = document.getElementById('attHistoryActions');
-    const rangePick      = document.getElementById('attRangePick');
+    // The range only means anything on History, and Working and On break
+    // only on today, so they come and go with the tab; the tab rides in the
+    // address bar too.
+    const rangePick = document.getElementById('attRangePick');
+    const todayOnly = ['clocked-in', 'break'];
 
     document.querySelectorAll('.atm-tab[data-tab]').forEach(btn => {
         btn.addEventListener('shown.bs.tab', () => {
             const tab = btn.dataset.tab;
-            tabField.value        = tab;
-            historyActions.hidden = tab !== 'history';
-            rangePick.hidden      = tab !== 'history';
-            if (tab !== 'history') markExit();
+            tabField.value   = tab;
+            rangePick.hidden = tab !== 'history';
+            document.querySelectorAll('[data-today-only]').forEach(el => { el.hidden = tab === 'history'; });
 
             const url = new URL(window.location);
             if (tab === 'history') url.searchParams.set('tab', 'history');
             else                   url.searchParams.delete('tab');
             history.replaceState(null, '', url);
 
-            // Until somebody picks a status, each tab shows its own default.
-            if (!chosen) showStatus(DEFAULTS[tab]);
+            // Each tab shows the status it is filtered by: its own default
+            // until somebody picks one, and on History never a button it
+            // does not have — History reads those as everybody.
+            const want = chosen || DEFAULTS[tab];
+            showStatus(tab === 'history' && todayOnly.includes(want) ? 'all' : want);
         });
     });
 
@@ -842,106 +825,6 @@ body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger
         if (document.hidden || !window.Live || typeof window.Live.refresh !== 'function') return;
         window.Live.refresh();
     }, 60000);
-
-    // ── Mark for deletion ───────────────────────────────────────────────────
-    const markBtn   = document.getElementById('markModeBtn');
-    const cancelBtn = document.getElementById('cancelMarkBtn');
-    const delSelBtn = document.getElementById('deleteSelectedBtn');
-    const selCount  = document.getElementById('selCount');
-
-    const checked = () => [...document.querySelectorAll('#historyTable .row-chk:checked')];
-
-    function updateSelCount() {
-        const n = checked().length;
-        selCount.textContent = n;
-        delSelBtn.disabled = n === 0;
-    }
-
-    function markEnter() {
-        document.body.classList.add('att-mark-mode');
-        markBtn.style.display   = 'none';
-        cancelBtn.style.display = '';
-        delSelBtn.style.display = '';
-        updateSelCount();
-    }
-
-    function markReset() {
-        document.querySelectorAll('#historyTable .row-chk, #selectAllChk').forEach(c => c.checked = false);
-        document.querySelectorAll('#historyTable tr.att-marked').forEach(r => r.classList.remove('att-marked'));
-        updateSelCount();
-    }
-
-    function markExit() {
-        document.body.classList.remove('att-mark-mode');
-        markBtn.style.display   = '';
-        cancelBtn.style.display = 'none';
-        delSelBtn.style.display = 'none';
-        markReset();
-    }
-
-    markBtn.addEventListener('click', markEnter);
-    cancelBtn.addEventListener('click', markExit);
-
-    // Delegated: the table is replaced whenever a filter changes.
-    document.addEventListener('change', e => {
-        if (e.target.id === 'selectAllChk') {
-            document.querySelectorAll('#historyTable .row-chk').forEach(c => {
-                c.checked = e.target.checked;
-                c.closest('tr')?.classList.toggle('att-marked', c.checked);
-            });
-            updateSelCount();
-            return;
-        }
-        if (e.target.classList.contains('row-chk')) {
-            e.target.closest('tr')?.classList.toggle('att-marked', e.target.checked);
-            updateSelCount();
-            const all = document.querySelectorAll('#historyTable .row-chk');
-            const sel = document.getElementById('selectAllChk');
-            if (sel) sel.checked = all.length > 0 && all.length === checked().length;
-        }
-    });
-
-    // While marking, a click anywhere on a row ticks it.
-    document.addEventListener('click', e => {
-        if (!document.body.classList.contains('att-mark-mode')) return;
-        const row = e.target.closest('#historyTable tr.atm-row');
-        if (!row || e.target.closest('.att-check-col')) return;
-        const chk = row.querySelector('.row-chk');
-        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
-    });
-
-    delSelBtn.addEventListener('click', async () => {
-        // One checkbox is one day, and a day is one or more rows.
-        const ids = checked().flatMap(c => c.value.split(','));
-        if (!ids.length) { Notify.warning(@json(__('Tick the records you want to delete first.'))); return; }
-
-        const ok = await Notify.confirm({
-            title:        @json(__('Delete selected records?')),
-            message:      `${ids.length} attendance record(s) will be deleted. This cannot be undone.`,
-            confirmLabel: @json(__('Delete')),
-            tone:         'danger',
-        });
-        if (!ok) return;
-
-        try {
-            const res  = await fetch(@json(route('attendance.history.bulk-delete')), {
-                method: 'DELETE',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-                body: JSON.stringify({ ids }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                Notify.success(`Deleted ${data.deleted} record(s).`);
-                markExit();
-                reload(location.href);
-            } else {
-                Notify.error(data.message || 'Something went wrong.');
-            }
-        } catch (err) {
-            Notify.error('Request failed: ' + err.message);
-        }
-    });
 })();
 </script>
 @endpush

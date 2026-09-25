@@ -35,13 +35,13 @@ return [
 
     'attendance' => [
         'en' => ['title' => 'Attendance', 'lines' => [
-            "Today's Attendance shows the current day's time in and out. History looks back over the days before it.",
-            'Mark for Deletion turns on the checkboxes; Delete Selected then removes only what you ticked.',
+            "Today's Attendance opens on who is working now; All lists the whole crew, including anyone not in yet or absent. History looks back over the days before.",
+            'Click a row to see every scan behind the day. A time out nobody scanned is fixed there — use the shift\'s time or enter the real one.',
             'Attendance is what payroll counts, so correct it before you run payroll rather than after.',
         ]],
         'tl' => ['title' => 'Attendance', 'lines' => [
-            "Ang Today's Attendance ay ang time in at time out ngayong araw. Ang History ang tumitingin sa mga nakaraang araw.",
-            'Binubuksan ng Mark for Deletion ang mga checkbox; ang Delete Selected na ang magtatanggal ng na-tsek mo lang.',
+            "Nagbubukas ang Today's Attendance sa mga nagtatrabaho ngayon; nasa All ang buong crew, pati ang hindi pa pumapasok o absent. Ang History ang tumitingin sa mga nakaraang araw.",
+            'I-click ang row para makita ang bawat scan ng araw. Doon din inaayos ang time out na hindi na-scan — gamitin ang oras ng shift o ilagay ang totoong oras.',
             'Ang attendance ang binibilang ng payroll, kaya itama ito bago magpatakbo ng payroll, hindi pagkatapos.',
         ]],
     ],

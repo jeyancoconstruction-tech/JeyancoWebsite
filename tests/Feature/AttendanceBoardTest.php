@@ -300,6 +300,42 @@ class AttendanceBoardTest extends TestCase
         }
     }
 
+    // ── History ──────────────────────────────────────────────────────────
+
+    /**
+     * History has no Working or On break — every day there is over — and
+     * nothing to delete with: no Mark for Deletion, no checkboxes.
+     */
+    public function test_history_offers_only_what_applies_to_a_finished_day(): void
+    {
+        $this->stretch($this->worker('Past Day'), '2026-09-14', 'AM', '08:00:00', '17:00:00');
+
+        $html = $this->page(['tab' => 'history'])->getContent();
+
+        $this->assertMatchesRegularExpression('#<label data-today-only hidden>\s*<input type="radio" name="view" value="clocked-in"#', $html);
+        $this->assertMatchesRegularExpression('#<label data-today-only hidden>\s*<input type="radio" name="view" value="break"#', $html);
+        $this->assertStringNotContainsString('Mark for Deletion', $html);
+        $this->assertStringNotContainsString('type="checkbox"', $html);
+
+        // On today's tab they are there.
+        $today = $this->page()->getContent();
+        $this->assertMatchesRegularExpression('#<label data-today-only>\s*<input type="radio" name="view" value="clocked-in"#', $today);
+    }
+
+    /** A Working or On break carried over to History reads as everybody there, not as nobody. */
+    public function test_history_reads_working_and_on_break_as_everybody(): void
+    {
+        $this->stretch($this->worker('Past Day'), '2026-09-14', 'AM', '08:00:00', '17:00:00');
+
+        foreach (['clocked-in', 'break'] as $view) {
+            $page = $this->actingAs($this->admin())
+                ->get(route('attendance', ['tab' => 'history', 'view' => $view]))->assertOk();
+
+            $this->assertSame(1, $page->viewData('historyAttendances')->total(), $view);
+            $this->assertStringContainsString('name="view" value="all" checked', $page->getContent(), $view);
+        }
+    }
+
     // ── The timeline ─────────────────────────────────────────────────────
 
     /**

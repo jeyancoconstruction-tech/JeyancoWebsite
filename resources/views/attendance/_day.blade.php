@@ -17,25 +17,14 @@
     $hours   = $d->hours();
     $tl      = $d->timeline();
     $key     = 'day-' . $day->employeeId() . '-' . $day->date()->toDateString();
-    $ids     = implode(',', $day->ids());
     $name    = $emp->name ?? __('Unknown');
     $role    = $emp?->laborType?->name ?: $emp?->position;
     $initials = collect(preg_split('/\s+/', trim($name)))->filter()->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))->take(2)->implode('');
     $isHoliday = in_array($day->date()->toDateString(), $holidayDates ?? []);
     $review  = $status['key'] === 'review';
-    $cols    = $tab === 'history' ? 10 : 9;
 @endphp
-<tr class="atm-row" data-live-key="{{ $key }}" data-day="{{ $key }}" data-id="{{ $ids }}"
+<tr class="atm-row" data-live-key="{{ $key }}" data-day="{{ $key }}"
     tabindex="0" aria-expanded="false" aria-controls="{{ $key }}-detail">
-    @if($tab === 'history')
-        {{-- The checkbox carries every row behind the day, so deleting a
-             Tuesday takes the whole Tuesday rather than its morning and
-             leaving its afternoon. --}}
-        <td class="att-check-col">
-            <input type="checkbox" class="row-chk" value="{{ $ids }}" aria-label="{{ __('Select :name', ['name' => $name]) }}">
-        </td>
-    @endif
-
     <td>
         <div class="atm-emp">
             <span class="atm-ini" aria-hidden="true">{{ $initials }}</span>
@@ -142,7 +131,7 @@
 </tr>
 
 <tr class="atm-detail" id="{{ $key }}-detail" data-live-key="{{ $key }}-detail" hidden>
-    <td colspan="{{ $cols }}">
+    <td colspan="9">
         <div class="atm-dgrid">
             <div class="atm-dbox">
                 <h4>{{ __('Fingerprint scans') }}</h4>

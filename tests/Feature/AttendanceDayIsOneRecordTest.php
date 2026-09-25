@@ -297,18 +297,6 @@ class AttendanceDayIsOneRecordTest extends TestCase
 
     // ── Deleting a day takes the day ─────────────────────────────────────
 
-    public function test_the_checkbox_carries_every_row_behind_the_day(): void
-    {
-        $emp = $this->worker('Juan Dela Cruz');
-        $this->fullDay($emp, '2026-09-10');
-
-        $ids  = Attendance::where('employee_id', $emp->id)->orderBy('id')->pluck('id')->all();
-        $html = $this->history()->getContent();
-
-        $this->assertStringContainsString('value="' . implode(',', $ids) . '"', $html,
-            'one checkbox, both rows — or deleting a Tuesday leaves half of it behind');
-    }
-
     public function test_deleting_a_day_removes_both_of_its_stretches(): void
     {
         $emp = $this->worker('Juan Dela Cruz');
