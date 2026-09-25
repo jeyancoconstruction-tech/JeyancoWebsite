@@ -389,9 +389,13 @@
         .google:hover { background: #131C33; border-color: rgba(255,255,255,.24); color: #E6EDF7; }
         .google:active { transform: translateY(1px); }
 
-        /* Said once, quietly, under the card — a caption, not another box. */
-        .notice { display: flex; gap: 9px; align-items: flex-start; justify-content: center; margin: 0; padding: 0 8px; color: #7f90ab; font-size: 12.5px; line-height: 1.5; text-align: left; }
-        .notice .i { margin-top: 1px; color: #34d399; }
+        /* The foot of the card: centred under a hairline, one short line. */
+        .notice {
+            display: flex; gap: 8px; align-items: center; justify-content: center; margin: 0; padding-top: 18px;
+            border-top: 1px solid rgba(127,176,255,.1);
+            color: #8e9db6; font-size: 13px; font-weight: 600; line-height: 1.4; text-align: center;
+        }
+        .notice .i { color: #34d399; }
         .rfoot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: #7d8fab; }
         .rfoot a { color: var(--soft); font-weight: 500; }
 
@@ -468,8 +472,8 @@
 
             .rp { padding: 32px 64px; }
             .rtop { font-size: 15px; }
-            .rbody { max-width: 548px; gap: 22px; }
-            .card { gap: 26px; padding: 42px 46px 38px; border-radius: 20px; }
+            .rbody { max-width: 548px; gap: 22px; padding-block: 14px; }
+            .card { gap: 24px; padding: 38px 46px 32px; border-radius: 20px; }
             .eyebrow { padding: 6px 13px; font-size: 12px; }
             .eyebrow svg { width: 14px; height: 14px; }
             .card-head h2 { font-size: 40px; }
@@ -761,12 +765,13 @@
                 @endif
 
             </form>
-          </div>
 
-            <p class="notice enter" style="--i:4">
+            {{-- Who this page is for, said once at the foot of the card. --}}
+            <p class="notice">
                 <svg class="i" width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
-                {{ __('For authorized Jeyanco personnel only. Every sign-in is recorded in the audit log.') }}
+                {{ __('For authorized Jeyanco personnel only.') }}
             </p>
+          </div>
         </div>
 
         <footer class="rfoot enter" style="--i:9">

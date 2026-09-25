@@ -161,6 +161,22 @@ class LoginPageTest extends TestCase
         $this->assertStringContainsString('<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85', $html);
     }
 
+    /**
+     * Who the page is for is said once, at the foot of the card and centred:
+     * "For authorized Jeyanco personnel only." — and nothing about the
+     * audit log.
+     */
+    public function test_the_notice_sits_in_the_card(): void
+    {
+        $html = $this->page();
+
+        preg_match('#<div class="card enter".*?<p class="notice">(.*?)</p>\s*</div>#s', $html, $card);
+        $this->assertNotEmpty($card, 'the notice is inside the card, after the form');
+        $this->assertStringContainsString('For authorized Jeyanco personnel only.', $card[1]);
+        $this->assertStringNotContainsString('audit log', $html);
+        $this->assertMatchesRegularExpression('/\.notice \{[^}]*justify-content: center;[^}]*text-align: center;/s', $html);
+    }
+
     // ── The page ─────────────────────────────────────────────────────────
 
     /** The real logo, served as a file. */
