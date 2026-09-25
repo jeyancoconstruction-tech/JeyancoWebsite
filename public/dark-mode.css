@@ -36,33 +36,80 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.25);
     transition: transform 0.28s cubic-bezier(0.4,0,0.2,1), background 0.25s ease;
 }
+/* The knob shows the theme a click turns on: the moon in light mode, the sun
+   in dark. Both icons sit in the knob, one over the other, and swap by
+   turning — the one leaving rotates away and shrinks out while the one
+   arriving rotates and grows in. */
+.theme-switch .ts-knob { overflow: hidden; }
 .theme-switch .ts-knob i,
-.theme-switch .ts-knob svg { width: 14px; height: 14px; }
+.theme-switch .ts-knob svg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease;
+}
 
-.theme-switch .ts-sun  { color: #f59e0b; }
-.theme-switch .ts-moon { display: none; color: #fbbf24; }
+.theme-switch .ts-sun  { color: #f59e0b; transform: rotate(-90deg) scale(0.4); opacity: 0; }
+.theme-switch .ts-moon { color: #475569; transform: none; opacity: 1; }
 
 [data-bs-theme="dark"] .theme-switch          { background: #334155; border-color: #475569; }
 [data-bs-theme="dark"] .theme-switch .ts-knob { transform: translateX(28px); background: #1e293b; }
-[data-bs-theme="dark"] .theme-switch .ts-sun  { display: none; }
-[data-bs-theme="dark"] .theme-switch .ts-moon { display: block; }
+[data-bs-theme="dark"] .theme-switch .ts-sun  { transform: none; opacity: 1; }
+[data-bs-theme="dark"] .theme-switch .ts-moon { transform: rotate(90deg) scale(0.4); opacity: 0; }
 
 /* ------------------------------------------------------------
-   SMOOTH THEME-SWITCH TRANSITION
-   Applied to everything ONLY while toggling (class added on click,
-   removed after 350ms) so it never interferes with hover effects.
+   THEME SWITCH — CIRCULAR REVEAL
+   The toggle switches the theme inside a view transition and grows
+   a circle over the NEW snapshot from the button (layouts.blade.php).
+   The browser's own cross-fade is turned off so only the circle runs,
+   and the new snapshot sits over the old one it is revealed across.
+   ------------------------------------------------------------ */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+
+/* ------------------------------------------------------------
+   SMOOTH THEME-SWITCH TRANSITION — the fallback
+   For a browser without View Transitions: colours ease across,
+   applied to everything ONLY while toggling (class added on click,
+   removed after 500ms) so it never interferes with hover effects.
    ------------------------------------------------------------ */
 html.theme-transition,
 html.theme-transition *,
 html.theme-transition *::before,
 html.theme-transition *::after {
-    transition: background-color 0.3s ease,
-                background 0.3s ease,
-                border-color 0.3s ease,
-                color 0.3s ease,
-                fill 0.3s ease,
-                box-shadow 0.3s ease !important;
+    transition: background-color 0.45s ease,
+                background 0.45s ease,
+                border-color 0.45s ease,
+                color 0.45s ease,
+                fill 0.45s ease,
+                box-shadow 0.45s ease !important;
     transition-delay: 0s !important;
+}
+/* …except that the knob still slides and its icons still turn, which the
+   rule above would otherwise replace with colours alone. */
+html.theme-transition .theme-switch .ts-knob {
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1), background 0.45s ease !important;
+}
+html.theme-transition .theme-switch .ts-knob i,
+html.theme-transition .theme-switch .ts-knob svg {
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease !important;
+}
+
+/* Less motion asked for: the switch happens at once (the script skips
+   the reveal), and the knob and its icons simply change. */
+@media (prefers-reduced-motion: reduce) {
+    .theme-switch,
+    .theme-switch .ts-knob,
+    .theme-switch .ts-knob i,
+    .theme-switch .ts-knob svg { transition: none; }
 }
 
 /* ------------------------------------------------------------

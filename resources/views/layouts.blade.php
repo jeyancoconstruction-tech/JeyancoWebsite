@@ -757,6 +757,14 @@
     })();
 
     // Theme toggle (dark / light) — init already ran in <head>
+    //
+    // The new theme grows out of the button as a circle until it covers the
+    // whole page — sidebar, header, content, any open dialog — using the View
+    // Transitions API: the browser snapshots the page, the theme is applied,
+    // and the new snapshot is revealed through a growing clip-path. A browser
+    // without the API fades the colours instead; somebody who has asked for
+    // less motion gets the switch at once. What is switched, and how it is
+    // remembered, is exactly as before.
     (function() {
         const html   = document.documentElement;
         const toggle = document.getElementById('themeToggle');
@@ -767,16 +775,54 @@
         }
         syncAria();
 
-        toggle.addEventListener('click', function() {
-            const next = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
-
-            // Enable smooth color transition only during the switch
-            html.classList.add('theme-transition');
+        function applyTheme(next) {
             html.setAttribute('data-bs-theme', next);
             try { localStorage.setItem('jeyanco-theme', next); } catch (e) {}
             syncAria();
+        }
 
-            window.setTimeout(function() { html.classList.remove('theme-transition'); }, 350);
+        // One switch at a time: a second click mid-reveal would start a
+        // transition on top of one still running.
+        let switching = false;
+
+        toggle.addEventListener('click', function() {
+            if (switching) return;
+
+            const next   = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            if (reduce) { applyTheme(next); return; }
+
+            if (!document.startViewTransition) {
+                // Colours ease across instead, only for the length of the switch
+                // so it never slows a hover anywhere else.
+                switching = true;
+                html.classList.add('theme-transition');
+                applyTheme(next);
+                window.setTimeout(function() {
+                    html.classList.remove('theme-transition');
+                    switching = false;
+                }, 500);
+                return;
+            }
+
+            // Centred on the button, reaching the farthest corner of the screen.
+            const box    = toggle.getBoundingClientRect();
+            const x      = box.left + box.width / 2;
+            const y      = box.top + box.height / 2;
+            const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+
+            switching = true;
+            const transition = document.startViewTransition(function() { applyTheme(next); });
+
+            transition.ready.then(function() {
+                html.animate(
+                    { clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + radius + 'px at ' + x + 'px ' + y + 'px)'] },
+                    { duration: 650, easing: 'cubic-bezier(.65,0,.35,1)', pseudoElement: '::view-transition-new(root)' }
+                );
+            }).catch(function() {});
+
+            transition.finished.finally(function() { switching = false; });
         });
     })();
 </script>  
