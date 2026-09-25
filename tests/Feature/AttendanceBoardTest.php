@@ -363,6 +363,19 @@ class AttendanceBoardTest extends TestCase
         $this->assertSame(['7:30 AM', '11:30 AM–12:30 PM', '4:30 PM'], $labels());
     }
 
+    /**
+     * A note under a scan may wrap to fit a narrow screen, but after its word
+     * — "Undertime", then "1h 30m" — never inside the figure.
+     */
+    public function test_a_long_note_wraps_after_its_word_not_inside_the_figure(): void
+    {
+        $this->stretch($this->worker('Early Leaver'), '2026-09-14', 'AM', '08:00:00', '15:30:00');
+
+        $row = $this->row($this->page(['tab' => 'history'])->getContent(), 'Early Leaver', 'historyTable');
+
+        $this->assertStringContainsString("Undertime 1h\u{00A0}30m", $row);
+    }
+
     // ── Hours are payroll's ──────────────────────────────────────────────
 
     /**

@@ -262,7 +262,7 @@ final class AttendanceDayView
             $over = $this->breakOverBy();
 
             return $over > 0
-                ? ['key' => 'break', 'label' => __('Overbreak') . ' ' . WorkSchedule::duration($over), 'tone' => 'warn', 'live' => true, 'over' => true]
+                ? ['key' => 'break', 'label' => __('Overbreak') . ' ' . self::together($over), 'tone' => 'warn', 'live' => true, 'over' => true]
                 : ['key' => 'break', 'label' => __('On break'), 'tone' => 'brk', 'live' => true, 'over' => false];
         }
 
@@ -351,15 +351,15 @@ final class AttendanceDayView
         }
 
         if ($slot === 'in' && ($late = $this->lateOf($scan['row'])) > 0) {
-            return ['text' => __('Late') . ' ' . WorkSchedule::duration($late), 'tone' => 'warn'];
+            return ['text' => __('Late') . ' ' . self::together($late), 'tone' => 'warn'];
         }
 
         if ($slot === 'bi' && ($late = $this->lateOf($scan['row'])) > 0) {
-            return ['text' => __('Overbreak') . ' ' . WorkSchedule::duration($late), 'tone' => 'warn'];
+            return ['text' => __('Overbreak') . ' ' . self::together($late), 'tone' => 'warn'];
         }
 
         if ($slot === 'out' && $this->w && $scan['at']->lessThan($this->w['PM'][1])) {
-            return ['text' => __('Undertime') . ' ' . WorkSchedule::duration($scan['at']->diffInMinutes($this->w['PM'][1])), 'tone' => 'warn'];
+            return ['text' => __('Undertime') . ' ' . self::together($scan['at']->diffInMinutes($this->w['PM'][1])), 'tone' => 'warn'];
         }
 
         return null;
@@ -415,6 +415,16 @@ final class AttendanceDayView
         return $this->sched
             ? WorkSchedule::lateMinutes($this->sched, AttendanceDay::momentIn($row), $this->sessionOf($row), $this->day->date()->toDateString())
             : 0;
+    }
+
+    /**
+     * A length of time that stays on one line: "3h 00m" with a non-breaking
+     * space, so a note that has to wrap breaks after its word — "Undertime",
+     * then "3h 00m" — never inside the figure.
+     */
+    private static function together(int|float $minutes): string
+    {
+        return str_replace(' ', "\u{00A0}", WorkSchedule::duration($minutes));
     }
 
     // ── Hours ────────────────────────────────────────────────────────────────

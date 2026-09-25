@@ -78,6 +78,9 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
     display:flex; flex-direction:column; min-width:0;
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
     box-shadow:var(--shadow-xs);
+    /* The list sizes itself to the card, not the screen — see the
+       container queries at the end. */
+    container:atm / inline-size;
 }
 .atm-tabs { display:flex; gap:4px; margin:0; padding:6px 16px 0; border-bottom:1px solid var(--border); }
 .atm-tab {
@@ -198,6 +201,9 @@ tr.atm-dayhead td {
 .atm-t.is-mute { color:var(--text-muted); font-weight:500; }
 .atm-edited { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--brand); }
 .atm-tag { display:inline-block; width:max-content; padding:1px 6px; border-radius:5px; font-size:10.5px; font-weight:700; white-space:nowrap; }
+/* Under a scan, a long note — "Overbreak 5h 37m" — may take two lines
+   rather than widen its column past the edge of the card. */
+.atm-punch .atm-tag { width:auto; white-space:normal; }
 .atm-tag.warn { background:var(--warning-soft); color:var(--warning); }
 .atm-tag.bad  { background:var(--danger-soft);  color:var(--danger); }
 .atm-tag.good { background:var(--success-soft); color:var(--success); }
@@ -292,15 +298,19 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
 .att-pager nav { padding-top:10px; }
 .att-pager .pagination { margin-bottom:0; }
 
-
-/* A laptop screen: the times, the hours and the status are what the row is
-   for, so the timeline gives way and the cells close up rather than
-   pushing Status off the side. */
-@media (max-width:1440px) {
+/* A narrower card — a laptop, or a screen zoomed to 125% — closes the cells
+   up first; only on a narrower card still does the timeline give way, since
+   the times, the hours and the status are what a row is for. Measured on
+   the card rather than the screen, so a zoomed browser is treated as the
+   smaller screen it is, and History fits exactly as Today's list does. */
+@container atm (max-width:1450px) {
+    .atm-table thead th, .atm-table tbody td { padding-left:8px; padding-right:8px; }
+    .atm-punch { min-width:74px; }
+    .atm-emp { min-width:175px; }
+}
+@container atm (max-width:1100px) {
     .atm-col-tl { display:none; }
     .atm-table { min-width:940px; }
-    .atm-table thead th, .atm-table tbody td { padding-left:9px; padding-right:9px; }
-    .atm-punch { min-width:74px; }
 }
 @media (max-width:1100px) {
     .atm-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
@@ -672,6 +682,41 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     });
     document.addEventListener('live:updated', applyOpen);
 
+    // ── Timeline labels ─────────────────────────────────────────────────────
+    // The break's label sits under the break, and on a night shift the break
+    // can fall close enough to the start that the two labels ran into each
+    // other. Where they would touch, the break's label moves along; where
+    // there is no room at all it gives way — the hatched break and the
+    // tooltip still say when it is. Measured, because only the browser knows
+    // how wide the words came out.
+    function spaceLabels() {
+        document.querySelectorAll('.atm-tlax').forEach(ax => {
+            if (!ax.offsetParent) return;
+            const [start, mid, end] = ax.querySelectorAll('span');
+            if (!start || !mid || !end) return;
+
+            mid.style.marginLeft = '';
+            mid.style.visibility = '';
+
+            const gap = 6;
+            const from = start.getBoundingClientRect().right + gap;
+            const to   = end.getBoundingClientRect().left - gap;
+            const m    = mid.getBoundingClientRect();
+
+            if (to - from < m.width) { mid.style.visibility = 'hidden'; return; }
+
+            const left = Math.min(Math.max(m.left, from), to - m.width);
+            if (left !== m.left) mid.style.marginLeft = (left - m.left) + 'px';
+        });
+    }
+
+    let spacing = null;
+    const respace = () => { cancelAnimationFrame(spacing); spacing = requestAnimationFrame(spaceLabels); };
+    respace();
+    document.fonts?.ready.then(respace);
+    window.addEventListener('resize', respace);
+    document.addEventListener('live:updated', respace);
+
     // ── Filters, fetched in place ───────────────────────────────────────────
     // Any choice asks the server for the page as it would be, and swaps in
     // the parts that changed: the cards and both lists. The address bar
@@ -724,6 +769,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
 
             history.replaceState(null, '', url);
             applyOpen();
+            respace();
         } catch (err) {
             if (err.name !== 'AbortError') location.href = url;
         } finally {
@@ -786,6 +832,9 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
             // does not have — History reads those as everybody.
             const want = chosen || DEFAULTS[tab];
             showStatus(tab === 'history' && todayOnly.includes(want) ? 'all' : want);
+
+            // The pane that was hidden had nothing to measure.
+            respace();
         });
     });
 
