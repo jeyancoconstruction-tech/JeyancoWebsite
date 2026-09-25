@@ -60,7 +60,7 @@ class RegisterManageDesignTest extends TestCase
         $this->worker('Carmella Sarsogo Bio');
 
         $this->actingAs($this->admin())->get(route('employees.register'))->assertOk()
-            ->assertSee('Register & manage employees')
+            ->assertSee('<h1 class="rmx-title">Employees</h1>', false)
             ->assertSee('Register employee')
             ->assertSee('Pending from kiosk')
             ->assertSee('Carmella Sarsogo Bio')

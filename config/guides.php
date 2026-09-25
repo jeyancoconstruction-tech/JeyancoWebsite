@@ -47,12 +47,12 @@ return [
     ],
 
     'employees' => [
-        'en' => ['title' => 'Register & Manage', 'lines' => [
+        'en' => ['title' => 'Employees', 'lines' => [
             'Register employee creates the record. A worker detected at the kiosk waits in Pending until the fingerprint is enrolled.',
             'Export to Excel downloads the active workforce. The gift on a row adds a bonus to this pay period.',
             'Remove asks to confirm first, and moves the worker to Removed, where they can be restored.',
         ]],
-        'tl' => ['title' => 'Register & Manage', 'lines' => [
+        'tl' => ['title' => 'Mga Empleyado', 'lines' => [
             'Ang Register employee ang gumagawa ng record. Ang worker na nakita ng kiosk ay nasa Pending hanggang ma-enroll ang fingerprint.',
             'Ang Export to Excel ay ida-download ang aktibong workforce. Ang regalo sa hanay ay nagdadagdag ng bonus sa pay period na ito.',
             'Magtatanong muna ang Remove, at ililipat ang worker sa Removed, kung saan puwede itong ibalik.',

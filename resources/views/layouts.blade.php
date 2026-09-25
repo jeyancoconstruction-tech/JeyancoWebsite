@@ -204,15 +204,16 @@
                 <i data-lucide="calendar-check"></i> <span>{{ __('Attendance') }}</span>
             </a>
             @php
-                // Every worker page belongs to Register & Manage: registering,
-                // editing and a worker's profile all start and end there. The
-                // Employee Directory it duplicated was retired, and /employees
-                // now leads here too.
+                // One entry for every worker page: the list, registering,
+                // editing and a worker's profile all start and end there. It
+                // was called Register & Manage beside an Employee Directory
+                // that duplicated it; with the directory retired it carries
+                // the plain name, and /employees leads here too.
                 $onRegisterHub = request()->is('employees*');
                 $pendingKiosk  = \App\Models\Employee::pending()->count();
             @endphp
             <a class="nav-link {{ $onRegisterHub ? 'active' : '' }}" href="{{ route('employees.register') }}">
-                <i data-lucide="user-plus"></i> <span>{{ __('Register & Manage') }}</span>
+                <i data-lucide="users"></i> <span>{{ __('Employees') }}</span>
                 @if($pendingKiosk > 0)
                     <span class="nav-pending-badge" title="{{ $pendingKiosk }} worker(s) detected by the kiosk awaiting registration">{{ $pendingKiosk }}</span>
                 @endif

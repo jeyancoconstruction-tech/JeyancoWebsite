@@ -1,5 +1,5 @@
 @extends('layouts')
-@section('page_title', 'Register & Manage Employees')
+@section('page_title', 'Employees')
 
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
@@ -238,8 +238,8 @@ html[data-bs-theme="dark"] .rmx {
     {{-- ── Header ──────────────────────────────────────────────────────────── --}}
     <div class="rmx-head">
         <div>
-            <h1 class="rmx-title">{{ __('Register & manage employees') }}</h1>
-            <p class="rmx-sub">{{ __('New workers and kiosk detections stay in Pending until a fingerprint is enrolled.') }}</p>
+            <h1 class="rmx-title">{{ __('Employees') }}</h1>
+            <p class="rmx-sub">{{ __('Register, edit and remove workers here. New workers and kiosk detections stay in Pending until a fingerprint is enrolled.') }}</p>
         </div>
         <div class="rmx-head-actions">
             {{-- The active workforce as a spreadsheet Excel opens. It came

@@ -263,7 +263,7 @@ class AIController extends Controller
 
         if ($any('pending employees', 'pending worker', 'unregistered', 'awaiting registration', 'kiosk detected')) {
             $pending = DB::table('employees')->whereNull('deleted_at')->where('status', 'pending')->count();
-            return "Pending employees (detected by a kiosk, not yet fully registered): $pending\nReview them on the Register & Manage page.";
+            return "Pending employees (detected by a kiosk, not yet fully registered): $pending\nReview them in the Pending tab of the Employees page.";
         }
 
         if ($any('archived employees', 'archived worker', 'former employees', 'ex employees', 'left the company')) {

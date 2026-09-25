@@ -14,7 +14,7 @@
             </p>
         </div>
         <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
-            <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Register & Manage') }}
+            <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Employees') }}
         </a>
     </div>
 

@@ -34,21 +34,30 @@ class EmployeeDirectoryRetiredTest extends TestCase
         $this->actingAs($this->admin())->get('/employees')->assertRedirect(route('employees.register'));
     }
 
-    public function test_the_sidebar_has_no_employees_entry_and_register_and_manage_owns_every_worker_page(): void
+    /**
+     * One entry for workers in the sidebar. It was called Register & Manage
+     * beside the directory; with the directory gone it carries the plain
+     * name, and it opens the page that used to be Register & Manage.
+     */
+    public function test_the_sidebar_has_one_employees_entry_and_it_owns_every_worker_page(): void
     {
         $admin = $this->admin();
         $emp   = Employee::create(['name' => 'Rafael Cruz', 'status' => Employee::STATUS_ACTIVE, 'rate_per_hour' => 100]);
 
         $html = $this->actingAs($admin)->get('/dashboard')->getContent();
-        $this->assertStringNotContainsString('<span>Employees</span>', $html);
-        $this->assertStringContainsString('<span>Register &amp; Manage</span>', $html);
+        $this->assertSame(1, substr_count($html, '<span>Employees</span>'));
+        $this->assertMatchesRegularExpression(
+            '~href="' . preg_quote(route('employees.register'), '~') . '">\s*<i data-lucide="users"></i> <span>Employees</span>~',
+            $html
+        );
+        $this->assertStringNotContainsString('<span>Register &amp; Manage</span>', $html);
 
         foreach ([route('employees.register'), route('employees.create'), route('employees.edit', $emp), route('employees.show', $emp)] as $url) {
             $page = $this->actingAs($admin)->get($url)->assertOk()->getContent();
             $this->assertMatchesRegularExpression(
                 '~<a class="nav-link active" href="' . preg_quote(route('employees.register'), '~') . '">~',
                 $page,
-                "{$url} should light up Register & Manage"
+                "{$url} should light up Employees"
             );
         }
     }

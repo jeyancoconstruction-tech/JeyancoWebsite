@@ -195,7 +195,7 @@ class SearchController extends Controller
         return [
             ['title' => 'Dashboard',       'subtitle' => 'Overview & live stats',           'url' => url('/dashboard'),                          'keywords' => 'home overview main dashboard'],
             ['title' => 'Attendance',      'subtitle' => 'Attendance monitoring',           'url' => route('attendance'),                        'keywords' => 'attendance time in out present absent kiosk holiday'],
-            ['title' => 'Register & Manage', 'subtitle' => 'Employees, kiosk registrations, export, bonus', 'url' => route('employees.register'),        'keywords' => 'employees workers staff personnel directory register manage export excel bonus pending kiosk'],
+            ['title' => 'Employees',         'subtitle' => 'Register, pending kiosk detections, export, bonus', 'url' => route('employees.register'),        'keywords' => 'employees workers staff personnel directory register manage export excel bonus pending kiosk'],
             ['title' => 'Payroll Records', 'subtitle' => 'Daily breakdown of pay',         'url' => route('payroll-records'),                   'keywords' => 'payroll reports payslip pay period weekly daily salary records gross net deductions overtime bonus receipt'],
             ['title' => 'Analytics',       'subtitle' => 'Insights & charts',               'url' => route('analytics'),                         'keywords' => 'analytics insights charts graphs'],
             ['title' => 'Jeyanco AI',      'subtitle' => 'AI assistant',                    'url' => route('ai-assistant'),                      'keywords' => 'ai assistant chatbot jeyanco intelligence'],
