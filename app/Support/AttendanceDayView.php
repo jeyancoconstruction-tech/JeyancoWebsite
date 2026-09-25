@@ -536,12 +536,25 @@ final class AttendanceDayView
             }
         }
 
-        $short = fn (Carbon $t) => $t->format($t->minute === 0 ? 'g A' : 'g:i A');
+        // The times written under the bar are the shift's own, as Payroll
+        // Settings has them — its start, its break and its end — each placed
+        // where it falls. The hour either side is room for an early arrival
+        // or overtime to show, not a time anybody set, so it has no label.
+        [$start, $breakFrom, $breakTo, $end] = [$this->w['AM'][0], $this->w['AM'][1], $this->w['PM'][0], $this->w['PM'][1]];
+
+        $breakLabel = $breakFrom->format('A') === $breakTo->format('A')
+            ? $breakFrom->format('g:i') . '–' . WorkSchedule::label($breakTo)
+            : WorkSchedule::label($breakFrom) . '–' . WorkSchedule::label($breakTo);
 
         return [
             'pieces' => array_values(array_filter($pieces)),
             'now'    => $this->live && $this->now->between($lo, $hi) ? $at($this->now) : null,
-            'axis'   => [$short($lo), $short($this->w['AM'][1]), $short($hi)],
+            'ticks'  => [
+                ['left' => $at($start), 'label' => WorkSchedule::label($start), 'align' => 'is-start'],
+                ['left' => $at($breakFrom->copy()->addMinutes(intdiv((int) $breakFrom->diffInMinutes($breakTo), 2))),
+                 'label' => $breakLabel, 'align' => 'is-mid'],
+                ['left' => $at($end), 'label' => WorkSchedule::label($end), 'align' => 'is-end'],
+            ],
             'title'  => $this->shiftHours() . ' · ' . __('break') . ' '
                       . WorkSchedule::label($this->w['AM'][1]) . ' – ' . WorkSchedule::label($this->w['PM'][0]),
         ];

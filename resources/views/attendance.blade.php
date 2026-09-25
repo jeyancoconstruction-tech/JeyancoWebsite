@@ -216,7 +216,12 @@ tr.atm-dayhead td {
 .atm-tl .late { top:10px; height:2px; background:var(--danger); }
 .atm-tl .now  { top:0; bottom:0; width:2px; border-radius:1px; background:var(--text-primary); }
 .atm-tl .now::after { content:""; position:absolute; top:-3px; left:-3px; width:8px; height:8px; border-radius:50%; background:var(--text-primary); }
-.atm-tlax { display:flex; justify-content:space-between; width:230px; margin-top:2px; font-size:10px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+/* The shift's own times under the bar, each at the point it marks: the start
+   reads from its tick, the end up to its tick, the break centred on it. */
+.atm-tlax { position:relative; width:230px; height:13px; margin-top:2px; font-size:10px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+.atm-tlax span { position:absolute; top:0; white-space:nowrap; }
+.atm-tlax .is-mid { transform:translateX(-50%); }
+.atm-tlax .is-end { transform:translateX(-100%); }
 
 .atm-hrs { font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .atm-hrs small { display:block; font-size:11px; font-weight:500; color:var(--text-muted); }

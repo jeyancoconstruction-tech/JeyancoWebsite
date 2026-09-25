@@ -300,6 +300,33 @@ class AttendanceBoardTest extends TestCase
         }
     }
 
+    // ── The timeline ─────────────────────────────────────────────────────
+
+    /**
+     * The times under the timeline are the shift's own, as Payroll Settings
+     * has them — start, break, end — not the hour of room either side of it.
+     * Changing the shift there changes them here.
+     */
+    public function test_the_timeline_is_labelled_with_the_shift_from_payroll_settings(): void
+    {
+        $this->stretch($this->worker('Tim Line'), '2026-09-14', 'AM', '08:00:00', '17:00:00');
+
+        $labels = function () {
+            $row = $this->row($this->page(['tab' => 'history'])->getContent(), 'Tim Line', 'historyTable');
+            preg_match('#<div class="atm-tlax">(.*?)</div>#s', $row, $axis);
+            preg_match_all('#<span class="is-(?:start|mid|end)"[^>]*>([^<]+)</span>#', $axis[1] ?? '', $m);
+
+            return $m[1];
+        };
+
+        $this->assertSame(['8:00 AM', '12:00–1:00 PM', '5:00 PM'], $labels());
+
+        // The office moves the shift in Payroll Settings.
+        $this->day->forceFill(Shift::layOut('07:30', '16:30', '11:30', '12:30'))->save();
+
+        $this->assertSame(['7:30 AM', '11:30 AM–12:30 PM', '4:30 PM'], $labels());
+    }
+
     // ── Hours are payroll's ──────────────────────────────────────────────
 
     /**

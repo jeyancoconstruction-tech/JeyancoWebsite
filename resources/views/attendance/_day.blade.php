@@ -103,7 +103,11 @@
                     <span class="now" style="left:{{ $tl['now'] }}%"></span>
                 @endif
             </div>
-            <div class="atm-tlax"><span>{{ $tl['axis'][0] }}</span><span>{{ $tl['axis'][1] }}</span><span>{{ $tl['axis'][2] }}</span></div>
+            <div class="atm-tlax">
+                @foreach($tl['ticks'] as $t)
+                    <span class="{{ $t['align'] }}" style="left:{{ $t['left'] }}%">{{ $t['label'] }}</span>
+                @endforeach
+            </div>
         @else
             <span class="atm-t is-mute">&mdash;</span>
         @endif
