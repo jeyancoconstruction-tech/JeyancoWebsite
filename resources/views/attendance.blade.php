@@ -8,6 +8,10 @@
    Built on the design tokens alone, so one block serves both themes. The
    break has no token of its own; it borrows the palette's violet, which is
    defined for light and dark alike. */
+/* The full width the layout gives, as every other page takes it — no padding
+   of its own on top of the layout's. */
+.attendance-container.atm { max-width:none; width:100%; margin:0; padding:0; }
+
 .atm {
     --atm-brk:      var(--violet);
     --atm-brk-soft: var(--violet-soft);
@@ -353,7 +357,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     ];
 @endphp
 
-<div class="attendance-container atm p-4">
+<div class="attendance-container atm">
 
     <div class="atm-head">
         <h3 class="attendance-title mb-0">{{ __('Attendance Monitoring') }}</h3>
