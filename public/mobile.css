@@ -294,9 +294,8 @@
     .kr-track { height: 44px !important; }
     .kr-seg { white-space: normal !important; text-align: center; line-height: 1.15; font-size: 10px !important; padding: 0 2px; }
 
-    /* Payroll Settings: less padding around cards inside cards, so the
-       fields inside get the width. */
-    .settings-wrapper { padding: 14px !important; }
+    /* Payroll Settings: less padding inside its cards, so the fields get
+       the width. */
     .ps-card-header { padding: 12px 14px !important; }
     .ps-card-body { padding: 14px !important; }
     .ps-card-body.p-0 { padding: 0 !important; }

@@ -749,130 +749,116 @@
 @push('styles')
             {{-- Calendar CSS --}}
             <style>
+            /* The holiday calendar, in the app's own tokens. Every colour below
+               follows the theme on its own, so there is no dark twin to keep in
+               step: brand blue for a regular holiday, the warning hue for a
+               special one, muted for one switched off. */
+
             /* ── Info banner ────────────────────────────────────────────── */
             .hc-info-banner {
                 display: flex; align-items: flex-start; gap: 10px;
-                background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
-                padding: 12px 16px; font-size: 13px; color: #1e40af;
+                background: var(--brand-subtle); border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+                border-radius: var(--radius-md); padding: 12px 16px; font-size: 13px; color: var(--brand);
             }
-            [data-bs-theme="dark"] .hc-info-banner { background: #172554; border-color: #1e3a8a; color: #93c5fd; }
 
             /* ── Calendar card ───────────────────────────────────────────── */
             .hc-card {
-                background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
-                overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+                background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+                overflow: hidden;
             }
-            [data-bs-theme="dark"] .hc-card { background: #1c2740; border-color: #283449; box-shadow: none; }
 
             /* ── Navigation bar ──────────────────────────────────────────── */
             .hc-nav-bar {
                 display: flex; align-items: center; gap: 0;
-                padding: 18px 20px 14px; border-bottom: 1px solid #e2e8f0;
+                padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
             }
-            [data-bs-theme="dark"] .hc-nav-bar { border-color: #283449; }
 
             .hc-arrow-btn {
-                flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
-                border: 1px solid #e2e8f0; background: #f8fafc; color: #475569;
+                flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-sm);
+                border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-secondary);
                 cursor: pointer; display: flex; align-items: center; justify-content: center;
                 font-size: 13px; transition: all .15s;
             }
-            .hc-arrow-btn:hover { background: #e0e7ff; border-color: #6366f1; color: #4f46e5; }
-            [data-bs-theme="dark"] .hc-arrow-btn { background: #283449; border-color: #334155; color: #93c5fd; }
-            [data-bs-theme="dark"] .hc-arrow-btn:hover { background: #1e3a8a; border-color: #1e40af; }
+            .hc-arrow-btn:hover { background: var(--brand-subtle); border-color: var(--brand); color: var(--brand); }
 
             .hc-center-block { flex: 1; text-align: center; padding: 0 16px; }
             .hc-month-heading {
-                font-size: 1.4rem; font-weight: 800; color: #1e3a8a;
+                font-size: 1.4rem; font-weight: 700; color: var(--text-primary);
                 margin: 0 0 8px; letter-spacing: -.3px;
             }
-            [data-bs-theme="dark"] .hc-month-heading { color: #93c5fd; }
 
             .hc-quick-nav {
                 display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
             }
             .hc-sel {
-                font-size: 12px; font-weight: 600; color: #475569;
-                border: 1px solid #e2e8f0; border-radius: 7px; padding: 4px 8px;
-                background: #f8fafc; cursor: pointer; outline: none; transition: border-color .15s;
+                font-size: 12px; font-weight: 600; color: var(--text-secondary);
+                border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px;
+                background: var(--bg-subtle); cursor: pointer; outline: none; transition: border-color .15s;
             }
-            .hc-sel:focus { border-color: #6366f1; }
-            [data-bs-theme="dark"] .hc-sel { background: #283449; border-color: #334155; color: #93c5fd; }
+            .hc-sel:focus { border-color: var(--brand); }
 
             .hc-yr-ctrl { display: flex; align-items: center; gap: 4px; }
             .hc-yr-btn {
                 width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;
-                border: 1px solid #e2e8f0; background: #f8fafc; color: #475569;
+                border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-secondary);
                 cursor: pointer; font-size: 15px; font-weight: 700; line-height: 1;
                 display: flex; align-items: center; justify-content: center; transition: all .15s;
             }
-            .hc-yr-btn:hover { background: #e0e7ff; border-color: #6366f1; color: #4f46e5; }
-            [data-bs-theme="dark"] .hc-yr-btn { background: #283449; border-color: #334155; color: #93c5fd; }
+            .hc-yr-btn:hover { background: var(--brand-subtle); border-color: var(--brand); color: var(--brand); }
             #hc-yr-val {
-                font-size: 13px; font-weight: 700; color: #1e3a8a; min-width: 40px; text-align: center;
+                font-size: 13px; font-weight: 700; color: var(--text-primary); min-width: 40px; text-align: center;
             }
-            [data-bs-theme="dark"] #hc-yr-val { color: #93c5fd; }
 
             /* ── Action bar ──────────────────────────────────────────────── */
             .hc-action-bar {
                 display: flex; align-items: center; justify-content: space-between;
                 padding: 10px 20px; gap: 12px; flex-wrap: wrap;
-                background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+                background: var(--bg-subtle); border-bottom: 1px solid var(--border);
             }
-            [data-bs-theme="dark"] .hc-action-bar { background: #151d2e; border-color: #283449; }
 
             .hc-stat-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
             .hc-stat {
                 display: inline-flex; align-items: center; gap: 5px;
                 padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
             }
-            .hc-stat-on  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; cursor:pointer; user-select:none; transition:filter .15s; }
-            .hc-stat-off { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; cursor:pointer; user-select:none; transition:filter .15s; }
+            .hc-stat-on  { background: var(--success-soft); border: 1px solid color-mix(in srgb, var(--success) 35%, transparent); color: var(--success); cursor:pointer; user-select:none; transition:filter .15s; }
+            .hc-stat-off { background: var(--danger-soft);  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);  color: var(--danger);  cursor:pointer; user-select:none; transition:filter .15s; }
             .hc-stat-on:hover, .hc-stat-off:hover { filter:brightness(.93); }
-            [data-bs-theme="dark"] .hc-stat-on  { background: #052e16; border-color: #14532d; color: #86efac; }
-            [data-bs-theme="dark"] .hc-stat-off { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
 
             /* ── Holiday list panel ──────────────────────────────────────────── */
-            .hc-list-panel { border-top:1px solid #e2e8f0; padding:14px 20px 18px; max-height:300px; overflow-y:auto; }
-            [data-bs-theme="dark"] .hc-list-panel { border-top-color:#283449; }
+            .hc-list-panel { border-top:1px solid var(--border); padding:14px 20px 18px; max-height:300px; overflow-y:auto; }
             .hc-list-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-            .hc-list-title  { font-size:13px; font-weight:700; color:#374151; }
-            [data-bs-theme="dark"] .hc-list-title { color:#e8edf5; }
-            .hc-list-close  { background:none; border:none; font-size:17px; line-height:1; cursor:pointer; color:#94a3b8; padding:0; }
-            .hc-list-close:hover { color:#475569; }
-            .hc-list-row    { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:8px; border-bottom:1px solid #f1f5f9; font-size:13px; }
+            .hc-list-title  { font-size:13px; font-weight:700; color:var(--text-primary); }
+            .hc-list-close  { background:none; border:none; font-size:17px; line-height:1; cursor:pointer; color:var(--text-muted); padding:0; }
+            .hc-list-close:hover { color:var(--text-primary); }
+            .hc-list-row    { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:8px; border-bottom:1px solid var(--border); font-size:13px; }
             .hc-list-row:last-child { border-bottom:none; }
-            [data-bs-theme="dark"] .hc-list-row { border-bottom-color:#1c2740; }
-            .hc-list-date   { font-size:11.5px; font-weight:600; color:#64748b; min-width:75px; }
-            [data-bs-theme="dark"] .hc-list-date { color:#9fb0c7; }
-            .hc-list-name   { flex:1; font-weight:600; color:#1e293b; }
-            [data-bs-theme="dark"] .hc-list-name { color:#e8edf5; }
+            .hc-list-date   { font-size:11.5px; font-weight:600; color:var(--text-muted); min-width:75px; }
+            .hc-list-name   { flex:1; font-weight:600; color:var(--text-primary); }
             .hc-list-typetag { font-size:10px; padding:2px 8px; border-radius:99px; font-weight:700; white-space:nowrap; }
-            .hlt-regular { background:#dbeafe; color:#1e40af; }
-            .hlt-special { background:#ffedd5; color:#c2410c; }
-            [data-bs-theme="dark"] .hlt-regular { background:#172554; color:#93c5fd; }
-            [data-bs-theme="dark"] .hlt-special { background:#431407; color:#fdba74; }
-            .hc-list-tgl { height:26px; padding:0 11px; font-size:11px; font-weight:700; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; transition:background .15s; }
-            .hlt-btn-enable  { background:#dcfce7; color:#15803d; }
-            .hlt-btn-enable:hover { background:#bbf7d0; }
-            .hlt-btn-disable { background:#fee2e2; color:#b91c1c; }
-            .hlt-btn-disable:hover { background:#fecaca; }
-            [data-bs-theme="dark"] .hlt-btn-enable  { background:#052e16; color:#86efac; }
-            [data-bs-theme="dark"] .hlt-btn-disable { background:#450a0a; color:#fca5a5; }
+            .hlt-regular { background:var(--brand-subtle);  color:var(--brand); }
+            .hlt-special { background:var(--warning-soft); color:var(--warning); }
+            .hc-list-tgl { height:26px; padding:0 11px; font-size:11px; font-weight:700; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; transition:filter .15s; }
+            .hlt-btn-enable  { background:var(--success-soft); color:var(--success); }
+            .hlt-btn-disable { background:var(--danger-soft);  color:var(--danger); }
+            .hlt-btn-enable:hover, .hlt-btn-disable:hover { filter:brightness(.93); }
 
+            /* The calendar's actions: the brand blue every primary action in
+               the app uses, and the success and danger hues for switching every
+               holiday on or off, drawn soft as the rest of the app draws them. */
             .hc-btn-group { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
             .hc-pill {
                 display: inline-flex; align-items: center; gap: 5px;
-                border: none; color: #fff; font-size: 12px; font-weight: 600;
-                padding: 6px 14px; border-radius: 8px; cursor: pointer;
-                transition: opacity .15s; line-height: 1.4; white-space: nowrap;
+                border: 1px solid transparent; font-size: 12px; font-weight: 600;
+                padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer;
+                transition: filter .15s, background .15s; line-height: 1.4; white-space: nowrap;
             }
-            .hc-pill:hover { opacity: .85; }
+            .hc-pill:hover { filter: brightness(1.08); }
             .hc-pill:disabled { opacity: .5; cursor: not-allowed; }
-            .hc-pill-green  { background: #16a34a; }
-            .hc-pill-red    { background: #dc2626; }
-            .hc-pill-indigo { background: #6366f1; }
-            .hc-pill-blue   { background: #2563eb; }
+            .hc-pill-blue   { background: var(--brand); color: #fff; }
+            .hc-pill-blue:hover { background: var(--brand-strong); filter: none; }
+            .hc-pill-green  { background: var(--success-soft); color: var(--success); border-color: color-mix(in srgb, var(--success) 35%, transparent); }
+            .hc-pill-red    { background: var(--danger-soft);  color: var(--danger);  border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
 
             /* ── Day-of-week header ──────────────────────────────────────── */
             .hc-dow {
@@ -881,9 +867,8 @@
             }
             .hc-dow span {
                 text-align: center; font-size: 0.68rem; font-weight: 700;
-                color: #94a3b8; padding: 4px 0; text-transform: uppercase; letter-spacing: .5px;
+                color: var(--text-muted); padding: 4px 0; text-transform: uppercase; letter-spacing: .5px;
             }
-            [data-bs-theme="dark"] .hc-dow span { color: #475569; }
 
             /* ── Viewport + slide animation ──────────────────────────────── */
             .hc-viewport { padding: 4px 16px 18px; overflow: hidden; }
@@ -900,10 +885,8 @@
                 min-height: 54px; cursor: default; position: relative;
                 transition: transform .12s, box-shadow .12s;
             }
-            .hc-cell-num { font-size: 0.9rem; font-weight: 600; line-height: 1; color: #374151; }
-            [data-bs-theme="dark"] .hc-cell-num { color: #cbd5e1; }
-            .hc-cell.hc-muted .hc-cell-num { color: #d1d5db; }
-            [data-bs-theme="dark"] .hc-cell.hc-muted .hc-cell-num { color: #334155; }
+            .hc-cell-num { font-size: 0.9rem; font-weight: 600; line-height: 1; color: var(--text-primary); }
+            .hc-cell.hc-muted .hc-cell-num { color: var(--text-muted); opacity: .45; }
 
             .hc-cell-name {
                 font-size: 0.5rem; line-height: 1.2; text-align: center;
@@ -915,36 +898,26 @@
             .hc-dot { position: absolute; bottom: 5px; width: 5px; height: 5px; border-radius: 50%; }
 
             .hc-cell.hday { cursor: pointer; }
-            .hc-cell.hday:hover { transform: scale(1.13); box-shadow: 0 4px 14px rgba(0,0,0,0.16); z-index: 3; }
+            .hc-cell.hday:hover { transform: scale(1.13); box-shadow: var(--shadow-md); z-index: 3; }
             .hc-cell.hday:active { transform: scale(1.05); }
 
-            .hc-cell.ht-regular { background: #dbeafe; }
-            .hc-cell.ht-regular .hc-cell-num  { color: #1e40af; }
-            .hc-cell.ht-regular .hc-cell-name { color: #1e40af; }
-            .hc-cell.ht-regular .hc-dot       { background: #1e40af; }
+            .hc-cell.ht-regular { background: var(--brand-subtle); }
+            .hc-cell.ht-regular .hc-cell-num,
+            .hc-cell.ht-regular .hc-cell-name { color: var(--brand); }
+            .hc-cell.ht-regular .hc-dot       { background: var(--brand); }
 
-            .hc-cell.ht-special { background: #fef3c7; }
-            .hc-cell.ht-special .hc-cell-num  { color: #92400e; }
-            .hc-cell.ht-special .hc-cell-name { color: #92400e; }
-            .hc-cell.ht-special .hc-dot       { background: #d97706; }
+            .hc-cell.ht-special { background: var(--warning-soft); }
+            .hc-cell.ht-special .hc-cell-num,
+            .hc-cell.ht-special .hc-cell-name { color: var(--warning); }
+            .hc-cell.ht-special .hc-dot       { background: var(--warning); }
 
-            .hc-cell.ht-disabled { background: #f1f5f9; }
-            .hc-cell.ht-disabled .hc-cell-num  { color: #94a3b8; text-decoration: line-through; }
-            .hc-cell.ht-disabled .hc-cell-name { color: #94a3b8; text-decoration: line-through; }
-            .hc-cell.ht-disabled .hc-dot       { background: #cbd5e1; }
+            .hc-cell.ht-disabled { background: var(--bg-subtle); }
+            .hc-cell.ht-disabled .hc-cell-num,
+            .hc-cell.ht-disabled .hc-cell-name { color: var(--text-muted); text-decoration: line-through; }
+            .hc-cell.ht-disabled .hc-dot       { background: var(--border-md); }
 
-            .hc-cell.hc-today { outline: 2px solid #6366f1; outline-offset: -2px; }
-            .hc-cell.hc-today:not(.hday) .hc-cell-num { color: #4f46e5; font-weight: 800; }
-
-            [data-bs-theme="dark"] .hc-cell.ht-regular { background: rgba(30,58,138,.28); }
-            [data-bs-theme="dark"] .hc-cell.ht-regular .hc-cell-num  { color: #93c5fd; }
-            [data-bs-theme="dark"] .hc-cell.ht-regular .hc-cell-name { color: #93c5fd; }
-            [data-bs-theme="dark"] .hc-cell.ht-special { background: rgba(120,53,15,.32); }
-            [data-bs-theme="dark"] .hc-cell.ht-special .hc-cell-num  { color: #fbbf24; }
-            [data-bs-theme="dark"] .hc-cell.ht-special .hc-cell-name { color: #fbbf24; }
-            [data-bs-theme="dark"] .hc-cell.ht-disabled { background: #283449; }
-            [data-bs-theme="dark"] .hc-cell.ht-disabled .hc-cell-num { color: #475569; }
-            [data-bs-theme="dark"] .hc-cell.hc-today { outline-color: #818cf8; }
+            .hc-cell.hc-today { outline: 2px solid var(--brand); outline-offset: -2px; }
+            .hc-cell.hc-today:not(.hday) .hc-cell-num { color: var(--brand); font-weight: 800; }
 
             /* ── Footer row ──────────────────────────────────────────────── */
             .hc-footer-row {
@@ -961,22 +934,17 @@
             .hc-leg-item:hover  { filter: brightness(0.95); }
             .hc-leg-item:active { transform: translateY(1px); }
             .hc-leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-            .hc-leg-regular { background:#dbeafe; color:#1e40af; border-left:3px solid #1e40af; }
-            .hc-leg-regular .hc-leg-dot { background:#1e40af; }
-            .hc-leg-special { background:#fef3c7; color:#92400e; border-left:3px solid #d97706; }
-            .hc-leg-special .hc-leg-dot { background:#d97706; }
-            .hc-leg-off     { background:#f1f5f9; color:#64748b; border-left:3px solid #94a3b8; }
-            [data-bs-theme="dark"] .hc-leg-regular { background:rgba(30,58,138,.2); color:#93c5fd; }
-            [data-bs-theme="dark"] .hc-leg-special { background:rgba(120,53,15,.2); color:#fbbf24; }
-            [data-bs-theme="dark"] .hc-leg-off     { background:#283449; color:#64748b; }
+            .hc-leg-regular { background:var(--brand-subtle);  color:var(--brand);      border-left:3px solid var(--brand); }
+            .hc-leg-regular .hc-leg-dot { background:var(--brand); }
+            .hc-leg-special { background:var(--warning-soft); color:var(--warning);    border-left:3px solid var(--warning); }
+            .hc-leg-special .hc-leg-dot { background:var(--warning); }
+            .hc-leg-off     { background:var(--bg-subtle);    color:var(--text-muted); border-left:3px solid var(--border-md); }
 
             .hc-rates { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
             .hc-rate { font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
             .hc-rate::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-            .hc-rate-regular { color:#1e40af; } .hc-rate-regular::before { background:#1e40af; }
-            .hc-rate-special { color:#92400e; } .hc-rate-special::before { background:#d97706; }
-            [data-bs-theme="dark"] .hc-rate-regular { color:#93c5fd; }
-            [data-bs-theme="dark"] .hc-rate-special { color:#fbbf24; }
+            .hc-rate-regular { color:var(--brand); }   .hc-rate-regular::before { background:var(--brand); }
+            .hc-rate-special { color:var(--warning); } .hc-rate-special::before { background:var(--warning); }
 
             </style>
 @endpush
@@ -1385,28 +1353,27 @@
     background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
 }
 
-.settings-wrapper {
-    background: white;
-    border-radius: 0.5rem;
-    padding: 2rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
+/* ── The page ──────────────────────────────────────────────────────────────
+   Drawn the way every other page is: straight on the page's own background,
+   a title and a line under it, tabs underlined in brand blue, and white (or,
+   in the dark theme, surface navy) cards with a hairline border. It used to
+   sit in a card of its own, a lighter navy than anything else in the app,
+   with indigo tabs, which made it read as a different application. Every
+   colour here is a theme token, so there is no dark twin to keep in step. */
+.settings-wrapper { background: none; padding: 0; border-radius: 0; box-shadow: none; }
 
 .settings-header h1 {
-    font-size: 1.875rem;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 0.5rem;
+    font-size: 1.25rem; font-weight: 700; letter-spacing: -.02em;
+    color: var(--text-primary); margin: 0 0 4px;
 }
+.settings-header p { color: var(--text-secondary); font-size: .8rem; margin: 0; }
 
-.settings-header p {
-    color: #6b7280;
-    font-size: 0.95rem;
-}
-
+/* The tabs. .nav-link is also the sidebar's class, and the sidebar's active
+   pill (a tint, an inset ring, a bar down the left) was landing on the open
+   tab too. These put it back to the underline every tab row in the app uses. */
 .settings-tabs {
-    border-bottom: 2px solid #e5e7eb;
-    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border) !important;
+    margin-bottom: 16px !important;   /* the markup's mb-0 is Bootstrap's !important */
 }
 
 /* Pantay ang lapad ng bawat tab. Ang lapad noon ay sunod sa haba ng pangalan,
@@ -1418,111 +1385,43 @@
 
 .settings-tabs .nav-item { flex: 1 1 0; min-width: max-content; }
 
-.settings-tabs .nav-link {
-    width: 100%;
-    text-align: center;
-    color: #6b7280;
-    border: none;
-    padding: 1rem 1.5rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
+html[data-bs-theme] .settings-tabs .nav-link {
+    width: 100%; text-align: center;
+    padding: 9px 16px; margin-bottom: -1px;
+    font-size: 13px; font-weight: 700 !important;
+    color: var(--text-secondary) !important;
+    background: none !important; box-shadow: none !important;
+    border: 0 !important; border-bottom: 2px solid transparent !important; border-radius: 0 !important;
+    transition: color .15s, border-color .15s;
 }
+html[data-bs-theme] .settings-tabs .nav-link::before { display: none !important; }
+html[data-bs-theme] .settings-tabs .nav-link:hover { color: var(--brand) !important; }
+html[data-bs-theme] .settings-tabs .nav-link.active {
+    color: var(--brand) !important; border-bottom-color: var(--brand) !important;
+}
+html[data-bs-theme] .settings-tabs .nav-link svg,
+html[data-bs-theme] .settings-tabs .nav-link i[data-lucide] { color: inherit !important; opacity: 1 !important; }
 
-.settings-tabs .nav-link:hover {
-    color: #6366f1;
-}
+.settings-content { padding: 0; }
 
-.settings-tabs .nav-link.active {
-    color: #6366f1;
-    border-bottom: 3px solid #6366f1;
-    background: none;
+/* The rate history table. */
+.table { margin-bottom: 0; }
+.settings-wrapper .table th {
+    background-color: var(--bg-subtle); font-weight: 600; color: var(--text-secondary);
 }
-
-.settings-content {
-    padding: 2rem 0;
-}
-
-.form-group label {
-    font-weight: 500;
-    color: #374151;
-    margin-bottom: 0.5rem;
-}
-
-.form-control {
-    border: 1px solid #d1d5db;
-    padding: 0.75rem 1rem;
-    border-radius: 0.375rem;
-}
-
-.form-control:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.btn-primary, .btn-success {
-    background-color: #6366f1;
-    border: none;
-}
-
-.btn-primary:hover, .btn-success:hover {
-    background-color: #4f46e5;
-}
-
-.labor-types-form {
-    background: #f9fafb;
-    padding: 1.5rem;
-    border-radius: 0.5rem;
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table th {
-    background-color: #f3f4f6;
-    font-weight: 600;
-    color: #374151;
-}
-
-.table-hover tbody tr:hover {
-    background-color: #f9fafb;
-}
-
-/* Dynamic payroll rate configuration */
-.settings-section-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #1e3a8a;
-}
-
-.payroll-config-section {
-    padding: 1.5rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-}
-
-.payroll-formula {
-    font-size: 0.85rem;
-    color: #475569;
-    background: #eef2ff;
-    border: 1px solid #e0e7ff;
-    border-radius: 8px;
-    padding: 12px 16px;
-}
+.settings-wrapper .table td { color: var(--text-primary); border-color: var(--border); }
 
 /* ── ps-card system (Payroll / Labor Settings) ──────────────────────────── */
-.ps-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; }
-.ps-card-header { display:flex; align-items:flex-start; gap:10px; padding:14px 20px; border-bottom:1px solid #e2e8f0; background:#f8fafc; }
-.ps-card-header > i { color:#1e3a8a; margin-top:3px; flex-shrink:0; }
-.ps-card-header h6 { font-weight:700; color:#0f172a; margin:0 0 2px; font-size:.95rem; }
-.ps-card-header p { color:#64748b; font-size:.8rem; margin:0; line-height:1.4; }
+.ps-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.ps-card-header { display:flex; align-items:flex-start; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background: transparent; }
+.ps-card-header > i { color: var(--brand); margin-top:3px; flex-shrink:0; }
+.ps-card-header h6 { font-weight:700; color: var(--text-primary); margin:0 0 2px; font-size:.95rem; }
+.ps-card-header p { color: var(--text-muted); font-size:.8rem; margin:0; line-height:1.4; }
 .ps-card-body { padding:20px; }
 .ps-card-body.p-0 { padding:0; }
-.ps-label { font-weight:600; font-size:.875rem; color:#374151; margin-bottom:6px; display:block; }
-.ps-input { border-color:#e2e8f0 !important; }
-.ps-input:focus { border-color:#6366f1 !important; box-shadow:0 0 0 3px rgba(99,102,241,.1) !important; }
-.ps-ig-text { background:#f8fafc !important; border-color:#e2e8f0 !important; font-weight:600; color:#374151; }
+.ps-label { font-weight:600; font-size:.875rem; color: var(--text-secondary); margin-bottom:6px; display:block; }
+.ps-input { border-color: var(--border) !important; }
+.ps-ig-text { background: var(--bg-subtle) !important; border-color: var(--border) !important; font-weight:600; color: var(--text-secondary); }
 
 /* ── Payroll rate card ──────────────────────────────────────────────────
    Tokens throughout, not the hardcoded greys the rest of this sheet still
@@ -1697,21 +1596,16 @@
 .ps-dole-table tbody tr:last-child td { border-bottom:none; }
 .ps-dole-table tbody td:not(:first-child) { font-variant-numeric:tabular-nums; font-weight:600; }
 
-/* Toggle switch (Sunday rest day) */
-.ps-toggle-row { display:flex; align-items:center; gap:12px; padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px; }
+/* Toggle switch (the settings switches). Green when on, as a switch is
+   everywhere in the app; the track and the row follow the theme. */
+.ps-toggle-row { display:flex; align-items:center; gap:12px; padding:10px 14px; background: var(--bg-subtle); border:1px solid var(--border); border-radius:9px; }
 .ps-toggle-switch { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; }
 .ps-toggle-switch input { opacity:0; width:0; height:0; }
-.ps-toggle-slider { position:absolute; inset:0; background:#cbd5e1; border-radius:99px; cursor:pointer; transition:background .2s; }
+.ps-toggle-slider { position:absolute; inset:0; background: var(--border-md); border-radius:99px; cursor:pointer; transition:background .2s; }
 .ps-toggle-slider::before { content:''; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .2s; box-shadow:0 1px 4px rgba(0,0,0,.2); }
-.ps-toggle-switch input:checked + .ps-toggle-slider { background:#16a34a; }
+.ps-toggle-switch input:checked + .ps-toggle-slider { background: var(--success); }
 .ps-toggle-switch input:checked + .ps-toggle-slider::before { transform:translateX(20px); }
-.ps-toggle-label { font-size:.875rem; color:#374151; line-height:1.4; }
-.ps-toggle-status { font-weight:700; color:#16a34a; }
-.ps-toggle-switch input:not(:checked) ~ .ps-toggle-label .ps-toggle-status,
-.ps-toggle-status.off { color:#94a3b8; }
-[data-bs-theme="dark"] .ps-toggle-row { background:#1c2740; border-color:#283449; }
-[data-bs-theme="dark"] .ps-toggle-label { color:#cbd5e1; }
-[data-bs-theme="dark"] .ps-toggle-slider { background:#374357; }
+.ps-toggle-label { font-size:.875rem; color: var(--text-secondary); line-height:1.4; }
 
 /* The withholding row's switch. Smaller than the one it borrows from — it sits
    in a table row of percentages, not on a card of its own — and it keeps the
@@ -1726,26 +1620,14 @@
 }
 .pr-card-locked .pr-tax-toggle { cursor:not-allowed; }
 
-/* Derived rate chips (single display — no duplicate) */
-.ps-rates-row { display:flex; gap:10px; flex-wrap:wrap; }
-.ps-rate-chip { flex:1; min-width:130px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; }
-.ps-rate-label { display:block; font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:#64748b; margin-bottom:3px; }
-.ps-rate-value { color:#1e40af; font-size:1rem; font-weight:700; }
-
-/* Deduction chips */
-.ps-deduct-chip { padding:14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; }
-.ps-deduct-label { display:block; font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:#64748b; margin-bottom:3px; }
-.ps-deduct-val { display:block; color:#dc2626; font-size:1.15rem; margin:2px 0; }
-.ps-deduct-info { color:#94a3b8; font-size:.78rem; }
-.ps-deduct-total { padding:12px 16px; background:#fef3c7; border:1px solid #fde68a; border-radius:8px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
-.ps-deduct-total-val { color:#92400e; font-size:1.2rem; font-weight:700; flex-shrink:0; }
-
-/* Preview badge */
-.ps-badge { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6366f1; background:#eef2ff; border:1px solid #e0e7ff; border-radius:99px; padding:2px 8px; vertical-align:middle; margin-left:4px; }
-
-/* Action buttons */
-.ps-save-btn { background:linear-gradient(135deg,#1e3a8a,#1e40af); color:#fff !important; border:none; padding:11px 32px; border-radius:8px; font-weight:600; box-shadow:0 4px 12px rgba(30,58,138,.2); }
-.ps-save-btn:hover { background:linear-gradient(135deg,#1e40af,#2563eb); }
+/* Action buttons: the same flat brand blue as every primary action in the
+   app, not a navy gradient of their own. */
+.ps-save-btn {
+    background: var(--brand); color:#fff !important; border:none;
+    padding:11px 32px; border-radius: var(--radius-sm); font-weight:600;
+    transition: background .15s, box-shadow .15s;
+}
+.ps-save-btn:hover { background: var(--brand-strong); box-shadow: var(--shadow-md); }
 /* ── Add Labor Type button ─────────────────────────────────────────────────
    Was the only green control on a page whose every other action is brand
    blue, so it read as belonging to a different app. */
@@ -1882,34 +1764,6 @@
 .lt-modal-cancel:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .lt-modal-hint { display:block; margin-top:6px; font-size:.8rem; color: var(--text-muted); }
 
-/* Dark mode — global settings page */
-[data-bs-theme="dark"] .settings-wrapper { background: #1c2740; box-shadow: none; }
-[data-bs-theme="dark"] .settings-header h1 { color: #e2e8f0; }
-[data-bs-theme="dark"] .settings-header p { color: #94a3b8; }
-[data-bs-theme="dark"] .settings-tabs { border-color: #283449; }
-[data-bs-theme="dark"] .settings-tabs .nav-link { color: #94a3b8; }
-[data-bs-theme="dark"] .settings-tabs .nav-link.active { color: #818cf8; border-color: #818cf8; }
-[data-bs-theme="dark"] .settings-tabs .nav-link:hover { color: #818cf8; }
-[data-bs-theme="dark"] .payroll-formula { background: #1e3a8a20; border-color: #1e3a8a; color: #93c5fd; }
-[data-bs-theme="dark"] .payroll-config-section { background: #151d2e; border-color: #283449; }
-[data-bs-theme="dark"] .labor-types-form { background: #151d2e; }
-[data-bs-theme="dark"] .table th { background-color: #151d2e; color: #cbd5e1; }
-[data-bs-theme="dark"] .table-hover tbody tr:hover { background-color: #283449; }
-[data-bs-theme="dark"] .form-group label { color: #cbd5e1; }
-[data-bs-theme="dark"] .ps-card { background:#1c2740; border-color:#283449; }
-[data-bs-theme="dark"] .ps-card-header { background:#151d2e; border-color:#283449; }
-[data-bs-theme="dark"] .ps-card-header h6 { color:#e2e8f0; }
-[data-bs-theme="dark"] .ps-label { color:#cbd5e1; }
-[data-bs-theme="dark"] .ps-input { background:#1c2740 !important; color:#e2e8f0; border-color:#283449 !important; }
-[data-bs-theme="dark"] .ps-ig-text { background:#151d2e !important; border-color:#283449 !important; color:#94a3b8; }
-[data-bs-theme="dark"] .ps-rate-chip { background:rgba(30,58,138,.2); border-color:#1e3a8a; }
-[data-bs-theme="dark"] .ps-rate-value { color:#93c5fd; }
-[data-bs-theme="dark"] .ps-deduct-chip { background:#151d2e; border-color:#283449; }
-[data-bs-theme="dark"] .ps-deduct-label { color:#94a3b8; }
-[data-bs-theme="dark"] .ps-deduct-val { color:#f87171; }
-[data-bs-theme="dark"] .ps-deduct-total { background:rgba(251,191,36,.08); border-color:rgba(251,191,36,.2); }
-[data-bs-theme="dark"] .ps-deduct-total-val { color:#fbbf24; }
-[data-bs-theme="dark"] .ps-badge { background:rgba(99,102,241,.15); border-color:rgba(99,102,241,.3); }
 </style>
 @endpush
 

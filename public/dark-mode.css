@@ -494,21 +494,10 @@ html[data-bs-theme="dark"] {
 [data-bs-theme="dark"] .total-label { color: #6b7d96; }
 
 /* ------------------------------------------------------------
-   SETTINGS PAGE
+   FORM CONTROLS
+   (Payroll Settings draws itself in theme tokens now; these are
+   the app-wide fields its old block also carried.)
    ------------------------------------------------------------ */
-[data-bs-theme="dark"] .settings-wrapper {
-    background: #151d2e;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-}
-[data-bs-theme="dark"] .settings-header h1 { color: #e8edf5; }
-[data-bs-theme="dark"] .settings-header p { color: #9fb0c7; }
-[data-bs-theme="dark"] .settings-tabs { border-bottom-color: #283449; }
-[data-bs-theme="dark"] .settings-tabs .nav-link { color: #9fb0c7; }
-[data-bs-theme="dark"] .settings-tabs .nav-link:hover,
-[data-bs-theme="dark"] .settings-tabs .nav-link.active { color: #818cf8; }
-[data-bs-theme="dark"] .settings-tabs .nav-link.active { border-bottom-color: #818cf8; }
-[data-bs-theme="dark"] .labor-types-form { background: #1c2740; }
-[data-bs-theme="dark"] .form-group label { color: #cdd7e5; }
 [data-bs-theme="dark"] .form-control {
     background-color: #0f1729;
     border-color: #283449;
@@ -519,10 +508,6 @@ html[data-bs-theme="dark"] {
     background-color: #11192a;
     border-color: #6366f1;
     box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
-}
-[data-bs-theme="dark"] .settings-wrapper .table th {
-    background-color: #1c2740;
-    color: #9fb0c7;
 }
 
 /* ------------------------------------------------------------
@@ -563,7 +548,6 @@ html[data-bs-theme="dark"] {
 /* ------------------------------------------------------------
    SETTINGS — form controls, labels, new config components
    ------------------------------------------------------------ */
-[data-bs-theme="dark"] .settings-wrapper label,
 [data-bs-theme="dark"] .form-label { color: #cdd7e5; }
 
 [data-bs-theme="dark"] .form-select {
@@ -581,9 +565,6 @@ html[data-bs-theme="dark"] {
     color: #cdd7e5;
 }
 
-[data-bs-theme="dark"] .settings-section-title { color: #93c5fd; }
-[data-bs-theme="dark"] .payroll-config-section { background: #11192a; border-color: #283449; }
-[data-bs-theme="dark"] .payroll-formula { background: #1a2540; border-color: #2d3a5e; color: #c7d2fe; }
 
 /* ------------------------------------------------------------
    PAYROLL PAGE (class-based)
@@ -593,11 +574,6 @@ html[data-bs-theme="dark"] {
     border-color: #283449 !important;
 }
 [data-bs-theme="dark"] .payroll-card:hover { box-shadow: 0 12px 30px rgba(0,0,0,0.5) !important; }
-[data-bs-theme="dark"] .settings-content { color: #cdd7e5; }
-[data-bs-theme="dark"] .settings-tabs { border-bottom-color: #283449 !important; }
-[data-bs-theme="dark"] .settings-tabs .nav-link { color: #9fb0c7; }
-[data-bs-theme="dark"] .settings-tabs .nav-link:hover,
-[data-bs-theme="dark"] .settings-tabs .nav-link.active { color: #a5b4fc; }
 [data-bs-theme="dark"] .payslip-row td { background: #11192a !important; }
 
 /* ------------------------------------------------------------
