@@ -135,7 +135,7 @@ class AppServiceProvider extends ServiceProvider
         // capturing the row here — otherwise a save made during this request
         // would print the value it replaced.
         View::composer(
-            ['layouts', 'auth.layout', 'payroll-records', 'payslips-batch'],
+            ['layouts', 'auth.layout', 'login', 'payroll-records', 'payslips-batch'],
             fn ($view) => $view->with('company', $this->systemSettings())
         );
 

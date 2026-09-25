@@ -56,6 +56,17 @@ class LoadingScreenTest extends TestCase
         return $this->get(route('login'))->assertOk()->getContent();
     }
 
+    /**
+     * A page on the auth layout. Sign-in opens on an intro of its own now
+     * (see LoginPageTest), so Forgot password — on the same layout, and
+     * reached from a link in an email as often as not — is where the
+     * arrival splash is checked on that side.
+     */
+    private function authPage(): string
+    {
+        return $this->get(route('password.request'))->assertOk()->getContent();
+    }
+
     private function headOf(string $html): string
     {
         return substr($html, 0, strpos($html, '</head>'));
@@ -84,9 +95,9 @@ class LoadingScreenTest extends TestCase
 
     public function test_it_is_on_both_layouts(): void
     {
-        // The sign-in page first: /login is guest-only, and acting as the
-        // admin for the dashboard would redirect it away.
-        $pages = ['the sign-in page' => $this->loginPage()];
+        // The auth page first: it is guest-only, and acting as the admin
+        // for the dashboard would redirect it away.
+        $pages = ['the auth layout' => $this->authPage()];
         $pages['the dashboard layout'] = $this->appPage();
 
         foreach ($pages as $where => $html) {
@@ -120,7 +131,7 @@ class LoadingScreenTest extends TestCase
      */
     public function test_the_entry_check_runs_before_the_styles_it_controls(): void
     {
-        $head = $this->headOf($this->loginPage());
+        $head = $this->headOf($this->authPage());
 
         $check = strpos($head, "d.classList.add('jp-loading')");
         $style = strpos($head, '.jp-loading #jp-loader');
@@ -132,7 +143,7 @@ class LoadingScreenTest extends TestCase
 
     public function test_an_internal_referrer_and_the_back_button_skip_it(): void
     {
-        $head = $this->headOf($this->loginPage());
+        $head = $this->headOf($this->authPage());
 
         $this->assertStringContainsString('document.referrer', $head);
         $this->assertStringContainsString('location.origin', $head);
@@ -183,7 +194,7 @@ class LoadingScreenTest extends TestCase
         $this->assertStringContainsString('is-leaving', $css);
         $this->assertStringContainsString("root.classList.add('jp-entering')", $this->source());
 
-        $html = $this->loginPage();
+        $html = $this->authPage();
         $this->assertGreaterThanOrEqual(8, preg_match_all('/class="[^"]*\brv\b/', $html),
             'the panel, the pitch, the fields and the foot each arrive in turn');
         $this->assertStringContainsString('pathLength="1"', $html, 'the skyline draws itself in');
@@ -203,7 +214,7 @@ class LoadingScreenTest extends TestCase
                 "the loading screen must not style Bootstrap's .{$class}");
         }
 
-        $html = $this->loginPage();
+        $html = $this->authPage();
         $this->assertStringNotContainsString(' fade"', $html, 'the skyline uses jp-fade, not fade');
         $this->assertStringContainsString('jp-fade', $html);
     }
@@ -247,7 +258,7 @@ class LoadingScreenTest extends TestCase
 
     public function test_the_loader_steps_through_what_it_is_doing(): void
     {
-        $html = $this->loginPage();
+        $html = $this->authPage();
 
         foreach ([
             'Connecting to server',
@@ -348,7 +359,7 @@ class LoadingScreenTest extends TestCase
 
     public function test_a_reader_is_told_what_is_happening(): void
     {
-        $html = $this->loginPage();
+        $html = $this->authPage();
 
         $this->assertStringContainsString('role="status"', $html);
         $this->assertStringContainsString('aria-live="polite"', $html);
