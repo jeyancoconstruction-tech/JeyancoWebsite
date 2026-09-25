@@ -202,13 +202,19 @@ tr.atm-dayhead td {
 
 /* The day against its shift, an hour either side. Positions come from the
    server as percentages, so the bar is drawn by CSS alone. */
+/* One lane, one height: the rail, the break window and every stretch share
+   the same 8px band on the same line, so nothing stands proud of anything
+   else and every row reads level. The rail runs the full width, so an early
+   arrival or overtime stays on it rather than hanging off its end; the
+   shift's start and end are the two marks, at the same place on every row. */
 .atm-tl { position:relative; width:230px; height:22px; }
-.atm-tl > span { position:absolute; display:block; }
-.atm-tl .base { top:8px; height:6px; border-radius:3px; background:var(--atm-track); }
-.atm-tl .bw   { top:5px; height:12px; border-radius:3px; background:repeating-linear-gradient(135deg, var(--atm-hatch) 0 4px, transparent 4px 8px); }
+.atm-tl > span { position:absolute; display:block; box-sizing:border-box; }
+.atm-tl .rail { top:7px; left:0; width:100%; height:8px; border-radius:4px; background:var(--atm-track); }
+.atm-tl .mark { top:3px; width:2px; height:16px; margin-left:-1px; border-radius:1px; background:var(--border-md); }
+.atm-tl .bw   { top:7px; height:8px; background:repeating-linear-gradient(135deg, var(--atm-hatch) 0 3px, transparent 3px 6px); }
 .atm-tl .w    { top:7px; height:8px; border-radius:4px; background:var(--brand); }
 .atm-tl .w.live { background:linear-gradient(90deg, var(--brand), var(--brand) 70%, color-mix(in srgb, var(--brand) 35%, transparent)); }
-.atm-tl .w.miss { top:6px; height:10px; background:transparent; border:1.5px dashed var(--danger); }
+.atm-tl .w.miss { background:transparent; border:1.5px dashed var(--danger); }
 .atm-tl .w.br { background:var(--atm-brk); }
 .atm-tl .w.ob { background:var(--warning); }
 .atm-tl .late { top:10px; height:2px; background:var(--danger); }

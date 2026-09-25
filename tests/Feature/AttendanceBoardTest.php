@@ -363,6 +363,36 @@ class AttendanceBoardTest extends TestCase
         $this->assertSame(['7:30 AM', '11:30 AM–12:30 PM', '4:30 PM'], $labels());
     }
 
+    /**
+     * Every shift is drawn to the same frame, so the rows line up: a nine-hour
+     * day and a nine-hour night, or a ten-hour one, all start at the same mark
+     * and end at the same mark, with their labels under them.
+     */
+    public function test_every_timeline_starts_and_ends_in_the_same_place(): void
+    {
+        $night = Shift::where('crosses_midnight', true)->firstOrFail();
+        $night->forceFill(Shift::layOut('20:00', '06:00', '00:00', '01:00') + ['regular_minutes' => 480])->save();
+
+        $this->stretch($this->worker('Day Row'), '2026-09-14', 'AM', '07:40:00', '17:00:00');
+        $nightRow = $this->worker('Night Row');
+        $nightRow->forceFill(['shift_id' => $night->id])->save();
+        $this->stretch($nightRow, '2026-09-13', 'AM', '19:50:00', null)
+             ->forceFill(['time_out' => '2026-09-14 06:00:00'])->save();
+
+        $html = $this->page(['tab' => 'history'])->getContent();
+        $pad  = \App\Support\AttendanceDayView::TIMELINE_PAD;
+
+        foreach (['Day Row', 'Night Row'] as $name) {
+            $row = $this->row($html, $name, 'historyTable');
+
+            $this->assertStringContainsString('<span class="mark" style="left:' . $pad . '%"></span>', $row, $name);
+            $this->assertStringContainsString('<span class="mark" style="left:' . (100 - $pad) . '%"></span>', $row, $name);
+            $this->assertMatchesRegularExpression('#<span class="is-start" style="left:' . $pad . '%">#', $row, $name);
+            $this->assertMatchesRegularExpression('#<span class="is-end" style="left:' . (100 - $pad) . '%">#', $row, $name);
+            $this->assertDoesNotMatchRegularExpression('#style="left:-#', $row, 'an early arrival stays on the rail');
+        }
+    }
+
     // ── Hours are payroll's ──────────────────────────────────────────────
 
     /**

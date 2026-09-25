@@ -85,6 +85,10 @@
     <td class="atm-col-tl">
         @if($tl)
             <div class="atm-tl" title="{{ $tl['title'] }}">
+                <span class="rail"></span>
+                @foreach($tl['marks'] as $m)
+                    <span class="mark" style="left:{{ $m }}%"></span>
+                @endforeach
                 @foreach($tl['pieces'] as $p)
                     <span class="{{ $p['cls'] }}" style="left:{{ $p['left'] }}%;width:{{ $p['width'] }}%"></span>
                 @endforeach
