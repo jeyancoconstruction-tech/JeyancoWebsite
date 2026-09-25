@@ -1,0 +1,358 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHONES AND TABLETS
+
+   Every rule in this file sits inside a max-width query no wider than 1024px,
+   the width at which the sidebar already goes off-canvas (layouts.css). A
+   desktop or laptop screen never matches one of them, so nothing here can
+   change how the system looks there. tests/Feature/MobileStylesTest.php
+   holds that line.
+
+   Loaded last in the <head>, after the theme files and a page's
+   @stack('styles'). A page's own <style> block sits in the body and comes
+   later still, which is why the rules that have to beat one carry
+   !important.
+
+   Breakpoints, as the rest of the system uses them:
+     ≤1024px  tablet landscape: sidebar off-canvas, hamburger in the top bar
+     ≤991px   tablet portrait
+     ≤767px   phone: lists turn into cards, filters stack
+     ≤575px   small phone
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ── 1 · TOP BAR ────────────────────────────────────────────────────────────
+   The title gives way before the controls do. It keeps to its line and ends
+   in an ellipsis rather than wrapping to four lines and pushing the bell and
+   the profile past the edge of the screen. */
+@media (max-width: 1024px) {
+    .topbar > .d-flex:first-child { flex: 1 1 auto; min-width: 0; gap: 12px !important; }
+    .topbar > .d-flex:first-child > div:last-child { min-width: 0; }
+    .topbar .page-main-title,
+    .topbar .topbar-breadcrumb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .topbar > .d-flex:last-child { flex: none; gap: 12px !important; }
+}
+
+/* On a tablet the name and role give their room to the title: the avatar is
+   still the button that opens the account menu. The ⌘K hint is for a
+   keyboard a tablet does not have. */
+@media (max-width: 991.98px) {
+    .topbar .profile-info { display: none !important; }
+    .topbar .search-container { width: 190px; }
+    .topbar .search-container kbd { display: none; }
+}
+
+@media (max-width: 575.98px) {
+    .topbar > .d-flex:first-child { gap: 10px !important; }
+    .topbar > .d-flex:last-child { gap: 6px !important; }
+    /* Two lines at most, so "Payroll Run PR-2026-0001" still reads whole on
+       a phone, and a longer title is cut rather than spilling out of the bar. */
+    .topbar .page-main-title {
+        display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+        white-space: normal; overflow-wrap: break-word;
+        font-size: 13.5px !important; line-height: 1.2;
+    }
+    .topbar .profile-capsule { padding: 3px !important; gap: 0 !important; }
+    .topbar .profile-capsule .chevron { display: none; }
+
+    /* The bell's list opened 340px wide from the bell and ran off the left
+       edge. Across the screen instead, under the bar. */
+    .notif-dropdown {
+        position: fixed !important;
+        top: calc(var(--topbar-height, 60px) + 6px) !important;
+        left: 8px !important; right: 8px !important;
+        width: auto !important;
+        max-height: calc(100dvh - var(--topbar-height, 60px) - 20px) !important;
+    }
+}
+
+
+/* ── 2 · THE CHAT BUTTON ────────────────────────────────────────────────────
+   It floats above everything, dialogs included, and on a small screen it sat
+   on a dialog's Close and Save buttons. It steps aside while a dialog or the
+   menu is open. */
+@media (max-width: 1024px) {
+    body.modal-open .chatbot-fab,
+    body:has(#jy-confirm:not([hidden])) .chatbot-fab,
+    .sidebar.active ~ .chatbot-fab { display: none !important; }
+}
+
+
+/* ── 3 · TABS THAT RUN PAST THE EDGE ────────────────────────────────────────
+   A row of tabs scrolls sideways on its own rather than squeezing each name
+   onto four lines (Payroll Reports) or pushing the page wider (Payroll
+   Settings). mobile.js keeps the open tab in view. */
+@media (max-width: 767.98px) {
+    .mod-tabs,
+    .settings-tabs {
+        flex-wrap: nowrap !important; overflow-x: auto; overflow-y: hidden;
+        scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .mod-tabs::-webkit-scrollbar,
+    .settings-tabs::-webkit-scrollbar { display: none; }
+    .mod-tab { flex: none; white-space: nowrap; }
+    .settings-tabs .nav-item { flex: none !important; }
+    .settings-tabs .nav-link { padding: .8rem 1rem !important; white-space: nowrap; }
+}
+
+
+/* ── 4 · LISTS AS CARDS ─────────────────────────────────────────────────────
+   On a phone a wide list showed its first column and hid the rest off to the
+   right. Each row becomes a card instead: the person (or the run, or the
+   site) at the top, then one line per column, its name on the left and its
+   value on the right, the way the Employee Directory's grid view already
+   draws a card. The names come from the table's own header; mobile.js copies
+   them onto the cells as data-mlabel. Tables not named here — payroll
+   records, the dashboard's registry, reports inside dialogs — keep their
+   columns and scroll sideways inside their own box. */
+@media (max-width: 767.98px) {
+    .mod-table,
+    .emp-table:not(.view-grid),
+    .rmx-table { display: block; width: 100% !important; min-width: 0 !important; }
+
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) thead { display: none; }
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) :is(tbody, tfoot) { display: block; }
+
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) tr {
+        display: flex; flex-direction: column; position: relative;
+        padding: 12px 14px; border-bottom: 1px solid var(--border);
+    }
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) tr:last-child { border-bottom: 0; }
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) tr[hidden] { display: none !important; }
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) tfoot tr { background: var(--bg-subtle); }
+
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        min-width: 0; padding: 7px 0 !important;
+        border: 0 !important; border-top: 1px dashed var(--border) !important;
+        background: transparent !important;
+        text-align: right !important; white-space: normal;
+    }
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td::before {
+        content: attr(data-mlabel);
+        flex: none; margin-right: auto; max-width: 45%;
+        text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .02em;
+        color: var(--text-muted);
+    }
+
+    /* The first cell heads the card. */
+    :is(.mod-table, .emp-table:not(.view-grid)) td:first-child,
+    .rmx-table td:nth-child(2) {
+        justify-content: flex-start; text-align: left !important;
+        padding-top: 0 !important; padding-bottom: 8px !important; border-top: 0 !important;
+    }
+    :is(.mod-table, .emp-table:not(.view-grid)) td:first-child::before,
+    .rmx-table td:nth-child(2)::before { display: none; }
+
+    /* A column with no name is the row's buttons: along the foot, right. */
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td[data-mlabel=""] { justify-content: flex-end; }
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td[data-mlabel=""]::before { display: none; }
+
+    /* "Nothing here yet" is a message across the card, not a line in it. */
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td[colspan] {
+        display: block; text-align: center !important; border-top: 0 !important;
+    }
+    :is(.mod-table, .emp-table:not(.view-grid), .rmx-table) td[colspan]::before { display: none; }
+
+    /* Register & Manage: the tick box is a column only while selecting. On a
+       card it sits in the top corner. */
+    .rm-pane:not(.selecting) .rmx-table .rmx-check-col { display: none !important; }
+    .rmx-table td.rmx-check-col {
+        position: absolute; top: 12px; right: 14px;
+        padding: 0 !important; border: 0 !important;
+    }
+    .rmx-table td.rmx-check-col::before { display: none; }
+    .rm-pane.selecting .rmx-table td:nth-child(2) { padding-right: 34px !important; }
+
+    /* Employee Directory: a person's shift is picked right on the row. */
+    .emp-table:not(.view-grid) .emp-shift-wrap { min-width: 150px; }
+    .emp-table:not(.view-grid) td.emp-actions-cell { justify-content: flex-end; gap: 8px; padding-top: 10px !important; }
+    .emp-table:not(.view-grid) .emp-name { white-space: normal; }
+
+    /* Users & Roles: the accounts. Written out on its own rather than added
+       to the lists above, where the id would outweigh the Register rules. A
+       tap on a card still opens the account; the open one keeps its bar. */
+    #roleList > .sx-table,
+    #roleList > .sx-table > tbody { display: block; }
+    #roleList > .sx-table > thead { display: none; }
+    #roleList > .sx-table tr {
+        display: flex; flex-direction: column;
+        padding: 12px 14px; border-bottom: 1px solid var(--border);
+    }
+    #roleList > .sx-table tr:last-child { border-bottom: 0; }
+    #roleList > .sx-table td {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        min-width: 0; padding: 6px 0 !important;
+        border: 0 !important; border-top: 1px dashed var(--border) !important;
+        background: transparent !important; text-align: right;
+    }
+    #roleList > .sx-table td::before {
+        content: attr(data-mlabel); flex: none; margin-right: auto;
+        font-size: 11px; font-weight: 600; color: var(--text-muted);
+    }
+    #roleList > .sx-table td:first-child {
+        justify-content: flex-start; text-align: left;
+        padding-top: 0 !important; padding-bottom: 8px !important; border-top: 0 !important;
+    }
+    #roleList > .sx-table td:first-child::before,
+    #roleList > .sx-table td[colspan]::before { display: none; }
+    #roleList > .sx-table td[colspan] { display: block; }
+    #roleList > .sx-table tr.sel { background: var(--brand-subtle); box-shadow: inset 3px 0 0 var(--brand); }
+    #roleList > .sx-table tr.sel td:first-child { box-shadow: none; }
+}
+
+
+/* ── 5 · ATTENDANCE ─────────────────────────────────────────────────────────
+   A day as a card: who, their shift and where the day stands, then the four
+   scans in a row of four, then the hours. The timeline is already dropped
+   on a narrow card (attendance.blade.php). A tap still opens the scans and
+   the fixes under the row. */
+@media (max-width: 767.98px) {
+    .atm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+    .atm-table { display: block; width: 100% !important; min-width: 0 !important; }
+    .atm-table thead { display: none; }
+    .atm-table tbody { display: block; }
+    .atm-table tr[hidden] { display: none !important; }
+
+    .atm-table tr.atm-row {
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px;
+        padding: 14px; border-bottom: 1px solid var(--border);
+    }
+    .atm-table tr.atm-row:hover,
+    .atm-table tr.atm-row.is-open { background: var(--bg-subtle); }
+    .atm-table tr.atm-row > td {
+        display: block; min-width: 0; padding: 0 !important;
+        border: 0 !important; background: transparent !important;
+    }
+    .atm-table tr.atm-row > td::before {
+        content: attr(data-mlabel); display: block; margin-bottom: 3px;
+        font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+        color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .atm-table tr.atm-row > td:nth-child(1) { grid-column: 1 / -1; }
+    .atm-table tr.atm-row > td:nth-child(2) { grid-column: 1 / 3; grid-row: 2; align-self: center; }
+    .atm-table tr.atm-row > td:nth-child(9) { grid-column: 3 / 5; grid-row: 2; align-self: center; }
+    .atm-table tr.atm-row > td:nth-child(8) { grid-column: 1 / -1; }
+    .atm-table tr.atm-row > td.atm-col-tl { display: none !important; }
+    .atm-table tr.atm-row > td:is(:nth-child(1), :nth-child(2), :nth-child(9))::before { display: none; }
+    /* The second session starts after a dashed rule, as the columns did. */
+    .atm-table tr.atm-row > td.atm-sep { padding-left: 8px !important; border-left: 1px dashed var(--border) !important; }
+
+    .atm-emp, .atm-punch { min-width: 0; }
+    .atm-emp b { overflow-wrap: break-word; }
+    .atm-status { justify-content: flex-end; }
+    .atm-status-tags { align-items: flex-end; }
+    .atm-hrs { white-space: normal; }
+    .atm-hrs small { display: inline; margin-left: 4px; }
+    .atm-hrs .atm-tag { display: inline-block; margin: 0 0 0 6px; }
+
+    .atm-table tr.atm-dayhead,
+    .atm-table tr.atm-dayhead > td { display: block; }
+    .atm-table tr.atm-detail:not([hidden]),
+    .atm-table tr.atm-detail > td { display: block; }
+    .atm-table tr.atm-detail > td { padding: 4px 12px 14px !important; }
+    .atm-scans li { grid-template-columns: 64px minmax(0, 1fr) auto; }
+    .atm-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+
+/* ── 6 · FILTERS AND FORMS STACK ────────────────────────────────────────────
+   Two fields to a row, the search box across the full width, and the
+   buttons sharing the last row, each wide enough to hit with a thumb. */
+@media (max-width: 767.98px) {
+    .mod-filters .mod-filter { flex: 1 1 calc(50% - 10px) !important; min-width: 0; }
+    .mod-filters .mod-filter-grow { flex-basis: 100% !important; }
+    .mod-filters .form-control,
+    .mod-filters .form-select { width: 100%; max-width: none !important; min-width: 0 !important; }
+    .mod-filters input[type="date"] { min-width: 0 !important; }
+    .mod-filter-actions > * { flex: 1 1 0; justify-content: center; }
+
+    .dir-toolbar-right .emp-search,
+    .dir-toolbar-right .emp-select { width: 100%; }
+
+    /* Register / Edit Employee: the Back button goes under the heading
+       instead of being squeezed beside it onto four lines. */
+    .employee-container > .d-flex.justify-content-between:first-child { flex-wrap: wrap; gap: 12px; }
+}
+
+
+/* ── 7 · LAYOUTS THAT DID NOT COLLAPSE ──────────────────────────────────────
+   A grid track of `1fr` is never narrower than its widest content, so one
+   long line in it held the whole column open past the screen. `minmax(0,
+   1fr)` lets it shrink and the content wrap. */
+@media (max-width: 1024px) {
+    .ur-grid { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 900px) {
+    .st-wrap { grid-template-columns: minmax(0, 1fr) !important; }
+}
+@media (max-width: 767.98px) {
+    /* Users & Roles */
+    .sx-card-tools { flex: 1 1 100%; margin-left: 0 !important; }
+    .sx-card-tools .sx-input { flex: 1 1 160px; min-width: 0; }
+    .sx-card-foot { flex-wrap: wrap; row-gap: 6px; }
+    .sx-seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+
+    /* Device Monitoring: the list of silent kiosks wraps. */
+    .sx-status > span { white-space: normal !important; min-width: 0; }
+
+    /* System › Kiosk: each shift's day ruler runs the full width under its
+       name, so the segments are wide enough to carry their labels. */
+    .kr-row { grid-template-columns: minmax(0, 1fr) !important; gap: 6px !important; }
+    .kr-ticks, .kr-legend { margin-left: 0 !important; }
+    .kr-track { height: 44px !important; }
+    .kr-seg { white-space: normal !important; text-align: center; line-height: 1.15; font-size: 10px !important; padding: 0 2px; }
+
+    /* Payroll Settings: less padding around cards inside cards, so the
+       fields inside get the width. */
+    .settings-wrapper { padding: 14px !important; }
+    .ps-card-header { padding: 12px 14px !important; }
+    .ps-card-body { padding: 14px !important; }
+    .ps-card-body.p-0 { padding: 0 !important; }
+    .pr-head { flex-direction: column; padding: 14px !important; gap: 10px !important; }
+    .pr-head-right { flex-wrap: wrap; }
+    .pr-block { padding: 12px !important; }
+    .pr-block-head { flex-wrap: wrap; }
+    .sh-pick { grid-template-columns: minmax(0, 1fr) !important; }
+    .sh-def { min-width: 0; padding: 12px !important; }
+    .sh-def .form-control { min-width: 0; }
+}
+@media (max-width: 575.98px) {
+    .ur-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+
+/* ── 8 · DIALOGS ────────────────────────────────────────────────────────────
+   Close buttons large enough to hit; a dialog's own footer buttons share the
+   row. */
+@media (max-width: 1024px) and (pointer: coarse) {
+    .btn-close { padding: .7em !important; }
+    .emp-head-x, .guide-close { min-width: 36px; min-height: 36px; }
+}
+@media (max-width: 575.98px) {
+    .modal-footer { flex-wrap: nowrap; gap: 8px; }
+    .modal-footer > .btn { flex: 1 1 0; margin: 0; }
+}
+
+
+/* ── 9 · TAP TARGETS ────────────────────────────────────────────────────────
+   On a touch screen the small buttons (28–30px tall) and fields grow to a
+   size a thumb can hit. Only for a coarse pointer: a tablet with a mouse
+   keeps the compact sizes. */
+@media (max-width: 1024px) and (pointer: coarse) {
+    .sx-btn.sm, .mod-btn.sm, .hc-pill, .ai-btn, .cat-btn, .ur-pick,
+    .map-btn, .st-btn, .btn-sm, .atm-btn { min-height: 36px; }
+    .hc-yr-btn { min-width: 32px; min-height: 32px; }
+    .map-input, .hc-sel, .emp-shift,
+    .stepper input, .sx-input { min-height: 38px; }
+    .guide-btn { width: 38px; height: 38px; }
+    .sx-seg > a, .sx-seg > button, .sx-seg > span,
+    .presets button { height: 34px !important; }
+    .notif-dd-mark-all, .notif-dd-delete-all { min-height: 32px; padding: 0 6px; }
+    .mini-cal-nav { min-width: 34px; min-height: 34px; }
+    .mini-cal-today-btn { min-height: 30px; }
+    .cb-icon-btn, .cb-send-btn { min-width: 36px; min-height: 36px; }
+    .cb-input { min-height: 36px; }
+    .leaflet-touch .leaflet-bar a { width: 36px; height: 36px; line-height: 36px; }
+    .page-link { min-width: 36px; min-height: 36px; display: flex; align-items: center; justify-content: center; }
+}

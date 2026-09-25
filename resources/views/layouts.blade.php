@@ -124,6 +124,11 @@
 
     @stack('styles')
 
+    {{-- Phones and tablets. Every rule in it is inside a max-width query of
+         1024px or less, so a desktop or laptop never matches one; last, so it
+         wins its ties with everything above. See mobile.css. --}}
+    <link rel="stylesheet" href="{{ $cssv('mobile.css') }}">
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- Live.on() before live.js has loaded. A page's own script runs while
@@ -833,6 +838,11 @@
      cannot shift the layout, maps that re-measure, the Site Tracker's
      minimise / maximise and the clock's month popover. --}}
 <script src="{{ asset('js/ui-fixes.js') }}?v={{ @filemtime(public_path('js/ui-fixes.js')) ?: '1' }}"></script>
+
+{{-- Lists drawn as cards on a phone name each line after its column; this
+     copies the column headings onto the cells. Does nothing on a screen
+     wider than a phone. --}}
+<script src="{{ asset('js/mobile.js') }}?v={{ @filemtime(public_path('js/mobile.js')) ?: '1' }}"></script>
 
 {{-- ── Live updates ────────────────────────────────────────────────────────
      Every page keeps one connection open and patches in what changes, so
