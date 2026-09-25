@@ -172,8 +172,19 @@ tr.atm-dayhead td {
     padding:8px 12px; font-size:12px; font-weight:700; letter-spacing:.03em;
     color:var(--text-secondary); background:var(--bg);
 }
-.atm-empty { padding:40px 16px !important; text-align:center; color:var(--text-muted) !important; }
-.atm-empty i { display:block; margin-bottom:8px; font-size:1.6rem; opacity:.35; }
+/* The card reaches the bottom of the screen however little is in it, and
+   grows past it with the page when the list is long — a minimum height set
+   by the script below, never a box the rows scroll inside. The list takes
+   whatever the card has spare, and a list with nothing in it says so in the
+   middle of that space rather than at the top of it. */
+.atm-card > .tab-content { flex:1; display:flex; flex-direction:column; }
+.atm-card > .tab-content > .tab-pane.active { flex:1; display:flex; flex-direction:column; }
+.atm-card .atm-scroll { flex:1; display:flex; flex-direction:column; }
+.atm-empty-state {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    padding:40px 16px; text-align:center; font-size:13px; color:var(--text-muted);
+}
+.atm-empty-state i { font-size:1.6rem; opacity:.35; }
 
 .atm-emp { display:flex; align-items:center; gap:10px; min-width:190px; }
 .atm-ini {
@@ -561,25 +572,24 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
                             <tr>{!! $heads !!}</tr>
                         </thead>
                         <tbody>
-                            @forelse($todayBoard as $d)
+                            @foreach($todayBoard as $d)
                                 @include('attendance._day', ['d' => $d, 'tab' => 'today'])
-                            @empty
-                                <tr>
-                                    <td colspan="9" class="atm-empty">
-                                        <i class="fas fa-fingerprint"></i>
-                                        {{ $search !== '' ? __('Nobody on today\'s list matches these filters.') : match ($todayView) {
-                                            'clocked-in' => __('Nobody is clocked in right now.'),
-                                            'break'      => __('Nobody is on break right now.'),
-                                            'missed'     => __('Nothing on today\'s list is waiting on a review.'),
-                                            'done'       => __('No finished days yet today.'),
-                                            'all'        => __('Nobody on the roster matches these filters.'),
-                                            default      => __('No fingerprint scans yet today.'),
-                                        } }}
-                                    </td>
-                                </tr>
-                            @endforelse
+                            @endforeach
                         </tbody>
                     </table>
+                    @if($todayBoard->isEmpty())
+                        <div class="atm-empty-state">
+                            <i class="fas fa-fingerprint"></i>
+                            <span>{{ $search !== '' ? __('Nobody on today\'s list matches these filters.') : match ($todayView) {
+                                'clocked-in' => __('Nobody is clocked in right now.'),
+                                'break'      => __('Nobody is on break right now.'),
+                                'missed'     => __('Nothing on today\'s list is waiting on a review.'),
+                                'done'       => __('No finished days yet today.'),
+                                'all'        => __('Nobody on the roster matches these filters.'),
+                                default      => __('No fingerprint scans yet today.'),
+                            } }}</span>
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -592,29 +602,27 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
                                 <tr>{!! $heads !!}</tr>
                             </thead>
                             <tbody>
-                                @forelse($historyBoard->groupBy(fn ($d) => $d->day->date()->toDateString()) as $date => $group)
+                                @foreach($historyBoard->groupBy(fn ($d) => $d->day->date()->toDateString()) as $date => $group)
                                     <tr class="atm-dayhead" data-live-key="date-{{ $date }}">
                                         <td colspan="9">{{ \Carbon\Carbon::parse($date)->format('l, m/d/Y') }}</td>
                                     </tr>
                                     @foreach($group as $d)
                                         @include('attendance._day', ['d' => $d, 'tab' => 'history'])
                                     @endforeach
-                                @empty
-                                    <tr>
-                                        <td colspan="9" class="atm-empty">
-                                            <i class="fas fa-clock-rotate-left"></i>
-                                            {{-- "Nothing here" and "nothing here lately" are
-                                                 different answers, and a reader who forgot
-                                                 the range is on would read the first as the
-                                                 second. --}}
-                                            {{ $range === 'all'
-                                                ? __('No previous attendance records.')
-                                                : __('No attendance records in this date range.') }}
-                                        </td>
-                                    </tr>
-                                @endforelse
+                                @endforeach
                             </tbody>
                         </table>
+                    @if($historyBoard->isEmpty())
+                        <div class="atm-empty-state">
+                            <i class="fas fa-clock-rotate-left"></i>
+                            {{-- "Nothing here" and "nothing here lately" are different
+                                 answers, and a reader who forgot the range is on would
+                                 read the first as the second. --}}
+                            <span>{{ $range === 'all'
+                                ? __('No previous attendance records.')
+                                : __('No attendance records in this date range.') }}</span>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- appends(): these links live in the History pane, so page 2
@@ -710,8 +718,33 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
         });
     }
 
+    // ── Down to the bottom of the screen ────────────────────────────────────
+    // However little is in the list, the card reaches the foot of the
+    // screen; a long list carries it on down with the page. A minimum
+    // height, measured, because what sits above the card is not one height.
+    // On a phone the page simply flows.
+    const main = card.closest('.container-fluid') || card.parentElement;
+
+    function fillDown() {
+        card.style.minHeight = '';
+        if (window.innerWidth < 768) return;
+
+        const top  = card.getBoundingClientRect().top + window.scrollY;
+        const foot = parseFloat(getComputedStyle(main).paddingBottom) || 0;
+        const want = Math.floor(window.innerHeight - top - foot);
+        card.style.minHeight = Math.max(0, want) + 'px';
+
+        // Whatever still pushes the page a few pixels past the screen — a
+        // margin the sum above did not see — comes off the minimum, but only
+        // while the minimum is what sets the card's height.
+        if (card.offsetHeight <= want + 1) {
+            const over = document.documentElement.scrollHeight - window.innerHeight;
+            if (over > 0) card.style.minHeight = Math.max(0, want - over) + 'px';
+        }
+    }
+
     let spacing = null;
-    const respace = () => { cancelAnimationFrame(spacing); spacing = requestAnimationFrame(spaceLabels); };
+    const respace = () => { cancelAnimationFrame(spacing); spacing = requestAnimationFrame(() => { fillDown(); spaceLabels(); }); };
     respace();
     document.fonts?.ready.then(respace);
     window.addEventListener('resize', respace);

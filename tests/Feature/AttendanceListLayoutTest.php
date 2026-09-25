@@ -136,12 +136,30 @@ class AttendanceListLayoutTest extends TestCase
         }
     }
 
-    /** The empty state has to reach across every column. */
-    public function test_an_empty_day_view_spans_the_whole_table(): void
+    /**
+     * An empty list keeps its column heads and says so under them, in the
+     * middle of the room the card has — not as a row squeezed into the table.
+     */
+    public function test_an_empty_list_says_so_under_its_heads(): void
     {
-        preg_match('#<table class="atm-table" id="todayTable">.*?</table>#s', $this->page(), $today);
-        $this->assertNotEmpty($today, "Today's table should be on the page");
-        $this->assertStringContainsString('colspan="9"', $today[0]);
+        preg_match('#id="attTodayList".*?</table>\s*(.*?)</div>\s*</div>#s', $this->page(), $today);
+        $this->assertNotEmpty($today, "Today's list should be on the page");
+        $this->assertStringContainsString('<div class="atm-empty-state">', $today[1]);
+        $this->assertStringContainsString('Nobody is clocked in right now.', $today[1]);
+    }
+
+    /**
+     * The card reaches the bottom of the screen however little is in it, as
+     * a minimum height — the page still scrolls as a whole when the list is
+     * long.
+     */
+    public function test_the_card_reaches_the_bottom_of_the_screen(): void
+    {
+        $html = $this->page();
+
+        $this->assertStringContainsString('function fillDown()', $html);
+        $this->assertStringContainsString('card.style.minHeight', $html);
+        $this->assertStringNotContainsString('data-fill-screen', $html, 'a minimum, not a box');
     }
 
     /**
