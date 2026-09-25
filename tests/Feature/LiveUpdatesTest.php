@@ -148,8 +148,53 @@ class LiveUpdatesTest extends TestCase
 
     public function test_only_a_signed_in_account_may_listen(): void
     {
-        $this->get(route('live.revisions'))->assertRedirect(route('login'));
-        $this->get(route('live.stream'))->assertRedirect(route('login'));
+        $this->get(route('live.revisions'))->assertUnauthorized();
+        $this->get(route('live.stream'), ['Accept' => 'text/event-stream'])->assertUnauthorized();
+    }
+
+    /**
+     * A tab left open past the session keeps reconnecting its feed. If each
+     * attempt were remembered as the page to come back to, the next sign-in
+     * would open the raw feed as a page of text.
+     */
+    public function test_a_signed_out_feed_is_not_remembered_as_the_page_to_come_back_to(): void
+    {
+        $this->get(route('live.stream'), ['Accept' => 'text/event-stream'])->assertUnauthorized();
+        $this->get(route('live.revisions'))->assertUnauthorized();
+
+        $this->assertNull(session('url.intended'));
+
+        $this->post(route('login.post'), ['username' => 'admin.live', 'password' => 'secret123'])
+            ->assertRedirect(route('dashboard'));
+    }
+
+    public function test_any_signed_out_background_request_is_told_so_rather_than_redirected(): void
+    {
+        // What fetch() and XHR send: not a page being opened in the tab.
+        $this->get(route('dashboard.map'), ['Sec-Fetch-Dest' => 'empty', 'Sec-Fetch-Mode' => 'cors'])
+            ->assertUnauthorized();
+
+        $this->assertNull(session('url.intended'));
+    }
+
+    public function test_a_signed_out_page_still_comes_back_after_sign_in(): void
+    {
+        $this->get(route('attendance'), ['Sec-Fetch-Dest' => 'document', 'Sec-Fetch-Mode' => 'navigate'])
+            ->assertRedirect(route('login'));
+
+        // The feed reconnecting afterwards must not take its place.
+        $this->get(route('live.stream'), ['Accept' => 'text/event-stream'])->assertUnauthorized();
+
+        $this->post(route('login.post'), ['username' => 'admin.live', 'password' => 'secret123'])
+            ->assertRedirect(route('attendance'));
+    }
+
+    public function test_a_session_already_holding_the_feed_signs_in_to_the_dashboard(): void
+    {
+        // Remembered before background requests were told apart.
+        $this->withSession(['url.intended' => url('/live/stream?since=audit:387')])
+            ->post(route('login.post'), ['username' => 'admin.live', 'password' => 'secret123'])
+            ->assertRedirect(route('dashboard'));
     }
 
     public function test_the_revisions_answer_says_where_everything_stands(): void

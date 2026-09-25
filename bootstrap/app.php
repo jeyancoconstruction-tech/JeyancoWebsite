@@ -1,8 +1,10 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -34,6 +36,30 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // A signed-out request is sent to the sign-in page, and Laravel
+        // remembers it as the page to come back to afterwards. That is right
+        // for a page somebody opened, and wrong for everything a tab asks for
+        // on its own: a tab left open past the session kept reconnecting its
+        // live feed, each attempt was remembered, and the next sign-in opened
+        // /live/stream as a page of raw text. Background requests are told
+        // "signed out" instead, and nothing is remembered.
+        //
+        // EventSource cannot send an Accept: application/json header, so the
+        // feed is named outright. Sec-Fetch-Dest (sent by every current
+        // browser) is "document" only for a page being opened in the tab;
+        // fetch, XHR and EventSource send "empty".
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            $dest = $request->header('Sec-Fetch-Dest');
+
+            $background = $request->is('live/*')
+                || str_contains((string) $request->header('Accept'), 'text/event-stream')
+                || ($dest !== null && $dest !== 'document');
+
+            if ($background) {
+                return response()->json(['message' => 'Signed out.'], 401);
+            }
+        });
+
         // A login page left open past the session lifetime submits a stale CSRF
         // token. The default response is a bare "419 Page Expired" screen with
         // no way forward, which reads as a broken login. Hand back a fresh form

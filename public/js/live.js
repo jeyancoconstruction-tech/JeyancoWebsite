@@ -139,6 +139,11 @@
             startPolling();
             later(backoff);
             backoff = Math.min(backoff * 2, 30000);
+
+            // EventSource never says why it failed. Ask straight away, so a
+            // tab whose session has run out learns it on this attempt and
+            // goes quiet, instead of reconnecting until the next poll.
+            ask();
         };
     }
 

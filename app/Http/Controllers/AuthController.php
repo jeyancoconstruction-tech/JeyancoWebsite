@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Support\Facades\Auth;
@@ -229,7 +230,7 @@ class AuthController extends Controller
             'must_change_password' => false,
         ])->save();
 
-        return redirect()->intended(route('dashboard'))->with('success', 'Your password is set. Use it from now on.');
+        return $this->landing()->with('success', 'Your password is set. Use it from now on.');
     }
 
     /**
@@ -280,6 +281,25 @@ class AuthController extends Controller
             'force_theme',
             SystemSetting::current()->default_theme ?? 'light'
         );
+
+        return $this->landing();
+    }
+
+    /**
+     * Where a sign-in lands: the page they were sent away from, or the dashboard.
+     *
+     * Never the live feed. Before background requests were kept from being
+     * remembered (bootstrap/app.php), a tab reconnecting its feed after the
+     * session ran out could leave /live/stream as the page to come back to,
+     * and a session may still hold one of those.
+     */
+    private function landing(): RedirectResponse
+    {
+        $intended = (string) session('url.intended', '');
+
+        if (str_starts_with((string) parse_url($intended, PHP_URL_PATH), '/live/')) {
+            session()->forget('url.intended');
+        }
 
         return redirect()->intended(route('dashboard'));
     }
