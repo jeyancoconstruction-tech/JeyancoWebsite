@@ -148,12 +148,16 @@ class AttendanceCardDrilldownTest extends TestCase
 
         $this->page()
              ->assertSee('view=clocked-in', false)
-             ->assertSee('view=missed', false)
-             ->assertDontSee('Show all');
+             ->assertSee('view=break', false)
+             ->assertSee('view=missed', false);
 
-        $this->page(['view' => 'missed'])
-             ->assertSee('Show all')
-             ->assertSee('Showing only missed sign-outs this week');
+        // The card in force says so, and now links back to everybody; the
+        // status control under the tabs shows the same choice.
+        $html = $this->page(['view' => 'missed'])->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '#<a class="atm-stat is-bad is-active"\s+href="[^"?]*/attendance"[^>]*aria-current="true"#', $html);
+        $this->assertStringContainsString('name="view" value="missed" checked', $html);
     }
 
     /** A card click must not throw away the site and shift already chosen. */

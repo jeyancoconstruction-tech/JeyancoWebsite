@@ -159,28 +159,33 @@ class AttendanceDayIsOneRecordTest extends TestCase
         $html = $this->history()->getContent();
 
         // One row for the day…
-        $this->assertSame(1, substr_count($html, 'Juan Dela Cruz'),
-            'the name appears once — one row, not one per clock');
+        $this->assertSame(1, substr_count($html, '<b>Juan Dela Cruz</b>'),
+            'one row, not one per clock');
 
-        // …carrying the span and both stretches.
-        $this->assertStringContainsString('08:00 AM', $html);
-        $this->assertStringContainsString('05:00 PM', $html);
-        $this->assertStringContainsString('class="att-stretches"', $html, 'the halves are spelled out');
-        $this->assertStringContainsString('12:00 PM', $html, 'the morning ends where it ended');
-        $this->assertStringContainsString('01:00 PM', $html, 'the afternoon starts where it started');
+        // …laid out as the shift is: in, out for lunch, back, and home.
+        preg_match('#<tr class="atm-row".*?</tr>#s', $html, $row);
+        $this->assertNotEmpty($row);
+
+        $times = array_map('trim', preg_match_all('#<span class="atm-t">\s*([^<]+?)\s*</span>#', $row[0], $m) ? $m[1] : []);
+        $this->assertSame(['8:00 AM', '12:00 PM', '1:00 PM', '5:00 PM'], $times,
+            'the morning ends where it ended and the afternoon starts where it started');
     }
 
-    /** A day worked in one go says so plainly, with nothing to spell out. */
-    public function test_a_single_stretch_is_not_broken_up(): void
+    /**
+     * A day worked in one go is the day's time in and its time out, with no
+     * break scans — not a lunch break that ended at five.
+     */
+    public function test_a_single_stretch_reads_as_worked_straight_through(): void
     {
         $emp = $this->worker('Straight Through');
         $this->stretch($emp, '2026-09-10', 'AM', '08:00:00', '17:00:00');
 
-        $html = $this->history()->getContent();
+        preg_match('#<tr class="atm-row".*?</tr>#s', $this->history()->getContent(), $row);
+        $this->assertNotEmpty($row);
 
-        $this->assertStringNotContainsString('class="att-stretches"', $html,
-            'one stretch has no parts worth listing');
-        $this->assertStringContainsString('08:00 AM', $html);
+        $times = array_map('trim', preg_match_all('#<span class="atm-t">\s*([^<]+?)\s*</span>#', $row[0], $m) ? $m[1] : []);
+        $this->assertSame(['8:00 AM', '5:00 PM'], $times, 'the first time in and the last time out');
+        $this->assertSame(2, substr_count($row[0], 'No break scan'), 'both break scans are marked absent');
     }
 
     public function test_two_workers_on_one_date_are_two_records(): void

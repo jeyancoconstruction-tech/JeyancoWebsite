@@ -69,12 +69,16 @@ class AttendanceDay
      * and a time is resolved against the date the row is filed under. That is
      * right for a day crew and wrong by a whole day for a night one: their
      * workday is filed under the evening it opened, so their 1:00 AM is the
-     * NEXT morning. Anything reading earlier than the workday's own start is
-     * therefore the following day — which is the same rule Shift::layOut uses
-     * to decide that a shift crosses midnight.
+     * NEXT morning. Anything reading earlier than the moment the kiosk starts
+     * taking time-ins for that workday is therefore the following day.
      *
      * Without it a night sorted second-half-first and read "1:00 AM – 12:00
      * AM +1", a day run backwards.
+     *
+     * Only a bare clock time is placed this way. A full timestamp already
+     * says which day it was, and the line is where time-in opens rather than
+     * where the shift starts: measured from the start, a day crew in at 7:00
+     * for eight o'clock read as arriving the next morning.
      */
     public static function momentIn(Attendance $row): Carbon
     {
@@ -98,14 +102,15 @@ class AttendanceDay
 
     private static function resolve(Attendance $row, $value): Carbon
     {
-        $at   = WorkSchedule::moment($value, (string) $row->date)->startOfMinute();
+        $at    = WorkSchedule::moment($value, (string) $row->date)->startOfMinute();
         $sched = $row->shift?->schedule();
 
-        if (! WorkSchedule::has($sched)) {
+        if (! WorkSchedule::has($sched) || ! preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', trim((string) $value))) {
             return $at;
         }
 
-        $opens = WorkSchedule::windows($sched, Carbon::parse($row->date)->toDateString())['AM'][0];
+        $opens = WorkSchedule::windows($sched, Carbon::parse($row->date)->toDateString())['AM'][0]
+            ->subMinutes((int) ($sched['opens'] ?? 120));
 
         return $at->lessThan($opens) ? $at->addDay() : $at;
     }

@@ -4,327 +4,456 @@
 
 @push('styles')
 <style>
-/* ── Stat cards ───────────────────────────────────────────────────────────
-   An accent edge carries the meaning — brand, green, amber — instead of a
-   filled panel, so three of them side by side read as one row rather than as
-   three competing blocks. Tokens throughout: one block, both themes. */
-.att-stats {
-    display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
-    gap:12px; margin-bottom:20px;
-}
-.att-stat {
-    padding:15px 18px;
-    background:var(--bg-subtle,#f8f9fb);
-    border-left:3px solid var(--border-md,#d0d5dd);
-    border-radius:0 12px 12px 0;
-}
-.att-stat-head {
-    display:flex; align-items:center; gap:8px; margin-bottom:9px;
-    font-size:.72rem; font-weight:600; letter-spacing:.05em; text-transform:uppercase;
-    color:var(--text-secondary,#344054);
-}
-.att-stat-head i { font-size:1rem; }
-.att-stat-value {
-    font-size:1.75rem; font-weight:600; line-height:1;
-    color:var(--text-primary,#101828); font-variant-numeric:tabular-nums;
-}
-.att-stat-sub { margin-top:5px; font-size:.75rem; color:var(--text-muted,#667085); }
-.att-stat-brand   { border-left-color:var(--brand,#1668dc); }
-.att-stat-success { border-left-color:var(--success,#027a48); }
-.att-stat-warning { border-left-color:var(--warning,#b54708); }
-.att-stat-brand   .att-stat-head i { color:var(--brand,#1668dc); }
-.att-stat-success .att-stat-head i { color:var(--success,#027a48); }
-.att-stat-warning .att-stat-head i { color:var(--warning,#b54708); }
-
-/* Each card asks a question, so each card is a link. Anchors, not buttons:
-   the result is a URL the office can bookmark or send to somebody. */
-.att-stat { display:block; text-decoration:none; color:inherit; cursor:pointer;
-            transition:background .15s, box-shadow .15s; }
-.att-stat:hover { background:var(--bg-elevated,#eef1f6); text-decoration:none; color:inherit; }
-.att-stat:focus-visible { outline:2px solid var(--brand,#1668dc); outline-offset:2px; }
-.att-stat.is-active { background:var(--bg-elevated,#eef1f6); box-shadow:inset 0 0 0 1px var(--border-md,#d0d5dd); }
-.att-stat.is-active .att-stat-value { color:var(--brand,#1668dc); }
-.att-stat-brand.is-active   .att-stat-value { color:var(--brand,#1668dc); }
-.att-stat-success.is-active .att-stat-value { color:var(--success,#027a48); }
-.att-stat-warning.is-active .att-stat-value { color:var(--warning,#b54708); }
-
-/* The line that says a card is in force, and how to get back out. */
-.att-viewing {
-    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-    margin:-8px 0 16px; padding:8px 12px;
-    background:var(--bg-subtle,#f8f9fb); border:1px solid var(--border,#e4e7ec);
-    border-radius:8px; font-size:.8rem; color:var(--text-secondary,#344054);
-}
-.att-viewing i { color:var(--text-muted,#667085); }
-.att-viewing a { margin-left:auto; font-weight:600; color:var(--brand,#1668dc); }
-
-/* ── Control row ──────────────────────────────────────────────────────── */
-.att-controls {
-    display:flex; align-items:center; justify-content:space-between;
-    gap:10px; flex-wrap:wrap; margin-bottom:14px;
-}
-.att-controls-left, .att-controls-right {
-    display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0;
-}
-.att-controls-right[hidden] { display:none; }
-.att-pick[hidden] { display:none; }
-
-/* Site: a soft pill with the select sitting inside it, borderless, so the
-   pill is the control rather than a label next to one. */
-.att-pick {
-    display:flex; align-items:center; gap:8px; height:36px;
-    padding:0 6px 0 12px; border-radius:9px;
-    background:var(--bg-subtle,#f8f9fb); border:1px solid var(--border,#e4e7ec);
-}
-.att-pick i { font-size:.85rem; color:var(--text-muted,#667085); }
-.att-pick select {
-    height:34px; border:none; background-color:transparent; box-shadow:none;
-    padding-right:4px; font-size:.86rem; font-weight:500;
-    color:var(--text-primary,#101828); cursor:pointer;
-}
-.att-pick select:focus { outline:none; }
-
-/* The open list is drawn by the browser, and setting any background on the
-   select is enough for Chrome to stop theming it — so the popup came back
-   white while the option text stayed near-white from color-scheme: dark.
-   Light grey on white, which is how "All sites" arrived unreadable. Both
-   colours are stated here so the list follows the theme either way. */
-.att-pick select option {
-    background-color:var(--bg-elevated,#fff);
-    color:var(--text-primary,#101828);
+/* ── Attendance Monitoring ────────────────────────────────────────────────
+   Built on the design tokens alone, so one block serves both themes. The
+   break has no token of its own; it borrows the palette's violet, which is
+   defined for light and dark alike. */
+.atm {
+    --atm-brk:      var(--violet);
+    --atm-brk-soft: var(--violet-soft);
+    --atm-hatch:    color-mix(in srgb, var(--violet) 26%, transparent);
+    --atm-track:    var(--border);
 }
 
-/* The ring belongs on the pill. Left to itself the browser drew it tight
-   around the select alone, with the map pin stranded outside it. */
-.att-pick:focus-within {
-    border-color:var(--brand,#1668dc);
-    box-shadow:0 0 0 3px color-mix(in srgb, var(--brand,#1668dc) 20%, transparent);
+/* ── Heading ─────────────────────────────────────────────────────────────── */
+.atm-head {
+    display:flex; justify-content:space-between; align-items:center;
+    gap:12px; flex-wrap:wrap; margin-bottom:16px;
 }
+.atm-head-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; max-width:100%; }
+.atm-date { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text-muted); }
 
-/* Shift used to be a segmented row of radios. Three pills that look alike
-   read as one control row; a segment in the middle of them read as a
-   different kind of thing, and it grew wider with every shift the office
-   added. The whole .att-seg block went with it. */
-
-.att-ghost-btn {
-    display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px;
-    border-radius:9px; cursor:pointer; text-decoration:none;
-    font-size:.82rem; font-weight:600;
-    background:var(--bg-subtle,#f8f9fb); border:1px solid var(--border,#e4e7ec);
-    color:var(--text-secondary,#344054);
+/* The shifts in one line, and the way to change them. The page reads every
+   day against these hours, so they are stated where the reading happens. */
+.atm-sched {
+    display:flex; align-items:center; gap:12px; max-width:100%;
+    padding:8px 10px 8px 12px; border:1px solid var(--border); border-radius:var(--radius-lg);
+    background:var(--surface); box-shadow:var(--shadow-xs);
+    color:inherit; text-decoration:none; text-align:left;
 }
-.att-ghost-btn:hover { background:var(--bg-elevated,#fff); color:var(--text-primary,#101828); }
-
-@media (max-width:620px) {
-    .att-controls-left, .att-controls-right { width:100%; }
-    .att-pick { width:100%; }
-    .att-pick select { flex:1; }
+a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:none; }
+.atm-sched > i { font-size:16px; color:var(--brand); flex:none; }
+.atm-sched-txt { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.atm-sched-txt b { font-size:12.5px; color:var(--text-primary); }
+.atm-sched-txt small { font-size:11.5px; color:var(--text-muted); }
+.atm-sched-go {
+    display:flex; align-items:center; gap:6px; white-space:nowrap;
+    font-size:12px; font-weight:700; color:var(--brand);
+    background:var(--brand-subtle); border-radius:var(--radius-sm); padding:6px 9px 6px 10px;
 }
+.atm-sched-go i { font-size:10px; }
 
-/* ── The columns ──────────────────────────────────────────────────────────
-   Left to itself the table gave the widest column everything: Time In / Out
-   took 840 of 1,567 pixels while Employee was squeezed to 143 — 100 on a
-   1366-wide screen, which is not a name. So every column that holds
-   something of a known size asks for the room that thing needs, and Time In /
-   Out takes what is left over rather than taking it first.
+/* ── Cards ───────────────────────────────────────────────────────────────
+   Each card asks a question, so each card is a link — to the same status the
+   control under the tabs sets. Anchors, not buttons: the answer is a URL the
+   office can bookmark or send to somebody. */
+.atm-stats { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; margin-bottom:16px; }
+.atm-stat {
+    display:flex; flex-direction:column; gap:6px; padding:14px 16px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-xs); color:inherit; text-decoration:none;
+    transition:border-color .15s, box-shadow .15s;
+}
+.atm-stat:hover { border-color:var(--border-md); color:inherit; text-decoration:none; }
+.atm-stat.is-active { border-color:var(--atm-dot); box-shadow:inset 0 0 0 1px var(--atm-dot); }
+.atm-stat-lbl {
+    display:flex; align-items:center; gap:8px;
+    font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--text-secondary);
+}
+.atm-dot { width:8px; height:8px; border-radius:50%; background:var(--atm-dot); flex:none; }
+.atm-stat-num { font-size:28px; font-weight:800; line-height:1.1; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+.atm-stat-sub { font-size:12px; color:var(--text-muted); }
+.atm .is-brand { --atm-dot:var(--brand); }
+.atm .is-good  { --atm-dot:var(--success); }
+.atm .is-brk   { --atm-dot:var(--atm-brk); }
+.atm .is-bad   { --atm-dot:var(--danger); }
 
-   The heads never wrap: a label broken over two lines is taller than the row
-   it labels and reads as two columns. */
-.attendance-table thead th { white-space:nowrap; }
-.att-col-employee { min-width:190px; }
-.att-col-site     { min-width:160px; }
-.att-col-shift    { min-width:130px; }
-.att-col-date     { min-width:112px; }
-.att-col-session  { min-width:120px; }
-.att-col-status   { min-width:170px; }
-/* width:100% on one column is how a table is told which one absorbs the
-   slack; the min-width keeps it readable when there is none to absorb. */
-.att-col-time     { width:100%; min-width:260px; }
+/* ── The records card: tabs, filters, the list and its key ──────────────── */
+.atm-card {
+    display:flex; flex-direction:column; min-width:0;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-xs);
+}
+.atm-tabs { display:flex; gap:4px; margin:0; padding:6px 16px 0; border-bottom:1px solid var(--border); }
+.atm-tab {
+    display:flex; align-items:center; gap:8px; margin-bottom:-1px; padding:10px 14px;
+    border:0; border-bottom:2px solid transparent; border-radius:0; background:none;
+    font-size:13.5px; font-weight:600; color:var(--text-muted);
+}
+.atm-tab:hover { color:var(--text-primary); }
+.atm-tab.active { color:var(--brand); border-bottom-color:var(--brand); }
+.atm-count { font-size:11px; font-weight:700; border-radius:999px; padding:1px 7px; background:var(--danger-soft); color:var(--danger); }
+.atm-count[hidden] { display:none; }
+
+.atm-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0; padding:14px 16px; }
+.atm-toolbar .atm-sp { flex:1; }
+.atm-field {
+    display:flex; align-items:center; gap:8px; height:38px; padding:0 10px;
+    border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface);
+}
+.atm-field[hidden] { display:none; }
+.atm-field > i { font-size:13px; color:var(--text-muted); }
+.atm-field input, .atm-field select {
+    height:36px; min-width:0; border:0; outline:none; box-shadow:none; background:transparent;
+    font-size:13px; font-weight:500; color:var(--text-primary);
+}
+.atm-field input { width:170px; }
+.atm-field input::placeholder { color:var(--text-muted); }
+/* The open list is drawn by the browser, and a background on the select is
+   enough for Chrome to stop theming it — the popup came back white under
+   near-white text in dark mode. Both colours are stated so it follows. */
+.atm-field select option { background-color:var(--bg-elevated); color:var(--text-primary); }
+.atm-field:focus-within { border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-subtle); }
+/* The ring is the field's, drawn above. The theme's own focus ring on the
+   input inside it read as a second box within the first. */
+html[data-bs-theme] .atm-field input:focus-visible,
+html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important; outline:none !important; border-radius:0; }
+
+/* A row of choices where one is always on. Radios underneath, so the form
+   submits them like any other field and the keyboard moves between them. */
+.atm-seg { display:flex; overflow:hidden; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface); }
+.atm-seg label { margin:0; }
+.atm-seg input { position:absolute; opacity:0; pointer-events:none; }
+.atm-seg span {
+    display:flex; align-items:center; gap:6px; height:36px; padding:0 12px; cursor:pointer;
+    font-size:12.5px; font-weight:600; color:var(--text-muted); white-space:nowrap;
+}
+.atm-seg span:hover { color:var(--text-primary); }
+.atm-seg input:checked + span { background:var(--brand-subtle); color:var(--brand); }
+.atm-seg input:focus-visible + span { outline:2px solid var(--brand); outline-offset:-2px; }
+
+.atm-btn {
+    display:inline-flex; align-items:center; gap:6px; padding:6px 12px; cursor:pointer;
+    border:1px solid var(--border-md); border-radius:var(--radius-sm); background:var(--surface);
+    font-size:12.5px; font-weight:600; color:var(--text-primary);
+}
+.atm-btn:hover { background:var(--bg-subtle); }
+.atm-btn.pri { background:var(--brand); border-color:var(--brand); color:#fff; }
+.atm-btn.pri:hover { background:var(--brand-strong); border-color:var(--brand-strong); }
+.atm-btn.danger { background:var(--danger-soft); border-color:color-mix(in srgb, var(--danger) 35%, transparent); color:var(--danger); }
+.atm-btn:disabled { opacity:.5; cursor:not-allowed; }
+.atm-toolbar .atm-btn { height:38px; }
+#attHistoryActions { display:flex; gap:8px; }
+#attHistoryActions[hidden] { display:none; }
+
+/* While a filter is being fetched the lists dim, so the reader does not take
+   the old rows for the answer. */
+.atm-card.is-loading .tab-content { opacity:.55; transition:opacity .15s; }
+
+/* ── The list ────────────────────────────────────────────────────────────
+   Boxed to the screen: the card runs to the bottom, the rows scroll inside
+   it, and the heads stay (see modules/_fill_screen). Wide enough for its
+   columns; narrower than that, it scrolls sideways inside the card. */
+.atm-scroll { overflow-x:auto; }
+.atm-table { width:100%; min-width:1180px; border-collapse:separate; border-spacing:0; }
+.atm-table thead { position:sticky; top:0; z-index:2; }
+.atm-table thead th {
+    padding:10px 12px; text-align:left; white-space:nowrap;
+    font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--text-muted); background:var(--bg-subtle); border-bottom:1px solid var(--border);
+}
+.atm-table thead tr.atm-grp th { padding:8px 12px 0; border-bottom:0; font-size:10px; }
+.atm-grp th.s { text-align:center; }
+.atm-grp th.s span { display:block; padding-bottom:5px; border-bottom:1px solid var(--border); }
+.atm-table tbody td {
+    padding:12px; vertical-align:middle; font-size:13px; color:var(--text-primary);
+    background:var(--surface); border-bottom:1px solid var(--border);
+}
+.atm-table td.atm-sep, .atm-table th.atm-sep { border-left:1px dashed var(--border); }
+tr.atm-row { cursor:pointer; }
+tr.atm-row:hover td, tr.atm-row.is-open td { background:var(--bg-subtle); }
+tr.atm-row:focus-visible { outline:2px solid var(--brand); outline-offset:-2px; }
+tr.atm-dayhead td {
+    padding:8px 12px; font-size:12px; font-weight:700; letter-spacing:.03em;
+    color:var(--text-secondary); background:var(--bg);
+}
+.atm-empty { padding:40px 16px !important; text-align:center; color:var(--text-muted) !important; }
+.atm-empty i { display:block; margin-bottom:8px; font-size:1.6rem; opacity:.35; }
+
+.atm-emp { display:flex; align-items:center; gap:10px; min-width:190px; }
+.atm-ini {
+    display:grid; place-items:center; flex:none; width:34px; height:34px; border-radius:50%;
+    font-size:12px; font-weight:700; color:var(--text-secondary);
+    background:var(--bg-subtle); border:1px solid var(--border);
+}
+.atm-emp b { display:block; font-size:13.5px; color:var(--text-primary); }
+.atm-emp small { font-size:12px; color:var(--text-muted); }
+.atm-site {
+    display:inline-flex; align-items:center; gap:4px; margin-left:6px; padding:1px 6px; white-space:nowrap;
+    font-size:11px; font-weight:600; color:var(--text-secondary);
+    border:1px solid var(--border); border-radius:6px;
+}
+.atm-site i { font-size:9px; color:var(--text-muted); }
+
+.atm-shift { display:inline-flex; align-items:center; gap:6px; padding:3px 8px; border-radius:7px; font-size:12px; font-weight:700; white-space:nowrap; }
+.atm-shift i { font-size:11px; }
+.atm-shift.day   { background:var(--warning-soft); color:var(--warning); }
+.atm-shift.night { background:var(--brand-subtle); color:var(--brand); }
+.atm-shift-hrs { display:block; margin-top:4px; font-size:11px; color:var(--text-muted); white-space:nowrap; }
+
+.atm-punch { display:flex; flex-direction:column; gap:3px; min-width:84px; }
+.atm-t { display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.atm-t.is-mute { color:var(--text-muted); font-weight:500; }
+.atm-edited { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--brand); }
+.atm-tag { display:inline-block; width:max-content; padding:1px 6px; border-radius:5px; font-size:10.5px; font-weight:700; white-space:nowrap; }
+.atm-tag.warn { background:var(--warning-soft); color:var(--warning); }
+.atm-tag.bad  { background:var(--danger-soft);  color:var(--danger); }
+.atm-tag.good { background:var(--success-soft); color:var(--success); }
+.atm-tag.brk  { background:var(--atm-brk-soft); color:var(--atm-brk); }
+.atm-tag.mute { padding-left:0; font-weight:600; color:var(--text-muted); }
+
+/* The day against its shift, an hour either side. Positions come from the
+   server as percentages, so the bar is drawn by CSS alone. */
+.atm-tl { position:relative; width:230px; height:22px; }
+.atm-tl > span { position:absolute; display:block; }
+.atm-tl .base { top:8px; height:6px; border-radius:3px; background:var(--atm-track); }
+.atm-tl .bw   { top:5px; height:12px; border-radius:3px; background:repeating-linear-gradient(135deg, var(--atm-hatch) 0 4px, transparent 4px 8px); }
+.atm-tl .w    { top:7px; height:8px; border-radius:4px; background:var(--brand); }
+.atm-tl .w.live { background:linear-gradient(90deg, var(--brand), var(--brand) 70%, color-mix(in srgb, var(--brand) 35%, transparent)); }
+.atm-tl .w.miss { top:6px; height:10px; background:transparent; border:1.5px dashed var(--danger); }
+.atm-tl .w.br { background:var(--atm-brk); }
+.atm-tl .w.ob { background:var(--warning); }
+.atm-tl .late { top:10px; height:2px; background:var(--danger); }
+.atm-tl .now  { top:0; bottom:0; width:2px; border-radius:1px; background:var(--text-primary); }
+.atm-tl .now::after { content:""; position:absolute; top:-3px; left:-3px; width:8px; height:8px; border-radius:50%; background:var(--text-primary); }
+.atm-tlax { display:flex; justify-content:space-between; width:230px; margin-top:2px; font-size:10px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+
+.atm-hrs { font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.atm-hrs small { display:block; font-size:11px; font-weight:500; color:var(--text-muted); }
+.atm-hrs small.d-inline { display:inline; }
+.atm-hrs .atm-tag { display:block; margin-top:4px; }
+
+.atm-status { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.atm-status-tags { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
+.atm-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
+.atm-pill .atm-dot { width:7px; height:7px; }
+.atm-pill.good    { background:var(--success-soft); color:var(--success); --atm-dot:var(--success); }
+.atm-pill.warn    { background:var(--warning-soft); color:var(--warning); --atm-dot:var(--warning); }
+.atm-pill.bad     { background:var(--danger-soft);  color:var(--danger);  --atm-dot:var(--danger); }
+.atm-pill.brk     { background:var(--atm-brk-soft); color:var(--atm-brk); --atm-dot:var(--atm-brk); }
+.atm-pill.neutral { background:var(--bg-subtle);    color:var(--text-muted); --atm-dot:var(--text-muted); }
+.atm-pill.live .atm-dot { animation:atm-pulse 1.6s ease-in-out infinite; }
+@keyframes atm-pulse { 50% { opacity:.35; } }
+@media (prefers-reduced-motion: reduce) { .atm-pill.live .atm-dot { animation:none; } }
+.atm-chev { font-size:11px; color:var(--text-muted); transition:transform .15s; }
+tr.is-open .atm-chev { transform:rotate(90deg); }
+
+/* ── Under a row: its scans, and its hours or its fixes ─────────────────── */
+.atm-table tr.atm-detail td { padding:4px 12px 16px; background:var(--bg-subtle); cursor:default; }
+.atm-dgrid { display:grid; grid-template-columns:minmax(0, 1.1fr) minmax(0, 1fr); gap:16px; }
+.atm-dbox {
+    display:flex; flex-direction:column; gap:10px; padding:14px 16px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+}
+.atm-dbox h4 { margin:0; font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); }
+.atm-scans { display:flex; flex-direction:column; margin:0; padding:0; list-style:none; }
+.atm-scans li {
+    display:grid; grid-template-columns:80px minmax(0, 1fr) auto; align-items:center; gap:10px;
+    padding:7px 0; font-size:13px; border-bottom:1px dashed var(--border);
+}
+.atm-scans li:last-child { border-bottom:0; }
+.atm-scans .k { display:block; font-size:12px; color:var(--text-muted); }
+.atm-fix {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0; padding:10px 12px;
+    background:var(--danger-soft); border:1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+    border-radius:var(--radius-md);
+}
+.atm-fix b { flex:1 1 100%; font-size:13px; color:var(--text-primary); }
+.atm-fix small { flex:1 1 100%; font-size:12px; color:var(--text-secondary); }
+.atm-fix input[type=time] {
+    padding:5px 8px; border:1px solid var(--border-md); border-radius:var(--radius-sm);
+    background:var(--surface); color:var(--text-primary); color-scheme:inherit; font-variant-numeric:tabular-nums;
+}
+.atm-sum { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+.atm-sum > div { display:flex; flex-direction:column; gap:2px; }
+.atm-sum span { font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-muted); }
+.atm-sum b { font-size:15px; font-variant-numeric:tabular-nums; color:var(--text-primary); }
+.atm-sum b.is-good { color:var(--success); }
+.atm-note { margin:0; font-size:12px; color:var(--text-muted); }
+
+.atm-legend {
+    display:flex; flex-wrap:wrap; gap:8px 16px; padding:12px 16px;
+    border-top:1px solid var(--border); font-size:12px; color:var(--text-muted);
+}
+.atm-legend span { display:flex; align-items:center; gap:6px; }
+.atm-sw { display:inline-block; width:18px; height:7px; border-radius:3px; }
 
 /* The card ends at the bottom of the screen, so its pager lands under the
    floating chat button (50px across, 28px in from the right). Kept clear of
-   it, or the next-page arrow cannot be clicked — which it could not: the
-   robot sat on top of it. Unconditional, because the button floats over the
-   foot of a scrolling page too. */
-.att-pager { padding-right:76px; }
+   it, or the next-page arrow cannot be clicked. */
+.att-pager { padding:0 76px 0 16px; }
+.att-pager nav { padding-top:10px; }
 .att-pager .pagination { margin-bottom:0; }
 
-/* The heads stay while the rows move — the whole point of boxing the list.
-   Their background is already opaque in both themes (attendance.css and
-   dark-mode.css), which sticky needs or the rows show through. */
-.attendance-table thead th { position:sticky; top:0; z-index:2; }
+/* Mark for deletion: a checkbox column that shows only while marking. */
+.att-check-col { display:none; width:36px; text-align:center; }
+.att-check-col input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:var(--danger); }
+body.att-mark-mode .att-check-col { display:table-cell; }
+body.att-mark-mode tr.atm-row { cursor:default; }
+body.att-mark-mode tr.att-marked td { background:color-mix(in srgb, var(--danger) 9%, var(--surface)); }
 
-/* A day's sessions, and the stretches it was worked in. The span is the day;
-   the line under it is what the day is made of, and it only appears when
-   there is more than one stretch to spell out. */
-.att-sessions { display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap; }
-.att-day-span { font-variant-numeric:tabular-nums; white-space:nowrap; }
-.att-stretches {
-    display:flex; flex-wrap:wrap; gap:2px 12px; margin-top:3px;
-    font-size:.74rem; color:var(--text-muted,#667085);
+/* A laptop screen: the times, the hours and the status are what the row is
+   for, so the timeline gives way and the cells close up rather than
+   pushing Status off the side. */
+@media (max-width:1440px) {
+    .atm-col-tl { display:none; }
+    .atm-table { min-width:940px; }
+    .atm-table thead th, .atm-table tbody td { padding-left:9px; padding-right:9px; }
+    .atm-punch { min-width:74px; }
 }
-.att-stretch { white-space:nowrap; font-variant-numeric:tabular-nums; }
-.att-stretch b { font-weight:700; color:var(--text-secondary,#344054); margin-right:3px; }
-
-.att-site { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600;
-    color:#0f766e; background:#f0fdfa; border:1px solid #ccfbf1; border-radius:8px; padding:2px 8px; white-space:nowrap; }
-.att-site i { font-size:10px; }
-
-/* The shift the day was worked under, read off the record. Plain text beside
-   the Site pill and the Session pills — a third coloured chip in a row reads
-   as one more status. The moon marks the crew whose day crosses midnight. */
-.att-shift { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600;
-    color:var(--text-secondary,#344054); white-space:nowrap; }
-.att-shift i { font-size:11px; color:var(--text-muted,#667085); }
-
-    .att-tabs { border-bottom: 2px solid #e5e7eb; gap: 4px; margin-bottom: 18px; }
-    .att-tabs .nav-link { color: #64748b; border: none; font-weight: 700; padding: 10px 18px; }
-    .att-tabs .nav-link:hover { color: #3b82f6; }
-    .att-tabs .nav-link.active { color: #3b82f6; border-bottom: 3px solid #3b82f6; background: none; }
-    [data-bs-theme="dark"] .att-tabs { border-bottom-color: #283449; }
-    [data-bs-theme="dark"] .att-tabs .nav-link { color: #9fb0c7; }
-    [data-bs-theme="dark"] .att-tabs .nav-link.active { color: #93c5fd; border-bottom-color: #93c5fd; }
-
-    /* History toolbar */
-    .att-mark-btn   { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-size:12.5px; font-weight:700; border-radius:7px; padding:5px 12px; cursor:pointer; transition:background .15s; }
-    .att-mark-btn:hover   { background:#e2e8f0; }
-    .att-cancel-btn { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-size:12.5px; font-weight:700; border-radius:7px; padding:5px 12px; cursor:pointer; }
-    .att-del-sel-btn { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-size:12.5px; font-weight:700; border-radius:7px; padding:5px 12px; cursor:pointer; transition:background .15s; }
-    .att-del-sel-btn:not(:disabled):hover { background:#fee2e2; }
-    .att-del-sel-btn:disabled { opacity:.5; cursor:not-allowed; }
-    [data-bs-theme="dark"] .att-mark-btn, [data-bs-theme="dark"] .att-cancel-btn { background:#1c2740; color:#9fb0c7; border-color:#283449; }
-    [data-bs-theme="dark"] .att-mark-btn:hover { background:#283449; }
-    [data-bs-theme="dark"] .att-del-sel-btn { background:#450a0a; color:#fca5a5; border-color:#7f1d1d; }
-    [data-bs-theme="dark"] .att-del-sel-btn:not(:disabled):hover { background:#7f1d1d; }
-
-    /* Time-out that landed the next morning. The columns print clock times
-       only, so a night shift read as "8:00 PM – 7:00 AM" — a day apparently
-       run backwards — with nothing to say the out was the following day. */
-    .att-nextday { display:inline-block; margin-left:5px; padding:1px 5px; border-radius:5px; background:#e0e7ff; color:#3730a3; font-size:10.5px; font-weight:700; vertical-align:middle; }
-    [data-bs-theme="dark"] .att-nextday { background:#1e1b4b; color:#a5b4fc; }
-
-    /* A day the system had to close because nobody clocked out. The row
-       reads Present once it has a time-out, which is true and not the
-       whole truth — the time on it is a guess waiting to be confirmed. */
-    .badge-review { background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
-    [data-bs-theme="dark"] .badge-review { background:#431407; color:#fdba74; border-color:#7c2d12; }
-
-    /* Checkbox column — hidden until mark mode */
-    .att-check-col { display:none; width:36px; text-align:center; }
-    .att-check-col input[type=checkbox] { cursor:pointer; width:15px; height:15px; accent-color:#dc2626; }
-    body.att-mark-mode .att-check-col { display:table-cell; }
-    body.att-mark-mode tr.att-marked  { background:rgba(220,38,38,.07); }
-    [data-bs-theme="dark"] body.att-mark-mode tr.att-marked { background:rgba(220,38,38,.13); }
+@media (max-width:1100px) {
+    .atm-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width:700px) {
+    .atm-head-right { align-items:stretch; width:100%; }
+    .atm-sched-go { display:none; }
+    .atm-toolbar { padding:12px; }
+    .atm-field, .atm-field input { width:100%; }
+    .atm-field input { flex:1; }
+    .atm-seg { max-width:100%; overflow-x:auto; }
+    .atm-dgrid { grid-template-columns:minmax(0, 1fr); }
+}
+@media (max-width:420px) {
+    .atm-stats { grid-template-columns:minmax(0, 1fr); }
+}
 </style>
 @endpush
 
 @section('content')
+@use('App\Support\WorkSchedule')
 @php
-    // status key -> [label, css class]
-    $statusBadge = function ($status) {
-        return match ($status) {
-            'present' => ['Present', 'badge-present'],
-            'active'  => ['Active', 'badge-active'],
-            'invalid' => ['Invalid Attendance', 'badge-invalid'],
-            default   => ['Absent', 'badge-absent'],
-        };
-    };
+    // A card is a question, and its answer is a list of people. Clicking one
+    // narrows both tables to the rows behind its number; clicking it again
+    // puts them back. The site, shift and search already chosen are carried
+    // along; the page number is not.
+    $cardBase = request()->except(['view', 'tab', 'page']);
+    $cardUrl  = fn (?string $v) => route('attendance', $v === null ? $cardBase : $cardBase + ['view' => $v]);
+
+    // The shifts in a line: each one's hours, then the break and the regular
+    // hours when every shift agrees on them.
+    $scheduled = $shifts->filter->hasSchedule()->values();
+    $hoursOf   = fn ($s) => $s->name . ' ' . WorkSchedule::label(\Carbon\Carbon::parse($s->starts_at))
+                          . '–' . WorkSchedule::label(\Carbon\Carbon::parse($s->endsAt()));
+    $sameBreak = $scheduled->pluck('break_minutes')->unique()->count() === 1;
+    $sameReg   = $scheduled->pluck('regular_minutes')->unique()->count() === 1 && $scheduled->first()?->regular_minutes !== null;
+    $schedLine = $scheduled->map($hoursOf)
+        ->when($scheduled->isNotEmpty() && $sameBreak, fn ($l) => $l->push(__('Break') . ' ' . WorkSchedule::duration($scheduled->first()->break_minutes)))
+        ->when($scheduled->isNotEmpty() && $sameReg, fn ($l) => $l->push(__('OT after') . ' ' . WorkSchedule::duration($scheduled->first()->regular_minutes)))
+        ->implode(' · ');
+    $canEdit = auth()->user()?->isAdmin();
+
+    $statuses = [
+        ''           => __('All'),
+        'clocked-in' => __('Working'),
+        'break'      => __('On break'),
+        'missed'     => __('Needs review'),
+        'done'       => __('Completed'),
+    ];
 @endphp
 
-<div class="attendance-container p-4">
+<div class="attendance-container atm p-4">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="atm-head">
         <h3 class="attendance-title mb-0">{{ __('Attendance Monitoring') }}</h3>
-        <span class="text-muted small"><i class="fas fa-calendar-day me-1"></i>{{ now()->format('l, m/d/Y') }}</span>
-    </div>
 
-    {{-- STAT CARDS — an accent edge and an icon rather than a plain box, and
-         a short line under each number saying what it counts. They follow the
-         filters below: the numbers and the rows always describe the same set
-         of records. --}}
-    @php
-        // A card is a question — three of them, and the answer to each is a
-        // list of people. Clicking one narrows both tables to the rows behind
-        // its number; clicking it again puts them back. The site and shift
-        // already chosen are carried along, and the page number is not: the
-        // rows underneath are about to be a different set.
-        $cardBase = request()->except(['view', 'tab', 'page']);
-        $cardUrl  = fn (?string $v) => route('attendance', $v === null ? $cardBase : $cardBase + ['view' => $v]);
-    @endphp
-    {{-- Counts of what is happening now, so they follow the kiosk. --}}
-    <div class="att-stats" id="attStats" data-live="attendance employees">
-        <a class="att-stat att-stat-brand {{ $view === null ? 'is-active' : '' }}"
-           href="{{ $cardUrl(null) }}" @if($view === null) aria-current="true" @endif>
-            <div class="att-stat-head">
-                <i class="fas fa-user-check"></i>
-                <span>{{ __('Present today') }}</span>
-            </div>
-            <div class="att-stat-value">{{ $presentToday }}</div>
-            <div class="att-stat-sub">{{ __('Clocked in today') }}</div>
-        </a>
-        <a class="att-stat att-stat-success {{ $view === 'clocked-in' ? 'is-active' : '' }}"
-           href="{{ $cardUrl($view === 'clocked-in' ? null : 'clocked-in') }}"
-           @if($view === 'clocked-in') aria-current="true" @endif>
-            <div class="att-stat-head">
-                <i class="fas fa-clock"></i>
-                <span>{{ __('Currently clocked in') }}</span>
-            </div>
-            <div class="att-stat-value">{{ $clockedIn }}</div>
-            <div class="att-stat-sub">{{ __('On-site, no time-out') }}</div>
-        </a>
-        <a class="att-stat att-stat-warning {{ $view === 'missed' ? 'is-active' : '' }}"
-           href="{{ $cardUrl($view === 'missed' ? null : 'missed') }}"
-           @if($view === 'missed') aria-current="true" @endif>
-            <div class="att-stat-head">
-                <i class="fas fa-triangle-exclamation"></i>
-                <span>{{ __('Invalid attendance') }}</span>
-            </div>
-            <div class="att-stat-value">{{ $invalidCount }}</div>
-            <div class="att-stat-sub">{{ __('Missed sign-out') }}</div>
-        </a>
-    </div>
+        <div class="atm-head-right">
+            <span class="atm-date"><i class="fas fa-calendar-day"></i>{{ now()->format('l, m/d/Y') }}</span>
 
-    @if($view)
-        {{-- Both tables are narrowed, and a reader who lands here from a card
-             needs to see that before reading an empty one as "nobody". --}}
-        <div class="att-viewing">
-            <i class="fas fa-filter"></i>
-            <span>{{ $view === 'clocked-in'
-                ? __('Showing only workers still on site')
-                : __('Showing only missed sign-outs this week') }}</span>
-            <a href="{{ $cardUrl(null) }}">{{ __('Show all') }}</a>
+            @if($scheduled->isNotEmpty())
+                @if($canEdit)
+                    <a class="atm-sched" href="{{ route('settings.index', ['tab' => 'attendance']) }}"
+                       aria-label="{{ __('Edit the shift schedule in Payroll Settings') }}">
+                @else
+                    <div class="atm-sched">
+                @endif
+                        <i class="far fa-clock"></i>
+                        <span class="atm-sched-txt"><b>{{ __('Shift schedule') }}</b><small>{{ $schedLine }}</small></span>
+                        @if($canEdit)
+                            <span class="atm-sched-go">{{ __('Edit in Payroll Settings') }}<i class="fas fa-chevron-right"></i></span>
+                        @endif
+                @if($canEdit) </a> @else </div> @endif
+            @endif
         </div>
-    @endif
+    </div>
 
-    <!-- TABS -->
-    <ul class="nav nav-tabs att-tabs" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link {{ $openTab === 'today' ? 'active' : '' }}" data-bs-toggle="tab"
-                    data-bs-target="#att-today" type="button" data-tab="today">
-                <i class="fas fa-calendar-day me-1"></i> {{ __('Today\'s Attendance') }}
+    {{-- ── Cards ────────────────────────────────────────────────────────────
+         They follow the site and shift chosen below, so the numbers and the
+         rows always describe the same crew. They do not follow the status or
+         the search, which narrow the lists to a question about that crew. --}}
+    <div class="atm-stats" id="attStats" data-live="attendance employees">
+        <a class="atm-stat is-brand {{ $view === null ? 'is-active' : '' }}" href="{{ $cardUrl(null) }}" data-view=""
+           @if($view === null) aria-current="true" @endif>
+            <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('Present today') }}</span>
+            <span class="atm-stat-num">{{ $presentToday }}</span>
+            <span class="atm-stat-sub">
+                {{ __('Scanned in') }}@if($presentToday) · {{ max(0, $presentToday - $nightCrew) }} {{ __('day') }}, {{ $nightCrew }} {{ __('night') }}@endif
+            </span>
+        </a>
+        <a class="atm-stat is-good {{ $view === 'clocked-in' ? 'is-active' : '' }}"
+           href="{{ $cardUrl($view === 'clocked-in' ? null : 'clocked-in') }}" data-view="clocked-in"
+           @if($view === 'clocked-in') aria-current="true" @endif>
+            <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('Working now') }}</span>
+            <span class="atm-stat-num">{{ $clockedIn }}</span>
+            <span class="atm-stat-sub">
+                @if($clockedIn)
+                    {{ $clockedIn - $inSecond }} {{ __('in 1st session') }} · {{ $inSecond }} {{ __('in 2nd') }}
+                @else
+                    {{ __('On site, in a session') }}
+                @endif
+            </span>
+        </a>
+        <a class="atm-stat is-brk {{ $view === 'break' ? 'is-active' : '' }}"
+           href="{{ $cardUrl($view === 'break' ? null : 'break') }}" data-view="break"
+           @if($view === 'break') aria-current="true" @endif>
+            <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('On break') }}</span>
+            <span class="atm-stat-num">{{ $onBreak }}</span>
+            <span class="atm-stat-sub">
+                {{ $overBreak ? $overBreak . ' ' . __('past the break') : __('Between sessions') }}
+            </span>
+        </a>
+        <a class="atm-stat is-bad {{ $view === 'missed' ? 'is-active' : '' }}"
+           href="{{ $cardUrl($view === 'missed' ? null : 'missed') }}" data-view="missed"
+           @if($view === 'missed') aria-current="true" @endif>
+            <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('Needs review') }}</span>
+            <span class="atm-stat-num">{{ $invalidCount }}</span>
+            <span class="atm-stat-sub">{{ $reviewToday }} {{ __('today') }} · {{ $reviewEarlier }} {{ __('earlier this week') }}</span>
+        </a>
+    </div>
+
+    <section class="atm-card" data-fill-screen aria-label="{{ __('Attendance records') }}">
+
+        <div class="atm-tabs" role="tablist">
+            <button class="atm-tab {{ $openTab === 'today' ? 'active' : '' }}" type="button" role="tab"
+                    data-bs-toggle="tab" data-bs-target="#att-today" data-tab="today"
+                    aria-selected="{{ $openTab === 'today' ? 'true' : 'false' }}">
+                <i class="fas fa-calendar-day"></i>{{ __('Today\'s Attendance') }}
             </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link {{ $openTab === 'history' ? 'active' : '' }}" data-bs-toggle="tab"
-                    data-bs-target="#att-history" type="button" data-tab="history">
-                <i class="fas fa-clock-rotate-left me-1"></i> {{ __('History') }}
+            <button class="atm-tab {{ $openTab === 'history' ? 'active' : '' }}" type="button" role="tab"
+                    data-bs-toggle="tab" data-bs-target="#att-history" data-tab="history"
+                    aria-selected="{{ $openTab === 'history' ? 'true' : 'false' }}">
+                <i class="fas fa-clock-rotate-left"></i>{{ __('History') }}
+                <span class="atm-count" id="attHistCount" data-live="attendance employees"
+                      title="{{ __('Earlier days this week still waiting on a review') }}"
+                      @if(! $reviewEarlier) hidden @endif>{{ $reviewEarlier }}</span>
             </button>
-        </li>
-    </ul>
+        </div>
 
-    {{-- ── Control row ─────────────────────────────────────────────────────
-         Site and Shift filter the whole page — both tabs and all three cards
-         above — even though the row sits under the tabs.
+        {{-- ── Filters ─────────────────────────────────────────────────────
+             One GET form, so every choice combines with the others and the
+             result is a URL. Script fetches it in place; without script the
+             Apply button submits it. History is paginated fifteen days at a
+             time, so the narrowing is the server's — hiding rows in the
+             browser would filter the page you can see and ignore the rest. --}}
+        <form method="GET" action="{{ route('attendance') }}" id="attFilters" class="atm-toolbar" role="search">
 
-         A GET form rather than JavaScript row-hiding: History is paginated
-         fifteen at a time, so hiding rows in the browser would filter the
-         page you can see and quietly ignore the rest of the result.
+            <label class="atm-field">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="search" name="q" id="attSearch" value="{{ $search }}"
+                       placeholder="{{ __('Search employee') }}" aria-label="{{ __('Search employee') }}" autocomplete="off">
+            </label>
 
-         The history actions share the row and are hidden while Today's
-         Attendance is open, because there is nothing on that tab to delete. --}}
-    <div class="att-controls">
-        <form method="GET" action="{{ route('attendance') }}" class="att-controls-left" id="attFilters">
-            <div class="att-pick">
+            <label class="atm-field">
                 <i class="fas fa-location-dot"></i>
                 <select name="site" id="attSite" aria-label="{{ __('Filter by site') }}">
                     <option value="">{{ __('All sites') }}</option>
@@ -332,41 +461,33 @@
                         <option value="{{ $s->id }}" @selected($siteId === $s->id)>{{ $s->name }}</option>
                     @endforeach
                 </select>
+            </label>
+
+            <div class="atm-seg" role="radiogroup" aria-label="{{ __('Filter by shift') }}">
+                <label><input type="radio" name="shift" value="" @checked($shiftId === null)><span>{{ __('All shifts') }}</span></label>
+                @foreach($shifts as $sh)
+                    <label>
+                        <input type="radio" name="shift" value="{{ $sh->id }}" @checked($shiftId === $sh->id)>
+                        <span><i class="fas {{ $sh->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i>{{ $sh->name }}</span>
+                    </label>
+                @endforeach
             </div>
 
-            {{-- The same pill as Site and Date Range either side of it. A
-                 select also keeps the office's own shift names from widening
-                 the row, which a segment per shift did.
-
-                 The sun and moon the segments carried are not lost: the pill's
-                 own icon follows the chosen shift, so "which crew" is still
-                 readable at a glance without opening the list. --}}
-            @php
-                $pickedShift = $shifts->firstWhere('id', $shiftId);
-                $shiftIcon   = $pickedShift
-                    ? ($pickedShift->crosses_midnight ? 'fa-moon' : 'fa-sun')
-                    : 'fa-user-clock';
-            @endphp
-            <div class="att-pick">
-                <i class="fas {{ $shiftIcon }}"></i>
-                <select name="shift" id="attShift" aria-label="{{ __('Filter by shift') }}">
-                    <option value="">{{ __('All shifts') }}</option>
-                    @foreach($shifts as $sh)
-                        <option value="{{ $sh->id }}" @selected($shiftId === $sh->id)>{{ $sh->name }}</option>
-                    @endforeach
-                </select>
+            <div class="atm-seg" role="radiogroup" aria-label="{{ __('Filter by status') }}">
+                @foreach($statuses as $value => $label)
+                    <label>
+                        <input type="radio" name="view" value="{{ $value }}" @checked((string) $view === $value)>
+                        <span>{{ $label }}</span>
+                    </label>
+                @endforeach
             </div>
 
             {{-- How far back History reaches. It rides in the same form, so it
-                 combines with Site and Shift instead of clearing them, and the
-                 change listener below reloads on it like any other select.
-
-                 It shows only while History is open — Today's Attendance is a
-                 single workday and the cards count today and this week, so
-                 there is nothing there for "last 6 months" to narrow. Hidden
-                 rather than removed: the field still submits, so the range
-                 survives a trip to the other tab. --}}
-            <div class="att-pick" id="attRangePick" @if($openTab !== 'history') hidden @endif>
+                 combines with the rest instead of clearing them. Shown only
+                 while History is open — Today's Attendance is a single
+                 workday. Hidden rather than removed, so the range survives a
+                 trip to the other tab. --}}
+            <label class="atm-field" id="attRangePick" @if($openTab !== 'history') hidden @endif>
                 <i class="fas fa-calendar-days"></i>
                 <select name="range" id="attRange" aria-label="{{ __('Filter history by date range') }}">
                     @foreach([
@@ -377,382 +498,427 @@
                         'year' => __('This Year'),
                         'all'  => __('All Time'),
                     ] as $key => $label)
-                        {{-- (string) $key, because PHP turns the two numeric
-                             keys above into ints: a strict === against the
-                             string out of the query string never matched them,
-                             so the list quietly fell back to showing its first
-                             option while the table underneath was filtered
-                             correctly. --}}
+                        {{-- (string) $key: PHP turns the two numeric keys into
+                             ints, and a strict === against the string from the
+                             query never matched them. --}}
                         <option value="{{ $key }}" @selected((string) $key === $range)>{{ $label }}</option>
                     @endforeach
                 </select>
+            </label>
+
+            {{-- The tab rides along, so a filter changed while reading History
+                 comes back to History. --}}
+            <input type="hidden" name="tab" id="attTabField" value="{{ $openTab }}">
+            <noscript><button type="submit" class="atm-btn">{{ __('Apply') }}</button></noscript>
+
+            <span class="atm-sp"></span>
+
+            <div id="attHistoryActions" @if($openTab !== 'history') hidden @endif>
+                <button id="markModeBtn" type="button" class="atm-btn">
+                    <i class="fas fa-check-square"></i>{{ __('Mark for Deletion') }}
+                </button>
+                <button id="deleteSelectedBtn" type="button" class="atm-btn danger" style="display:none;" disabled>
+                    <i class="fas fa-trash"></i>{{ __('Delete Selected (') }}<span id="selCount">0</span>)
+                </button>
+                <button id="cancelMarkBtn" type="button" class="atm-btn" style="display:none;">{{ __('Cancel') }}</button>
+                {{-- No Delete all. One click from wiping every day payroll is
+                     computed from is not a button this page offers. --}}
             </div>
-
-            {{-- The tab rides along, so changing a filter while reading
-                 History does not drop you back on Today's Attendance. --}}
-            <input type="hidden" name="tab" id="attTabField" value="{{ request('tab') === 'history' ? 'history' : 'today' }}">
-
-            <noscript><button type="submit" class="att-ghost-btn">{{ __('Apply') }}</button></noscript>
-
-            {{-- No Clear button. Both controls already carry their own way
-                 back — All sites and All shifts — so a third control that
-                 only appears once a filter is on was a button that came and
-                 went for no reason the reader could see. --}}
         </form>
 
-        <div class="att-controls-right" id="attHistoryActions" @if($openTab !== 'history') hidden @endif>
-            <button id="markModeBtn" type="button" class="att-mark-btn">
-                <i class="fas fa-check-square me-1"></i>{{ __('Mark for Deletion') }}
-            </button>
-            <button id="deleteSelectedBtn" type="button" class="att-del-sel-btn" style="display:none;" disabled>
-                <i class="fas fa-trash me-1"></i>{{ __('Delete Selected (') }}<span id="selCount">0</span>)
-            </button>
-            <button id="cancelMarkBtn" type="button" class="att-cancel-btn" style="display:none;">
-                {{ __('Cancel') }}
-            </button>
-            {{-- No Delete all. One click from wiping every day payroll is
-                 counted from was too close at hand; a removal now starts
-                 from the rows you tick. --}}
-        </div>
-    </div>
+        @php
+            $groupHead = function (bool $check) {
+                return '<tr class="atm-grp">'
+                    . ($check ? '<th class="att-check-col"></th>' : '')
+                    . '<th colspan="2"></th>'
+                    . '<th colspan="2" class="s"><span>' . e(__('1st session')) . '</span></th>'
+                    . '<th colspan="2" class="s atm-sep"><span>' . e(__('2nd session')) . '</span></th>'
+                    . '<th colspan="3"></th></tr>';
+            };
+            $heads = '<th>' . e(__('Employee')) . '</th><th>' . e(__('Shift')) . '</th>'
+                   . '<th>' . e(__('Time in')) . '</th><th>' . e(__('Time out')) . '</th>'
+                   . '<th class="atm-sep">' . e(__('Time in')) . '</th><th>' . e(__('Time out')) . '</th>'
+                   . '<th class="atm-col-tl">' . e(__('Timeline')) . '</th><th>' . e(__('Hours')) . '</th><th>' . e(__('Status')) . '</th>';
+        @endphp
 
-    <div class="tab-content">
+        <div class="tab-content">
 
-        <!-- ===== TODAY ===== -->
-        <div class="tab-pane fade {{ $openTab === 'today' ? 'show active' : '' }}" id="att-today" role="tabpanel"
-             data-live="attendance employees sites">
-            {{-- The card reaches the bottom of the screen and the rows scroll
-                 inside it, under column heads that stay. See
-                 modules/_fill_screen.blade.php. --}}
-            <div class="table-card" data-fill-screen>
-                <div class="table-responsive" data-fill-scroll>
-                <table class="attendance-table w-100">
-                    <thead>
-                        {{-- The same labels, in the same order and at the same
-                             widths as History. Without Date the two tables
-                             disagreed from the third column on: Session and
-                             Time In / Out sat 112px apart between the tabs, so
-                             the grid jumped sideways every time you switched.
-
-                             Date is not filler here. A row is filed under the
-                             workday it opened, and the night crew's opened
-                             last night — so on Today's Attendance their date
-                             reads yesterday, which is the one thing on the row
-                             that says why they are on this tab at all. --}}
-                        <tr>
-                            <th class="p-2 text-start att-col-employee">{{ __('Employee') }}</th>
-                            <th class="p-2 text-start att-col-site">{{ __('Site') }}</th>
-                            <th class="p-2 text-start att-col-shift">{{ __('Shift') }}</th>
-                            <th class="p-2 text-start att-col-date">{{ __('Date') }}</th>
-                            <th class="p-2 text-start att-col-session">{{ __('Session') }}</th>
-                            <th class="p-2 text-start att-col-time">{{ __('Time In / Out') }}</th>
-                            <th class="p-2 text-center att-col-status">{{ __('Status') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($todayAttendances as $day)
-                        @php
-                            [$label, $cls] = $statusBadge($day->status());
-                            $isHoliday = in_array($day->date()->toDateString(), $holidayDates ?? []);
-                        @endphp
-                        <tr>
-                            <td class="fw-bold p-2">{{ $day->employee()->name ?? 'Unknown' }}</td>
-                            <td class="p-2">
-                                @if($day->site())
-                                    <span class="att-site"><i class="fas fa-map-marker-alt"></i> {{ $day->site()->name }}</span>
-                                @else
-                                    <span class="text-muted">&mdash;</span>
-                                @endif
-                            </td>
-                            <td class="p-2">
-                                @if($day->shift())
-                                    <span class="att-shift"><i class="fas {{ $day->shift()->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i> {{ $day->shift()->name }}</span>
-                                @else
-                                    <span class="text-muted">&mdash;</span>
-                                @endif
-                            </td>
-                            <td class="p-2">{{ $day->date()->format('m/d/Y') }}</td>
-                            @include('partials.attendance-day-cells', ['day' => $day])
-                            <td class="text-center p-2">
-                                <span class="badge-attendance {{ $cls }}">{{ $label }}</span>
-                                @if($isHoliday)
-                                    <span class="badge-attendance badge-holiday ms-1" title="{{ __('Holiday (Settings)') }}"><i class="fas fa-star me-1"></i>{{ __('Holiday') }}</span>
-                                @endif
-                                @if($day->needsReview())
-                                    <span class="badge-attendance badge-review ms-1" title="{{ $day->reviewReason() ?: __('Closed by the system') }}"><i class="fas fa-triangle-exclamation me-1"></i>{{ __('Needs review') }}</span>
-                                @endif
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="7" class="text-center py-5 text-muted">
-                                <i class="fas fa-user-clock mb-2 d-block" style="font-size: 1.75rem; opacity: 0.3;"></i>
-                                No employees have clocked in today yet.
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+            <!-- ===== TODAY ===== -->
+            <div class="tab-pane {{ $openTab === 'today' ? 'active' : '' }}" id="att-today" role="tabpanel">
+                <div class="atm-scroll" id="attTodayList" data-fill-scroll data-live="attendance employees sites">
+                    <table class="atm-table" id="todayTable">
+                        <thead>
+                            {!! $groupHead(false) !!}
+                            <tr>{!! $heads !!}</tr>
+                        </thead>
+                        <tbody>
+                            @forelse($todayBoard as $d)
+                                @include('attendance._day', ['d' => $d, 'tab' => 'today'])
+                            @empty
+                                <tr>
+                                    <td colspan="9" class="atm-empty">
+                                        <i class="fas fa-fingerprint"></i>
+                                        {{ $view || $search !== ''
+                                            ? __('Nobody on today\'s list matches these filters.')
+                                            : __('No fingerprint scans yet today.') }}
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
+            </div>
+
+            <!-- ===== HISTORY ===== -->
+            <div class="tab-pane {{ $openTab === 'history' ? 'active' : '' }}" id="att-history" role="tabpanel">
+                <div class="atm-scroll" id="attHistoryList" data-fill-scroll data-live="attendance employees sites">
+                        <table class="atm-table" id="historyTable">
+                            <thead>
+                                {!! $groupHead(true) !!}
+                                <tr>
+                                    <th class="att-check-col">
+                                        <input type="checkbox" id="selectAllChk" title="{{ __('Select all on this page') }}">
+                                    </th>
+                                    {!! $heads !!}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($historyBoard->groupBy(fn ($d) => $d->day->date()->toDateString()) as $date => $group)
+                                    <tr class="atm-dayhead" data-live-key="date-{{ $date }}">
+                                        <td colspan="10">{{ \Carbon\Carbon::parse($date)->format('l, m/d/Y') }}</td>
+                                    </tr>
+                                    @foreach($group as $d)
+                                        @include('attendance._day', ['d' => $d, 'tab' => 'history'])
+                                    @endforeach
+                                @empty
+                                    <tr>
+                                        <td colspan="10" class="atm-empty">
+                                            <i class="fas fa-clock-rotate-left"></i>
+                                            {{-- "Nothing here" and "nothing here lately" are
+                                                 different answers, and a reader who forgot
+                                                 the range is on would read the first as the
+                                                 second. --}}
+                                            {{ $range === 'all'
+                                                ? __('No previous attendance records.')
+                                                : __('No attendance records in this date range.') }}
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                </div>
+
+                {{-- appends(): these links live in the History pane, so page 2
+                     has to carry the tab as well as the filters, or it lands on
+                     Today's Attendance. --}}
+                <div class="att-pager" id="attHistoryPager" data-live="attendance employees sites">{{ $historyAttendances->appends(array_filter(['tab' => 'history', 'view' => $view]))->links() }}</div>
             </div>
         </div>
 
-        <!-- ===== HISTORY ===== -->
-        <div class="tab-pane fade {{ $openTab === 'history' ? 'show active' : '' }}" id="att-history" role="tabpanel"
-             data-live="attendance employees sites">
-
-            {{-- The toolbar moved up into the control row it shares with the
-                 filters; the ids are unchanged, so the script below still
-                 finds every button. --}}
-
-            <div class="table-card" data-fill-screen>
-                <div class="table-responsive" data-fill-scroll>
-                <table class="attendance-table w-100" id="historyTable">
-                    <thead>
-                        <tr>
-                            <th class="att-check-col p-2">
-                                <input type="checkbox" id="selectAllChk" title="{{ __('Select all on this page') }}">
-                            </th>
-                            <th class="p-2 text-start att-col-employee">{{ __('Employee') }}</th>
-                            <th class="p-2 text-start att-col-site">{{ __('Site') }}</th>
-                            <th class="p-2 text-start att-col-shift">{{ __('Shift') }}</th>
-                            <th class="p-2 text-start att-col-date">{{ __('Date') }}</th>
-                            <th class="p-2 text-start att-col-session">{{ __('Session') }}</th>
-                            <th class="p-2 text-start att-col-time">{{ __('Time In / Out') }}</th>
-                            <th class="p-2 text-center att-col-status">{{ __('Status') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($historyDays as $day)
-                        @php
-                            [$label, $cls] = $statusBadge($day->status());
-                            $isHoliday = in_array($day->date()->toDateString(), $holidayDates ?? []);
-                        @endphp
-                        {{-- The checkbox carries every row behind the day, so
-                             deleting a Tuesday takes the whole Tuesday rather
-                             than its morning and leaving its afternoon. --}}
-                        <tr data-id="{{ implode(',', $day->ids()) }}">
-                            <td class="att-check-col p-2">
-                                <input type="checkbox" class="row-chk" value="{{ implode(',', $day->ids()) }}">
-                            </td>
-                            <td class="fw-bold p-2">{{ $day->employee()->name ?? 'Unknown' }}</td>
-                            <td class="p-2">
-                                @if($day->site())
-                                    <span class="att-site"><i class="fas fa-map-marker-alt"></i> {{ $day->site()->name }}</span>
-                                @else
-                                    <span class="text-muted">&mdash;</span>
-                                @endif
-                            </td>
-                            <td class="p-2">
-                                @if($day->shift())
-                                    <span class="att-shift"><i class="fas {{ $day->shift()->crosses_midnight ? 'fa-moon' : 'fa-sun' }}"></i> {{ $day->shift()->name }}</span>
-                                @else
-                                    <span class="text-muted">&mdash;</span>
-                                @endif
-                            </td>
-                            <td class="p-2">{{ $day->date()->format('m/d/Y') }}</td>
-                            @include('partials.attendance-day-cells', ['day' => $day])
-                            <td class="text-center p-2">
-                                <span class="badge-attendance {{ $cls }}">{{ $label }}</span>
-                                @if($isHoliday)
-                                    <span class="badge-attendance badge-holiday ms-1" title="{{ __('Holiday (Settings)') }}"><i class="fas fa-star me-1"></i>{{ __('Holiday') }}</span>
-                                @endif
-                                @if($day->needsReview())
-                                    <span class="badge-attendance badge-review ms-1" title="{{ $day->reviewReason() ?: __('Closed by the system') }}"><i class="fas fa-triangle-exclamation me-1"></i>{{ __('Needs review') }}</span>
-                                @endif
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
-                                {{-- "Nothing here" and "nothing here lately"
-                                     are different answers, and a reader who
-                                     forgot the range is on would read the
-                                     first one as the second. --}}
-                                {{ $range === 'all'
-                                    ? __('No previous attendance records.')
-                                    : __('No attendance records in this date range.') }}
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-                </div>
-
-                <div class="mt-3 att-pager">
-                    {{-- appends(): these links live in the History pane, so
-                         page 2 has to carry the tab as well as the filters or
-                         it lands on Today's Attendance. --}}
-                    {{ $historyAttendances->appends(array_filter(['tab' => 'history', 'view' => $view]))->links() }}
-                </div>
-            </div>
+        <div class="atm-legend">
+            <span><i class="atm-sw" style="background:var(--brand)"></i>{{ __('Worked') }}</span>
+            <span><i class="atm-sw" style="background:repeating-linear-gradient(135deg, var(--atm-hatch) 0 4px, transparent 4px 8px); border:1px solid var(--atm-brk)"></i>{{ __('Break window') }}</span>
+            <span><i class="atm-sw" style="background:var(--atm-brk)"></i>{{ __('On break') }}</span>
+            <span><i class="atm-sw" style="background:var(--warning)"></i>{{ __('Overbreak') }}</span>
+            <span><i class="atm-sw" style="border:1.5px dashed var(--danger)"></i>{{ __('Missing or guessed scan') }}</span>
+            <span><i class="atm-sw" style="height:2px; background:var(--danger)"></i>{{ __('Late') }}</span>
+            <span>{{ __('Click a row to see its scans and fix missing ones.') }}</span>
         </div>
-    </div>
+    </section>
 </div>
 
 @include('modules._fill_screen')
 
 @push('scripts')
 <script>
-// ── Global filters ───────────────────────────────────────────────────────────
 (function () {
-    const form = document.getElementById('attFilters');
-    if (!form) return;
-
+    const card     = document.querySelector('.atm-card');
+    const form     = document.getElementById('attFilters');
+    const search   = document.getElementById('attSearch');
     const tabField = document.getElementById('attTabField');
+    const regions  = ['attStats', 'attTodayList', 'attHistoryList', 'attHistoryPager', 'attHistCount'];
+    const csrf     = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    if (!form || !card) return;
 
-    // Site, Shift and Date Range are all selects now; any of them reloads
-    // with the choice applied. The noscript Apply button covers the case
-    // where this never runs at all.
-    form.querySelectorAll('select').forEach(el => {
-        el.addEventListener('change', () => form.submit());
+    // ── Rows that are open ──────────────────────────────────────────────────
+    // Kept here rather than in the markup, because the markup is replaced —
+    // by a filter, a fix, or the live feed — and a row somebody opened should
+    // still be open afterwards.
+    const open = new Set();
+
+    function applyOpen() {
+        document.querySelectorAll('tr.atm-row').forEach(tr => {
+            const on  = open.has(tr.dataset.day);
+            const det = tr.nextElementSibling;
+            tr.classList.toggle('is-open', on);
+            tr.setAttribute('aria-expanded', on ? 'true' : 'false');
+            if (det && det.matches('tr.atm-detail')) det.hidden = !on;
+        });
+    }
+
+    function toggle(tr) {
+        open.has(tr.dataset.day) ? open.delete(tr.dataset.day) : open.add(tr.dataset.day);
+        applyOpen();
+    }
+
+    document.addEventListener('click', e => {
+        const tr = e.target.closest('tr.atm-row');
+        if (!tr || document.body.classList.contains('att-mark-mode')) return;
+        if (e.target.closest('input, button, a, label, select')) return;
+        toggle(tr);
+    });
+    document.addEventListener('keydown', e => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('tr.atm-row')) {
+            e.preventDefault();
+            toggle(e.target);
+        }
+    });
+    document.addEventListener('live:updated', applyOpen);
+
+    // ── Filters, fetched in place ───────────────────────────────────────────
+    // Any choice asks the server for the page as it would be, and swaps in
+    // the parts that changed: the cards and both lists. The address bar
+    // follows, so a refresh or a copied link lands on the same view.
+    function urlOf() {
+        const params = new URLSearchParams(new FormData(form));
+        for (const [k, v] of [...params]) {
+            if (v === '' || (k === 'range' && v === 'all') || (k === 'tab' && v === 'today')) params.delete(k);
+        }
+        const q = params.toString();
+        return form.action + (q ? '?' + q : '');
+    }
+
+    let pending = null;
+
+    async function reload(url) {
+        pending?.abort();
+        const ctrl = new AbortController();
+        pending = ctrl;
+        card.classList.add('is-loading');
+
+        try {
+            const res = await fetch(url, {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                signal: ctrl.signal,
+            });
+            if (!res.ok) { location.href = url; return; }
+
+            const fresh = new DOMParser().parseFromString(await res.text(), 'text/html');
+            regions.forEach(id => {
+                const here = document.getElementById(id);
+                const next = fresh.getElementById(id);
+                if (!here || !next) return;
+                here.innerHTML = next.innerHTML;
+                here.hidden = next.hidden;
+            });
+
+            history.replaceState(null, '', url);
+            applyOpen();
+            markReset();
+            document.dispatchEvent(new CustomEvent('fill-screen:refit'));
+        } catch (err) {
+            if (err.name !== 'AbortError') location.href = url;
+        } finally {
+            if (pending === ctrl) {
+                pending = null;
+                card.classList.remove('is-loading');
+            }
+        }
+    }
+
+    form.addEventListener('change', e => {
+        if (e.target === search) return;
+        reload(urlOf());
     });
 
-    // Keep the hidden field and the address bar in step with the open tab, so
-    // changing a filter while reading History comes back to History — and so
-    // does a refresh. The delete controls share the row with the filters and
-    // only mean anything on History, so they come and go with it.
+    let typing = null;
+    search?.addEventListener('input', () => {
+        clearTimeout(typing);
+        typing = setTimeout(() => reload(urlOf()), 300);
+    });
+    form.addEventListener('submit', e => { e.preventDefault(); clearTimeout(typing); reload(urlOf()); });
+    search?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); clearTimeout(typing); reload(urlOf()); }
+    });
+
+    // A card sets the status control, and the control fetches — so both
+    // always show the same thing. Clicking the card that is on turns it off.
+    document.getElementById('attStats')?.addEventListener('click', e => {
+        const a = e.target.closest('a[data-view]');
+        if (!a || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        const want  = a.classList.contains('is-active') ? '' : a.dataset.view;
+        const radio = document.querySelector(`input[name="view"][value="${want}"]`);
+        if (radio) radio.checked = true;
+        reload(urlOf());
+    });
+
+    // ── Tabs ────────────────────────────────────────────────────────────────
+    // The range and the delete controls only mean anything on History, so
+    // they come and go with it; the tab rides in the address bar too.
     const historyActions = document.getElementById('attHistoryActions');
     const rangePick      = document.getElementById('attRangePick');
 
-    document.querySelectorAll('.att-tabs [data-tab]').forEach(btn => {
+    document.querySelectorAll('.atm-tab[data-tab]').forEach(btn => {
         btn.addEventListener('shown.bs.tab', () => {
             const tab = btn.dataset.tab;
-            if (tabField) tabField.value = tab;
-            if (historyActions) historyActions.hidden = (tab !== 'history');
-            if (rangePick)      rangePick.hidden      = (tab !== 'history');
+            tabField.value        = tab;
+            historyActions.hidden = tab !== 'history';
+            rangePick.hidden      = tab !== 'history';
+            if (tab !== 'history') markExit();
 
             const url = new URL(window.location);
             if (tab === 'history') url.searchParams.set('tab', 'history');
             else                   url.searchParams.delete('tab');
             history.replaceState(null, '', url);
 
-            // The pane that was hidden had no height to measure, so it is
-            // sized now that it is on screen.
+            // The pane that was hidden had no height to measure.
             document.dispatchEvent(new CustomEvent('fill-screen:refit'));
         });
     });
+
+    // ── Fixing a time out nobody scanned ────────────────────────────────────
+    document.addEventListener('submit', async e => {
+        const f = e.target.closest('form[data-fix]');
+        if (!f) return;
+        e.preventDefault();
+
+        const btn  = e.submitter;
+        const time = btn && btn.name === 'time' ? btn.value : f.querySelector('input[type="time"]').value;
+        if (!time) { Notify.warning(@json(__('Enter a time first.'))); return; }
+
+        f.querySelectorAll('button').forEach(b => b.disabled = true);
+        try {
+            const res  = await fetch(f.dataset.fix, {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify({ time }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
+                Notify.success(data.message);
+                await reload(location.href);
+            } else {
+                Notify.error(data.message || @json(__('The time could not be saved.')));
+                f.querySelectorAll('button').forEach(b => b.disabled = false);
+            }
+        } catch (err) {
+            Notify.error(@json(__('Request failed:')) + ' ' + err.message);
+            f.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+    });
+
+    // ── Keeping "now" current ───────────────────────────────────────────────
+    // The live feed re-reads the lists when somebody scans, but a break turns
+    // into an overbreak with nobody scanning at all. Once a minute, while the
+    // page is looked at, it is re-read for that alone.
+    setInterval(() => {
+        if (document.hidden || !window.Live || typeof window.Live.refresh !== 'function') return;
+        window.Live.refresh();
+    }, 60000);
+
+    // ── Mark for deletion ───────────────────────────────────────────────────
+    const markBtn   = document.getElementById('markModeBtn');
+    const cancelBtn = document.getElementById('cancelMarkBtn');
+    const delSelBtn = document.getElementById('deleteSelectedBtn');
+    const selCount  = document.getElementById('selCount');
+
+    const checked = () => [...document.querySelectorAll('#historyTable .row-chk:checked')];
+
+    function updateSelCount() {
+        const n = checked().length;
+        selCount.textContent = n;
+        delSelBtn.disabled = n === 0;
+    }
+
+    function markEnter() {
+        document.body.classList.add('att-mark-mode');
+        markBtn.style.display   = 'none';
+        cancelBtn.style.display = '';
+        delSelBtn.style.display = '';
+        updateSelCount();
+    }
+
+    function markReset() {
+        document.querySelectorAll('#historyTable .row-chk, #selectAllChk').forEach(c => c.checked = false);
+        document.querySelectorAll('#historyTable tr.att-marked').forEach(r => r.classList.remove('att-marked'));
+        updateSelCount();
+    }
+
+    function markExit() {
+        document.body.classList.remove('att-mark-mode');
+        markBtn.style.display   = '';
+        cancelBtn.style.display = 'none';
+        delSelBtn.style.display = 'none';
+        markReset();
+    }
+
+    markBtn.addEventListener('click', markEnter);
+    cancelBtn.addEventListener('click', markExit);
+
+    // Delegated: the table is replaced whenever a filter changes.
+    document.addEventListener('change', e => {
+        if (e.target.id === 'selectAllChk') {
+            document.querySelectorAll('#historyTable .row-chk').forEach(c => {
+                c.checked = e.target.checked;
+                c.closest('tr')?.classList.toggle('att-marked', c.checked);
+            });
+            updateSelCount();
+            return;
+        }
+        if (e.target.classList.contains('row-chk')) {
+            e.target.closest('tr')?.classList.toggle('att-marked', e.target.checked);
+            updateSelCount();
+            const all = document.querySelectorAll('#historyTable .row-chk');
+            const sel = document.getElementById('selectAllChk');
+            if (sel) sel.checked = all.length > 0 && all.length === checked().length;
+        }
+    });
+
+    // While marking, a click anywhere on a row ticks it.
+    document.addEventListener('click', e => {
+        if (!document.body.classList.contains('att-mark-mode')) return;
+        const row = e.target.closest('#historyTable tr.atm-row');
+        if (!row || e.target.closest('.att-check-col')) return;
+        const chk = row.querySelector('.row-chk');
+        if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
+    });
+
+    delSelBtn.addEventListener('click', async () => {
+        // One checkbox is one day, and a day is one or more rows.
+        const ids = checked().flatMap(c => c.value.split(','));
+        if (!ids.length) { Notify.warning(@json(__('Tick the records you want to delete first.'))); return; }
+
+        const ok = await Notify.confirm({
+            title:        @json(__('Delete selected records?')),
+            message:      `${ids.length} attendance record(s) will be deleted. This cannot be undone.`,
+            confirmLabel: @json(__('Delete')),
+            tone:         'danger',
+        });
+        if (!ok) return;
+
+        try {
+            const res  = await fetch(@json(route('attendance.history.bulk-delete')), {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify({ ids }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                Notify.success(`Deleted ${data.deleted} record(s).`);
+                markExit();
+                reload(location.href);
+            } else {
+                Notify.error(data.message || 'Something went wrong.');
+            }
+        } catch (err) {
+            Notify.error('Request failed: ' + err.message);
+        }
+    });
 })();
-
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-
-    (function () {
-        const markBtn      = document.getElementById('markModeBtn');
-        const cancelBtn    = document.getElementById('cancelMarkBtn');
-        const delSelBtn    = document.getElementById('deleteSelectedBtn');
-        const selCountEl   = document.getElementById('selCount');
-        const selectAllChk = document.getElementById('selectAllChk');
-
-        if (!markBtn) return; // history tab might not be in DOM on this page load
-
-        function getChecked() {
-            return [...document.querySelectorAll('#historyTable .row-chk:checked')];
-        }
-
-        function updateSelCount() {
-            const n = getChecked().length;
-            selCountEl.textContent = n;
-            delSelBtn.disabled = n === 0;
-        }
-
-        function enterMarkMode() {
-            document.body.classList.add('att-mark-mode');
-            markBtn.style.display   = 'none';
-            cancelBtn.style.display = '';
-            delSelBtn.style.display = '';
-            updateSelCount();
-        }
-
-        function exitMarkMode() {
-            document.body.classList.remove('att-mark-mode');
-            markBtn.style.display   = '';
-            cancelBtn.style.display = 'none';
-            delSelBtn.style.display = 'none';
-            // uncheck everything
-            document.querySelectorAll('#historyTable .row-chk').forEach(c => c.checked = false);
-            if (selectAllChk) selectAllChk.checked = false;
-            document.querySelectorAll('#historyTable tbody tr').forEach(r => r.classList.remove('att-marked'));
-            updateSelCount();
-        }
-
-        markBtn.addEventListener('click', enterMarkMode);
-        cancelBtn.addEventListener('click', exitMarkMode);
-
-        // Row checkbox change
-        document.addEventListener('change', function (e) {
-            if (e.target.classList.contains('row-chk')) {
-                const row = e.target.closest('tr');
-                if (row) row.classList.toggle('att-marked', e.target.checked);
-                updateSelCount();
-                if (selectAllChk) {
-                    const all = document.querySelectorAll('#historyTable .row-chk');
-                    selectAllChk.checked = all.length > 0 && all.length === getChecked().length;
-                }
-            }
-        });
-
-        // Select-all checkbox
-        if (selectAllChk) {
-            selectAllChk.addEventListener('change', function () {
-                document.querySelectorAll('#historyTable .row-chk').forEach(c => {
-                    c.checked = this.checked;
-                    const row = c.closest('tr');
-                    if (row) row.classList.toggle('att-marked', this.checked);
-                });
-                updateSelCount();
-            });
-        }
-
-        // Click row (anywhere except the checkbox cell) to toggle in mark mode
-        document.getElementById('historyTable')?.addEventListener('click', function (e) {
-            if (!document.body.classList.contains('att-mark-mode')) return;
-            const td = e.target.closest('td');
-            if (!td || td.classList.contains('att-check-col')) return;
-            const row = td.closest('tr[data-id]');
-            if (!row) return;
-            const chk = row.querySelector('.row-chk');
-            if (chk) { chk.checked = !chk.checked; chk.dispatchEvent(new Event('change', { bubbles: true })); }
-        });
-
-        async function doDelete(url, body, successMsg) {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-            try {
-                const res  = await fetch(url, {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                    body: body ? JSON.stringify(body) : undefined,
-                });
-                const data = await res.json();
-                if (data.success) {
-                    // Parked, not shown: location.reload() is about to take
-                    // this page away, and with it the toast.
-                    Notify.afterReload('success', successMsg.replace('{n}', data.deleted));
-                    location.reload();
-                } else {
-                    Notify.error(data.message || 'Something went wrong.');
-                }
-            } catch (err) {
-                Notify.error('Request failed: ' + err.message);
-            }
-        }
-
-        delSelBtn.addEventListener('click', async function () {
-            // One checkbox is one day, and a day is one or more rows.
-            const ids = getChecked().flatMap(c => c.value.split(','));
-            // Nothing ticked used to be a silent no-op, which reads as a
-            // broken button rather than as an empty selection.
-            if (!ids.length) { Notify.warning('Tick the records you want to delete first.'); return; }
-
-            const ok = await Notify.confirm({
-                title:        'Delete selected records?',
-                message:      `${ids.length} attendance record(s) will be deleted. This cannot be undone.`,
-                confirmLabel: 'Delete',
-                tone:         'danger',
-            });
-            if (!ok) return;
-            doDelete('{{ route("attendance.history.bulk-delete") }}', { ids }, 'Deleted {n} record(s).');
-        });
-    })();
 </script>
 @endpush
 

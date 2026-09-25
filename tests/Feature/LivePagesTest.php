@@ -92,9 +92,11 @@ class LivePagesTest extends TestCase
                 'empTableWrap' => ['employees'],
             ],
             '/attendance' => [
-                'attStats'    => ['attendance'],
-                'att-today'   => ['attendance'],
-                'att-history' => ['attendance'],
+                'attStats'        => ['attendance'],
+                'attTodayList'    => ['attendance'],
+                'attHistoryList'  => ['attendance'],
+                'attHistoryPager' => ['attendance'],
+                'attHistCount'    => ['attendance'],
             ],
             '/payroll-records' => [
                 'prSummary'   => ['payroll', 'attendance'],

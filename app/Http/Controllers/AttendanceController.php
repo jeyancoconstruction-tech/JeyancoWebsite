@@ -3,21 +3,37 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use App\Models\Attendance;
+use App\Models\AuditLog;
 use App\Models\Employee;
 use App\Models\Holiday;
 use App\Models\Shift;
 use App\Models\Site;
 use App\Notifications\AttendanceAlert;
+use App\Services\PayrollService;
 use App\Support\AttendanceDay;
+use App\Support\AttendanceDayView;
+use App\Support\WorkSchedule;
 use Carbon\Carbon;
 
 class AttendanceController extends Controller
 {
+    /** The status control's values, and the day status each one keeps. */
+    private const VIEWS = [
+        'clocked-in' => 'work',
+        'break'      => 'break',
+        'missed'     => 'review',
+        'done'       => 'done',
+    ];
+
+    /** What the lists load with every row: who, where, under which shift, and from which kiosk. */
+    private const WITH = ['employee.laborType', 'site', 'shift', 'kiosk', 'reviewer'];
+
     /**
      * Web: Display attendance page (admin panel)
      */
-    public function index(Request $request)
+    public function index(Request $request, PayrollService $payroll)
     {
         $today = Carbon::today();
         $now   = Carbon::now();
@@ -31,7 +47,7 @@ class AttendanceController extends Controller
 
         // ── Global filters ──────────────────────────────────────────────────
         // Site and Shift are read once and applied to everything the page
-        // shows: both tables and all three cards. Anything less and the cards
+        // shows: both tables and all four cards. Anything less and the cards
         // would be counting a different set of records from the one under
         // them, which is worse than having no filter at all.
         $sites  = Site::orderBy('name')->get();
@@ -47,8 +63,8 @@ class AttendanceController extends Controller
 
         // How far back the History table reaches. Unlike Site and Shift this
         // one narrows History alone: Today's Attendance is a single workday,
-        // and the three cards count today and this week, so every range would
-        // be either a no-op or a lie up there. The control comes and goes with
+        // and the cards count today and this week, so every range would be
+        // either a no-op or a lie up there. The control comes and goes with
         // the History tab for the same reason.
         //
         // Day counts include today, the way the audit log's periods do — "last
@@ -84,71 +100,91 @@ class AttendanceController extends Controller
             return $query;
         };
 
-        // CURRENT DAY VIEW — the day each crew is working, which is not the
-        // same date for both of them. A night shift that timed in at 8pm is
-        // still on its own workday at 2am, on a row dated the evening before;
-        // under a plain calendar filter this table went empty at midnight on
-        // exactly the crew still standing on site, and their rows appeared in
-        // the history as missed sign-outs while they were working.
-        //
-        // Eager-load the site each clock was taken at. One kiosk is carried
-        // between sites, so "which site" is a property of the attendance, not
-        // of the worker — reading it off the employee would show wherever they
-        // were first registered. The shift is loaded too: each row's status is
-        // read against the shift it was worked under.
-        // Which card the reader clicked, if any. It narrows the two tables to
-        // the rows behind a number — the question "who are they" that a
-        // figure on its own cannot answer — and deliberately does NOT narrow
-        // the cards themselves: clicking Currently Clocked In must not go on
-        // to rewrite Present Today as the same number.
-        $view = in_array($request->query('view'), ['clocked-in', 'missed'], true)
-            ? $request->query('view')
+        // Which status the lists are narrowed to: the segmented control over
+        // the tables, and the cards, which are links to the same thing. It
+        // narrows the lists and deliberately NOT the cards: clicking Working
+        // now must not go on to rewrite Present today as the same number.
+        $view = array_key_exists((string) $request->query('view'), self::VIEWS)
+            ? (string) $request->query('view')
             : null;
 
+        // A name typed into the search box. Like the status, it narrows the
+        // lists only — it asks "where is this person", not "how many".
+        $search = mb_substr(trim((string) $request->query('q', '')), 0, 60);
+
+        // ── Today ───────────────────────────────────────────────────────────
+        // The day each crew is working, which is not the same date for both
+        // of them. A night shift that timed in at 8pm is still on its own
+        // workday at 2am, on a row dated the evening before; under a plain
+        // calendar filter this table went empty at midnight on exactly the
+        // crew still standing on site, and their rows appeared in the history
+        // as missed sign-outs while they were working.
+        //
+        // The site each clock was taken at comes with the row: one kiosk is
+        // carried between sites, so "which site" is a property of the
+        // attendance, not of the worker. The shift comes too — each day is
+        // read against the shift it was worked under.
         $todayAll = $filtered(
-                Attendance::with(['employee', 'site', 'shift'])
+                Attendance::with(self::WITH)
                     ->ofRegistered()
                     ->fromWorkday($now)
                     ->whereNotNull('time_in')
                     ->orderByDesc('time_in')
             )->get();
 
+        // One line per worker per day. A morning and an afternoon are one
+        // day's attendance, not two — see App\Support\AttendanceDay.
+        $todayAllDays = AttendanceDay::gather($todayAll);
+
+        // Every day read once for where it stands, unpriced: the cards count
+        // from these and a status does not depend on the hours.
+        $todayRead = AttendanceDayView::all($todayAllDays, $now, true, []);
+
         // Narrowed in memory rather than by a second query: the day view is
         // already loaded whole, because the cards above are counted from it.
-        $todayRows = match ($view) {
-            'clocked-in' => $todayAll->whereNull('time_out')->values(),
-            'missed'     => $todayAll->filter(
-                                fn ($r) => $r->signOutOverdue($now) || $r->needs_review
-                            )->values(),
-            default      => $todayAll,
-        };
+        $keep = $todayRead->filter(fn (AttendanceDayView $d) =>
+            ($view === null || $d->key() === self::VIEWS[$view])
+            && ($search === '' || str_contains(mb_strtolower((string) $d->day->employee()?->name), mb_strtolower($search)))
+        );
 
-        // One line per worker per day. A morning and an afternoon are one
-        // day's attendance, not two — see App\Support\AttendanceDay, which
-        // keeps both stretches so the AM and PM times are still readable.
-        $todayAttendances = AttendanceDay::gather($todayRows);
+        $todayAttendances = $keep->map(fn (AttendanceDayView $d) => $d->day)->values();
+        $todayBoard       = AttendanceDayView::all($todayAttendances, $now, true, $this->priced($payroll, $todayAttendances));
 
-        // HISTORY — workdays that have finished, which for the night crew is
-        // the following morning rather than midnight.
-        // History is paginated, so this one narrows in SQL — filtering the
-        // fifteen rows on screen would quietly ignore the rest of the result.
+        // ── History ─────────────────────────────────────────────────────────
+        // Workdays that have finished, which for the night crew is the
+        // following morning rather than midnight. History is paginated, so it
+        // narrows in SQL — filtering the fifteen rows on screen would quietly
+        // ignore the rest of the result.
         //
         // Paginated by DAY, not by row. A worker's Tuesday is several rows,
         // and fifteen rows to a page would cut a day in half at the page
-        // break — the morning at the foot of one page, the afternoon at the
-        // head of the next, which is exactly the reading the page is meant to
-        // stop. So the days are paged first and their rows fetched after.
+        // break. So the days are paged first and their rows fetched after.
         $historyFilters = fn ($query) => $filtered($query)
             ->ofRegistered()
             ->beforeWorkday($now)
+            ->when($search !== '', fn ($q) => $q->whereHas('employee',
+                fn ($e) => $e->withTrashed()->where('name', 'like', '%' . $search . '%')))
             ->when($view === 'clocked-in',
                 fn ($q) => $q->whereNotNull('time_in')->whereNull('time_out'))
             ->when($view === 'missed', fn ($q) => $q->missedSignOut($now))
+            // A break is only ever running today; a finished day that stopped
+            // at lunch is a half day, and is read as one.
+            ->when($view === 'break', fn ($q) => $q->whereRaw('1 = 0'))
             ->when($rangeStart, fn ($q) => $q->where('date', '>=', $rangeStart->toDateString()));
 
-        $days = $historyFilters(Attendance::query())
+        $daysQuery = $historyFilters(Attendance::query())
             ->select('employee_id', 'date')
-            ->groupBy('employee_id', 'date')
+            ->groupBy('employee_id', 'date');
+
+        // Completed is a question about the whole day: nothing of it left
+        // open and nothing the system had to close.
+        if ($view === 'done') {
+            $daysQuery->havingRaw(
+                'SUM(CASE WHEN needs_review = 1 OR (time_in IS NOT NULL AND time_out IS NULL) THEN 1 ELSE 0 END) = 0'
+            );
+        }
+
+        $days = $daysQuery
             ->orderBy('date', 'desc')
             ->orderBy('employee_id')
             ->paginate(15)
@@ -160,13 +196,13 @@ class AttendanceController extends Controller
         // rather than a composite IN, which SQLite does not take and the
         // suite runs on SQLite.
         //
-        // Deliberately NOT re-filtered by the card: a day the card matched on
-        // one of its stretches is shown whole, or the reader would see a
-        // missed sign-out with the rest of its own day missing.
+        // Deliberately NOT re-filtered by the status: a day matched on one of
+        // its stretches is shown whole, or the reader would see a missed
+        // sign-out with the rest of its own day missing.
         $historyDays = collect($days->items())->isEmpty()
             ? collect()
             : AttendanceDay::gather(
-                $filtered(Attendance::with(['employee', 'site', 'shift']))
+                $filtered(Attendance::with(self::WITH))
                     ->where(function ($q) use ($days) {
                         foreach ($days->items() as $day) {
                             $q->orWhere(fn ($w) => $w
@@ -179,30 +215,46 @@ class AttendanceController extends Controller
             )->sortByDesc(fn ($d) => $d->date()->toDateString() . '|' . str_pad((string) $d->first()->employee_id, 8, '0', STR_PAD_LEFT))
              ->values();
 
+        $historyBoard = AttendanceDayView::all($historyDays, $now, false, $this->priced($payroll, $historyDays));
+
         // The pager and the empty state read this; the rows come from
         // $historyDays above.
         $historyAttendances = $days;
 
-        // Stats. Counted by worker, not by row: a day is several rows — a
-        // morning, an afternoon after lunch, a stretch begun again after a
-        // mistaken time-out — and counting those made one man on site read as
-        // "3 present" beside a workforce of one. It also made the low-turnout
-        // alert below compare a row count against a headcount.
-        // Counted from the whole day view, not from whatever a clicked card
-        // has narrowed it to.
+        // ── Cards ───────────────────────────────────────────────────────────
+        // Counted by worker, not by row: a day is several rows — a morning,
+        // an afternoon after lunch, a stretch begun again after a mistaken
+        // time-out — and counting those made one man on site read as "3
+        // present" beside a workforce of one. Counted from the whole day
+        // view, not from whatever the status or the search has narrowed it to.
         $presentToday = $todayAll->unique('employee_id')->count();
-        $clockedIn    = $todayAll->whereNull('time_out')->unique('employee_id')->count();
-        $weekStart    = Carbon::today()->startOfWeek(); // Monday — resets each week
+        $nightCrew    = $todayRead->filter(fn (AttendanceDayView $d) => (bool) $d->day->shift()?->crosses_midnight)->count();
 
-        // Missed sign-outs within the current week, by the same rule the
-        // badges use: the shift is over, plus an hour, and nobody clocked
-        // out. Counting by date instead made a night crew invalid every
-        // night; counting only still-open rows made the ones the system had
-        // closed disappear from the card while the badge still flagged them.
+        $working   = $todayRead->filter(fn (AttendanceDayView $d) => $d->key() === 'work');
+        $clockedIn = $working->count();
+        $inSecond  = $working->filter(fn (AttendanceDayView $d) => $d->status()['half'] === 'PM')->count();
+
+        $breaks   = $todayRead->filter(fn (AttendanceDayView $d) => $d->key() === 'break');
+        $onBreak  = $breaks->count();
+        $overBreak = $breaks->filter(fn (AttendanceDayView $d) => $d->status()['over'])->count();
+
+        $weekStart = Carbon::today()->startOfWeek(); // Monday — resets each week
+
+        // Days waiting on the office this week, by the same rule the rows
+        // use: the shift is over, plus an hour, and nobody clocked out — or
+        // the system had to close it. Counting by date instead made a night
+        // crew invalid every night; counting only still-open rows made the
+        // ones the system had closed disappear from the card while the row
+        // still flagged them. One per day, however many stretches it has.
         $invalidCount = $filtered(
                 Attendance::whereBetween('date', [$weekStart, $today])
                     ->missedSignOut($now)
-            )->count();
+            )->get(['employee_id', 'date'])
+             ->unique(fn ($r) => $r->employee_id . '|' . Carbon::parse($r->date)->toDateString())
+             ->count();
+
+        $reviewToday   = $todayRead->filter(fn (AttendanceDayView $d) => $d->key() === 'review')->count();
+        $reviewEarlier = max(0, $invalidCount - $reviewToday);
 
         // Global holiday dates (overlay) — shown as a secondary tag.
         $holidayDates = Holiday::dateList();
@@ -232,7 +284,7 @@ class AttendanceController extends Controller
             );
         }
 
-        // Which tab to open on. A clicked card knows what it was counting but
+        // Which tab to open on. A chosen status knows what it was counting but
         // not where those rows live: a missed sign-out is past its shift's
         // end, so it is usually in the history, while somebody still on site
         // is always on the day view. Landing on an empty table and leaving
@@ -243,10 +295,139 @@ class AttendanceController extends Controller
         }
 
         return view('attendance', compact(
-            'todayAttendances', 'historyAttendances', 'historyDays',
-            'presentToday', 'clockedIn', 'invalidCount', 'holidayDates',
-            'sites', 'shifts', 'siteId', 'shiftId', 'range', 'view', 'openTab'
+            'todayAttendances', 'historyAttendances', 'historyDays', 'todayBoard', 'historyBoard',
+            'presentToday', 'nightCrew', 'clockedIn', 'inSecond', 'onBreak', 'overBreak',
+            'invalidCount', 'reviewToday', 'reviewEarlier', 'holidayDates',
+            'sites', 'shifts', 'siteId', 'shiftId', 'range', 'view', 'search', 'openTab', 'now'
         ));
+    }
+
+    /**
+     * What payroll makes of these days' rows, by attendance id: the minutes
+     * worked, the overtime among them, and how late the session started.
+     *
+     * Read from PayrollService rather than measured here, so the page and the
+     * payslip say the same thing. Only closed stretches are priced; one still
+     * running has nothing to price yet.
+     *
+     * @param  Collection<int, AttendanceDay>  $days
+     * @return array<int, array{minutes: int, ot_minutes: int, late_minutes: int}>
+     */
+    private function priced(PayrollService $payroll, Collection $days): array
+    {
+        $rows = $days->flatMap(fn (AttendanceDay $d) => $d->rows)
+            ->filter(fn (Attendance $r) => $r->time_in && $r->time_out);
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $dates  = $rows->map(fn (Attendance $r) => Carbon::parse($r->date)->toDateString());
+        $result = $payroll->computeForRange($dates->min(), $dates->max(), [
+            'employees'    => $rows->pluck('employee_id')->unique()->values()->all(),
+            'cashAdvances' => false,
+        ]);
+
+        // Only the stretches asked about. The range brings the worker's other
+        // rows along, including one still open — which payroll has nothing to
+        // price yet, and measures lateness for by the old whole-shift rule.
+        $closed = $rows->pluck('id')->flip();
+        $priced = [];
+
+        foreach ($result['days'] as $day) {
+            foreach ($day['details'] as $d) {
+                // Leave days ride in the same list, under ids of their own.
+                if (! empty($d['leave']) || ! is_int($d['id'] ?? null) || ! isset($closed[$d['id']])) {
+                    continue;
+                }
+
+                $priced[$d['id']] = [
+                    'minutes'      => (int) $d['minutes'],
+                    'ot_minutes'   => (int) $d['ot_minutes'],
+                    'late_minutes' => (int) $d['late_minutes'],
+                ];
+            }
+        }
+
+        return $priced;
+    }
+
+    /**
+     * Settle a time out nobody scanned: the office confirms the time the
+     * shift says, or types the one it knows, from under the row.
+     *
+     * Only a stretch still waiting on one can be settled here — open, or
+     * closed by the system at a guess. A time out a worker scanned is theirs,
+     * and is not rewritten from this page.
+     */
+    public function setTimeOut(Request $request, Attendance $attendance)
+    {
+        $data = $request->validate(['time' => ['required', 'date_format:H:i']]);
+
+        if (empty($attendance->time_in) || (! empty($attendance->time_out) && ! $attendance->needs_review)) {
+            return response()->json(['success' => false, 'message' => __('This record already has a time out.')], 422);
+        }
+
+        if ($attendance->employee?->isPending()) {
+            return response()->json(['success' => false, 'message' => __('This worker has not finished registering.')], 422);
+        }
+
+        // The time is read against the time in, rolling into the next morning
+        // when it reads earlier — a night crew's 5:00 AM follows their 8:00 PM.
+        $in  = AttendanceDay::momentIn($attendance);
+        $out = $in->copy()->setTimeFromTimeString($data['time'])->startOfMinute();
+
+        if ($out->lessThanOrEqualTo($in)) {
+            $out->addDay();
+        }
+
+        $now = Carbon::now();
+
+        if ($out->greaterThan($now)) {
+            return response()->json(['success' => false, 'message' => __('That time has not come yet.')], 422);
+        }
+
+        if ($in->diffInMinutes($out) > 18 * 60) {
+            return response()->json(['success' => false, 'message' => __('A time out has to fall within 18 hours of the time in (:in).',
+                ['in' => WorkSchedule::label($in)])], 422);
+        }
+
+        // Nor may it run into the worker's next stretch of the same day.
+        $next = Attendance::where('employee_id', $attendance->employee_id)
+            ->where('date', $attendance->date)
+            ->whereKeyNot($attendance->id)
+            ->whereNotNull('time_in')
+            ->with('shift')
+            ->get()
+            ->map(fn (Attendance $r) => AttendanceDay::momentIn($r))
+            ->filter(fn (Carbon $t) => $t->greaterThan($in))
+            ->sort()
+            ->first();
+
+        if ($next && $out->greaterThan($next)) {
+            return response()->json(['success' => false, 'message' => __('The time out has to come before the next time in (:next).',
+                ['next' => WorkSchedule::label($next)])], 422);
+        }
+
+        $attendance->forceFill([
+            'time_out'     => $out->format('Y-m-d H:i:s'),
+            'close_type'   => 'admin',
+            'needs_review' => false,
+            'reviewed_by'  => auth()->id(),
+            'reviewed_at'  => $now,
+        ])->save();
+
+        $name = $attendance->employee?->name ?? __('Unknown');
+
+        AuditLog::record('Attendance', 'updated',
+            "Set the time out for {$name} on " . Carbon::parse($attendance->date)->format('m/d/Y') . ' to ' . WorkSchedule::label($out),
+            $attendance
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Time out saved for :name: :time.', ['name' => $name, 'time' => WorkSchedule::label($out)]),
+        ]);
     }
 
     /** Delete selected history records (past days only). */

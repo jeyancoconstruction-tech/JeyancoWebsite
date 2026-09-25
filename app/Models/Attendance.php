@@ -102,6 +102,11 @@ class Attendance extends Model
         return $this->belongsTo(Kiosk::class);
     }
 
+    /** Who settled a time out nobody scanned, from the Attendance page. */
+    public function reviewer() {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
     /**
      * Computed attendance status (no DB column — derived automatically):
      *   present – timed in AND out (complete record)

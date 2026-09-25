@@ -169,7 +169,9 @@ class MissedSignOutTest extends TestCase
 
         $this->assertSame(1, $page->viewData('invalidCount'),
             'but the office still has to confirm the time on it');
-        $page->assertSee('Needs review');
+        $page->assertSee('No time out')      // the row's status
+             ->assertSee('Not scanned')      // under the time the system guessed
+             ->assertSee('Fix missing scans');
     }
 
     public function test_an_ordinary_finished_day_is_on_nobody_queue(): void
@@ -184,7 +186,9 @@ class MissedSignOutTest extends TestCase
         $page = $this->page('2026-09-11 20:00:00');
 
         $this->assertSame(0, $page->viewData('invalidCount'));
-        $page->assertDontSee('Needs review');
+        $page->assertDontSee('No time out')
+             ->assertDontSee('Not scanned')
+             ->assertDontSee('Fix missing scans');
     }
 
     protected function tearDown(): void

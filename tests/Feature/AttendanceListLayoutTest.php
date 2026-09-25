@@ -14,17 +14,12 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * The attendance lists are boxed to the screen, and their columns have room.
- *
- * Two complaints, one table. The page grew with the records, so the stat
- * cards, the tabs and the filters scrolled away and the column heads went
- * with them. And the table's own layout handed the widest column everything
- * it had: Time In / Out took 840 of 1,567 pixels while Employee was squeezed
- * to 143 — 100 on a 1366-wide screen, which is not a name.
+ * The attendance lists: one card, boxed to the screen, with the day laid out
+ * the way a shift is — first session in and out, second session in and out —
+ * beside a timeline, the hours and where the day stands.
  *
  * The measuring is done in the browser, which PHPUnit cannot see; what it can
- * hold is the wiring and the rules. Related: the Employee Directory is boxed
- * by the same shared partial.
+ * hold is the wiring and the rules.
  */
 class AttendanceListLayoutTest extends TestCase
 {
@@ -91,15 +86,18 @@ class AttendanceListLayoutTest extends TestCase
 
     // ── Boxed to the screen ──────────────────────────────────────────────
 
-    public function test_both_lists_are_boxed_and_scroll_inside_their_cards(): void
+    /**
+     * One card holds the tabs, the filters and both lists; each list scrolls
+     * inside it. The scrolling box is itself the live region, so a patch from
+     * the feed replaces what is in it and never the height it was fitted to.
+     */
+    public function test_both_lists_scroll_inside_one_card(): void
     {
         $html = $this->page();
 
-        // One card per tab, each with the list inside it marked to scroll.
-        $this->assertSame(2, substr_count($html, 'class="table-card" data-fill-screen'),
-            'Today and History both reach the bottom of the screen');
-        $this->assertSame(2, substr_count($html, 'class="table-responsive" data-fill-scroll'),
-            'and in each of them it is the list that scrolls');
+        $this->assertSame(1, substr_count($html, '<section class="atm-card" data-fill-screen'), 'one card reaches the bottom of the screen');
+        $this->assertMatchesRegularExpression('#class="atm-scroll" id="attTodayList" data-fill-scroll data-live="#', $html);
+        $this->assertMatchesRegularExpression('#class="atm-scroll" id="attHistoryList" data-fill-scroll data-live="#', $html);
     }
 
     public function test_the_shared_fill_screen_script_is_on_the_page(): void
@@ -108,119 +106,66 @@ class AttendanceListLayoutTest extends TestCase
 
         $this->assertStringContainsString('[data-fill-screen] [data-fill-scroll]', $html,
             'the shared measuring script should be included');
-        $this->assertStringContainsString('fills-screen', $html);
-    }
-
-    /**
-     * The pane behind the other tab has no height to measure. Sized anyway it
-     * came out against a top of zero, so switching tabs asks for a re-measure
-     * and the script leaves a hidden list alone until then.
-     */
-    public function test_switching_tabs_asks_for_a_re_measure(): void
-    {
-        $html = $this->page();
-
-        $this->assertStringContainsString('fill-screen:refit', $html);
-        $this->assertStringContainsString('!wrap.offsetParent', $html,
-            'a list on the closed tab is left alone');
+        $this->assertStringContainsString('fill-screen:refit', $html,
+            'switching tabs and swapping in a filtered list ask for a re-measure');
     }
 
     /** Boxing the list is pointless if the heads scroll away with the rows. */
     public function test_the_column_heads_stay_while_the_rows_move(): void
     {
-        $html = $this->page();
-
-        $this->assertMatchesRegularExpression(
-            '#\.attendance-table thead th \{ position:sticky; top:0;#', $html,
-            'the heads have to be pinned to the top of the list'
-        );
+        $this->assertStringContainsString('.atm-table thead { position:sticky; top:0;', $this->page());
     }
 
-    // ── Room for the labels ──────────────────────────────────────────────
+    // ── The columns ──────────────────────────────────────────────────────
 
     /**
-     * Every column that holds something of a known size asks for the room it
-     * needs; Time In / Out takes what is left over rather than taking it
-     * first.
-     */
-    public function test_every_column_asks_for_the_room_its_label_needs(): void
-    {
-        $html = $this->page();
-
-        foreach ([
-            'att-col-employee' => '190px',
-            'att-col-site'     => '160px',
-            'att-col-shift'    => '130px',
-            'att-col-date'     => '112px',
-            'att-col-session'  => '120px',
-            'att-col-status'   => '170px',
-        ] as $class => $min) {
-            // The rules are written in a column, so the spacing varies.
-            $this->assertMatchesRegularExpression(
-                "#\.{$class}\s+\{ min-width:{$min}; \}#", $html,
-                "{$class} should hold its width");
-        }
-
-        $this->assertMatchesRegularExpression('#\.att-col-time\s+\{ width:100%; min-width:260px; \}#', $html,
-            'Time In / Out absorbs the slack instead of claiming it');
-    }
-
-    /** A label broken over two lines is taller than its row and reads as two. */
-    public function test_the_labels_never_wrap(): void
-    {
-        $html = $this->page();
-
-        $this->assertStringContainsString('.attendance-table thead th { white-space:nowrap; }', $html);
-    }
-
-    /**
-     * Both tables label the same columns the same way, in the same order.
-     *
-     * Today's Attendance had no Date column, so from the third column on the
-     * two disagreed: Session and Time In / Out sat 112px apart between the
-     * tabs and the whole grid jumped sideways when you switched. Date earns
-     * its place on that tab too — a row is filed under the workday it opened,
-     * and the night crew's opened last night, so theirs reads yesterday.
+     * Both tables label the same columns the same way, in the same order, so
+     * the grid does not jump sideways when the tab changes — the two sessions
+     * grouped under their own heads.
      */
     public function test_both_tables_carry_the_same_columns_in_the_same_order(): void
     {
         $html = $this->page();
 
-        foreach (['att-col-employee', 'att-col-site', 'att-col-shift', 'att-col-date',
-                  'att-col-session', 'att-col-time', 'att-col-status'] as $class) {
-            $this->assertSame(2, substr_count($html, $class . '"'),
-                "{$class} belongs to both tables");
-        }
-
-        // In order, and the same order in each.
-        preg_match_all('#<table class="attendance-table[^>]*>.*?</thead>#s', $html, $heads);
+        preg_match_all('#<table class="atm-table" id="(todayTable|historyTable)">\s*<thead>(.*?)</thead>#s', $html, $heads);
         $this->assertCount(2, $heads[0], 'both tables should be on the page');
 
-        $order = array_map(function ($head) {
-            preg_match_all('#att-col-([a-z]+)"#', $head, $m);
-            return $m[1];
-        }, $heads[0]);
+        $labels = array_map(function ($head) {
+            preg_match_all('#<th(?: class="(?!att-check-col)[^"]*")?>([^<]+)</th>#', $head, $m);
+            return array_map('trim', $m[1]);
+        }, $heads[2]);
 
         $this->assertSame(
-            ['employee', 'site', 'shift', 'date', 'session', 'time', 'status'],
-            $order[0]
+            ['Employee', 'Shift', 'Time in', 'Time out', 'Time in', 'Time out', 'Timeline', 'Hours', 'Status'],
+            $labels[0]
         );
-        $this->assertSame($order[0], $order[1], 'the tabs must not shuffle the columns between them');
+        $this->assertSame($labels[0], $labels[1], 'the tabs must not shuffle the columns between them');
+
+        foreach ($heads[2] as $head) {
+            $this->assertStringContainsString('<span>1st session</span>', $head);
+            $this->assertStringContainsString('<span>2nd session</span>', $head);
+        }
     }
 
-    /** A column added to one table needs a cell under it, or the row shifts. */
-    public function test_todays_rows_are_filled_out_to_the_new_column(): void
+    /** The empty state has to reach across every column. */
+    public function test_an_empty_day_view_spans_the_whole_table(): void
+    {
+        preg_match('#<table class="atm-table" id="todayTable">.*?</table>#s', $this->page(), $today);
+        $this->assertNotEmpty($today, "Today's table should be on the page");
+        $this->assertStringContainsString('colspan="9"', $today[0]);
+    }
+
+    /**
+     * The history reads as days under their dates, and each day as one row:
+     * the two stretches of the 10th are not two lines.
+     */
+    public function test_history_is_grouped_under_its_dates(): void
     {
         $html = $this->page();
 
-        preg_match('#<table class="attendance-table w-100">.*?</table>#s', $html, $today);
-        $this->assertNotEmpty($today, "Today's table should be on the page");
-
-        preg_match_all('#<th[ >]#', $today[0], $th);
-        $this->assertCount(7, $th[0], 'Employee, Site, Shift, Date, Session, Time, Status');
-
-        // The empty state has to reach across all of them.
-        $this->assertStringContainsString('colspan="7"', $today[0]);
+        $this->assertStringContainsString('Friday, 09/11/2026', $html);
+        $this->assertStringContainsString('Thursday, 09/10/2026', $html);
+        $this->assertSame(2, substr_count($html, '<b>Mark Adrian Gulbe De Leon</b>'), 'one row per day');
     }
 
     /**
@@ -243,14 +188,24 @@ class AttendanceListLayoutTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        preg_match('#<table class="attendance-table w-100" id="historyTable">.*?</table>#s', $html, $history);
+        preg_match('#<table class="atm-table" id="historyTable">.*?</table>#s', $html, $history);
         $this->assertNotEmpty($history, 'the History table should be on the page');
 
         $this->assertMatchesRegularExpression(
-            '#<span class="att-shift"><i class="fas fa-sun"></i> ' . preg_quote(e($day->name), '#') . '</span>#',
+            '#<span class="atm-shift day">\s*<i class="fas fa-sun"></i>' . preg_quote(e($day->name), '#') . '\s*</span>#',
             $history[0], 'each day names the shift it was worked under');
         $this->assertStringNotContainsString('Night Crew', $history[0],
             "the worker's shift today is not the shift those days were worked");
+    }
+
+    /** What the timeline's marks mean is said once, under the list. */
+    public function test_the_list_carries_its_key(): void
+    {
+        $html = $this->page();
+
+        foreach (['Worked', 'Break window', 'On break', 'Overbreak', 'Missing or guessed scan', 'Late'] as $label) {
+            $this->assertStringContainsString($label . '</span>', $html);
+        }
     }
 
     /**
@@ -261,7 +216,7 @@ class AttendanceListLayoutTest extends TestCase
     {
         $html = $this->page();
 
-        $this->assertStringContainsString('class="mt-3 att-pager"', $html);
-        $this->assertStringContainsString('.att-pager { padding-right:76px; }', $html);
+        $this->assertStringContainsString('class="att-pager" id="attHistoryPager"', $html);
+        $this->assertStringContainsString('.att-pager { padding:0 76px 0 16px; }', $html);
     }
 }

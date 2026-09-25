@@ -859,12 +859,10 @@ class PayrollService
             // afternoon record read five hours late.
             $isFirst = ! isset($cfg['firstInSession']) || isset($cfg['firstInSession'][$rec->id]);
             $sess    = in_array($rec->session, ['AM', 'PM'], true) ? $rec->session : WorkSchedule::sessionAt($schedShift, $in);
-            $starts  = WorkSchedule::sessionStart($schedShift, $sess, $dateStr);
 
-            if ($isFirst
-                && $in->greaterThan($starts->copy()->addMinutes($grace))
-                && $in->lessThan(WorkSchedule::sessionEnd($schedShift, $sess, $dateStr))) {
-                $lateMinutes = (int) round(abs($starts->diffInMinutes($in)));
+            // The same rule the Attendance page shows lateness by.
+            if ($isFirst) {
+                $lateMinutes = WorkSchedule::lateMinutes($schedShift, $in, $sess, $dateStr);
             }
         } elseif ($rec->time_in && ($shift || $day)) {
             $in       = Carbon::parse($rec->time_in);

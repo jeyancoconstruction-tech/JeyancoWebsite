@@ -252,6 +252,26 @@ final class WorkSchedule
     }
 
     /**
+     * How late a session's first time in was: minutes from the session's
+     * start, once the grace period has passed — 0 when on time.
+     *
+     * A time in after the session has already ended is not lateness to it; it
+     * is somebody starting the other half. Payroll reports this figure and the
+     * Attendance page shows it, so the rule is written once, here.
+     */
+    public static function lateMinutes(array $s, Carbon $in, string $session, string $shiftDay): int
+    {
+        $starts = self::sessionStart($s, $session, $shiftDay);
+
+        if ($in->greaterThan($starts->copy()->addMinutes((int) ($s['grace'] ?? 0)))
+            && $in->lessThan(self::sessionEnd($s, $session, $shiftDay))) {
+            return (int) round(abs($starts->diffInMinutes($in)));
+        }
+
+        return 0;
+    }
+
+    /**
      * What the daily rate buys: the shift's regular hours, or both sessions
      * when it does not name a figure.
      *
