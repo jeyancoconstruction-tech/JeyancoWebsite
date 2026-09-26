@@ -3,8 +3,9 @@
  *
  * It sits in the bottom-right corner, which is exactly where a table's last
  * column keeps its buttons, so now and then it covered the one you wanted.
- * Drag it anywhere, with a mouse or a finger; it stays inside the window and
- * this browser remembers where you left it.
+ * Drag it anywhere, with a mouse or a finger; it stays inside the window.
+ * Where it is dragged lasts only while the page is open: every page loads
+ * with the button back in its corner.
  *
  * A tap or a click still opens the chat. Only a press that moves more than a
  * few pixels is a drag, and the click that ends a drag does not open it.
@@ -12,9 +13,6 @@
  * Once it has been moved, the chat window opens beside the button rather than
  * in the corner, on whichever side has room. Left where it started, nothing
  * about either one changes.
- *
- * Loaded straight after the button in the layout, not deferred, so a saved
- * spot is in place before the page is first drawn.
  * ========================================================================= */
 (function () {
     'use strict';
@@ -23,27 +21,20 @@
     var win = document.getElementById('chatbot-window');
     if (!fab || !window.addEventListener) { return; }
 
-    var KEY  = 'jeyanco-chatbot-pos';
     var EDGE = 8;     // closest it may come to the edge of the screen
     var GAP  = 12;    // between the button and the chat window
     var SLOP = 6;     // movement before a press counts as a drag
 
-    var saved   = read();   // {right, bottom} in px, or null if never moved
+    var saved   = null;     // {right, bottom} in px once dragged on this page
     var press   = null;     // the drag in progress
     var dragged = false;    // the next click ends a drag: swallow it
 
+    // The first version kept the spot in the browser and opened every page
+    // with the button there. It starts in its corner now; clear what that
+    // version left behind.
+    try { localStorage.removeItem('jeyanco-chatbot-pos'); } catch (e) {}
+
     // ── Where it is ─────────────────────────────────────────────────────────
-
-    function read() {
-        try {
-            var p = JSON.parse(localStorage.getItem(KEY) || 'null');
-            return p && isFinite(p.right) && isFinite(p.bottom) ? p : null;
-        } catch (e) { return null; }
-    }
-
-    function write(p) {
-        try { localStorage.setItem(KEY, JSON.stringify(p)); } catch (e) {}
-    }
 
     /**
      * The button's own box, and the frame its right/bottom are measured in.
@@ -171,7 +162,6 @@
         if (press.moving) {
             dragged = true;
             fab.classList.remove('is-dragging');
-            write(saved);
         }
         press = null;
     }
@@ -190,15 +180,12 @@
 
     // ── Keeping it right ────────────────────────────────────────────────────
 
-    /** Where it was left, pulled back on screen if the window is smaller now. */
-    function restore() {
+    /** Where it was dragged, pulled back on screen if the window shrinks. */
+    window.addEventListener('resize', function () {
         if (!saved) { return; }
         put(saved);
         put(clamp(saved, frame()));
-    }
-
-    restore();
-    window.addEventListener('resize', restore);
+    });
 
     // The layout opens the window by adding .open; place it as that happens,
     // before it is drawn.

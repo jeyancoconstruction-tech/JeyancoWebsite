@@ -458,8 +458,8 @@
     </div>
 </div>
 
-{{-- The button can be dragged out of the way. Straight after it and not
-     deferred, so a spot saved in this browser is applied before first paint. --}}
+{{-- The button can be dragged out of the way while the page is open; every
+     page load puts it back in its corner. --}}
 <script src="{{ asset('js/chatbot-move.js') }}?v={{ @filemtime(public_path('js/chatbot-move.js')) ?: '1' }}"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
