@@ -114,6 +114,9 @@
     {{-- The page header every signed-in page opens with (components/page-header). --}}
     <link rel="stylesheet" href="{{ $cssv('page-header.css') }}">
 
+    {{-- The floating chat's full-screen view (js/chatbot-full.js). --}}
+    <link rel="stylesheet" href="{{ $cssv('chatbot-full.css') }}">
+
     {{-- The loading screen the site opens on. In the head because the check
          inside it has to stamp <html> before the styles below it are read;
          the overlay itself is the first thing in the body. --}}
@@ -327,9 +330,6 @@
                     <i data-lucide="file-bar-chart"></i> <span>{{ __('Payroll Reports') }}</span>
                 </a>
             @endif
-            <a class="nav-link {{ request()->is('ai-assistant*') ? 'active' : '' }}" href="{{ url('/ai-assistant') }}">
-                <i data-lucide="bot"></i> <span>{{ __('Jeyanco AI') }}</span>
-            </a>
 
             @if(! auth()->user()?->isAdmin() && auth()->user()?->canAccessModule('devices'))
                 {{-- A Site Supervisor never sees the admin SYSTEM block below,
@@ -472,7 +472,10 @@
     <span class="fab-pulse-ring"></span>
 </button>
 
-<div id="chatbot-window" class="chatbot-window">
+{{-- Behind the chat in full screen: the page it was opened on, blurred. --}}
+<div id="chatbot-backdrop" class="chatbot-backdrop" hidden></div>
+
+<div id="chatbot-window" class="chatbot-window" role="dialog" aria-label="{{ __('Jeyanco AI') }}">
     <div class="chatbot-header">
         <div class="chatbot-header-left">
             <div class="chatbot-avatar-wrap">
@@ -485,11 +488,20 @@
             </div>
         </div>
         <div class="chatbot-header-btns">
+            <button id="chatbot-prompts-btn" class="cb-icon-btn cb-full-only" type="button" title="{{ __('Quick prompts') }}" aria-controls="cb-prompts" aria-pressed="true"><i class="fas fa-list-ul"></i></button>
             <button id="chatbot-new-btn" class="cb-icon-btn" title="{{ __('New Chat') }}"><i class="fas fa-plus"></i></button>
+            <button id="chatbot-full-btn" class="cb-icon-btn" type="button" title="{{ __('Full screen') }}" data-exit="{{ __('Exit full screen') }}" aria-pressed="false"><i class="fas fa-expand"></i></button>
             <button id="chatbot-minimize-btn" class="cb-icon-btn" title="{{ __('Close') }}"><i class="fas fa-times"></i></button>
         </div>
     </div>
 
+    <div class="chatbot-body">
+    {{-- Full screen only: the Jeyanco AI page's quick prompts. --}}
+    <aside class="prompts-panel cb-prompts" id="cb-prompts" aria-label="{{ __('Quick prompts') }}">
+        @include('partials.ai-prompts')
+    </aside>
+
+    <div class="chatbot-main">
     <div id="chatbot-messages" class="chatbot-messages">
         <div class="cb-welcome">
             <div class="cb-welcome-icon"><i class="fas fa-robot"></i></div>
@@ -513,11 +525,16 @@
         </div>
         <p class="cb-hint">{{ __('Press Enter to send  ·  Powered by Jeyanco Intelligence') }}</p>
     </div>
+    </div>{{-- .chatbot-main --}}
+    </div>{{-- .chatbot-body --}}
 </div>
 
 {{-- The button can be dragged out of the way while the page is open; every
      page load puts it back in its corner. --}}
 <script src="{{ asset('js/chatbot-move.js') }}?v={{ @filemtime(public_path('js/chatbot-move.js')) ?: '1' }}"></script>
+{{-- The chat's full-screen view: the window grows into the Jeyanco AI page
+     over the page it was opened on, blurred behind it. --}}
+<script src="{{ asset('js/chatbot-full.js') }}?v={{ @filemtime(public_path('js/chatbot-full.js')) ?: '1' }}"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -628,6 +645,15 @@
                 </div>`;
             attachChipListeners();
         }
+
+        // One conversation, whatever size the window is: the full-screen
+        // prompts (js/chatbot-full.js) send through the same function.
+        window.jeyancoChat = window.jeyancoChat || {};
+        window.jeyancoChat.send = function (msg) {
+            const chips = document.getElementById('cb-quick-chips');
+            if (chips) chips.remove();
+            sendMessage(msg);
+        };
 
         if (fab && chatWindow) {
             attachChipListeners();

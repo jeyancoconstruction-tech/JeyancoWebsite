@@ -374,3 +374,28 @@
 @media (max-width: 1024px) and (pointer: coarse) {
     .nav-menu .nav-sub-link { min-height: 36px; }
 }
+
+
+/* ── 12 · THE CHAT IN FULL SCREEN ──────────────────────────────────────────
+   Less margin round it on a tablet, less again on a phone. On a phone the
+   quick prompts sit above the conversation as a strip (ai.css), slide shut
+   rather than snap, and the conversation takes the full width. */
+@media (max-width: 1024px) {
+    #chatbot-window.is-full { top: 16px; bottom: 16px; left: 16px; right: 16px; }
+    #chatbot-window.is-full .cb-prompts { width: 232px; min-width: 232px; }
+}
+@media (max-width: 768px) {
+    #chatbot-window.is-full { top: 10px; bottom: 10px; left: 10px; right: 10px; }
+    #chatbot-window.is-full .chatbot-body { flex-direction: column; }
+    #chatbot-window.is-full .cb-prompts { max-height: 190px; transition: max-height .28s ease, opacity .2s ease; }
+    #chatbot-window.is-full .cb-prompts.collapsed { max-height: 0; border-bottom-width: 0; }
+    /* The category row scrolls sideways; in a strip this short it would
+       otherwise be squeezed to nothing. The prompts under it scroll instead. */
+    #chatbot-window.is-full .cb-prompts .category-nav { flex-shrink: 0; }
+    #chatbot-window.is-full .cb-prompts .prompts-panel-inner { gap: 8px; padding: 12px; }
+    #chatbot-window.is-full .chatbot-header { padding: 12px 14px; }
+    #chatbot-window.is-full .chatbot-status-text { display: none; }
+    #chatbot-window.is-full .chatbot-messages { padding: 16px 14px; }
+    #chatbot-window.is-full .msg-content { max-width: 84%; }
+    #chatbot-window.is-full .chatbot-footer { padding: 10px 12px 12px; }
+}

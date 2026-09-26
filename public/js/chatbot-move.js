@@ -83,7 +83,10 @@
      * and never taller than the room it has.
      */
     function place() {
-        if (!win || !saved) { return; }
+        // Full screen has its own place (js/chatbot-full.js), and asks for
+        // this one back when it shrinks. Mid-move the window's size is the
+        // animation's, not its own, so nothing is measured then.
+        if (!win || !saved || win.classList.contains('is-full') || win.classList.contains('is-moving')) { return; }
         var f = frame();
         if (!f) { return; }
 
@@ -118,6 +121,9 @@
 
         win.style.transformOrigin = (above ? 'bottom ' : 'top ') + (right ? 'right' : 'left');
     }
+
+    window.jeyancoChat = window.jeyancoChat || {};
+    window.jeyancoChat.place = place;
 
     // ── Dragging ────────────────────────────────────────────────────────────
 

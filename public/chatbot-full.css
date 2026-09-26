@@ -1,0 +1,144 @@
+/* =========================================================================
+   FLOATING CHAT · FULL SCREEN
+   -------------------------------------------------------------------------
+   Jeyanco AI is reached from the floating chat, not the sidebar. Its expand
+   button grows the window into the Jeyanco AI page (quick prompts down the
+   side, the same conversation beside them) over the page it was opened on,
+   blurred behind it. js/chatbot-full.js plays the move; this is the two
+   states it moves between. Phones and tablets: see mobile.css.
+   ========================================================================= */
+
+/* ── The window's insides, in both sizes ──────────────────────────────────
+   The prompts and the conversation sit side by side; in the corner only the
+   conversation shows, exactly as before. */
+.chatbot-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+}
+.chatbot-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+.chatbot-window .cb-prompts,
+.chatbot-window .cb-full-only { display: none; }
+
+/* The header grows with the window rather than jumping. */
+.chatbot-header { transition: padding .35s ease; }
+.chatbot-avatar-wrap { transition: width .35s ease, height .35s ease, min-width .35s ease, font-size .35s ease, border-radius .35s ease; }
+.chatbot-header .cb-icon-btn { transition: background .15s, width .35s ease, height .35s ease, font-size .35s ease; }
+
+/* ── The page behind ─────────────────────────────────────────────────────
+   Fades in as it blurs. Clicking it brings the chat back to its corner. */
+.chatbot-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2040;
+    background: rgba(15, 23, 42, 0.26);
+    -webkit-backdrop-filter: blur(0) saturate(100%);
+    backdrop-filter: blur(0) saturate(100%);
+    opacity: 0;
+    cursor: zoom-out;
+    transition: opacity .38s ease, backdrop-filter .46s ease, -webkit-backdrop-filter .46s ease;
+}
+.chatbot-backdrop[hidden] { display: none; }
+.chatbot-backdrop.on {
+    opacity: 1;
+    -webkit-backdrop-filter: blur(10px) saturate(115%);
+    backdrop-filter: blur(10px) saturate(115%);
+}
+html[data-bs-theme="dark"] .chatbot-backdrop { background: rgba(2, 6, 23, 0.52); }
+
+/* The button that opened it steps aside while the chat fills the screen. */
+body.cb-full-on .chatbot-fab {
+    opacity: 0;
+    transform: scale(.6);
+    pointer-events: none;
+}
+
+/* ── Full screen ─────────────────────────────────────────────────────────
+   Centred, at most 1360px wide, with the blurred page showing round it. */
+#chatbot-window.is-full {
+    top: 24px;
+    bottom: 24px;
+    left: max(24px, calc(50% - 680px));
+    right: max(24px, calc(50% - 680px));
+    width: auto;
+    height: auto;
+    max-height: none;
+    z-index: 2050;
+    box-shadow: 0 40px 90px -24px rgba(15, 23, 42, 0.5), 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+html[data-bs-theme="dark"] #chatbot-window.is-full {
+    box-shadow: 0 40px 90px -20px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+#chatbot-window.is-full .chatbot-header { padding: 14px 18px; }
+#chatbot-window.is-full .chatbot-avatar-wrap { width: 40px; height: 40px; min-width: 40px; border-radius: 12px; font-size: 18px; }
+#chatbot-window.is-full .chatbot-name { font-size: 15.5px; }
+#chatbot-window.is-full .chatbot-status-text { font-size: 12px; }
+#chatbot-window.is-full .chatbot-header-btns { gap: 6px; }
+#chatbot-window.is-full .chatbot-header .cb-icon-btn { width: 34px; height: 34px; font-size: 13px; border-radius: 9px; }
+#chatbot-window.is-full .cb-full-only {
+    display: flex;
+    animation: cbFullPop .34s .2s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+#chatbot-window.is-full .cb-full-only[aria-pressed="true"] { background: rgba(255, 255, 255, 0.26); }
+@keyframes cbFullPop {
+    from { opacity: 0; transform: scale(.6); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* The Jeyanco AI page's quick prompts (ai.css draws them; the same
+   partial the page uses). Switching category eases the list in. */
+#chatbot-window.is-full .cb-prompts { display: flex; }
+#chatbot-window .cb-prompts.collapsed { border-right-width: 0; }
+#chatbot-window .cb-prompts .prompt-group.active { animation: cbGroupIn .24s ease both; }
+@keyframes cbGroupIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* The conversation, in a readable column down the middle. */
+#chatbot-window.is-full .chatbot-messages {
+    padding: 28px max(28px, calc((100% - 860px) / 2));
+    gap: 16px;
+}
+#chatbot-window.is-full .chatbot-msg { gap: 12px; }
+#chatbot-window.is-full .msg-avatar { width: 34px; height: 34px; min-width: 34px; border-radius: 10px; font-size: 14px; }
+#chatbot-window.is-full .msg-content { max-width: 78%; }
+#chatbot-window.is-full .msg-bubble { font-size: 14px; line-height: 1.65; padding: 12px 16px; }
+#chatbot-window.is-full .chatbot-msg.ai .msg-bubble { border-radius: 4px 14px 14px 14px; }
+#chatbot-window.is-full .chatbot-msg.user .msg-bubble { border-radius: 14px 4px 14px 14px; }
+#chatbot-window.is-full .msg-time { font-size: 11px; }
+#chatbot-window.is-full .typing-dots { padding: 13px 16px; }
+#chatbot-window.is-full .cb-welcome { padding: 16px 18px; gap: 14px; border-radius: 14px; }
+#chatbot-window.is-full .cb-welcome-icon { width: 42px; height: 42px; min-width: 42px; border-radius: 12px; font-size: 18px; }
+#chatbot-window.is-full .cb-welcome-text p { font-size: 14.5px; }
+#chatbot-window.is-full .cb-welcome-text p + p { font-size: 13px; }
+#chatbot-window.is-full .cb-chip { font-size: 13px; padding: 7px 14px; }
+
+#chatbot-window.is-full .chatbot-footer { padding: 14px max(28px, calc((100% - 860px) / 2)) 16px; }
+#chatbot-window.is-full .cb-input-row { padding: 7px 7px 7px 14px; border-radius: 12px; }
+/* One field, as on the Jeyanco AI page: the row draws the border and the
+   focus ring, the input inside it none of its own. */
+html[data-bs-theme] #chatbot-window.is-full .cb-input,
+html[data-bs-theme] #chatbot-window.is-full .cb-input:focus {
+    font-size: 14px; min-height: 34px;
+    border: 0 !important; background: transparent !important; box-shadow: none !important;
+}
+#chatbot-window.is-full .cb-send-btn { width: 38px; height: 38px; min-width: 38px; border-radius: 10px; font-size: 13px; }
+#chatbot-window.is-full .cb-hint { font-size: 11px; margin-top: 8px; }
+
+/* Anyone who has asked for less motion gets the switch at once. */
+@media (prefers-reduced-motion: reduce) {
+    .chatbot-backdrop,
+    .chatbot-header,
+    .chatbot-avatar-wrap,
+    .chatbot-header .cb-icon-btn { transition: none; }
+    #chatbot-window.is-full .cb-full-only,
+    #chatbot-window .cb-prompts .prompt-group.active { animation: none; }
+}
