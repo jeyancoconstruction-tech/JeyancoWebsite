@@ -136,6 +136,20 @@
     .nav-menu .nav-link { max-height: 56px; }
 }
 
+/* ── Rows that hold their size ─────────────────────────────────────────────
+   The fill above would share the rail among the rows *and* any open group,
+   so opening Payroll Records or Payroll Settings shrank every row. The layout
+   measures the row height with every group folded (rows-measure) and pins it
+   (rows-set): a group that opens pushes the rows under it down, and the rail
+   scrolls instead. The gutter is kept so the scrollbar appearing does not
+   nudge the rail sideways. */
+@media (min-width: 1025px) {
+    .nav-menu.rows-measure .nav-sub { display: none !important; }
+    .nav-menu.rows-measure .nav-link { transition: none !important; }
+    .nav-menu.rows-set .nav-link { flex: 0 0 var(--nav-row) !important; max-height: none !important; }
+    .sidebar-top { scrollbar-gutter: stable; }
+}
+
 /* ── The mobile drawer is a different problem ─────────────────────────────
    Off-canvas at ≤1024px, opened deliberately and dismissed after a tap. It has
    the whole screen, so it keeps touch-sized rows rather than inheriting a

@@ -281,6 +281,9 @@
                         // page). Opened elsewhere, the page picked opens with them
                         // already open instead of sliding again.
                         put(open ? 'open' : (IN ? 'closed' : null));
+                        if (open && window.jeyancoRailReveal) {
+                            setTimeout(function () { window.jeyancoRailReveal(sub, btn, true); }, 300);
+                        }
                     });
                 };
             </script>
@@ -392,6 +395,67 @@
             @endif
 
         </nav>
+        <script>
+            // The rows keep their size when a group opens (Michael, 2026-09-26):
+            // the rows under it move down and the rail scrolls, instead of every
+            // row shrinking to make room. So on a desktop the row height is
+            // measured with every group folded, the way the rail fills its
+            // height, and pinned; measured again only when the window resizes.
+            (function () {
+                var nav  = document.querySelector('.nav-menu');
+                var rail = nav && nav.closest('.sidebar-top');
+                if (!nav || !rail) return;
+                var wide = window.matchMedia ? window.matchMedia('(min-width: 1025px)') : { matches: true };
+
+                function measure() {
+                    var link = nav.querySelector('.nav-link');
+                    // Every group folded, and no transitions: a row animates
+                    // all its properties, and read mid-way it is the wrong size.
+                    nav.classList.add('rows-measure');
+                    nav.classList.remove('rows-set');
+                    nav.style.removeProperty('--nav-row');
+                    if (wide.matches && link) {            // the phone drawer keeps its own rows
+                        var h = link.getBoundingClientRect().height;
+                        if (h > 0) {
+                            nav.style.setProperty('--nav-row', h + 'px');
+                            nav.classList.add('rows-set');
+                        }
+                    }
+                    if (link) link.getBoundingClientRect();   // settle before transitions return
+                    nav.classList.remove('rows-measure');
+                }
+
+                // Scroll the rail, and only the rail, so a group (or the page
+                // lit in it) is in view, without losing its toggle off the top.
+                window.jeyancoRailReveal = function (el, keep, smooth) {
+                    var r = rail.getBoundingClientRect(), e = el.getBoundingClientRect();
+                    var below = e.bottom - (r.bottom - 8);
+                    if (below <= 0) return;
+                    var room = keep ? keep.getBoundingClientRect().top - (r.top + 8) : below;
+                    var by = Math.min(below, Math.max(0, room));
+                    if (by > 0) rail.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' });
+                };
+
+                measure();
+                // The page lit in an open group, once it is open (arriving,
+                // the group slides open a moment after the rail is drawn).
+                var lit = nav.querySelector('.nav-sub-link.on');
+                if (lit) {
+                    var group = lit.closest('.nav-sub');
+                    var show = function () { if (!group.classList.contains('folded')) window.jeyancoRailReveal(lit, null, false); };
+                    if (group.classList.contains('folded')) { setTimeout(show, 340); } else { show(); }
+                }
+
+                // Again once everything has loaded (the loading screen, fonts),
+                // and whenever the window is resized.
+                window.addEventListener('load', measure);
+                var t;
+                window.addEventListener('resize', function () {
+                    clearTimeout(t);
+                    t = setTimeout(measure, 120);
+                });
+            })();
+        </script>
     </div>
 
 </div>
