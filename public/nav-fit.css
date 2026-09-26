@@ -220,12 +220,40 @@
 /* ── Sub-items ─────────────────────────────────────────────────────────────
    Payroll Records carries its own pages under it (Records, Remittance
    tracker): smaller rows on a thin rule, indented under the icon. They keep
-   their size rather than growing with the rail, so the group reads as one. */
+   their size rather than growing with the rail, so the group reads as one.
+
+   Payroll Records itself folds them: the rows slide shut (a grid row going
+   from 1fr to 0fr animates the height without measuring it) and fade, and
+   once shut they are hidden, so Tab cannot land on them. */
 .nav-menu .nav-sub {
     flex: 0 0 auto;
-    display: flex; flex-direction: column; gap: 1px;
+    display: grid; grid-template-rows: 1fr;
     margin: 1px 6px 3px 25px; padding-left: 9px;
     border-left: 1px solid var(--sidebar-border);
+    transition: grid-template-rows .26s ease, opacity .22s ease, margin .26s ease, visibility 0s;
+}
+.nav-menu .nav-sub-in {
+    min-height: 0; overflow: hidden;
+    display: flex; flex-direction: column; gap: 1px;
+}
+.nav-menu .nav-sub.folded {
+    grid-template-rows: 0fr; opacity: 0; margin-top: 0; margin-bottom: 0; visibility: hidden;
+    transition: grid-template-rows .26s ease, opacity .22s ease, margin .26s ease, visibility 0s linear .26s;
+}
+.nav-menu .nav-sub-link:focus-visible { outline-offset: -2px; }
+/* While its pages are open the count sits on the tracker; folded, it moves
+   up onto Payroll Records. */
+.nav-menu .nav-link .nav-parent-badge {
+    transition: opacity .2s ease, transform .2s ease, visibility 0s;
+}
+.nav-menu .nav-link[aria-expanded="true"] .nav-parent-badge {
+    opacity: 0; transform: scale(.6); visibility: hidden;
+    transition: opacity .2s ease, transform .2s ease, visibility 0s linear .2s;
+}
+@media (prefers-reduced-motion: reduce) {
+    .nav-menu .nav-sub, .nav-menu .nav-sub.folded,
+    .nav-menu .nav-link .nav-parent-badge,
+    .nav-menu .nav-link[aria-expanded="true"] .nav-parent-badge { transition: none; }
 }
 .nav-menu .nav-sub-link {
     display: flex; align-items: center; gap: 8px;

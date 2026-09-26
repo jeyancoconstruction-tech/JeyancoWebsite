@@ -259,12 +259,20 @@ class RemittanceTrackerTest extends TestCase
             $this->assertStringContainsString('Remittance tracker', $rail);
             preg_match('/nav-sub-badge[^>]*>(\d+)</', $rail, $m);
             $this->assertSame($expected, $m[1] ?? null, "{$url}: the count sits on the tracker");
+
+            // Payroll Records itself folds them, and its own count waits
+            // there for when they are folded.
+            $this->assertStringContainsString('data-sub-toggle="navSubRecords" aria-controls="navSubRecords" aria-expanded="true"', $rail);
+            $this->assertStringContainsString('id="navSubRecords"', $rail);
+            $this->assertMatchesRegularExpression('/nav-sub-badge nav-parent-badge"[^>]*>' . $expected . '</', $rail);
         }
 
         // Anywhere else they fold away, and the count rides on Payroll Records.
         $rail = $this->rail('/dashboard');
         $this->assertStringNotContainsString('class="nav-sub"', $rail);
         $this->assertStringNotContainsString('Remittance tracker', $rail);
+        $this->assertStringNotContainsString('aria-expanded', $rail);
+        $this->assertStringContainsString("sessionStorage.removeItem('jeyanco-nav-records')", $rail, 'leaving forgets the fold');
         $this->assertMatchesRegularExpression(
             '/href="' . preg_quote(url('/payroll-records'), '/') . '">.*?Payroll Records.*?nav-sub-badge[^>]*>' . $expected . '</s', $rail);
     }

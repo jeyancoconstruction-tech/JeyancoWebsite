@@ -244,27 +244,68 @@
                 $remitDue  = app(\App\Services\RemittanceTracker::class)->badge();
                 $inRecords = $onRecords || $onRemit;
             @endphp
-            <a class="nav-link {{ $inRecords ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
+            <a class="nav-link {{ $inRecords ? 'active has-sub' : '' }}" @if($inRecords) data-sub-toggle="navSubRecords" aria-controls="navSubRecords" aria-expanded="true" @endif href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
                 {{-- With its pages folded away, the count of what is due
-                     rides on Payroll Records itself, so it is not lost. --}}
-                @if(! $inRecords && $remitDue > 0)
-                    <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
+                     rides on Payroll Records itself, so it is not lost.
+                     Inside the section it shows only while they are folded. --}}
+                @if($remitDue > 0)
+                    <span class="nav-sub-badge {{ $inRecords ? 'nav-parent-badge' : '' }}" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
                 @endif
             </a>
             {{-- Payroll Records carries its own pages under it: the records
                  themselves, and the Remittance Tracker. They open out only
-                 while you are in one of them, and fold away when you leave. --}}
+                 while you are in one of them, and fold away when you leave.
+                 In there, Payroll Records itself folds and unfolds them. --}}
             @if($inRecords)
-                <div class="nav-sub" aria-label="{{ __('Payroll Records') }}">
-                    <a class="nav-sub-link {{ $onRecords ? 'on' : '' }}" href="{{ url('/payroll-records') }}" @if($onRecords) aria-current="page" @endif>{{ __('Records') }}</a>
-                    <a class="nav-sub-link {{ $onRemit ? 'on' : '' }}" href="{{ route('remittances.index') }}" @if($onRemit) aria-current="page" @endif>
-                        <span>{{ __('Remittance tracker') }}</span>
-                        @if($remitDue > 0)
-                            <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
-                        @endif
-                    </a>
+                <div class="nav-sub" id="navSubRecords" aria-label="{{ __('Payroll Records') }}">
+                    <div class="nav-sub-in">
+                        <a class="nav-sub-link {{ $onRecords ? 'on' : '' }}" href="{{ url('/payroll-records') }}" @if($onRecords) aria-current="page" @endif>{{ __('Records') }}</a>
+                        <a class="nav-sub-link {{ $onRemit ? 'on' : '' }}" href="{{ route('remittances.index') }}" @if($onRemit) aria-current="page" @endif>
+                            <span>{{ __('Remittance tracker') }}</span>
+                            @if($remitDue > 0)
+                                <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
+                            @endif
+                        </a>
+                    </div>
                 </div>
+                <script>
+                    // Runs before the rail is painted. Folded stays folded
+                    // while you move around Payroll Records (a filter reloads
+                    // the page); arriving from elsewhere, the pages slide open.
+                    (function () {
+                        var KEY  = 'jeyanco-nav-records';
+                        var sub  = document.getElementById('navSubRecords');
+                        var link = document.querySelector('[data-sub-toggle="navSubRecords"]');
+                        if (!sub || !link) return;
+                        function remember(v) { try { sessionStorage.setItem(KEY, v); } catch (e) {} }
+                        function set(open) {
+                            sub.classList.toggle('folded', !open);
+                            link.setAttribute('aria-expanded', open ? 'true' : 'false');
+                        }
+                        var was = null;
+                        try { was = sessionStorage.getItem(KEY); } catch (e) {}
+                        if (was === 'closed') {
+                            set(false);
+                        } else if (was === null) {
+                            set(false);
+                            requestAnimationFrame(function () {
+                                requestAnimationFrame(function () { set(true); });
+                            });
+                            remember('open');
+                        }
+                        link.addEventListener('click', function (e) {
+                            // Ctrl/⌘/Shift/middle click still opens the page.
+                            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+                            e.preventDefault();
+                            var open = sub.classList.contains('folded');
+                            set(open);
+                            remember(open ? 'open' : 'closed');
+                        });
+                    })();
+                </script>
+            @else
+                <script>try { sessionStorage.removeItem('jeyanco-nav-records'); } catch (e) {}</script>
             @endif
             {{-- Payslips are off the rail: they open from their payroll run.
                  Workers have no web account — they use the kiosk. --}}
@@ -774,7 +815,8 @@
 
         // Close on nav-link click (mobile UX)
         sidebar.querySelectorAll('.nav-link, .nav-sub-link').forEach(function(link) {
-            link.addEventListener('click', function() {
+            link.addEventListener('click', function(e) {
+                if (e.defaultPrevented) return;   // Payroll Records folding its pages
                 if (window.innerWidth <= 1024) closeSidebar();
             });
         });
