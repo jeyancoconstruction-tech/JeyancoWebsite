@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * The Remittance Tracker: each month's SSS, PhilHealth, Pag-IBIG and BIR
- * remittances — what payroll deducted, when it is due, and whether the
+ * remittances — what payroll deducted, when it is brought up, and whether the
  * office has paid it. See App\Services\RemittanceTracker for the figures.
  */
 class RemittanceController extends Controller
@@ -34,8 +34,10 @@ class RemittanceController extends Controller
             ->get()
             ->keyBy(fn ($p) => $p->agency . '|' . $p->period->format('Y-m'));
 
-        $key   = $month->format('Y-m');
-        $today = $this->tracker->today();
+        $key    = $month->format('Y-m');
+        $today  = $this->tracker->today();
+        // Brought up in the last week of the month after: a reminder, not a deadline.
+        $remind = $this->tracker->reminder($month);
 
         // Everyone with a contribution this month, for their ID numbers.
         $ids = collect($totals[$key]['agencies'] ?? [])->flatMap(fn ($a) => array_column($a['people'], 'id'))->unique();
@@ -47,7 +49,6 @@ class RemittanceController extends Controller
         foreach (RemittanceTracker::AGENCIES as $agency => $a) {
             $total   = (float) ($totals[$key]['agencies'][$agency]['total'] ?? 0);
             $payment = $payments[$agency . '|' . $key] ?? null;
-            $due     = $this->tracker->dueDate($agency, $month);
 
             $rows[$agency] = [
                 'agency'  => $agency,
@@ -57,8 +58,8 @@ class RemittanceController extends Controller
                     'code'      => '#' . str_pad($p['id'], 4, '0', STR_PAD_LEFT),
                     'id_number' => trim((string) ($staff[$p['id']]->{$a['id']} ?? '')),
                 ], $totals[$key]['agencies'][$agency]['people'] ?? []),
-                'due'     => $due,
-                'days'    => (int) $today->diffInDays($due, false),
+                'remind'  => $remind,
+                'days'    => (int) $today->diffInDays($remind[0], false),
                 'status'  => $this->tracker->status($agency, $month, $total, $payment),
                 'payment' => $payment,
             ];
@@ -86,6 +87,8 @@ class RemittanceController extends Controller
             'grid'     => $grid,
             'year'     => $year,
             'weeks'    => $this->tracker->weeksOf($month),
+            'remind'   => $remind,
+            'today'    => $today,
             'channels' => RemittanceTracker::CHANNELS,
         ]);
     }
@@ -203,7 +206,7 @@ class RemittanceController extends Controller
             }
             $sections[] = [
                 'a'      => $a,
-                'due'    => $this->tracker->dueDate($agency, $month),
+                'remind' => $this->tracker->reminder($month),
                 'total'  => (float) ($totals['agencies'][$agency]['total'] ?? 0),
                 'people' => array_map(fn ($p) => $p + [
                     'id_number' => trim((string) ($staff[$p['id']]->{$a['id']} ?? '')),

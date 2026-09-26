@@ -104,12 +104,12 @@ return [
         'en' => ['title' => 'Remittance Tracker', 'lines' => [
             'Each month\'s SSS, PhilHealth, Pag-IBIG and BIR remittances: the employee contributions payroll deducted, from the pay weeks that end in that month.',
             'Mark as paid records the reference number, the date, how it was paid and the receipt; a row opens each employee\'s share.',
-            'Due dates are set in Payroll Settings, under Multipliers and Deductions.',
+            'There is no set due date: each month is brought up in the last week of the month after, and the red dot on Payroll Records says one is waiting. It can still be sent after that.',
         ]],
         'tl' => ['title' => 'Remittance Tracker', 'lines' => [
             'Ang SSS, PhilHealth, Pag-IBIG at BIR na ire-remit bawat buwan: ang kontribusyong ibinawas ng payroll, mula sa mga pay week na nagtatapos sa buwang iyon.',
             'Ang Mark as paid ang nagtatala ng reference number, petsa, paraan ng pagbayad at resibo; ang bawat hilera ang nagbubukas ng bahagi ng bawat empleyado.',
-            'Nasa Payroll Settings, sa Multipliers and Deductions, ang mga due date.',
+            'Walang takdang due date: ipinapaalala ang bawat buwan sa huling linggo ng kasunod na buwan, at ang pulang tuldok sa Payroll Records ang nagsasabing may naghihintay. Puwede pa rin itong ipasa pagkatapos noon.',
         ]],
     ],
 

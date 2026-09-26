@@ -31,8 +31,8 @@
             <tr><td colspan="5"></td></tr>
             <tr>
                 <td class="agency" colspan="3">{{ $s['a']['name'] }} — {{ $s['a']['full'] }} ({{ $s['a']['form'] }})</td>
-                <td class="agency">{{ __('Due') }}</td>
-                <td class="agency">{{ $s['due']->format('M d, Y') }}</td>
+                <td class="agency">{{ __('Reminder') }}</td>
+                <td class="agency">{{ $s['remind'][0]->format('M d') }} – {{ $s['remind'][1]->format('M d, Y') }}</td>
             </tr>
             <tr class="head">
                 <td>#</td><td>{{ __('Employee ID') }}</td><td>{{ __('Name') }}</td><td>{{ $s['a']['id_label'] }}</td><td>{{ __('Employee contribution') }}</td>

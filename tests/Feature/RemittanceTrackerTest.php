@@ -118,36 +118,43 @@ class RemittanceTrackerTest extends TestCase
         $this->assertSame('34-1234567-8', $rows['sss']['people'][0]['id_number']);
     }
 
-    public function test_the_due_date_and_status_come_from_payroll_settings(): void
+    /**
+     * Michael, 2026-09-26: no set due date. A month is brought up in the last
+     * week of the month after, every agency alike, and it is a reminder, not
+     * a deadline: it can still be sent later, so nothing turns "overdue".
+     */
+    public function test_a_month_is_brought_up_in_the_last_week_of_the_month_after(): void
     {
+        // 26 September: August's reminder week is 24–30 September, and it has come.
         $rows = $this->page()->viewData('rows');
+        foreach (['sss', 'philhealth', 'pagibig', 'bir'] as $agency) {
+            [$from, $to] = $rows[$agency]['remind'];
+            $this->assertSame('2026-09-24', $from->toDateString(), "{$agency} is brought up from the 24th");
+            $this->assertSame('2026-09-30', $to->toDateString());
+            if ($rows[$agency]['total'] > 0) {
+                $this->assertSame('due', $rows[$agency]['status'], "{$agency} is to remit");
+            }
+        }
+        $this->page()->assertSee('To remit')->assertSee('Sep 24 – 30')->assertDontSee('Overdue');
 
-        // 26 September: SSS for August is due on the 30th, PhilHealth was due on the 15th.
-        $this->assertSame('2026-09-30', $rows['sss']['due']->toDateString());
+        // A week earlier it was only upcoming, and nothing on the rail said so.
+        Carbon::setTestNow(Carbon::parse('2026-09-20 09:00:00', 'Asia/Manila'));
+        $rows = $this->page()->viewData('rows');
         $this->assertSame('pend', $rows['sss']['status']);
-        $this->assertSame('2026-09-15', $rows['philhealth']['due']->toDateString());
-        $this->assertSame('late', $rows['philhealth']['status']);
+        $this->assertSame(4, $rows['sss']['days'], 'four days to the reminder');
 
-        // Moving SSS to the 20th makes it overdue.
-        $this->actingAs($this->admin)->put(route('settings.remittance-due.update'), [
-            'sss_due_day' => 20, 'philhealth_due_day' => 15, 'pagibig_due_day' => 15, 'bir_due_day' => 10,
-        ])->assertRedirect(route('settings.index', ['tab' => 'payroll']))->assertSessionHas('success');
+        // Past the week it is still just to remit — never late.
+        Carbon::setTestNow(Carbon::parse('2026-10-12 09:00:00', 'Asia/Manila'));
+        $this->assertSame('due', $this->page()->viewData('rows')['sss']['status']);
 
-        $this->assertSame(20, SystemSetting::current()->sss_due_day);
-        $rows = $this->page()->viewData('rows');
-        $this->assertSame('2026-09-20', $rows['sss']['due']->toDateString());
-        $this->assertSame('late', $rows['sss']['status']);
+        // February's is the last seven days of a short March too.
+        [$from, $to] = app(\App\Services\RemittanceTracker::class)->reminder(Carbon::parse('2027-01-01', 'Asia/Manila'));
+        $this->assertSame(['2027-02-22', '2027-02-28'], [$from->toDateString(), $to->toDateString()]);
 
-        // A day past the end of a short month is its last day.
-        $this->actingAs($this->admin)->put(route('settings.remittance-due.update'), [
-            'sss_due_day' => 31, 'philhealth_due_day' => 15, 'pagibig_due_day' => 15, 'bir_due_day' => 10,
-        ]);
-        $this->assertSame('2026-09-30', $this->page()->viewData('rows')['sss']['due']->toDateString());
-
-        // And a due date is a day of the month.
-        $this->actingAs($this->admin)->put(route('settings.remittance-due.update'), [
-            'sss_due_day' => 0, 'philhealth_due_day' => 32, 'pagibig_due_day' => 15, 'bir_due_day' => 10,
-        ])->assertSessionHasErrors(['sss_due_day', 'philhealth_due_day']);
+        // And nothing is set in Payroll Settings any more.
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('settings.remittance-due.update'));
+        $this->actingAs($this->admin)->get(route('settings.index', ['tab' => 'payroll']))
+             ->assertOk()->assertDontSee('Remittance due dates')->assertDontSee('Save Due Dates');
     }
 
     public function test_a_month_with_nothing_deducted_owes_nothing_and_the_current_month_is_not_due(): void
@@ -160,7 +167,7 @@ class RemittanceTrackerTest extends TestCase
         // September is still going.
         $this->assertSame('fut', $grid['sss'][9]['status']);
         $this->assertFalse($grid['sss'][9]['tracked'], 'and cannot be picked yet');
-        $this->assertSame('pend', $rows['sss']['status']);
+        $this->assertSame('due', $rows['sss']['status']);
     }
 
     public function test_marking_paid_keeps_the_reference_date_channel_and_receipt(): void
@@ -231,7 +238,7 @@ class RemittanceTrackerTest extends TestCase
 
         $this->assertSame(0, RemittancePayment::count());
         $this->assertSame(0, RemittanceReceipt::count());
-        $this->assertSame('late', $this->page()->viewData('rows')['philhealth']['status']);
+        $this->assertSame('due', $this->page()->viewData('rows')['philhealth']['status']);
     }
 
     private function rail(string $url): string
@@ -244,8 +251,8 @@ class RemittanceTrackerTest extends TestCase
 
     public function test_the_sidebar_lists_the_tracker_under_payroll_records_with_what_is_due(): void
     {
-        // SSS pending; PhilHealth, Pag-IBIG (and BIR, if anything was withheld) overdue.
-        $expected = (string) collect($this->page()->viewData('rows'))->whereIn('status', ['pend', 'late'])->count();
+        // August's reminder week (24–30 September) has come: every agency that owes is to remit.
+        $expected = (string) collect($this->page()->viewData('rows'))->where('status', 'due')->count();
 
         // Set up as Michael's jeyanco-sidebar-submenu mockup: Payroll Records
         // is a toggle with a chevron, its pages sit under it on a guide line.
@@ -272,7 +279,7 @@ class RemittanceTrackerTest extends TestCase
         $rail = $this->rail('/dashboard');
         $this->assertStringContainsString('<button type="button" class="nav-link nav-parent " id="navRecordsBtn" aria-controls="navSubRecords" aria-expanded="false">', $rail);
         $this->assertStringContainsString('<div class="nav-sub folded" id="navSubRecords">', $rail);
-        $this->assertStringContainsString('class="nav-dot" title="' . $expected . ' remittance(s) due or overdue"', $rail);
+        $this->assertStringContainsString('class="nav-dot" title="' . $expected . ' remittance(s) to remit"', $rail);
         $this->assertStringNotContainsString('class="nav-sub-link on"', $rail);
         $this->assertStringContainsString("IN = false", $rail, 'leaving the section forgets the fold');
     }

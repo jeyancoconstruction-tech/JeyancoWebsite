@@ -236,61 +236,8 @@
                             <i class="fas fa-calendar-check"></i>
                             <span>All rates are effectivity-dated. When a new SSS circular or wage order takes
                                   effect, a new row is added — never overwriting the old. This keeps historical
-                                  payroll recomputations accurate.</span>
+                                  payroll recomputations accurate. Every change is recorded in the Audit Logs.</span>
                         </div>
-
-                        {{-- The history is the point of dating a rate: without it,
-                             nothing on screen shows that the old numbers are still
-                             answering for the days they covered. --}}
-                        @if($payrollRates->count() > 1)
-                        <div class="pr-history">
-                            <p class="pr-history-title">
-                                Rate history
-                                @if($payrollRateTotal > $payrollRates->count())
-                                    <span class="pr-history-count">newest {{ $payrollRates->count() }} of {{ $payrollRateTotal }}</span>
-                                @endif
-                            </p>
-                            <div class="table-responsive">
-                                <table class="ps-dole-table">
-                                    <thead>
-                                        <tr>
-                                            <th>{{ __('Effective from') }}</th>
-                                            <th class="text-end">{{ __('OT') }}</th><th class="text-end">{{ __('Night') }}</th>
-                                            <th class="text-end">{{ __('Rest day') }}</th>
-                                            <th class="text-end">{{ __('SSS') }}</th><th class="text-end">{{ __('PH') }}</th>
-                                            <th class="text-end">{{ __('Pag-IBIG') }}</th>
-                                            <th class="text-end">{{ __('Tax') }}</th>
-                                            <th>{{ __('Set by') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    @foreach($payrollRates as $i => $r)
-                                        {{-- A row on defaults answers with the
-                                             statutory constants, not its own
-                                             columns, so the history has to read
-                                             them the same way payroll does. --}}
-                                        @php $rr = $r->toRates(); @endphp
-                                        <tr class="{{ $i === 0 ? 'pr-history-current' : '' }}">
-                                            <td>
-                                                {{ $r->effective_from->format('M d, Y') }}
-                                                @if($i === 0)<span class="pr-in-force">{{ __('in force') }}</span>@endif
-                                                @if($r->uses_defaults)<span class="pr-on-defaults">{{ __('defaults') }}</span>@endif
-                                            </td>
-                                            <td class="text-end">{{ number_format($rr['ot_multiplier'], 2) }}</td>
-                                            <td class="text-end">{{ number_format($rr['night_diff_multiplier'], 2) }}</td>
-                                            <td class="text-end">{{ number_format($rr['rest_day_multiplier'], 2) }}</td>
-                                            <td class="text-end">{{ number_format($rr['sss_rate'], 2) }}%</td>
-                                            <td class="text-end">{{ number_format($rr['philhealth_rate'], 2) }}%</td>
-                                            <td class="text-end">{{ number_format($rr['pagibig_rate'], 2) }}%</td>
-                                            <td class="text-end">{{ $rr['withholding_tax'] ? 'auto' : 'off' }}</td>
-                                            <td>{{ $r->created_by ?: '—' }}</td>
-                                        </tr>
-                                    @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        @endif
 
                         <div class="pr-foot">
                             <span class="pr-updated">
@@ -308,45 +255,6 @@
                         </div>
                     </div>
                 </div>
-            </form>
-
-            {{-- ══ Remittance due dates ═════════════════════════════════════════
-                 When each agency's monthly remittance falls due, for the
-                 Remittance Tracker. Its own form: these are not dated like the
-                 rates above, and saving them does not add a rate row. --}}
-            <form method="POST" action="{{ route('settings.remittance-due.update') }}">
-                @csrf
-                @method('PUT')
-                <div class="ps-card mb-4" id="remittance-due">
-                    <div class="ps-card-header">
-                        <i class="fas fa-calendar-check"></i>
-                        <div>
-                            <h6>{{ __('Remittance due dates') }}</h6>
-                            <p>{{ __('The day of the following month each agency is due — read by the Remittance Tracker') }}</p>
-                        </div>
-                    </div>
-                    <div class="ps-card-body">
-                        <div class="row g-3">
-                            @foreach(\App\Services\RemittanceTracker::AGENCIES as $a)
-                                <div class="col-sm-6 col-lg-3">
-                                    <label class="ps-label" for="{{ $a['due'] }}">{{ $a['name'] }}</label>
-                                    <input type="number" min="1" max="31" step="1" id="{{ $a['due'] }}" name="{{ $a['due'] }}"
-                                           class="form-control ps-input @error($a['due']) is-invalid @enderror"
-                                           value="{{ old($a['due'], $system->{$a['due']} ?? $a['default_due']) }}" required>
-                                    <small class="text-muted d-block mt-1">{{ $a['form'] }}</small>
-                                    @error($a['due'])<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                </div>
-                            @endforeach
-                        </div>
-                        <small class="text-muted d-block mt-3">
-                            August's contributions are due on this day of September. A day past the end of a short
-                            month is its last day, so 31 means the last day of the month.
-                        </small>
-                    </div>
-                </div>
-                <button type="submit" class="btn ps-save-btn mb-4">
-                    <i class="fas fa-save me-2"></i>{{ __('Save Due Dates') }}
-                </button>
             </form>
         </div>
 
@@ -1566,31 +1474,6 @@ html[data-bs-theme] .settings-tabs .nav-link i[data-lucide] { color: inherit !im
     color:var(--warning,#a66a1e); font-size:.82rem; line-height:1.55;
 }
 .pr-note i { margin-top:2px; flex:none; }
-
-.pr-history { margin-top:20px; }
-.pr-history-title {
-    margin:0 0 8px; font-size:.75rem; font-weight:700; letter-spacing:.5px;
-    text-transform:uppercase; color:var(--text-secondary,#66707c);
-}
-/* The table is capped, so say what is not on it — a truncated audit list that
-   does not admit to being truncated reads as rows somebody deleted. */
-.pr-history-count {
-    margin-left:8px; font-weight:600; letter-spacing:.3px;
-    text-transform:none; color:var(--text-muted,#8a929b);
-}
-.pr-history-current td { font-weight:600; }
-.pr-in-force {
-    margin-left:7px; font-size:.65rem; font-weight:700; letter-spacing:.4px;
-    text-transform:uppercase; padding:1px 7px; border-radius:999px;
-    background:var(--brand-subtle,#edf3f9); color:var(--brand,#1e5c9b);
-}
-/* Green, like the switch that set it: the row is following the statutory
-   figures rather than naming its own. */
-.pr-on-defaults {
-    margin-left:7px; font-size:.65rem; font-weight:700; letter-spacing:.4px;
-    text-transform:uppercase; padding:1px 7px; border-radius:999px;
-    background:rgba(22,163,74,.12); color:var(--success,#16a34a);
-}
 
 .pr-foot {
     display:flex; align-items:center; gap:12px; flex-wrap:wrap;

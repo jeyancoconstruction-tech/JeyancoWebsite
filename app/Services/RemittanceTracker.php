@@ -18,8 +18,13 @@ use Illuminate\Support\Facades\Cache;
  * weekly figures Payroll Records and the payslip show — added up by month.
  * Payroll runs in pay weeks and the agencies bill by month, so a week belongs
  * to the month it ends in: the week of Monday 31 August to Sunday 6 September
- * is September's. Due dates are a day of the following month, set per agency
- * in Payroll Settings. Payments are what the office marked paid.
+ * is September's. Payments are what the office marked paid.
+ *
+ * There is no set due date (Michael, 2026-09-26). A month's remittances are
+ * brought up in the last week of the month after, for every agency alike:
+ * August's in the last seven days of September. That is a reminder, not a
+ * deadline; they can still be sent after it, so nothing is ever "overdue".
+ * Where each one stands is worked out from today's date whenever it is read.
  *
  * A month's figures are cached. The month on screen is worked out again
  * whenever payroll has moved at all since. The others — the year at a glance
@@ -35,25 +40,25 @@ final class RemittanceTracker
         'sss' => [
             'name' => 'SSS', 'full' => 'Social Security System', 'form' => 'Contribution list · PRN',
             'color' => '#1d4ed8', 'channel' => 'Online (My.SSS PRN)',
-            'field' => 'sssDeduction', 'due' => 'sss_due_day', 'default_due' => 30,
+            'field' => 'sssDeduction',
             'id' => 'sss_number', 'id_label' => 'SSS No.',
         ],
         'philhealth' => [
             'name' => 'PhilHealth', 'full' => 'PhilHealth premiums', 'form' => 'RF-1 · SPA',
             'color' => '#059669', 'channel' => 'Bank (Landbank)',
-            'field' => 'philhealthDeduction', 'due' => 'philhealth_due_day', 'default_due' => 15,
+            'field' => 'philhealthDeduction',
             'id' => 'philhealth_number', 'id_label' => 'PhilHealth No.',
         ],
         'pagibig' => [
             'name' => 'Pag-IBIG', 'full' => 'Pag-IBIG Fund (HDMF)', 'form' => 'MCRF · PRN',
             'color' => '#d97706', 'channel' => 'Virtual Pag-IBIG',
-            'field' => 'pagibigDeduction', 'due' => 'pagibig_due_day', 'default_due' => 15,
+            'field' => 'pagibigDeduction',
             'id' => 'pagibig_number', 'id_label' => 'Pag-IBIG MID No.',
         ],
         'bir' => [
             'name' => 'BIR', 'full' => 'Withholding tax on compensation', 'form' => 'BIR Form 1601-C',
             'color' => '#7c3aed', 'channel' => 'eFPS',
-            'field' => 'withholdingTax', 'due' => 'bir_due_day', 'default_due' => 10,
+            'field' => 'withholdingTax',
             'id' => 'tin_number', 'id_label' => 'TIN',
         ],
     ];
@@ -149,14 +154,17 @@ final class RemittanceTracker
         return [$first->copy()->subDays(6), $last];
     }
 
-    /** When a month's remittance to an agency is due: its day in the month after. */
-    public function dueDate(string $agency, Carbon $month): Carbon
+    /**
+     * When a month's remittances are brought up: the last seven days of the
+     * month after — 24 to 30 September for August. Every agency alike.
+     *
+     * @return array{0: Carbon, 1: Carbon}  the first and last day of that week
+     */
+    public function reminder(Carbon $month): array
     {
-        $a    = self::AGENCIES[$agency];
-        $day  = (int) (SystemSetting::current()->{$a['due']} ?? $a['default_due']);
-        $next = $month->copy()->startOfMonth()->addMonthNoOverflow();
+        $end = $month->copy()->startOfMonth()->addMonthNoOverflow()->endOfMonth()->startOfDay();
 
-        return $next->day(max(1, min($day, $next->daysInMonth)));
+        return [$end->copy()->subDays(6), $end];
     }
 
     // ── What each month owed ─────────────────────────────────────────────────
@@ -296,8 +304,9 @@ final class RemittanceTracker
     // ── Where each one stands ────────────────────────────────────────────────
 
     /**
-     * paid · pend (due, not yet late) · late (past its due date) · none (it
-     * owed nothing) · fut (the month is not over, so nothing is due yet).
+     * paid · due (its reminder week has come, and it is not marked paid: the
+     * one that notifies) · pend (the month is over, its reminder week not yet
+     * come) · none (it owed nothing) · fut (the month is not over yet).
      */
     public function status(string $agency, Carbon $month, float $total, ?RemittancePayment $payment): string
     {
@@ -311,11 +320,12 @@ final class RemittanceTracker
             return 'none';
         }
 
-        return $this->today()->gt($this->dueDate($agency, $month)) ? 'late' : 'pend';
+        return $this->today()->gte($this->reminder($month)[0]) ? 'due' : 'pend';
     }
 
     /**
-     * How many agency-months are due or overdue, for the sidebar.
+     * How many agency-months are to remit (their reminder week has come), for
+     * the sidebar.
      *
      * Read from the cached months only — working payroll out on every page
      * would slow every page — so it counts what the tracker last saw. Before
@@ -344,7 +354,7 @@ final class RemittanceTracker
                     foreach (array_keys(self::AGENCIES) as $agency) {
                         $total  = (float) ($entry['agencies'][$agency]['total'] ?? 0);
                         $status = $this->status($agency, $month, $total, null);
-                        if (! isset($paid[$agency . '|' . $month->format('Y-m')]) && in_array($status, ['pend', 'late'], true)) {
+                        if (! isset($paid[$agency . '|' . $month->format('Y-m')]) && $status === 'due') {
                             $count++;
                         }
                     }

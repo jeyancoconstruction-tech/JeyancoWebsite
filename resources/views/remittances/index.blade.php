@@ -5,8 +5,9 @@
 {{-- The Remittance Tracker: each month's SSS, PhilHealth, Pag-IBIG and BIR
      remittances. Laid out after the jeyanco-remittance-tracker.html mockup
      (2026-09-26); every figure is real — the employee contributions payroll
-     deducted, the due dates set in Payroll Settings, and the payments the
-     office recorded here. Colours are the theme's tokens. --}}
+     deducted and the payments the office recorded here. There is no set due
+     date: a month is brought up in the last week of the month after, as a
+     reminder (it can still be sent later). Colours are the theme's tokens. --}}
 
 @push('styles')
 <style>
@@ -80,16 +81,16 @@ html[data-bs-theme] .rmt .rmt-h {
 .rmt-ag small { display: block; color: var(--text-muted); font-size: 11.5px; }
 .rmt-due { display: flex; flex-direction: column; gap: 1px; }
 .rmt-due small { font-size: 11px; color: var(--text-muted); font-weight: 700; }
-.rmt-due small.late { color: var(--danger); }
-.rmt-due small.soon { color: var(--warning); }
+.rmt-due small.now { color: var(--warning); }
+.rmt-due small.soon { color: var(--brand); }
 .rmt-ref { font-family: var(--rmt-mono); font-size: 12px; }
 .rmt-table td small.sub { display: block; font-size: 11px; color: var(--text-muted); }
 
 .rmt-st { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; background: var(--bg-subtle); color: var(--text-secondary); }
 .rmt-st i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
 .rmt-st.paid { background: var(--success-soft); color: var(--success); } .rmt-st.paid i { background: var(--success); }
-.rmt-st.pend { background: var(--warning-soft); color: var(--warning); } .rmt-st.pend i { background: var(--warning); }
-.rmt-st.late { background: var(--danger-soft); color: var(--danger); }   .rmt-st.late i { background: var(--danger); }
+.rmt-st.pend { background: var(--brand-subtle); color: var(--brand); }   .rmt-st.pend i { background: var(--brand); }
+.rmt-st.due  { background: var(--warning-soft); color: var(--warning); } .rmt-st.due i  { background: var(--warning); }
 
 /* ── The year at a glance ─────────────────────────────────────────────── */
 .rmt-year { display: grid; grid-template-columns: 150px repeat(12, minmax(44px, 1fr)); gap: 6px; padding: 14px 16px; min-width: 760px; }
@@ -100,8 +101,8 @@ html[data-bs-theme] .rmt .rmt-h {
 a.rmt-yc:hover, a.rmt-yc:focus-visible { outline: 2px solid var(--border-md); outline-offset: 1px; }
 .rmt-yc::after { content: ""; width: 8px; height: 8px; border-radius: 50%; grid-area: 1 / 1; }
 .rmt-yc.paid { background: var(--success-soft); } .rmt-yc.paid::after { background: var(--success); }
-.rmt-yc.pend { background: var(--warning-soft); } .rmt-yc.pend::after { background: var(--warning); }
-.rmt-yc.late { background: var(--danger-soft); }  .rmt-yc.late::after { background: var(--danger); }
+.rmt-yc.pend { background: var(--brand-subtle); } .rmt-yc.pend::after { background: var(--brand); }
+.rmt-yc.due  { background: var(--warning-soft); } .rmt-yc.due::after  { background: var(--warning); }
 .rmt-yc.none::after { width: 10px; height: 2px; border-radius: 1px; background: var(--border-md); }
 .rmt-yc.fut { opacity: .55; }
 .rmt-yc.sel { outline: 2px solid var(--brand); outline-offset: 1px; }
@@ -109,8 +110,8 @@ a.rmt-yc:hover, a.rmt-yc:focus-visible { outline: 2px solid var(--border-md); ou
 .rmt-legend span { display: flex; align-items: center; gap: 6px; }
 .rmt-legend .rmt-yc { width: 12px; height: 12px; border-radius: 3px; }
 .rmt-legend .rmt-yc::after { display: none; }
-.rmt-legend .rmt-yc.paid { background: var(--success); } .rmt-legend .rmt-yc.pend { background: var(--warning); }
-.rmt-legend .rmt-yc.late { background: var(--danger); } .rmt-legend .rmt-yc.none { background: var(--border-md); }
+.rmt-legend .rmt-yc.paid { background: var(--success); } .rmt-legend .rmt-yc.pend { background: var(--brand); }
+.rmt-legend .rmt-yc.due { background: var(--warning); } .rmt-legend .rmt-yc.none { background: var(--border-md); }
 .rmt-legend .rmt-yc.fut { background: var(--bg-subtle); box-shadow: inset 0 0 0 1px var(--border-md); opacity: 1; }
 
 /* ── An agency's month, in a side panel ───────────────────────────────── */
@@ -165,14 +166,17 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
 @section('content')
 @php
     $peso  = fn ($n) => '₱' . number_format((float) $n, 2);
-    $label = ['paid' => 'Paid', 'pend' => 'Pending', 'late' => 'Overdue', 'none' => 'Nothing due', 'fut' => 'Not yet due'];
+    $label = ['paid' => 'Paid', 'pend' => 'Upcoming', 'due' => 'To remit', 'none' => 'Nothing to remit', 'fut' => 'Month in progress'];
     $mon   = $month->format('M Y');
     [$wFrom, $wTo] = $weeks;
 
     $owing = collect($rows)->filter(fn ($r) => $r['total'] > 0 || $r['payment']);
     $paid  = collect($rows)->where('status', 'paid');
     $pend  = collect($rows)->where('status', 'pend');
-    $late  = collect($rows)->where('status', 'late');
+    $due   = collect($rows)->where('status', 'due');
+    // The month's reminder week: the last seven days of the month after.
+    [$rFrom, $rTo] = $remind;
+    $week  = $rFrom->format('M j') . ' – ' . $rTo->format('j');
     $sum   = fn ($list) => $list->sum('total');
 
     $icon = [
@@ -220,17 +224,19 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
             <b>{{ $peso($paid->sum(fn ($r) => (float) $r['payment']->amount)) }}</b>
             <small>{{ $paid->count() }} {{ __('of') }} {{ max($owing->count(), $paid->count()) }} {{ $owing->count() === 1 ? __('agency') : __('agencies') }}</small>
         </div>
-        <div class="rmt-card rmt-stat" style="--c:var(--warning)">
-            <span><i></i>{{ __('Pending') }}</span>
+        <div class="rmt-card rmt-stat" style="--c:var(--brand)">
+            <span><i></i>{{ __('Upcoming') }}</span>
             <b>{{ $peso($sum($pend)) }}</b>
             <small>{{ $pend->isNotEmpty()
-                ? $pend->pluck('a.name')->join(', ') . ' · ' . __('due') . ' ' . $pend->min('due')->format('M j')
-                : __('Nothing pending') }}</small>
+                ? $pend->pluck('a.name')->join(', ') . ' · ' . __('reminder from') . ' ' . $rFrom->format('M j')
+                : __('Nothing upcoming') }}</small>
         </div>
-        <div class="rmt-card rmt-stat" style="--c:var(--danger)">
-            <span><i></i>{{ __('Overdue') }}</span>
-            <b>{{ $peso($sum($late)) }}</b>
-            <small>{{ $late->isNotEmpty() ? $late->pluck('a.name')->join(', ') . ' · ' . __('penalties may apply') : __('All on time') }}</small>
+        <div class="rmt-card rmt-stat" style="--c:var(--warning)">
+            <span><i></i>{{ __('To remit') }}</span>
+            <b>{{ $peso($sum($due)) }}</b>
+            <small>{{ $due->isNotEmpty()
+                ? $due->pluck('a.name')->join(', ') . ' · ' . __('reminded since') . ' ' . $rFrom->format('M j')
+                : __('Nothing waiting') }}</small>
         </div>
     </section>
 
@@ -249,7 +255,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
                         <th class="l">{{ __('Agency') }}</th>
                         <th>{{ __('Employees') }}</th>
                         <th>{{ __('Amount') }}</th>
-                        <th class="l sepl">{{ __('Due date') }}</th>
+                        <th class="l sepl" title="{{ __('Brought up in the last week of the month after. It can still be sent later.') }}">{{ __('Reminder') }}</th>
                         <th class="l">{{ __('Status') }}</th>
                         <th class="l">{{ __('Payment') }}</th>
                     </tr>
@@ -267,11 +273,11 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
                             <td class="amt">{{ $peso($r['total']) }}</td>
                             <td class="l sepl">
                                 <div class="rmt-due">
-                                    <span>{{ $r['due']->format('M j, Y') }}</span>
-                                    @if($r['status'] === 'late')
-                                        <small class="late">{{ abs($r['days']) }} {{ abs($r['days']) === 1 ? __('day late') : __('days late') }}</small>
+                                    <span>{{ $week }}</span>
+                                    @if($r['status'] === 'due')
+                                        <small class="now">{{ $today->lte($rTo) ? __('this week') : __('since') . ' ' . $rFrom->format('M j') }}</small>
                                     @elseif($r['status'] === 'pend')
-                                        <small class="soon">{{ $r['days'] === 0 ? __('due today') : __('in') . ' ' . $r['days'] . ' ' . ($r['days'] === 1 ? __('day') : __('days')) }}</small>
+                                        <small class="soon">{{ __('in') . ' ' . $r['days'] . ' ' . ($r['days'] === 1 ? __('day') : __('days')) }}</small>
                                     @endif
                                 </div>
                             </td>
@@ -280,7 +286,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
                                 @if($r['payment'])
                                     <span class="rmt-ref">{{ $r['payment']->reference }}</span>
                                     <small class="sub">{{ $r['payment']->paid_on->format('M j') }} · {{ $r['payment']->channel }}</small>
-                                @elseif(in_array($r['status'], ['pend', 'late'], true))
+                                @elseif(in_array($r['status'], ['pend', 'due'], true))
                                     <button type="button" class="rmt-btn pri sm" data-rmt-pay="{{ $r['agency'] }}">{{ __('Mark as paid') }}</button>
                                 @else
                                     <span class="rmt-note">—</span>
@@ -308,10 +314,10 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
             <span class="sp"></span>
             <span class="rmt-legend">
                 <span><i class="rmt-yc paid"></i>{{ __('Paid') }}</span>
-                <span><i class="rmt-yc pend"></i>{{ __('Pending') }}</span>
-                <span><i class="rmt-yc late"></i>{{ __('Overdue') }}</span>
-                <span><i class="rmt-yc none"></i>{{ __('Nothing due') }}</span>
-                <span><i class="rmt-yc fut"></i>{{ __('Not yet due') }}</span>
+                <span><i class="rmt-yc due"></i>{{ __('To remit') }}</span>
+                <span><i class="rmt-yc pend"></i>{{ __('Upcoming') }}</span>
+                <span><i class="rmt-yc none"></i>{{ __('Nothing to remit') }}</span>
+                <span><i class="rmt-yc fut"></i>{{ __('Month in progress') }}</span>
             </span>
         </div>
         <div class="rmt-wrap">
@@ -355,7 +361,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
             <div class="rmt-db">
                 <div class="rmt-net">
                     <div><span>{{ __('Total remittance') }}</span><b>{{ $peso($r['total']) }}</b></div>
-                    <small><span class="rmt-st {{ $r['status'] }}"><i></i>{{ __($label[$r['status']]) }}</span><br>{{ __('Due') }} {{ $r['due']->format('M j, Y') }}</small>
+                    <small><span class="rmt-st {{ $r['status'] }}"><i></i>{{ __($label[$r['status']]) }}</span><br>{{ __('Reminder') }} {{ $week }}</small>
                 </div>
 
                 <div class="rmt-dsec">
@@ -414,7 +420,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
                     </form>
                 @endif
                 <a class="rmt-btn" href="{{ route('remittances.report', ['month' => $month->format('Y-m'), 'agency' => $r['agency']]) }}">{!! $icon['dl'] !!} {{ __('Download report') }}</a>
-                @if(! $r['payment'] && in_array($r['status'], ['pend', 'late'], true))
+                @if(! $r['payment'] && in_array($r['status'], ['pend', 'due'], true))
                     <button type="button" class="rmt-btn pri" data-rmt-pay="{{ $r['agency'] }}">{{ __('Mark as paid') }}</button>
                 @endif
             </div>

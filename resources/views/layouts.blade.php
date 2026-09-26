@@ -257,7 +257,7 @@
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
                 <span class="nav-end">
                     @if($remitDue > 0)
-                        <span class="nav-dot" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}"></span>
+                        <span class="nav-dot" title="{{ $remitDue }} {{ __('remittance(s) to remit') }}"></span>
                     @endif
                     <svg class="nav-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
                 </span>
@@ -269,7 +269,7 @@
                         <a class="nav-sub-link {{ $onRemit ? 'on' : '' }}" href="{{ route('remittances.index') }}" @if($onRemit) aria-current="page" @endif>
                             <span>{{ __('Remittance tracker') }}</span>
                             @if($remitDue > 0)
-                                <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
+                                <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) to remit') }}">{{ $remitDue }}</span>
                             @endif
                         </a>
                     </div>

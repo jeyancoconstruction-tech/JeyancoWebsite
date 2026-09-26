@@ -22,26 +22,17 @@ use Carbon\Carbon;
 
 class SettingsController extends Controller
 {
-    /** How many rate sets the history table shows before it stops being read. */
-    private const RATE_HISTORY_SHOWN = 5;
 
     public function index(Request $request)
     {
         $settings = Setting::first();
         $laborTypes = LaborType::all();
 
-        // Rate history, newest effectivity first: the card shows the set in
-        // force and what came before it, because "which numbers paid this
-        // period" is the question an audit actually asks.
-        //
-        // Only the five most recent, though. Every change is an insert, so the
-        // list grows for the life of the system and a table that long stops
-        // being read. The older rows are not gone — they still answer for the
-        // days they covered — so the count is shown rather than quietly
-        // dropped.
-        $payrollRates     = PayrollRate::newestFirst()->limit(self::RATE_HISTORY_SHOWN)->get();
-        $payrollRateTotal = PayrollRate::count();
-        $currentRate      = PayrollRate::current();
+        // The rate set in force. Every change is still a new dated row, so
+        // past days keep the numbers they were paid under; who changed what,
+        // and when, is in the Audit Logs (the rate history table was taken off
+        // this page on 2026-09-26 for that reason).
+        $currentRate = PayrollRate::current();
 
         // The statutory figures, for the form to fill in and lock when the
         // office is on defaults. Handed to the view rather than reached for
@@ -104,7 +95,7 @@ class SettingsController extends Controller
 
         return view('settings.index', compact(
             'settings', 'laborTypes', 'holidayCalendar', 'holidayYear', 'holidaySync',
-            'payrollRates', 'payrollRateTotal', 'currentRate', 'statutoryDefaults', 'system', 'bonusGrants', 'valeAdvances', 'activeEmployees', 'shifts'
+            'currentRate', 'statutoryDefaults', 'system', 'bonusGrants', 'valeAdvances', 'activeEmployees', 'shifts'
         ));
     }
 
@@ -612,31 +603,6 @@ class SettingsController extends Controller
             ->with('success', 'Work schedule updated!');
     }
 
-    /**
-     * When each agency's monthly remittance falls due, for the Remittance
-     * Tracker: a day of the month after the one the contributions are for.
-     * A 31 in a 30-day month is its last day.
-     */
-    public function updateRemittanceDueDays(Request $request)
-    {
-        $rules = [];
-        foreach (\App\Services\RemittanceTracker::AGENCIES as $a) {
-            $rules[$a['due']] = ['required', 'integer', 'min:1', 'max:31'];
-        }
-        $data = $request->validate($rules, [
-            '*.min' => 'A due date is a day of the month, from 1 to 31.',
-            '*.max' => 'A due date is a day of the month, from 1 to 31.',
-        ]);
-
-        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
-        $settings->fill($data)->save();
-        SystemSetting::forget();
-
-        app(\App\Services\RemittanceTracker::class)->forgetBadge();
-
-        return redirect()->route('settings.index', ['tab' => 'payroll'])
-            ->with('success', 'Remittance due dates updated!');
-    }
 
     /**
      * Hold every settled day at the rest-day answer it was settled under.
