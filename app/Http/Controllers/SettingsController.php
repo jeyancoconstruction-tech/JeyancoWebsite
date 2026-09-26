@@ -48,7 +48,7 @@ class SettingsController extends Controller
         // from the template, so the constants stay named in one place.
         $statutoryDefaults = PayrollRate::DEFAULTS + PayrollRate::DEDUCTION_DEFAULTS;
 
-        // The Attendance tab edits the system row's payroll half: the standard
+        // The Work Schedule tab edits the system row's payroll half: the standard
         // day, the grace period, and where a pay week starts.
         $system = SystemSetting::current();
 
@@ -609,7 +609,7 @@ class SettingsController extends Controller
 
         // Back to the tab it was saved from, or the save reads as lost.
         return redirect()->route('settings.index', ['tab' => 'attendance'])
-            ->with('success', 'Attendance settings updated!');
+            ->with('success', 'Work schedule updated!');
     }
 
     /**

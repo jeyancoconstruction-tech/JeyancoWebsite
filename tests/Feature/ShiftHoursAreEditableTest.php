@@ -103,6 +103,19 @@ class ShiftHoursAreEditableTest extends TestCase
         }
     }
 
+    /** The tab and its Save button are named for what they set: the shifts. */
+    public function test_the_tab_is_called_work_schedule(): void
+    {
+        $this->actingAs($this->admin())
+             ->get(route('settings.index', ['tab' => 'attendance']))
+             ->assertOk()
+             ->assertSeeInOrder(['id="attendance-tab"', 'Work Schedule', '</button>'], false)
+             ->assertSee('Save Work Schedule')
+             ->assertDontSee('Save Attendance Settings');
+
+        $this->save([])->assertSessionHas('success', 'Work schedule updated!');
+    }
+
     public function test_the_hours_typed_become_the_sessions_that_are_run(): void
     {
         $this->save([$this->day()->id => ['starts_at' => '07:00', 'ends_at' => '16:00', 'regular_hours' => 8]])

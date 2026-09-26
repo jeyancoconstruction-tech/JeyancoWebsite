@@ -33,7 +33,7 @@
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link {{ $tab === 'attendance' ? 'active' : '' }}" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
-                <i data-lucide="clock" class="me-2"></i>{{ __('Attendance') }}
+                <i data-lucide="clock" class="me-2"></i>{{ __('Work Schedule') }}
             </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -311,7 +311,7 @@
             </form>
         </div>
 
-        <!-- ATTENDANCE TAB -->
+        <!-- WORK SCHEDULE TAB -->
         <div class="tab-pane fade {{ $tab === 'attendance' ? 'show active' : '' }}" id="attendance" role="tabpanel">
             <form method="POST" action="{{ route('settings.attendance.update') }}">
                 @csrf
@@ -552,7 +552,7 @@
                 </div>
 
                 <button type="submit" class="btn ps-save-btn">
-                    <i class="fas fa-save me-2"></i>{{ __('Save Attendance Settings') }}
+                    <i class="fas fa-save me-2"></i>{{ __('Save Work Schedule') }}
                 </button>
             </form>
         </div>

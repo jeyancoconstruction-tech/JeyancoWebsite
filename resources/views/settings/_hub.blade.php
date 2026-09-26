@@ -50,5 +50,5 @@
         @if($onKiosk)<span class="dirty" data-hub-dirty hidden></span>@endif
     </a>
 
-    <div class="st-nav-foot"><i data-lucide="info"></i><span>Pay, attendance and holidays live in <a class="sx-link" href="{{ route('settings.index') }}">Payroll Settings</a>.</span></div>
+    <div class="st-nav-foot"><i data-lucide="info"></i><span>Pay, work schedules and holidays live in <a class="sx-link" href="{{ route('settings.index') }}">Payroll Settings</a>.</span></div>
 </nav>
