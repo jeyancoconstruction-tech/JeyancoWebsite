@@ -247,22 +247,24 @@
                 $remitDue  = app(\App\Services\RemittanceTracker::class)->badge();
                 $inRecords = $onRecords || $onRemit;
             @endphp
-            <a class="nav-link {{ $inRecords ? 'active has-sub' : '' }}" @if($inRecords) data-sub-toggle="navSubRecords" aria-controls="navSubRecords" aria-expanded="true" @endif href="{{ url('/payroll-records') }}">
+            {{-- Payroll Records holds its own pages, set up as Michael's
+                 jeyanco-sidebar-submenu mockup: the parent is a toggle with a
+                 chevron and never turns solid blue; only the open page is lit,
+                 with a blue marker on the guide line. They are open while you
+                 are in one of them and folded everywhere else, where a red dot
+                 on the parent says something inside is due. --}}
+            <button type="button" class="nav-link nav-parent {{ $inRecords ? 'has-on' : '' }}" id="navRecordsBtn" aria-controls="navSubRecords" aria-expanded="{{ $inRecords ? 'true' : 'false' }}">
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
-                {{-- With its pages folded away, the count of what is due
-                     rides on Payroll Records itself, so it is not lost.
-                     Inside the section it shows only while they are folded. --}}
-                @if($remitDue > 0)
-                    <span class="nav-sub-badge {{ $inRecords ? 'nav-parent-badge' : '' }}" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
-                @endif
-            </a>
-            {{-- Payroll Records carries its own pages under it: the records
-                 themselves, and the Remittance Tracker. They open out only
-                 while you are in one of them, and fold away when you leave.
-                 In there, Payroll Records itself folds and unfolds them. --}}
-            @if($inRecords)
-                <div class="nav-sub" id="navSubRecords" aria-label="{{ __('Payroll Records') }}">
-                    <div class="nav-sub-in">
+                <span class="nav-end">
+                    @if($remitDue > 0)
+                        <span class="nav-dot" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}"></span>
+                    @endif
+                    <svg class="nav-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </span>
+            </button>
+            <div class="nav-sub {{ $inRecords ? '' : 'folded' }}" id="navSubRecords">
+                <div class="nav-sub-in">
+                    <div class="nav-sub-list" role="group" aria-label="{{ __('Payroll Records') }}">
                         <a class="nav-sub-link {{ $onRecords ? 'on' : '' }}" href="{{ url('/payroll-records') }}" @if($onRecords) aria-current="page" @endif>{{ __('Records') }}</a>
                         <a class="nav-sub-link {{ $onRemit ? 'on' : '' }}" href="{{ route('remittances.index') }}" @if($onRemit) aria-current="page" @endif>
                             <span>{{ __('Remittance tracker') }}</span>
@@ -272,44 +274,42 @@
                         </a>
                     </div>
                 </div>
-                <script>
-                    // Runs before the rail is painted. Folded stays folded
-                    // while you move around Payroll Records (a filter reloads
-                    // the page); arriving from elsewhere, the pages slide open.
-                    (function () {
-                        var KEY  = 'jeyanco-nav-records';
-                        var sub  = document.getElementById('navSubRecords');
-                        var link = document.querySelector('[data-sub-toggle="navSubRecords"]');
-                        if (!sub || !link) return;
-                        function remember(v) { try { sessionStorage.setItem(KEY, v); } catch (e) {} }
-                        function set(open) {
-                            sub.classList.toggle('folded', !open);
-                            link.setAttribute('aria-expanded', open ? 'true' : 'false');
-                        }
-                        var was = null;
-                        try { was = sessionStorage.getItem(KEY); } catch (e) {}
-                        if (was === 'closed') {
-                            set(false);
-                        } else if (was === null) {
-                            set(false);
-                            requestAnimationFrame(function () {
-                                requestAnimationFrame(function () { set(true); });
-                            });
-                            remember('open');
-                        }
-                        link.addEventListener('click', function (e) {
-                            // Ctrl/⌘/Shift/middle click still opens the page.
-                            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-                            e.preventDefault();
-                            var open = sub.classList.contains('folded');
-                            set(open);
-                            remember(open ? 'open' : 'closed');
+            </div>
+            <script>
+                // Runs before the rail is painted.
+                (function () {
+                    var KEY = 'jeyanco-nav-records', IN = {{ $inRecords ? 'true' : 'false' }};
+                    var sub = document.getElementById('navSubRecords');
+                    var btn = document.getElementById('navRecordsBtn');
+                    if (!sub || !btn) return;
+                    function get() { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } }
+                    function put(v) { try { if (v === null) { sessionStorage.removeItem(KEY); } else { sessionStorage.setItem(KEY, v); } } catch (e) {} }
+                    function set(open) {
+                        sub.classList.toggle('folded', !open);
+                        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    }
+                    var was = get();
+                    if (!IN) {
+                        put(null);              // leaving the section folds them away
+                    } else if (was === 'closed') {
+                        set(false);             // folded stays folded while you are in it
+                    } else if (was === null) {
+                        set(false);             // arriving: they slide open
+                        requestAnimationFrame(function () {
+                            requestAnimationFrame(function () { set(true); });
                         });
-                    })();
-                </script>
-            @else
-                <script>try { sessionStorage.removeItem('jeyanco-nav-records'); } catch (e) {}</script>
-            @endif
+                        put('open');
+                    }
+                    btn.addEventListener('click', function () {
+                        var open = sub.classList.contains('folded');
+                        set(open);
+                        // Inside the section a fold is kept (a filter reloads the
+                        // page). Opened elsewhere, the page picked opens with them
+                        // already open instead of sliding again.
+                        put(open ? 'open' : (IN ? 'closed' : null));
+                    });
+                })();
+            </script>
             {{-- Payslips are off the rail: they open from their payroll run.
                  Workers have no web account — they use the kiosk. --}}
             {{-- Admin only, like the rest of the settings page it opens. It sits
@@ -850,7 +850,8 @@
         // Close on nav-link click (mobile UX)
         sidebar.querySelectorAll('.nav-link, .nav-sub-link').forEach(function(link) {
             link.addEventListener('click', function(e) {
-                if (e.defaultPrevented) return;   // Payroll Records folding its pages
+                // Payroll Records folds and unfolds its pages; it goes nowhere.
+                if (e.defaultPrevented || link.hasAttribute('aria-expanded')) return;
                 if (window.innerWidth <= 1024) closeSidebar();
             });
         });

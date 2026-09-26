@@ -247,34 +247,34 @@ class RemittanceTrackerTest extends TestCase
         // SSS pending; PhilHealth, Pag-IBIG (and BIR, if anything was withheld) overdue.
         $expected = (string) collect($this->page()->viewData('rows'))->whereIn('status', ['pend', 'late'])->count();
 
-        // In Payroll Records or the tracker, its pages open out under it.
-        foreach (['/payroll-records', '/remittances'] as $url) {
+        // Set up as Michael's jeyanco-sidebar-submenu mockup: Payroll Records
+        // is a toggle with a chevron, its pages sit under it on a guide line.
+        // In Payroll Records or the tracker they are open, the open page is
+        // lit, and the parent is never the solid blue pill.
+        foreach (['/payroll-records' => 'Records', '/remittances' => 'Remittance tracker'] as $url => $lit) {
             $rail    = $this->rail($url);
-            $records = strpos($rail, 'href="' . url('/payroll-records') . '"');
-            $sub     = strpos($rail, 'class="nav-sub"');
+            $parent  = strpos($rail, 'id="navRecordsBtn"');
+            $sub     = strpos($rail, 'id="navSubRecords"');
             $tracker = strpos($rail, 'href="' . route('remittances.index') . '"');
 
-            $this->assertNotFalse($sub, "{$url}: the sub-items are open");
-            $this->assertTrue($records < $sub && $sub < $tracker, "{$url}: under Payroll Records");
-            $this->assertStringContainsString('Remittance tracker', $rail);
+            $this->assertMatchesRegularExpression('~<button type="button" class="nav-link nav-parent has-on" id="navRecordsBtn" aria-controls="navSubRecords" aria-expanded="true">~', $rail, "{$url}: open, and not the solid pill");
+            $this->assertStringNotContainsString('nav-link active', $rail, "{$url}: nothing on the rail is the solid pill");
+            $this->assertMatchesRegularExpression('~<div class="nav-sub\s*" id="navSubRecords">~', $rail, "{$url}: the pages are open");
+            $this->assertTrue($parent < $sub && $sub < $tracker, "{$url}: under Payroll Records");
+            $this->assertStringContainsString('class="nav-chev"', $rail);
+            $this->assertMatchesRegularExpression('~class="nav-sub-link on"[^>]*aria-current="page"\s*>\s*(<span>)?' . preg_quote($lit, '~') . '~', $rail, "{$url}: {$lit} is lit");
             preg_match('/nav-sub-badge[^>]*>(\d+)</', $rail, $m);
             $this->assertSame($expected, $m[1] ?? null, "{$url}: the count sits on the tracker");
-
-            // Payroll Records itself folds them, and its own count waits
-            // there for when they are folded.
-            $this->assertStringContainsString('data-sub-toggle="navSubRecords" aria-controls="navSubRecords" aria-expanded="true"', $rail);
-            $this->assertStringContainsString('id="navSubRecords"', $rail);
-            $this->assertMatchesRegularExpression('/nav-sub-badge nav-parent-badge"[^>]*>' . $expected . '</', $rail);
         }
 
-        // Anywhere else they fold away, and the count rides on Payroll Records.
+        // Anywhere else they are folded, and a red dot on Payroll Records says
+        // something inside is due; the parent still opens them in place.
         $rail = $this->rail('/dashboard');
-        $this->assertStringNotContainsString('class="nav-sub"', $rail);
-        $this->assertStringNotContainsString('Remittance tracker', $rail);
-        $this->assertStringNotContainsString('aria-expanded', $rail);
-        $this->assertStringContainsString("sessionStorage.removeItem('jeyanco-nav-records')", $rail, 'leaving forgets the fold');
-        $this->assertMatchesRegularExpression(
-            '/href="' . preg_quote(url('/payroll-records'), '/') . '">.*?Payroll Records.*?nav-sub-badge[^>]*>' . $expected . '</s', $rail);
+        $this->assertStringContainsString('<button type="button" class="nav-link nav-parent " id="navRecordsBtn" aria-controls="navSubRecords" aria-expanded="false">', $rail);
+        $this->assertStringContainsString('<div class="nav-sub folded" id="navSubRecords">', $rail);
+        $this->assertStringContainsString('class="nav-dot" title="' . $expected . ' remittance(s) due or overdue"', $rail);
+        $this->assertStringNotContainsString('class="nav-sub-link on"', $rail);
+        $this->assertStringContainsString("IN = false", $rail, 'leaving the section forgets the fold');
     }
 
     public function test_the_reports_download_each_agency_with_the_id_numbers(): void
