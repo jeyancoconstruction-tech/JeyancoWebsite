@@ -44,6 +44,27 @@ class KioskController extends Controller
      * stored site, and is written back so the dashboard, the geofence and any
      * later request that omits site_id all agree with what the operator picked.
      */
+    /**
+     * System Settings → Kiosks → Unknown fingerprints: admins hear about a
+     * finger the kiosk does not know, once a day for each. It no longer opens
+     * a pending worker — see clock() for why that was taken out.
+     */
+    private function tellAdminsAboutUnknownFinger(string $fp, ?Kiosk $kiosk): void
+    {
+        if (! SystemSetting::current()->enabled('kiosk_unknown_alert')) {
+            return;
+        }
+
+        $where = $kiosk ? ($kiosk->name ?: $kiosk->code) : 'a kiosk';
+        $key   = 'kiosk_unknown_' . $fp . '_' . today()->toDateString();
+
+        foreach (\App\Models\User::where('is_admin', true)->where('is_active', true)->get() as $admin) {
+            \App\Notifications\KioskAlert::fireOnce($admin, 'kiosk_unknown', $key,
+                'Unregistered fingerprint',
+                "Fingerprint #{$fp} was scanned at {$where} but belongs to nobody. Add the worker on the web, then enrol the finger.");
+        }
+    }
+
     private function activeSite(Request $request, ?Kiosk $kiosk): ?Site
     {
         if ($request->filled('site_id')) {
@@ -466,7 +487,8 @@ class KioskController extends Controller
         // it almost at once — nobody touches the Pi.
         $attendance = [
             'mode'                 => $system->kioskMode(),
-            'repeat_guard_seconds' => (int) ($system->kiosk_repeat_guard_seconds ?? 180),
+            // 0 when System Settings → Kiosks → Ignore duplicate scans is off.
+            'repeat_guard_seconds' => $system->enabled('kiosk_repeat_guard_on') ? (int) ($system->kiosk_repeat_guard_seconds ?? 180) : 0,
             'idle_return_seconds'  => (int) ($system->kiosk_idle_return_seconds ?? 60),
             'shifts'               => Shift::query()->orderBy('crosses_midnight')->orderBy('id')->get()
                 ->filter(fn (Shift $s) => $s->hasSchedule())
@@ -885,7 +907,7 @@ class KioskController extends Controller
         // A second touch must never turn a TIME IN into a TIME OUT. Kept here
         // rather than only on the kiosk, so a scan sent twice — weak signal,
         // a retry — is still recorded once.
-        $guard = max(0, (int) ($system->kiosk_repeat_guard_seconds ?? 180));
+        $guard = $system->enabled('kiosk_repeat_guard_on') ? max(0, (int) ($system->kiosk_repeat_guard_seconds ?? 180)) : 0;
         if ($guard && ($last = $this->lastPunch($employee->id, $now))) {
             [$at, $kind] = $last;
 
@@ -1123,6 +1145,8 @@ class KioskController extends Controller
         // An unknown finger is now simply unknown.
         $isNew = false;
         if (!$employee) {
+            $this->tellAdminsAboutUnknownFinger($fp, $kiosk);
+
             return response()->json([
                 'success'   => false,
                 'not_found' => true,
@@ -1207,6 +1231,8 @@ class KioskController extends Controller
         // An unknown finger is now simply unknown.
         $isNew = false;
         if (!$employee) {
+            $this->tellAdminsAboutUnknownFinger($fp, $kiosk);
+
             return response()->json([
                 'success'   => false,
                 'not_found' => true,

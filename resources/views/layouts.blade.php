@@ -135,6 +135,12 @@
          wins its ties with everything above. See mobile.css. --}}
     <link rel="stylesheet" href="{{ $cssv('mobile.css') }}">
 
+    {{-- System Settings → Appearance → Accent color: the brand tokens, redefined
+         when the office picked something other than the design's own blue. --}}
+    @if($accentCss = \App\Models\SystemSetting::current()->accentCss())
+        <style id="accentTokens">{!! $accentCss !!}</style>
+    @endif
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- Live.on() before live.js has loaded. A page's own script runs while
@@ -158,7 +164,7 @@
     <script src="https://cdn.jsdelivr.net/npm/lucide@1.47.0/dist/umd/lucide.min.js"></script>
 </head>
 
-<body class="bg-light">
+<body class="bg-light{{ \App\Models\SystemSetting::current()->table_density === 'compact' ? ' density-compact' : '' }}">
 
 {{-- The overlay the site opens on, first in the body so it is painted while
      the rest of the page is still arriving behind it. Only on opening the
@@ -310,6 +316,7 @@
                 // What is due or overdue, from the months the tracker last
                 // worked out; nothing is priced to draw the sidebar.
                 $remitDue  = app(\App\Services\RemittanceTracker::class)->badge();
+                app(\App\Services\RemittanceTracker::class)->remind(auth()->user(), $remitDue);
                 // Payroll Reports is the third page of the group (2026-09-26).
                 $canReports = (bool) auth()->user()?->canAccessModule('payroll-reports');
                 $onReports  = $canReports && request()->is('payroll-reports*');

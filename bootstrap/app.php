@@ -26,6 +26,8 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetLocale::class,
             // A password the admin set is replaced before anything else opens.
             \App\Http\Middleware\EnsurePasswordIsChosen::class,
+            // "Sign out all sessions" in System Settings → Security.
+            \App\Http\Middleware\EndRevokedSessions::class,
         ]);
 
         $middleware->alias([

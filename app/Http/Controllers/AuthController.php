@@ -45,7 +45,10 @@ class AuthController extends Controller
 
     // Ipakita ang Login Form
     public function showLoginForm() {
-        return view('login', ['googleSignIn' => self::googleConfigured()]);
+        return view('login', [
+            'googleSignIn' => self::googleConfigured() && SystemSetting::current()->enabled('google_sign_in'),
+            'intro'        => SystemSetting::current()->enabled('signin_intro'),
+        ]);
     }
 
     // Logic para sa Login
@@ -120,6 +123,11 @@ class AuthController extends Controller
             return $this->failed($request, 'Sign in with Google is not set up yet.');
         }
 
+        // System Settings → Security → Google sign-in.
+        if (! SystemSetting::current()->enabled('google_sign_in')) {
+            return $this->failed($request, 'Sign in with Google is turned off. Use your username and password.');
+        }
+
         return Socialite::driver('google')
             ->with(['prompt' => 'select_account'])
             ->redirect();
@@ -137,6 +145,11 @@ class AuthController extends Controller
     {
         if (! self::googleConfigured()) {
             return $this->failed($request, 'Sign in with Google is not set up yet.');
+        }
+
+        // System Settings → Security → Google sign-in.
+        if (! SystemSetting::current()->enabled('google_sign_in')) {
+            return $this->failed($request, 'Sign in with Google is turned off. Use your username and password.');
         }
 
         // Backed out on Google's own screen: nothing to fix, nothing to record.
@@ -266,6 +279,8 @@ class AuthController extends Controller
             RateLimiter::clear($throttleKey);
         }
         $request->session()->regenerate();
+        // When this session began: "Sign out all sessions" ends the older ones.
+        $request->session()->put('signed_in_at', now()->timestamp);
 
         Auth::user()->forceFill(['last_login_at' => now()])->saveQuietly();
 

@@ -12,14 +12,16 @@ use App\Support\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
  * The settings that are not payroll: who the company says it is, how the
- * screens look, how strict the sign-in is, and how the kiosk records — and,
- * since 2026-09-26, the Audit Log, as sections of one page laid out after
- * Michael's jeyanco-settings.html. The payroll page answers for pay.
+ * screens look, how strict the sign-in is, how the kiosk records and what
+ * admins are told — and, since 2026-09-26, the Audit Log — as the sections of
+ * one page built to Michael's jeyanco-settings.html, row for row. The
+ * payroll page answers for pay.
  *
  * One row behind the sections. Each still has its own save action, which
  * validates only what it posts; the page's one save bar sends every edited
@@ -45,6 +47,24 @@ class SystemSettingsController extends Controller
         'kiosk_attendance_mode'      => ['attendance mode', ''],
         'kiosk_repeat_guard_seconds' => ['repeat scans ignored within', ' s'],
         'kiosk_idle_return_seconds'  => ['back to Attendance after', ' s'],
+        'company_tin'                => ['TIN', ''],
+        'accent_color'               => ['accent colour', ''],
+        'table_density'              => ['table density', ''],
+        'signin_intro'               => ['intro animation', ''],
+        'google_sign_in'             => ['Google sign-in', ''],
+        'kiosk_repeat_guard_on'      => ['ignore duplicate scans', ''],
+        'kiosk_unknown_alert'        => ['unknown fingerprint alert', ''],
+        'kiosk_offline_alert_minutes' => ['offline alert after', ' min'],
+        'notify_missing_scans'       => ['missing scans', ''],
+        'notify_remittances'         => ['remittance reminders', ''],
+        'notify_payroll'             => ['payroll ready', ''],
+        'notify_email'               => ['email copies', ''],
+    ];
+
+    /** Switches: saved as true/false, written to the Audit Log as on/off. */
+    private const SWITCHES = [
+        'signin_intro', 'google_sign_in', 'kiosk_repeat_guard_on', 'kiosk_unknown_alert',
+        'notify_missing_scans', 'notify_remittances', 'notify_payroll', 'notify_email',
     ];
 
     private const SECTIONS = [
@@ -52,16 +72,11 @@ class SystemSettingsController extends Controller
         'system-settings.security'   => 'Security',
         'system-settings.appearance' => 'Appearance',
         'system-settings.kiosk'      => 'Kiosk',
+        'system-settings.notifications' => 'Notifications',
     ];
 
-    /** Any date will do for drawing a shift's day: only the times matter. */
-    private const ANY_DAY = '2026-01-05';
-
-    /** An account this long without a sign-in is flagged on the Security tab. */
-    private const IDLE_DAYS = 90;
-
     /** The sections, in the order the page lists them. */
-    public const SECTIONS_ON_PAGE = ['company', 'appearance', 'security', 'kiosk', 'audit'];
+    public const SECTIONS_ON_PAGE = ['company', 'appearance', 'security', 'kiosk', 'notif', 'audit'];
 
     // Each old address opens the one page on its own section.
     public function about(Request $request)
@@ -84,51 +99,23 @@ class SystemSettingsController extends Controller
         return $this->page($request, 'kiosk');
     }
 
+    public function notifications(Request $request)
+    {
+        return $this->page($request, 'notif');
+    }
+
     /** The whole page: every section's data, opened on one of them. */
     private function page(Request $request, string $section)
     {
         $asked   = (string) $request->query('section', '');
         $section = in_array($asked, self::SECTIONS_ON_PAGE, true) ? $asked : $section;
-        $cut     = now()->subDays(self::IDLE_DAYS);
 
-        return view('settings.system', $this->common() + $this->kioskData() + [
+        return view('settings.system', $this->common() + [
             'section' => $section,
-            'hygiene' => [
-                'admins'   => User::where('role', User::ROLE_ADMIN)->where('is_active', true)->count(),
-                'disabled' => User::where('is_active', false)->orderBy('name')->pluck('name'),
-                'idle'     => User::where('is_active', true)
-                    ->where(fn ($w) => $w->where('last_login_at', '<', $cut)
-                        ->orWhere(fn ($n) => $n->whereNull('last_login_at')->where('created_at', '<', $cut)))
-                    ->orderBy('name')->pluck('name'),
-            ],
+            // Every shift's TIME IN opens this long before it starts; null when they differ.
+            'opens'   => ($o = Shift::query()->pluck('time_in_opens_minutes')->map(fn ($m) => (int) ($m ?? 120))->unique())->count() === 1 ? $o->first() : null,
             'audit'   => app(AuditLogController::class)->feed($request),
         ]);
-    }
-
-    /**
-     * How the attendance kiosk records a scan: with TIME IN / TIME OUT
-     * buttons, or automatically from the scan alone. Shows how Automatic
-     * reads each shift, and whether each kiosk has picked the setting up.
-     */
-    private function kioskData(): array
-    {
-        $shifts = Shift::query()->orderBy('crosses_midnight')->orderBy('id')->get()
-            ->filter(fn (Shift $s) => $s->hasSchedule())
-            ->values();
-
-        // A worker with no shift of their own works the day crew's.
-        $default = Shift::defaultForNewHire();
-        $crew    = Employee::where('status', Employee::STATUS_ACTIVE)->get(['id', 'shift_id'])
-            ->countBy(fn (Employee $e) => $e->shift_id ?? $default);
-
-        $day = $shifts->firstWhere('crosses_midnight', false);
-
-        return [
-            'rulers'   => $shifts->map(fn (Shift $s) => $this->ruler($s, (int) ($crew[$s->id] ?? 0)))->all(),
-            'examples' => $day ? $this->examples($day) : [],
-            'cut'      => $day ? WorkSchedule::label(WorkSchedule::lunchCut($day->schedule(), self::ANY_DAY)) : '12:30 PM',
-            'kiosks'   => Kiosk::with('site')->orderBy('name')->get()->map(fn (Kiosk $k) => $this->kioskRow($k))->all(),
-        ];
     }
 
     /**
@@ -144,6 +131,7 @@ class SystemSettingsController extends Controller
             'appearance' => 'updateAppearance',
             'security'   => 'updateSecurity',
             'kiosk'      => 'updateKiosk',
+            'notif'      => 'updateNotifications',
         ];
         $dirty   = array_values(array_intersect(array_keys($save), (array) $request->input('sections', [])));
         $current = in_array($request->input('current'), self::SECTIONS_ON_PAGE, true) ? $request->input('current') : ($dirty[0] ?? 'company');
@@ -162,7 +150,7 @@ class SystemSettingsController extends Controller
             $this->{$save[$section]}($request);
         }
 
-        return redirect()->route('system-settings.about', ['section' => $current])->with('success', 'Saved.');
+        return redirect()->route('system-settings.about', ['section' => $current])->with('success', 'Settings saved');
     }
 
     /**
@@ -178,8 +166,12 @@ class SystemSettingsController extends Controller
                 'company_name'    => ['required', 'string', 'max:120'],
                 'company_tagline' => ['required', 'string', 'max:160'],
                 'company_address' => ['nullable', 'string', 'max:255'],
-                'logo'            => ['nullable', 'image', 'max:2048'],
-            ], []],
+                'company_tin'     => ['sometimes', 'nullable', 'string', 'max:40', 'regex:/^[0-9 -]*$/'],
+                'logo'            => ['nullable', 'image', 'mimes:png,jpg,jpeg', 'max:2048'],
+            ], [
+                'company_tin.regex' => 'A TIN is digits and dashes, like 000-000-000-000.',
+                'logo.mimes'        => 'Use a PNG or JPG image.',
+            ]],
 
             'security' => [[
                 // A session that never expires is not a setting anybody wants by
@@ -193,6 +185,7 @@ class SystemSettingsController extends Controller
 
                 'max_login_attempts'      => ['required', 'integer', 'min:3', 'max:20'],
                 'lockout_seconds'         => ['required', 'integer', 'min:30', 'max:3600'],
+                'google_sign_in'          => ['sometimes', 'boolean'],
             ], [
                 'session_timeout_minutes.max' => 'A day is the longest a session should be able to stay open.',
                 'password_min_length.min'     => 'Eight is the shortest password the accounts on file were made to meet.',
@@ -202,6 +195,9 @@ class SystemSettingsController extends Controller
             'appearance' => [[
                 // 'system' follows each device's own light or dark setting.
                 'default_theme' => ['required', 'in:dark,light,system'],
+                'accent_color'  => ['sometimes', 'in:' . implode(',', array_keys(SystemSetting::ACCENTS))],
+                'table_density' => ['sometimes', 'in:' . implode(',', array_keys(SystemSetting::DENSITIES))],
+                'signin_intro'  => ['sometimes', 'boolean'],
                 // No 'locale' rule: the Language picker is gone and the form does
                 // not post one. Requiring it here would fail every save of this
                 // page over a field it no longer has.
@@ -212,87 +208,30 @@ class SystemSettingsController extends Controller
                 // Under a minute, a finger held a moment too long can still read twice.
                 'kiosk_repeat_guard_seconds' => ['required', 'integer', 'min:60', 'max:600'],
                 'kiosk_idle_return_seconds'  => ['required', 'integer', 'min:15', 'max:600'],
+                'kiosk_repeat_guard_on'      => ['sometimes', 'boolean'],
+                'kiosk_unknown_alert'        => ['sometimes', 'boolean'],
+                'kiosk_offline_alert_minutes' => ['sometimes', 'integer', 'min:5', 'max:240'],
+                // Written to every shift; empty leaves shifts that differ as they are.
+                'kiosk_opens_minutes'        => ['sometimes', 'nullable', 'integer', 'min:15', 'max:240'],
             ], [
                 'kiosk_attendance_mode.in'       => 'Choose Buttons or Automatic.',
                 'kiosk_repeat_guard_seconds.min' => 'Under a minute, a finger held a moment too long can still read twice.',
             ]],
 
+            'notif' => [[
+                'notify_missing_scans' => ['sometimes', 'boolean'],
+                'notify_remittances'   => ['sometimes', 'boolean'],
+                'notify_payroll'       => ['sometimes', 'boolean'],
+                'notify_email'         => ['sometimes', 'boolean'],
+            ], []],
+
             default => [[], []],
         };
     }
 
-    /** One shift's day as a bar: TIME IN opens · first half · break · second half · OT. */
-    private function ruler(Shift $shift, int $workers): array
-    {
-        $s    = $shift->schedule();
-        $w    = WorkSchedule::windows($s, self::ANY_DAY);
-        $from = $w['AM'][0]->copy()->subMinutes((int) $s['opens']);
-        $to   = $w['PM'][1]->copy()->addHour();
-        $span = max(1, (int) $from->diffInMinutes($to, true));
-        $pct  = fn (Carbon $at) => round($from->diffInMinutes($at, true) / $span * 100, 3);
-        $cut  = WorkSchedule::lunchCut($s, self::ANY_DAY);
-        $half = $shift->crosses_midnight ? ['FIRST', 'SECOND'] : ['AM', 'PM'];
-        $l    = fn (Carbon $at) => WorkSchedule::label($at);
-
-        return [
-            'name'     => $shift->name,
-            'workers'  => $workers,
-            'segments' => [
-                ['early', 0, $pct($w['AM'][0]), 'TIME IN opens'],
-                ['work', $pct($w['AM'][0]), $pct($w['AM'][1]), $half[0] . ' · ' . $l($w['AM'][0]) . ' – ' . $l($w['AM'][1])],
-                ['lunch', $pct($w['AM'][1]), $pct($w['PM'][0]), ''],
-                ['work', $pct($w['PM'][0]), $pct($w['PM'][1]), $half[1] . ' · ' . $l($w['PM'][0]) . ' – ' . $l($w['PM'][1])],
-                ['ot', $pct($w['PM'][1]), 100, 'OT'],
-            ],
-            'cut'   => $pct($cut),
-            'ticks' => [
-                [0, $l($from), 'first'],
-                [$pct($cut), $l($cut), 'cut'],
-                [$pct($w['PM'][1]), $l($w['PM'][1]), ''],
-            ],
-        ];
-    }
-
-    /** What a scan records at a few moments of the day shift, in Automatic. */
-    private function examples(Shift $shift): array
-    {
-        $s   = $shift->schedule();
-        $w   = WorkSchedule::windows($s, self::ANY_DAY);
-        $cut = WorkSchedule::lunchCut($s, self::ANY_DAY);
-        $l   = fn (Carbon $at) => WorkSchedule::label($at);
-        [$amS, $amE, $pmS, $pmE] = [$w['AM'][0], $w['AM'][1], $w['PM'][0], $w['PM'][1]];
-
-        return [
-            [$l($amS->copy()->subMinutes(8)), 'No open time in', [['in', 'AM IN']], 'Early — paid hours start at ' . $l($amS)],
-            [$l($amE->copy()->addMinutes(3)), 'An open AM time in', [['out', 'AM OUT']], 'Before the ' . $l($cut) . ' cut-off, so it closes the morning'],
-            [$l($pmS->copy()->subMinutes(4)), 'No open time in', [['in', 'PM IN']], 'Paid hours start at ' . $l($pmS)],
-            [$l($cut->copy()->addMinutes(11)), 'An open AM time in — forgot to scan out', [['auto', 'AM OUT ' . $l($amE) . ' · AUTO'], ['in', 'PM IN']], 'After the cut-off. The morning closes at ' . $l($amE) . ' for the office to review'],
-            [$l($pmE->copy()->addMinutes(4)), 'An open PM time in', [['out', 'PM OUT']], 'Time past ' . $l($pmE) . ' counts as overtime'],
-            [$l($pmE->copy()->addMinutes(40)), 'No open time in', [['none', 'NOTHING']], 'TIME IN closed at ' . $l($pmE) . ' for the ' . $shift->name . ' shift — the kiosk says so'],
-            [$l($amS->copy()->subMinutes(6)), 'Scanned 2 minutes ago', [['none', 'NOTHING']], '“Already recorded TIME IN” — a repeat inside the guard below'],
-        ];
-    }
-
-    /** A kiosk, and when it last read its settings. */
-    private function kioskRow(Kiosk $kiosk): array
-    {
-        $read  = $kiosk->settingsReadAt();
-        $beat  = Cache::get('kiosk_location_' . $kiosk->code)['last_seen'] ?? null;
-        $heard = collect([$kiosk->last_seen_at, $beat ? Carbon::parse($beat) : null, $read])->filter()->max();
-
-        return [
-            'name'   => $kiosk->name ?: $kiosk->code,
-            'code'   => $kiosk->code,
-            'site'   => $kiosk->site?->name,
-            'read'   => $read,
-            'heard'  => $heard,
-            'online' => $heard && $heard->greaterThan(now()->subMinutes(3)),
-        ];
-    }
-
     public function updateAbout(Request $request)
     {
-        $data = $request->validate(...$this->rulesFor('company'));
+        $data = $this->switches($request->validate(...$this->rulesFor('company')));
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 
@@ -314,7 +253,7 @@ class SystemSettingsController extends Controller
 
     public function updateSecurity(Request $request)
     {
-        $data = $request->validate(...$this->rulesFor('security'));
+        $data = $this->switches($request->validate(...$this->rulesFor('security')));
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 
@@ -323,7 +262,7 @@ class SystemSettingsController extends Controller
 
     public function updateAppearance(Request $request)
     {
-        $data = $request->validate(...$this->rulesFor('appearance'));
+        $data = $this->switches($request->validate(...$this->rulesFor('appearance')));
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 
@@ -337,11 +276,76 @@ class SystemSettingsController extends Controller
 
     public function updateKiosk(Request $request)
     {
-        $data = $request->validate(...$this->rulesFor('kiosk'));
+        $data = $this->switches($request->validate(...$this->rulesFor('kiosk')));
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 
-        return $this->save($settings, $data, 'system-settings.kiosk');
+        // How early TIME IN opens is each shift's own; the setting writes it to all of them.
+        $extra = [];
+        $opens = $data['kiosk_opens_minutes'] ?? null;
+        unset($data['kiosk_opens_minutes']);
+        if ($opens !== null) {
+            $was = Shift::query()->pluck('time_in_opens_minutes')->map(fn ($m) => (int) ($m ?? 120))->unique();
+            if ($was->count() !== 1 || (int) $was->first() !== (int) $opens) {
+                Shift::query()->update(['time_in_opens_minutes' => (int) $opens]);
+                $extra[] = 'kiosk opens before shift ' . ($was->count() === 1 ? $was->first() : 'varied') . ' → ' . (int) $opens . ' min';
+            }
+        }
+
+        return $this->save($settings, $data, 'system-settings.kiosk', $extra);
+    }
+
+    public function updateNotifications(Request $request)
+    {
+        $data = $this->switches($request->validate(...$this->rulesFor('notif')));
+
+        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
+
+        return $this->save($settings, $data, 'system-settings.notifications');
+    }
+
+    /**
+     * "Sign out everyone": every session but this one ends on its next
+     * request (EndRevokedSessions), and remember-me cookies stop working, so
+     * nobody is let straight back in by one.
+     */
+    public function signOutAll(Request $request)
+    {
+        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
+        $now      = now();
+
+        $settings->forceFill(['sessions_revoked_at' => $now])->save();
+        SystemSetting::forget();
+
+        // This session carries on.
+        $request->session()->put('signed_in_at', $now->timestamp);
+
+        User::whereKeyNot($request->user()->id)->update(['remember_token' => null]);
+
+        // With sessions in the database they can simply go now.
+        if (config('session.driver') === 'database') {
+            DB::table(config('session.table', 'sessions'))
+                ->where(fn ($w) => $w->whereNull('user_id')->orWhere('user_id', '!=', $request->user()->id))
+                ->where('id', '!=', $request->session()->getId())
+                ->delete();
+        }
+
+        AuditLog::record('Settings', 'updated', 'Security: signed out every other session', $settings);
+
+        return redirect()->route('system-settings.about', ['section' => 'security'])
+            ->with('success', 'Every other session was signed out.');
+    }
+
+    /** A switch arrives as "0" or "1"; it is kept and compared as true or false. */
+    private function switches(array $data): array
+    {
+        foreach (self::SWITCHES as $key) {
+            if (array_key_exists($key, $data)) {
+                $data[$key] = (bool) $data[$key];
+            }
+        }
+
+        return $data;
     }
 
     /** What every tab shows around its form: the hub's summaries and the last save. */
@@ -358,9 +362,9 @@ class SystemSettingsController extends Controller
     }
 
     /** Write the row, drop the memo, and log what moved. */
-    private function save(SystemSetting $settings, array $data, string $back)
+    private function save(SystemSetting $settings, array $data, string $back, array $extra = [])
     {
-        $changes = $this->changes($settings, $data);
+        $changes = array_merge($this->changes($settings, $data), $extra);
 
         $settings->fill($data)->save();
         SystemSetting::forget();
@@ -388,6 +392,16 @@ class SystemSettingsController extends Controller
 
             if ($key === 'logo_path') {
                 $out[] = $old ? 'logo replaced' : 'logo uploaded';
+                continue;
+            }
+
+            if (in_array($key, self::SWITCHES, true)) {
+                $out[] = $label . ' ' . ($old ? 'on' : 'off') . ' → ' . ($new ? 'on' : 'off');
+                continue;
+            }
+
+            if ($key === 'accent_color' || $key === 'table_density') {
+                $out[] = $label . ' ' . Str::lower((string) ($old ?: '—')) . ' → ' . Str::lower((string) $new);
                 continue;
             }
 

@@ -355,6 +355,33 @@ final class RemittanceTracker
      * the tables exist (a deploy is live before its migration is run) it is
      * nothing rather than an error on every page.
      */
+    /**
+     * System Settings → Notifications → Remittance reminders: while any
+     * contribution is in its reminder week and unpaid, the bell says so once
+     * a month for that count. Asked on every page, so the answer for this
+     * session is remembered rather than looked up each time.
+     */
+    public function remind(?\App\Models\User $user, int $due): void
+    {
+        if (! $user || $due <= 0 || ! \App\Models\SystemSetting::current()->enabled('notify_remittances')) {
+            return;
+        }
+
+        $key = 'remittance_due_' . $this->today()->format('Y-m') . '_' . $due;
+        if (session('remittance_reminded') === $key) {
+            return;
+        }
+
+        try {
+            \App\Notifications\PayrollNotification::fireKeyed($user, 'remittance_due', $key,
+                'Remittances to send',
+                $due . ' ' . ($due === 1 ? 'contribution is' : 'contributions are') . ' in their reminder week and not marked paid yet.');
+            session(['remittance_reminded' => $key]);
+        } catch (\Throwable) {
+            // A reminder is never worth a broken page.
+        }
+    }
+
     public function badge(): int
     {
         try {

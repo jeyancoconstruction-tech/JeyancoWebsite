@@ -89,7 +89,7 @@ class SystemSettingsTest extends TestCase
         $this->actingAs($this->admin())
              ->get(route('system-settings.security'))
              ->assertOk()
-             ->assertSee('Failed sign-ins before lockout')
+             ->assertSee('Failed sign-in limit')
              ->assertSee('data-sec="security" >', false);
     }
 

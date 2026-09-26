@@ -235,7 +235,7 @@ class SystemSectionTest extends TestCase
             ->assertOk()
             ->assertSee('var fallback = "system"', false)
             ->assertSee('prefers-color-scheme: dark', false)
-            ->assertSee('Follows the device setting');
+            ->assertSee('name="default_theme" value="system" checked', false);
     }
 
     // ── No worker role ───────────────────────────────────────────────────────
@@ -296,7 +296,7 @@ class SystemSectionTest extends TestCase
                   ->assertSee('id="ssBar"', false)
                   ->assertSee('Save changes')
                   ->assertSee('Default theme')
-                  ->assertSee('Attendance mode')
+                  ->assertSee('Scan mode')
                   ->assertSee('id="auditEntries"', false);
         }
     }

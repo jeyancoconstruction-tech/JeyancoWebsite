@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Kiosk;
 use App\Models\Site;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Notifications\KioskAlert;
 use Illuminate\Http\JsonResponse;
@@ -319,13 +320,23 @@ class KioskLocationController extends Controller
 
         $label = strtoupper($kioskId);
 
-        // Presence transitions.
-        if ($prev['presence'] === 'online' && $now['presence'] === 'offline') {
+        // Presence transitions. The map shows a kiosk offline after a couple
+        // of missed heartbeats; admins are told only once it has been quiet
+        // for as long as System Settings → Kiosks → Offline alert says.
+        $quiet = SystemSetting::current()->kioskOfflineAlertSeconds();
+        $down  = $now['seconds'] > $quiet ? 'offline' : 'online';
+        $was   = $prev['alerted'] ?? $prev['presence'];
+
+        if ($was === 'online' && $down === 'offline') {
             $this->alertAdmins('kiosk_offline', "Kiosk offline: {$label}",
-                "No heartbeat from {$label} for over " . config('kiosk.offline_after') . "s. It may be unplugged, or have lost power or internet.");
-        } elseif ($prev['presence'] === 'offline' && $now['presence'] === 'online') {
+                "No heartbeat from {$label} for over " . intdiv($quiet, 60) . ' min. It may be unplugged, or have lost power or internet.');
+        } elseif ($was === 'offline' && $now['presence'] === 'online') {
             $this->alertAdmins('kiosk_online', "Kiosk back online: {$label}",
                 "{$label} is online again.");
+            $down = 'online';
+        } elseif ($was === 'offline') {
+            // Told once; not again until it has been back.
+            $down = 'offline';
         }
 
         // Geofence transitions (only meaningful once we have a home + a fix).
@@ -342,6 +353,7 @@ class KioskLocationController extends Controller
 
         Cache::put(self::STATE_PREFIX . $kioskId, [
             'presence' => $now['presence'],
+            'alerted'  => $down,
             'geofence' => $now['geofence'],
         ], now()->addDays(30));
     }

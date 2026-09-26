@@ -240,3 +240,9 @@ html[data-bs-theme="light"], html[data-bs-theme="dark"] {
     .emp-field + .emp-field { margin-top: 8px !important; }
     .mod-form-grid { gap: 8px !important; }
 }
+
+/* ── System Settings → Appearance → Table density: Compact ────────────────
+   Rows get about half their height back, so more of a list fits on a small
+   screen. The layout sets .density-compact on the body. */
+body.density-compact .main-content table > thead > tr > th { padding-top: 5px !important; padding-bottom: 5px !important; }
+body.density-compact .main-content table > tbody > tr > td { padding-top: 4px !important; padding-bottom: 4px !important; }

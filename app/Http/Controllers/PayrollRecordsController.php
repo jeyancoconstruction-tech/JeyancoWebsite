@@ -55,7 +55,8 @@ class PayrollRecordsController extends Controller
         $summary = $this->summarize($employees);
 
         // ── Notifications ──────────────────────────────────────────────────
-        if (! empty($employees) && $search === '') {
+        // System Settings → Notifications → Payroll ready.
+        if (! empty($employees) && $search === '' && \App\Models\SystemSetting::current()->enabled('notify_payroll')) {
             $user      = auth()->user();
             $net       = number_format($summary['net'] ?? 0, 2);
             $empCount  = count($employees);

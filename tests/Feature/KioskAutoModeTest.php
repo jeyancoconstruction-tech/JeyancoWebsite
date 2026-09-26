@@ -333,11 +333,9 @@ class KioskAutoModeTest extends TestCase
 
         $this->actingAs($admin)->get(route('system-settings.kiosk'))
              ->assertOk()
-             ->assertSee('Attendance mode')
-             ->assertSee('How Automatic decides')
-             ->assertSee('12:30 PM')
-             ->assertSee('SITE_A')
-             ->assertSee('Buttons · press, then scan');
+             ->assertSee('Scan mode')
+             ->assertSee('Worker picks')
+             ->assertSee('name="kiosk_attendance_mode" value="buttons" checked', false);
 
         $this->actingAs($admin)->put(route('system-settings.kiosk.update'), [
             'kiosk_attendance_mode'      => 'auto',
@@ -355,7 +353,7 @@ class KioskAutoModeTest extends TestCase
 
         $this->actingAs($admin)->get(route('system-settings.kiosk'))
              ->assertOk()
-             ->assertSee('Automatic · scan only')
+             ->assertSee('name="kiosk_attendance_mode" value="auto" checked', false)
              ->assertSee('by Aldrin Admin')
              ->assertSee('Kiosk: attendance mode Buttons → Automatic');
     }

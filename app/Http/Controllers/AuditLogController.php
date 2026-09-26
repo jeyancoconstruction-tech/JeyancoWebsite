@@ -44,9 +44,9 @@ class AuditLogController extends Controller
 
     /**
      * What the Audit logs section shows: the entries the filters leave, fifty
-     * to a page, newest first — the same period (seven days unless asked),
-     * search, area, action, person, quick and record filters as before, and
-     * the export takes the same ones.
+     * to a page, newest first. The toolbar searches and picks an area; the
+     * period, action, person, quick and record filters still work from a
+     * link, and the export takes the same ones.
      */
     public function feed(Request $request): array
     {
@@ -138,7 +138,9 @@ class AuditLogController extends Controller
             return [$from ?? Carbon::create(2000, 1, 1), $to ?? now()->endOfDay(), 'custom'];
         }
 
-        $range = in_array($request->query('range'), ['today', '7', '30', 'all'], true) ? $request->query('range') : '7';
+        // All of it unless a link asks for less: the section's toolbar is the
+        // mockup's search and area, with no period of its own (2026-09-27).
+        $range = in_array($request->query('range'), ['today', '7', '30', 'all'], true) ? $request->query('range') : 'all';
 
         $from = match ($range) {
             'today' => now()->startOfDay(),

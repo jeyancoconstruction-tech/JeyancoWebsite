@@ -17,6 +17,12 @@ class PayrollNotification extends Notification
             'color' => '#d97706',
             'link'  => '/payroll-records',
         ],
+        // The Remittance Tracker's reminder week (System Settings → Notifications).
+        'remittance_due' => [
+            'icon'  => 'fa-building-columns',
+            'color' => '#b54708',
+            'link'  => '/remittances',
+        ],
         'net_summary' => [
             'icon'  => 'fa-chart-bar',
             'color' => '#059669',
@@ -27,7 +33,8 @@ class PayrollNotification extends Notification
     public function __construct(
         private string $subtype,
         private string $title,
-        private string $message
+        private string $message,
+        private ?string $key = null,
     ) {}
 
     public function via(): array
@@ -40,7 +47,7 @@ class PayrollNotification extends Notification
         $m = self::$meta[$this->subtype] ?? self::$meta['period_computed'];
 
         return [
-            'key'     => $this->subtype . '_' . today()->toDateString(),
+            'key'     => $this->key ?? $this->subtype . '_' . today()->toDateString(),
             'subtype' => $this->subtype,
             'title'   => $this->title,
             'message' => $this->message,
@@ -61,6 +68,19 @@ class PayrollNotification extends Notification
 
         if (! $exists) {
             $user->notify(new self($subtype, $title, $message));
+        }
+    }
+
+    /** Sent once for its key, however many pages are opened while it holds. */
+    public static function fireKeyed($user, string $subtype, string $key, string $title, string $message): void
+    {
+        $exists = $user->notifications()
+            ->where('type', self::class)
+            ->where('data->key', $key)
+            ->exists();
+
+        if (! $exists) {
+            $user->notify(new self($subtype, $title, $message, $key));
         }
     }
 }

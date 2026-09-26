@@ -19,7 +19,12 @@
 </head>
 <body>
     <table>
-        <tr><td class="title" colspan="5">{{ __('Jeyanco Construction — Remittances') }} · {{ $month->format('F Y') }}</td></tr>
+        @php($sys = \App\Models\SystemSetting::current())
+        <tr><td class="title" colspan="5">{{ \Illuminate\Support\Str::title($sys->company_name ?: 'Jeyanco Construction') }} — {{ __('Remittances') }} · {{ $month->format('F Y') }}</td></tr>
+        {{-- System Settings → Company → TIN, once it is set. --}}
+        @if(filled($sys->company_tin))
+            <tr><td class="meta">{{ __('Employer TIN') }}</td><td colspan="4" class="txt">{{ $sys->company_tin }}</td></tr>
+        @endif
         <tr>
             <td class="meta">{{ __('Pay weeks') }}</td>
             <td colspan="2">{{ $from->format('M d, Y') }} – {{ $to->format('M d, Y') }}</td>

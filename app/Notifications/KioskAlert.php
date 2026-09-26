@@ -23,6 +23,12 @@ class KioskAlert extends Notification
             'color' => '#dc2626',
             'link'  => '/dashboard',
         ],
+        // System Settings → Kiosks → Unknown fingerprints.
+        'kiosk_unknown' => [
+            'icon'  => 'fa-fingerprint',
+            'color' => '#d97706',
+            'link'  => '/employees/register',
+        ],
         'kiosk_geofence_ok' => [
             'icon'  => 'fa-location-dot',
             'color' => '#16a34a',
@@ -67,5 +73,18 @@ class KioskAlert extends Notification
         $key = $subtype . '_' . now()->timestamp . '_' . Str::random(6);
 
         $user->notify(new self($subtype, $title, $message, $key));
+    }
+
+    /** An alert that is sent once for its key, however often its cause repeats. */
+    public static function fireOnce($user, string $subtype, string $key, string $title, string $message): void
+    {
+        $exists = $user->notifications()
+            ->where('type', self::class)
+            ->where('data->key', $key)
+            ->exists();
+
+        if (! $exists) {
+            $user->notify(new self($subtype, $title, $message, $key));
+        }
     }
 }

@@ -41,6 +41,20 @@ class SystemSetting extends Model
         'kiosk_attendance_mode',
         'kiosk_repeat_guard_seconds',
         'kiosk_idle_return_seconds',
+        // The rest of jeyanco-settings.html (2026-09-27).
+        'company_tin',
+        'accent_color',
+        'table_density',
+        'signin_intro',
+        'google_sign_in',
+        'sessions_revoked_at',
+        'kiosk_repeat_guard_on',
+        'kiosk_unknown_alert',
+        'kiosk_offline_alert_minutes',
+        'notify_missing_scans',
+        'notify_remittances',
+        'notify_payroll',
+        'notify_email',
         // sss_due_day … bir_due_day are still columns (with their defaults)
         // but nothing reads them since 2026-09-26: the Remittance Tracker
         // reminds in the last week of the month after instead.
@@ -96,7 +110,66 @@ class SystemSetting extends Model
         'week_starts_on'          => 'integer',
         'kiosk_repeat_guard_seconds' => 'integer',
         'kiosk_idle_return_seconds'  => 'integer',
+        'signin_intro'               => 'boolean',
+        'google_sign_in'             => 'boolean',
+        'sessions_revoked_at'        => 'datetime',
+        'kiosk_repeat_guard_on'      => 'boolean',
+        'kiosk_unknown_alert'        => 'boolean',
+        'kiosk_offline_alert_minutes' => 'integer',
+        'notify_missing_scans'       => 'boolean',
+        'notify_remittances'         => 'boolean',
+        'notify_payroll'             => 'boolean',
+        'notify_email'               => 'boolean',
     ];
+
+    /**
+     * The accent colours Appearance offers: name, swatch, then the brand
+     * colour, its pressed shade and its tint for the light theme and for the
+     * dark one. Blue is the design's own and needs no override.
+     */
+    public const ACCENTS = [
+        'blue'   => ['Blue',   '#3B82F6', ['#1668DC', '#1257BC', '#EAF2FD'], ['#4F97F5', '#6FAEFF', '#152742']],
+        'teal'   => ['Teal',   '#0D9488', ['#0D9488', '#0F766E', '#E6F6F4'], ['#2FBFAF', '#5EDBCB', '#10292A']],
+        'violet' => ['Violet', '#7C3AED', ['#7C3AED', '#6D28D9', '#F1EBFE'], ['#A48BFA', '#C4B2FF', '#221A3A']],
+        'orange' => ['Orange', '#EA580C', ['#EA580C', '#C2410C', '#FFF1E8'], ['#F7924A', '#FDBA74', '#2E1D12']],
+    ];
+
+    public const DENSITIES = ['comfortable' => 'Comfortable', 'compact' => 'Compact'];
+
+    /** The saved accent's token rules, or nothing for the design's own blue. */
+    public function accentCss(): string
+    {
+        $key = (string) $this->accent_color;
+
+        return $key !== 'blue' && isset(self::ACCENTS[$key]) ? self::accentRules($key) : '';
+    }
+
+    /** One accent's tokens for both themes; the settings page previews with it too. */
+    public static function accentRules(string $key): string
+    {
+        [, , $light, $dark] = self::ACCENTS[$key] ?? self::ACCENTS['blue'];
+        $tokens = fn (array $c, int $alpha) => "--brand:{$c[0]};--brand-strong:{$c[1]};--brand-subtle:{$c[2]};"
+            . "--primary:{$c[0]};--primary-mid:{$c[1]};--primary-light:{$c[0]};--primary-soft:{$c[2]};--accent:{$c[0]};"
+            . "--sidebar-accent:{$c[0]};--sidebar-active:color-mix(in srgb, {$c[0]} {$alpha}%, transparent);";
+
+        return 'html[data-bs-theme="light"]{' . $tokens($light, 26) . '}'
+             . 'html[data-bs-theme="dark"]{' . $tokens($dark, 30) . '}';
+    }
+
+    /**
+     * A switch, falling back to its default while the column is still
+     * missing: the code deploys a moment before its migration is run.
+     */
+    public function enabled(string $key): bool
+    {
+        return (bool) ($this->getAttribute($key) ?? self::DEFAULTS[$key] ?? false);
+    }
+
+    /** How long a kiosk may be quiet before admins are told. */
+    public function kioskOfflineAlertSeconds(): int
+    {
+        return max(60, (int) ($this->kiosk_offline_alert_minutes ?: 10) * 60);
+    }
 
 
     /**
@@ -126,6 +199,19 @@ class SystemSetting extends Model
         'kiosk_attendance_mode'      => self::KIOSK_BUTTONS,
         'kiosk_repeat_guard_seconds' => 180,
         'kiosk_idle_return_seconds'  => 60,
+        'company_tin'                => null,
+        'accent_color'               => 'blue',
+        'table_density'              => 'comfortable',
+        'signin_intro'               => true,
+        'google_sign_in'             => true,
+        'sessions_revoked_at'        => null,
+        'kiosk_repeat_guard_on'      => true,
+        'kiosk_unknown_alert'        => true,
+        'kiosk_offline_alert_minutes' => 10,
+        'notify_missing_scans'       => true,
+        'notify_remittances'         => true,
+        'notify_payroll'             => true,
+        'notify_email'               => false,
     ];
 
 

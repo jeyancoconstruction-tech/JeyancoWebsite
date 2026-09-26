@@ -93,6 +93,12 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->ensureStorageLink();
 
+        // Admins can have their alerts copied to email (System Settings → Notifications).
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Notifications\Events\NotificationSent::class,
+            fn ($event) => \App\Notifications\AlertEmail::copy($event)
+        );
+
         // Page links in Bootstrap's markup, which is what the site loads and
         // what every pager's CSS here (.mod-pager, .acct-pager) was written
         // for. Laravel's default is Tailwind markup, and with no Tailwind on

@@ -307,7 +307,8 @@ class AttendanceController extends Controller
             ->missedSignOut($now)
             ->count();
 
-        if ($invalidAll > 0) {
+        // System Settings → Notifications → Missing scans.
+        if ($invalidAll > 0 && \App\Models\SystemSetting::current()->enabled('notify_missing_scans')) {
             AttendanceAlert::fireOnce($user, 'invalid_clock_in',
                 'Invalid Attendance Detected',
                 "{$invalidAll} employee" . ($invalidAll > 1 ? 's' : '') . " clocked in but never clocked out."

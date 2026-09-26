@@ -19,7 +19,9 @@
 
     // A page that comes back with something to say — a refused sign-in, a
     // password just set — is a continuation, not an arrival.
-    $quiet = $errors->any() || session()->has('success');
+    $quiet = $errors->any() || session()->has('success')
+        // System Settings → Appearance → Intro animation, switched off.
+        || ! ($intro ?? true);
 @endphp
 <!DOCTYPE html>
 <html lang="en">
