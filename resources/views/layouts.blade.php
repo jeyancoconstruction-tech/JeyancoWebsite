@@ -489,7 +489,6 @@
         </div>
         <div class="chatbot-header-btns">
             <button id="chatbot-prompts-btn" class="cb-icon-btn cb-full-only" type="button" title="{{ __('Quick prompts') }}" aria-controls="cb-prompts" aria-pressed="true"><i class="fas fa-list-ul"></i></button>
-            <button id="chatbot-new-btn" class="cb-icon-btn" title="{{ __('New Chat') }}"><i class="fas fa-plus"></i></button>
             <button id="chatbot-full-btn" class="cb-icon-btn" type="button" title="{{ __('Full screen') }}" data-exit="{{ __('Exit full screen') }}" aria-pressed="false"><i class="fas fa-expand"></i></button>
             <button id="chatbot-minimize-btn" class="cb-icon-btn" title="{{ __('Close') }}"><i class="fas fa-times"></i></button>
         </div>
@@ -519,9 +518,13 @@
     </div>
 
     <div class="chatbot-footer">
-        <div class="cb-input-row">
-            <input type="text" id="chatbot-input" class="cb-input" placeholder="{{ __('Ask something...') }}" autocomplete="off">
-            <button id="chatbot-send" class="cb-send-btn"><i class="fas fa-paper-plane"></i></button>
+        {{-- New chat sits right before the question, not up in the header. --}}
+        <div class="cb-compose">
+            <button id="chatbot-new-btn" class="cb-new-btn" type="button" title="{{ __('Start a new chat') }}"><i class="fas fa-pen-to-square"></i><span>{{ __('New chat') }}</span></button>
+            <div class="cb-input-row">
+                <input type="text" id="chatbot-input" class="cb-input" placeholder="{{ __('Ask something...') }}" autocomplete="off">
+                <button id="chatbot-send" class="cb-send-btn"><i class="fas fa-paper-plane"></i></button>
+            </div>
         </div>
         <p class="cb-hint">{{ __('Press Enter to send  ·  Powered by Jeyanco Intelligence') }}</p>
     </div>
@@ -667,7 +670,12 @@
                 chatWindow.classList.remove('open');
             });
 
-            newChatBtn.addEventListener('click', resetChat);
+            // A fresh chat, ready for the next question (not on a phone,
+            // where focusing would throw the keyboard up).
+            newChatBtn.addEventListener('click', function () {
+                resetChat();
+                if (window.innerWidth > 768) chatbotInput.focus();
+            });
 
             chatbotSend.addEventListener('click', function() {
                 const msg = chatbotInput.value.trim();

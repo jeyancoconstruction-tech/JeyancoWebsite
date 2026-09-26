@@ -70,6 +70,24 @@ class ChatbotFullScreenTest extends TestCase
         $this->assertGreaterThan(strpos($html, 'js/chatbot-move.js'), $full);
     }
 
+    /** Michael, 2026-09-26: no + in the header; New chat right before the question. */
+    public function test_new_chat_sits_before_the_question_not_in_the_header(): void
+    {
+        $html = $this->actingAs($this->user(User::ROLE_ADMIN, 'chat.new'))->get('/dashboard')->assertOk()->getContent();
+
+        $header = strpos($html, 'class="chatbot-header-btns"');
+        $body   = strpos($html, 'class="chatbot-body"');
+        $new    = strpos($html, 'id="chatbot-new-btn"');
+        $input  = strpos($html, 'id="chatbot-input"');
+
+        $this->assertNotFalse($new);
+        $this->assertFalse(strpos(substr($html, $header, $body - $header), 'fa-plus'), 'the + button is gone from the header');
+        $this->assertGreaterThan($body, $new, 'New chat is not in the header');
+        $this->assertLessThan($input, $new, 'New chat comes right before the question');
+        $this->assertStringContainsString('<span>New chat</span>', $html);
+        $this->assertSame(1, substr_count($html, 'id="chatbot-new-btn"'));
+    }
+
     public function test_the_ai_page_and_the_chat_offer_the_same_prompts(): void
     {
         $html = $this->actingAs($this->user(User::ROLE_ADMIN, 'chat.same'))->get('/ai-assistant')->assertOk()->getContent();
