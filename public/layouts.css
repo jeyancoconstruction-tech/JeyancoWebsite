@@ -490,6 +490,16 @@ body {
 }
 .chatbot-fab:active { transform: scale(0.95); }
 
+/* It can be dragged out of the way (js/chatbot-move.js). A finger on it
+   moves the button, not the page, and while it moves it follows the pointer
+   exactly instead of easing after it. */
+.chatbot-fab { touch-action: none; user-select: none; -webkit-user-select: none; }
+.chatbot-fab.is-dragging {
+    transition: none !important;
+    transform: scale(1.06);
+    cursor: grabbing;
+}
+
 .fab-pulse-ring {
     position: absolute;
     inset: 0;

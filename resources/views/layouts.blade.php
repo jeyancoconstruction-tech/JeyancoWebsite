@@ -410,7 +410,7 @@
 </div>
 
 <!-- FLOATING CHATBOT -->
-<button id="chatbot-fab" class="chatbot-fab" title="{{ __('Chat with Jeyanco AI') }}">
+<button id="chatbot-fab" class="chatbot-fab" title="{{ __('Chat with Jeyanco AI · drag to move') }}">
     <i class="fas fa-robot"></i>
     <span class="fab-pulse-ring"></span>
 </button>
@@ -457,6 +457,10 @@
         <p class="cb-hint">{{ __('Press Enter to send  ·  Powered by Jeyanco Intelligence') }}</p>
     </div>
 </div>
+
+{{-- The button can be dragged out of the way. Straight after it and not
+     deferred, so a spot saved in this browser is applied before first paint. --}}
+<script src="{{ asset('js/chatbot-move.js') }}?v={{ @filemtime(public_path('js/chatbot-move.js')) ?: '1' }}"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
