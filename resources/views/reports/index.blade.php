@@ -4,11 +4,11 @@
 @section('content')
 <div class="mod-page">
 
-    @include('modules._head', [
-        'title' => __('Payroll Reports'),
-        'sub'   => __('Built from the figures payroll runs froze, so a report and the payslip it summarises always agree.'),
-        'actions' => '<button type="button" class="mod-btn no-print" onclick="window.print()"><i class="fas fa-print"></i> ' . __('Print') . '</button>',
-    ])
+    <x-page-header :title="__('Payroll Reports')">
+        <x-slot:actions>
+            <button type="button" class="mod-btn no-print" onclick="window.print()"><i class="fas fa-print"></i> {{ __('Print') }}</button>
+        </x-slot:actions>
+    </x-page-header>
 
     @include('modules._flash')
 

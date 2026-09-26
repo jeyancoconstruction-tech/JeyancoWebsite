@@ -92,7 +92,6 @@
 <div class="sx-page">
     @include('settings._head', [
         'title' => 'Company',
-        'sub'   => 'Who the company says it is — on payslips, the payroll receipt, the sidebar and the sign-in page.',
     ])
 
     <div class="st-wrap">

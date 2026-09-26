@@ -17,7 +17,6 @@
     --pp-amber-soft: rgba(245, 158, 11, .14); --pp-amber-txt: #B45309;
     --pp-radius: 12px;
 
-    max-width: 1400px; margin: 0 auto;
     color: var(--pp-txt);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
@@ -36,12 +35,6 @@ html[data-bs-theme="dark"] .pp {
 .pp button { font-family: inherit; }
 .pp a { text-decoration: none; }
 
-/* Header */
-.pp-head { margin-bottom: 20px; }
-.pp-crumb { font-size: 12px; color: var(--pp-txt-3); margin-bottom: 5px; }
-.pp-crumb b { color: var(--pp-txt-2); font-weight: 500; }
-.pp .pp-head h1 { font-size: 21px !important; font-weight: 600 !important; letter-spacing: -.01em !important; line-height: 1.3; color: var(--pp-txt); }
-.pp-head p { font-size: 13px; color: var(--pp-txt-2); margin-top: 4px; }
 
 /* The bar every step carries: the period, and the search where there is a
    list to search. */
@@ -318,31 +311,10 @@ html[data-bs-theme="dark"] .pp {
 @endphp
 <div class="pp" id="ppRoot">
 
-    <div class="pp-head pp-anim" style="animation-delay:.02s">
-        <div class="pp-crumb">
-            Jeyanco / Payroll /
-            @if($step === 'options')
-                <b>Payroll processing</b>
-            @else
-                <a href="{{ $url() }}">Payroll processing</a> /
-                @if($step === 'detail')
-                    <a href="{{ $url(['view' => $view]) }}">{{ $views[$view][0] }}</a> / <b>{{ $sel['name'] }}</b>
-                @else
-                    <b>{{ $views[$view][0] }}</b>
-                @endif
-            @endif
-        </div>
-        <h1>{{ $step === 'options' ? 'Payroll processing' : $views[$view][0] }}</h1>
-        <p>
-            @if($step === 'options')
-                Choose what to do, then the employee to do it for. Every figure is the one Payroll Records shows, on the rules set in Payroll Settings.
-            @elseif($step === 'people')
-                Select an employee to open their {{ mb_strtolower($views[$view][0]) }} for {{ $period['span'] }}.
-            @else
-                {{ $sel['name'] }} &middot; {{ $period['span'] }}
-            @endif
-        </p>
-    </div>
+    {{-- Each step has its own way back ("All options", "All employees"), so
+         the header carries only where you are. --}}
+    <x-page-header :title="$step === 'options' ? 'Payroll processing' : $views[$view][0]"
+                   class="pp-anim" style="animation-delay:.02s" />
 
     {{-- A real form, so a period can be picked with scripting off. It keeps
          whatever step the page is on rather than starting it over. --}}

@@ -119,13 +119,7 @@
 @section('content')
 <div class="sx-page">
 
-    <div class="sx-head">
-        <div>
-            <div class="sx-eyebrow">System · 03 / 04</div>
-            <h1 class="sx-title">Device Monitoring</h1>
-            <p class="sx-sub">The attendance kiosks and whether they’re still talking to us. Read-only — nothing here changes how a kiosk works or what it records.</p>
-        </div>
-    </div>
+    <x-page-header title="Device Monitoring" />
 
     <div id="dv-live" class="dv-live">
         {{-- ── Status line ─────────────────────────────────────────────── --}}

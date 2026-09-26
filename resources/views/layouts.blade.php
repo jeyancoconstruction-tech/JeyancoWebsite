@@ -111,6 +111,9 @@
          density. Loaded last so both win their ties. --}}
     <link rel="stylesheet" href="{{ $cssv('density.css') }}">
 
+    {{-- The page header every signed-in page opens with (components/page-header). --}}
+    <link rel="stylesheet" href="{{ $cssv('page-header.css') }}">
+
     {{-- The loading screen the site opens on. In the head because the check
          inside it has to stamp <html> before the styles below it are read;
          the overlay itself is the first thing in the body. --}}

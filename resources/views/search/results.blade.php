@@ -3,15 +3,13 @@
 @section('page_title', 'Search Results')
 
 @section('content')
-<div class="container-fluid px-4 py-4">
+<div class="search-page">
 
-    <div class="search-header" style="background: linear-gradient(135deg, #1e3a8a, #1e40af); padding: 26px 24px; border-radius: 12px; color: #fff; margin-bottom: 24px;">
-        <h2 class="mb-1" style="font-weight: 800;">{{ __('Search Results') }}</h2>
-        <p class="mb-0" style="color: rgba(255,255,255,0.85);">
-            Query: <strong style="color:#fff;">"{{ $query }}"</strong> &middot;
-            <strong style="color:#fff;">{{ $results['total'] }}</strong> {{ __('result(s)') }}
-        </p>
-    </div>
+    {{-- The query and the count sit beside the title: the layout's own
+         container is the page's frame, so there is not a second one here. --}}
+    <x-page-header :title="__('Search Results')">
+        <x-slot:badge>"{{ $query }}" &middot; {{ $results['total'] }} {{ __('result(s)') }}</x-slot:badge>
+    </x-page-header>
 
     @if($results['total'] == 0)
         <div class="alert d-flex align-items-center" style="background: #dbeafe; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 10px;">
@@ -60,7 +58,6 @@
     .result-card { border: 1px solid #e2e8f0 !important; background: #ffffff; transition: all 0.2s ease; }
     .result-card:hover { box-shadow: 0 10px 22px rgba(30,58,138,0.12) !important; transform: translateY(-2px); border-color: #bfdbfe !important; }
     [data-bs-theme="dark"] .result-card { background: #151d2e; border-color: #283449 !important; }
-    [data-bs-theme="dark"] .search-header { box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
 </style>
 
 <script>

@@ -1,0 +1,90 @@
+/* ==========================================================================
+   PAGE HEADER — the one every signed-in page opens with
+   (resources/views/components/page-header.blade.php).
+
+   The page's name on the left at one size, weight and colour; its actions on
+   the right, centred on the title's line; nothing underneath. The header is
+   as tall as a button, whether a page has buttons or not, so the title and
+   the content under it start at the same height on every page.
+
+   Theme files style headings per theme, and some pages' own styles reach
+   every h1 inside them, so the title's type and the header's outer spacing
+   carry the theme attribute and !important to have the last word. The
+   layout rules stay plain, so a page can still arrange its own actions
+   (Attendance keeps its schedule on one line). On a phone the same rules
+   wrap the actions under the title, so mobile.css has nothing to add.
+   ========================================================================== */
+
+.page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    min-height: 36px;
+}
+html[data-bs-theme] .main-content .page-head {
+    margin: 0 0 12px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+}
+
+.page-head-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+html[data-bs-theme] .main-content .page-head-title {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -.02em !important;
+    color: var(--text-primary) !important;
+    overflow-wrap: anywhere;
+}
+
+/* A count or a short note that belongs to the title: "7 sites". */
+html[data-bs-theme] .main-content .page-head-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--brand);
+    background: var(--brand-subtle);
+}
+
+/* On the title's line they sit at the right; when a narrow screen sends them
+   to the line below, they start from the left like the rest of the page. */
+.page-head-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.page-head-actions > form { margin: 0; }
+
+/* A Bootstrap button is 38px (enterprise.css sets its min-height and padding
+   with !important); on a header's right it is as tall as the header, so no
+   page's header is taller for the buttons it carries. */
+html[data-bs-theme] .main-content .page-head-actions > .btn {
+    display: inline-flex;
+    align-items: center;
+    height: 36px;
+    min-height: 36px;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}

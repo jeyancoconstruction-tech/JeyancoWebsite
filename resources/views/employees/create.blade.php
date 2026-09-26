@@ -6,17 +6,13 @@
 
 @section('content')
 <div class="employee-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="page-title mb-1">{{ __('Register Employee') }}</h2>
-            <p class="text-muted mb-0" style="font-size:.875rem;">
-                Every field marked * is required. The Government ID numbers, the blood type and the email may be left blank.
-            </p>
-        </div>
-        <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
-            <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Employees') }}
-        </a>
-    </div>
+    <x-page-header :title="__('Register Employee')">
+        <x-slot:actions>
+            <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
+                <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Employees') }}
+            </a>
+        </x-slot:actions>
+    </x-page-header>
 
     @if($errors->any())
         <div class="alert alert-danger border-0 shadow-sm mb-4">

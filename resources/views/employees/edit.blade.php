@@ -6,12 +6,13 @@
 
 @section('content')
 <div class="employee-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="page-title">{{ __('Edit Employee Profile') }}</h2>
-        <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
-            <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Employees') }}
-        </a>
-    </div>
+    <x-page-header :title="__('Edit Employee Profile')">
+        <x-slot:actions>
+            <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
+                <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Employees') }}
+            </a>
+        </x-slot:actions>
+    </x-page-header>
 
     @if($errors->any())
         <div class="alert alert-danger border-0 shadow-sm mb-4">

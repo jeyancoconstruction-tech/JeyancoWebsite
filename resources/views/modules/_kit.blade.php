@@ -11,18 +11,9 @@
 /* ── Page ─────────────────────────────────────────────────────────────── */
 .mod-page { max-width: none; width: 100%; }
 
-.mod-head {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    gap: 16px; flex-wrap: wrap; margin-bottom: 18px;
-}
-.mod-title {
-    font-size: 1.45rem; font-weight: 700; letter-spacing: -.02em;
-    color: var(--text-primary); margin: 0 0 4px;
-}
 .mod-sub {
     font-size: .85rem; color: var(--text-secondary); margin: 0; max-width: 70ch;
 }
-.mod-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
 /* ── Stat strip · a row of figures, not a wall of cards ───────────────── */
 .mod-stats {

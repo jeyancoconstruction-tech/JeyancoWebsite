@@ -360,12 +360,7 @@ html[data-bs-theme="dark"] {
 /* ------------------------------------------------------------
    AI ASSISTANT PAGE
    ------------------------------------------------------------ */
-[data-bs-theme="dark"] .ai-page-header {
-    background: #0f1729;
-    border-bottom-color: #283449;
-}
-[data-bs-theme="dark"] .ai-header-title { color: #e8edf5; }
-[data-bs-theme="dark"] .ai-header-sub { color: #6b7d96; }
+
 [data-bs-theme="dark"] .ai-btn-outline { border-color: #283449; color: #9fb0c7; }
 [data-bs-theme="dark"] .ai-btn-outline:hover {
     background: #1c2740;
@@ -434,7 +429,7 @@ html[data-bs-theme="dark"] {
 /* ------------------------------------------------------------
    ATTENDANCE PAGE
    ------------------------------------------------------------ */
-[data-bs-theme="dark"] .attendance-title { color: #e8edf5; }
+
 [data-bs-theme="dark"] .analytics-card h5 { color: #6b7d96; }
 [data-bs-theme="dark"] .analytics-card .value { color: #f1f5f9; }
 [data-bs-theme="dark"] .attendance-table thead th {

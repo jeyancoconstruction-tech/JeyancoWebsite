@@ -16,30 +16,20 @@
     display: flex;
     flex-direction: column;
     gap: var(--dash-gap);
-    height: calc(100vh - var(--topbar-height, 60px) - 46px);
+    height: calc(100vh - var(--topbar-height, 60px) - 40px);
     min-height: 0;
 }
 
-/* ── Strip: greeting, clock, and the actions worth one click ───────────── */
-.dash-bar {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 14px; flex-wrap: wrap; flex: none;
-    padding: 10px 14px;
-    background: var(--bg-surface); border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-}
-.dash-greet { min-width: 0; }
-.dash-greet h1 {
-    margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -.01em;
-    color: var(--text-primary);
-}
-.dash-greet p { margin: 1px 0 0; font-size: .76rem; color: var(--text-secondary); }
-.dash-bar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* ── Header: the shared page header, with the clock on its right ───────
+   The column's gap already spaces it from the figures, so its own margin
+   would double that. */
+html[data-bs-theme] .main-content .dash > .page-head { margin-bottom: 0 !important; flex: none; }
 
-/* The clock keeps its own id and ticker; only its size changes here. */
+/* The clock keeps its own id and ticker; only its size changes here. As
+   tall as a button, like everything else on a header's right. */
 .dash-clock {
     display: flex; align-items: center; gap: 9px;
-    padding: 5px 11px 5px 8px;
+    height: 36px; padding: 0 11px 0 8px;
     background: var(--bg-subtle); border: 1px solid var(--border);
     border-radius: var(--radius-sm); cursor: pointer; user-select: none;
 }
@@ -304,8 +294,7 @@ html[data-bs-theme="dark"] #kioskMap .leaflet-control-attribution a { color: var
 @media (max-width: 767px) {
     .dash-kpis { grid-template-columns: repeat(2, 1fr); }
     .dash-grid { grid-template-columns: 1fr; }
-    .dash-bar { flex-direction: column; align-items: stretch; }
-    .dash-bar-right { justify-content: space-between; }
+
     /* The map gets the height a phone can give it, and the kiosk count
        its own line under the title rather than an ellipsis beside it. */
     .area-map { min-height: 520px; }

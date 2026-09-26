@@ -69,7 +69,7 @@
 
 @media print {
     /* The app's chrome is not part of the document being handed over. */
-    .sidebar, .topbar, .chatbot-fab, .chatbot-window, .mod-head-actions,
+    .sidebar, .topbar, .chatbot-fab, .chatbot-window, .page-head,
     .no-print { display: none !important; }
     .main-content { margin-left: 0 !important; }
     body { background: #fff !important; }

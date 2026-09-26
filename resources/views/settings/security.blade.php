@@ -73,7 +73,6 @@
 <div class="sx-page">
     @include('settings._head', [
         'title' => 'Security',
-        'sub'   => 'How long a session lasts, and how hard a password is to guess.',
     ])
 
     <div class="st-wrap">

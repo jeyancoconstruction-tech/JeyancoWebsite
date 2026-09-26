@@ -63,7 +63,6 @@
 <div class="sx-page">
     @include('settings._head', [
         'title' => 'Appearance',
-        'sub'   => 'How the system looks before anybody has chosen for themselves.',
     ])
 
     <div class="st-wrap">

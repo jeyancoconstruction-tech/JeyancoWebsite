@@ -51,17 +51,15 @@ html[data-bs-theme="dark"] .rmx {
 .rm-alert { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: 10px; font-size: 13.5px; margin-bottom: 18px; border-left: 4px solid transparent; }
 .rm-alert-err { background: var(--rmx-danger-bg); color: var(--rmx-danger-fg); border-left-color: #DC2626; }
 
-/* Header */
-.rmx-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 1.5rem; flex-wrap: wrap; }
-.rmx .rmx-title { font-size: 22px !important; font-weight: 600 !important; letter-spacing: -.01em !important; line-height: 1.3; color: var(--rmx-txt); margin: 0 0 5px; }
-.rmx-sub { font-size: 13px; color: var(--rmx-txt-2); margin: 0; }
+/* Header buttons */
 .rmx-primary { height: 38px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
     background: var(--rmx-primary); color: #fff; border: none; border-radius: 8px; font-size: 13.5px; font-weight: 500;
     text-decoration: none; transition: filter .15s; }
 .rmx-primary:hover, .rmx-primary:focus { color: #fff; text-decoration: none; filter: brightness(1.1); }
 .rmx-primary i { font-size: 16px; }
 .rmx-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.rmx-head-actions .rmx-outline { height: 38px; text-decoration: none; }
+/* On the page header's right, both as tall as the header itself. */
+.rmx .page-head-actions > :is(.rmx-outline, .rmx-primary) { height: 36px; text-decoration: none; }
 
 /* Stat cards — they also switch tabs */
 .rmx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.25rem; }
@@ -236,12 +234,8 @@ html[data-bs-theme="dark"] .rmx {
     @endif
 
     {{-- ── Header ──────────────────────────────────────────────────────────── --}}
-    <div class="rmx-head">
-        <div>
-            <h1 class="rmx-title">{{ __('Employees') }}</h1>
-            <p class="rmx-sub">{{ __('Register, edit and remove workers here. New workers and kiosk detections stay in Pending until a fingerprint is enrolled.') }}</p>
-        </div>
-        <div class="rmx-head-actions">
+    <x-page-header :title="__('Employees')">
+        <x-slot:actions>
             {{-- The active workforce as a spreadsheet Excel opens. It came
                  over from the Employee Directory when that page was retired. --}}
             <a href="{{ route('employees.export') }}" class="rmx-outline" id="rmExportBtn">
@@ -253,8 +247,8 @@ html[data-bs-theme="dark"] .rmx {
             <a href="{{ route('employees.create') }}" class="rmx-primary" id="rmAddBtn">
                 <i class="ti ti-user-plus" aria-hidden="true"></i>{{ __('Register employee') }}
             </a>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- ── Stat cards (also switch tabs) ───────────────────────────────────── --}}
     <div class="rmx-stats">

@@ -207,7 +207,7 @@
     .au-fit.fit .au-leg { padding: 2px 0; }
     .au-fit.fit #auditEntries > .lg-load { padding: 9px 16px; }
     .au-fit.fit { display: flex; flex-direction: column; height: var(--au-h, auto); }
-    .au-fit.fit > .sx-head, .au-fit.fit > .sx-status, .au-fit.fit > .sx-card { flex: none; }
+    .au-fit.fit > .page-head, .au-fit.fit > .sx-status, .au-fit.fit > .sx-card { flex: none; }
     .au-fit.fit > .au-body { flex: 1 1 auto; min-height: 0; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
     .au-fit.fit .au-body > aside.sx-card { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
     .au-fit.fit .au-body > aside .fc-rail { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
@@ -224,17 +224,12 @@
 @section('content')
 <div class="sx-page au-fit">
 
-    <div class="sx-head">
-        <div>
-            <div class="sx-eyebrow">System · 02 / 04</div>
-            <h1 class="sx-title">Audit Logs</h1>
-            <p class="sx-sub">Who did what, and when. A sealed record: nothing in the system edits or deletes an entry, and this screen only reads.</p>
-        </div>
-        <div class="sx-actions">
+    <x-page-header title="Audit Logs">
+        <x-slot:actions>
             <span class="sx-badge muted nodot" style="height:34px;padding:0 11px;border-radius:8px"><i data-lucide="lock"></i> Append-only</span>
             <a class="sx-btn" href="{{ route('audit-logs.export', request()->except('page', 'entry')) }}"><i data-lucide="download"></i> Export this view (CSV)</a>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- ── Status line ─────────────────────────────────────────────────── --}}
     <div class="sx-status {{ $summary['sensitive'] ? 'warn' : '' }}">

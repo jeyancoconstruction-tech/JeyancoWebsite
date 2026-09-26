@@ -4,11 +4,11 @@
 @section('content')
 <div class="mod-page">
 
-    @include('modules._head', [
-        'title' => __('Project Assignment'),
-        'sub'   => __('Who is posted to which site, for how long, and at what rate. The kiosk still stamps each clock with the site it was taken at; this is the posting behind it.'),
-        'actions' => '<button type="button" class="mod-btn primary" data-bs-toggle="modal" data-bs-target="#asgModal"><i class="fas fa-plus"></i> ' . __('New Assignment') . '</button>',
-    ])
+    <x-page-header :title="__('Project Assignment')">
+        <x-slot:actions>
+            <button type="button" class="mod-btn primary" data-bs-toggle="modal" data-bs-target="#asgModal"><i class="fas fa-plus"></i> {{ __('New Assignment') }}</button>
+        </x-slot:actions>
+    </x-page-header>
 
     @include('modules._flash')
 

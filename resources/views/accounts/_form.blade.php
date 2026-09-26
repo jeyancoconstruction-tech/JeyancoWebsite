@@ -55,27 +55,14 @@
 @endphp
 
 <div class="ca-page">
-    <header class="ca-top">
-        <div>
-            <nav class="ca-crumb" aria-label="Breadcrumb">
-                <a href="{{ route('users-roles.index') }}">{{ __('Users & Roles') }}</a>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-                <b>{{ $editing ? __('Edit Account') : __('Create Account') }}</b>
-            </nav>
-            <h1>{{ $editing ? __('Edit Account') : __('Create Account') }}</h1>
-            <p class="ca-sub">
-                @if($editing)
-                    {{ __('Update :name’s account. Leave the password blank to keep the current one.', ['name' => $account->name]) }}
-                @else
-                    {{ __('Add someone who can sign in to Jeyanco Payroll. Only accounts listed here can use Sign in with Google.') }}
-                @endif
-            </p>
-        </div>
-        <a class="ca-btn" href="{{ route('users-roles.index') }}">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></svg>
-            {{ __('Back to Accounts') }}
-        </a>
-    </header>
+    <x-page-header :title="$editing ? __('Edit Account') : __('Create Account')">
+        <x-slot:actions>
+            <a class="ca-btn" href="{{ route('users-roles.index') }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></svg>
+                {{ __('Back to Accounts') }}
+            </a>
+        </x-slot:actions>
+    </x-page-header>
 
     @if($errors->any())
         <div class="ca-errors" role="alert">
@@ -277,14 +264,11 @@
 <style>
 /* Create / Edit Account. Built on the theme tokens so it reads right in light
    and dark alike; the layout, sizes and pieces are the design's. */
-.ca-page { max-width: 1280px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; color: var(--text-primary); }
-.ca-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
-.ca-crumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
-.ca-crumb a { color: var(--text-muted); text-decoration: none; }
-.ca-crumb a:hover { color: var(--text-primary); }
-.ca-crumb b { color: var(--brand); font-weight: 600; }
-.ca-page h1 { margin: 6px 0 4px; font-size: 30px; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; color: var(--text-primary); }
-.ca-sub { margin: 0; color: var(--text-secondary); max-width: 62ch; }
+.ca-page { width: 100%; display: flex; flex-direction: column; gap: 24px; color: var(--text-primary); }
+/* The shared page header. The column's 24px gap is already under it, so its
+   own margin comes in by the difference: 12px below it, as on every page. */
+html[data-bs-theme] .main-content .ca-page > .page-head { margin-bottom: -12px !important; }
+.ca-page > .page-head .ca-btn { height: 36px; padding: 0 14px; border-radius: 10px; font-size: 13px; }
 
 .ca-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 18px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-primary); white-space: nowrap; }
 .ca-btn:hover { border-color: var(--text-muted); color: var(--text-primary); }
@@ -400,7 +384,7 @@
 @media (max-width: 680px) {
     .ca-sec, .ca-foot, .ca-status { padding-left: 18px; padding-right: 18px; }
     .ca-cols, .ca-choices, .ca-roles { grid-template-columns: 1fr; }
-    .ca-page h1 { font-size: 26px; }
+
     .ca-foot .ca-btn { flex: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .ca-page * { transition: none !important; } }

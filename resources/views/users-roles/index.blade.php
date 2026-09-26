@@ -176,16 +176,11 @@
 @section('content')
 <div class="sx-page">
 
-    <div class="sx-head">
-        <div>
-            <div class="sx-eyebrow">System · 01 / 04</div>
-            <h1 class="sx-title">Users &amp; Roles</h1>
-            <p class="sx-sub">Who has an account, which role each one carries, and exactly what that role can open.</p>
-        </div>
-        <div class="sx-actions">
+    <x-page-header title="Users & Roles">
+        <x-slot:actions>
             <a class="sx-btn primary" href="{{ route('accounts.create') }}"><i data-lucide="user-plus"></i> Create account</a>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     @if($errors->any())
         <div class="sx-alert" role="alert"><i data-lucide="circle-alert"></i>

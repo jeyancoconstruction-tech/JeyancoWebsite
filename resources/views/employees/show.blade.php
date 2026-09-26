@@ -14,27 +14,19 @@
      reason to carry: this cutoff's payroll, and the recent scans. --}}
 <div class="employee-container">
 
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <div>
-            <h2 class="page-title mb-1">{{ $employee->name }}</h2>
-            <p class="text-muted mb-0" style="font-size:.875rem;">
-                <span class="ep-mono">#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }}</span>
-                · {{ $employee->position ?: ($employee->laborType->name ?? __('Worker')) }}
-                · {{ $employee->employment_label }}
-                @unless($employee->fingerprint_id)
-                    · <span class="ep-warn"><i class="fas fa-hourglass-half"></i> {{ __('No fingerprint yet') }}</span>
-                @endunless
-            </p>
-        </div>
-        <div class="d-flex gap-2">
+    {{-- Position, type and fingerprint are all in the sections below; the
+         employee number is only here, so it stays beside the name. --}}
+    <x-page-header :title="$employee->name">
+        <x-slot:badge>#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }}</x-slot:badge>
+        <x-slot:actions>
             <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
                 <i class="fas fa-arrow-left me-2"></i>{{ __('Employees') }}
             </a>
             <a href="{{ route('employees.edit', $employee->id) }}" class="btn btn-primary shadow-sm px-4">
                 <i class="fas fa-pen me-2"></i>{{ __('Edit') }}
             </a>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     <div class="row">
         <div class="col-12">
@@ -252,7 +244,7 @@
    a payroll strip, an attendance table and a photo tile. Colours are theme
    tokens, so there is no dark-mode twin of this block. */
 .ep-aside { color: var(--text-muted, #8a929b); font-size: .8em; margin-left: 4px; }
-.ep-warn  { color: var(--warning, #b54708); font-weight: 600; }
+
 .ep-value.is-warn { color: var(--warning, #b54708); font-weight: 600; }
 
 /* The photo tile's CSS was here — .epv-photo*. The tile is gone: there was

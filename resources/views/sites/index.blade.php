@@ -16,15 +16,9 @@
 .sm-page { --sm-r: 16px; --sm-r-sm: 12px; display: flex; flex-direction: column; gap: 18px; }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
-.sm-titlerow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.sm-title { margin: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -.02em; color: var(--text-primary); }
-.sm-count {
-    font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
-    color: var(--brand); background: var(--brand-subtle);
-    border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
-    padding: 3px 10px; border-radius: 999px;
-}
-.sm-sub { margin: 6px 0 0; color: var(--text-secondary); max-width: 72ch; font-size: .92rem; }
+/* The shared page header. The column's 18px gap is already under it, so its
+   own margin comes in by the difference: 12px below it, as on every page. */
+html[data-bs-theme] .main-content .sm-page > .page-head { margin-bottom: -6px !important; }
 
 /* ── Cards ──────────────────────────────────────────────────────────────── */
 .sm-grid { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 18px; align-items: stretch; }
@@ -185,7 +179,6 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
     .sm-mapbox { min-height: 420px; }
 }
 @media (max-width: 640px) {
-    .sm-title { font-size: 1.5rem; }
     .sm-body { padding: 16px; }
     .sm-ch { padding: 14px 16px; }
     .sm-sites { grid-template-columns: 1fr; padding: 12px; }
@@ -197,13 +190,9 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 @section('content')
 <div class="sm-page">
 
-    <header>
-        <div class="sm-titlerow">
-            <h1 class="sm-title">{{ __('Site Management') }}</h1>
-            <span class="sm-count" id="smCount">—</span>
-        </div>
-        <p class="sm-sub">{{ __('Add a project site and pin its exact spot. The pin and radius set where GPS attendance counts as on-site.') }}</p>
-    </header>
+    <x-page-header :title="__('Site Management')">
+        <x-slot:badge id="smCount">—</x-slot:badge>
+    </x-page-header>
 
     <div class="sm-grid">
 

@@ -5,14 +5,7 @@
 @section('content')
 <div class="settings-wrapper">
     
-    <div class="settings-header mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1>{{ __('Settings') }}</h1>
-                <p>{{ __('Payroll, company, accounts and system configuration') }}</p>
-            </div>
-        </div>
-    </div>
+    <x-page-header :title="__('Settings')" />
 
     @if ($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -1362,11 +1355,6 @@
    colour here is a theme token, so there is no dark twin to keep in step. */
 .settings-wrapper { background: none; padding: 0; border-radius: 0; box-shadow: none; }
 
-.settings-header h1 {
-    font-size: 1.25rem; font-weight: 700; letter-spacing: -.02em;
-    color: var(--text-primary); margin: 0 0 4px;
-}
-.settings-header p { color: var(--text-secondary); font-size: .8rem; margin: 0; }
 
 /* The tabs. .nav-link is also the sidebar's class, and the sidebar's active
    pill (a tint, an inset ring, a bar down the left) was landing on the open

@@ -4,16 +4,8 @@
 @section('content')
 <div class="mod-page">
 
-    <div class="mod-head">
-        <div>
-            <h1 class="mod-title">{{ $run->code }}</h1>
-            <p class="mod-sub">
-                {{ $run->period_label }}
-                @if($run->site) &middot; {{ $run->site->name }} @else &middot; {{ __('All sites') }} @endif
-                @if($run->title) &middot; {{ $run->title }} @endif
-            </p>
-        </div>
-        <div class="mod-head-actions">
+    <x-page-header :title="$run->code">
+        <x-slot:actions>
             <a class="mod-btn" href="{{ route('payroll-processing.index') }}">
                 <i class="fas fa-arrow-left"></i> {{ __('All Runs') }}
             </a>
@@ -51,8 +43,8 @@
                     <i class="fas fa-file-invoice"></i> {{ __('Payslips') }}
                 </a>
             @endif
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     @include('modules._flash')
 
@@ -64,7 +56,12 @@
             <span class="mod-badge {{ $tone }}"><span class="dot"></span>{{ $run->status_label }}</span>
         </div>
         <div class="mod-card-body">
+            {{-- Period, site and title were the header's sub-line and shown
+                 nowhere else, so they open the summary instead. --}}
             <dl class="mod-dl">
+                <div><dt>{{ __('Period') }}</dt><dd>{{ $run->period_label }}</dd></div>
+                <div><dt>{{ __('Site') }}</dt><dd>{{ $run->site->name ?? __('All sites') }}</dd></div>
+                @if($run->title)<div><dt>{{ __('Title') }}</dt><dd>{{ $run->title }}</dd></div>@endif
                 <div><dt>{{ __('Workers') }}</dt><dd>{{ $run->employee_count }}</dd></div>
                 <div><dt>{{ __('Gross Pay') }}</dt><dd>₱{{ number_format($run->total_gross, 2) }}</dd></div>
                 <div><dt>{{ __('Total Deductions') }}</dt><dd>₱{{ number_format($run->total_deductions, 2) }}</dd></div>

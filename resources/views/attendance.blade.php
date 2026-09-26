@@ -20,28 +20,31 @@
 }
 
 /* ── Heading ─────────────────────────────────────────────────────────────── */
-.atm-head {
-    display:flex; justify-content:space-between; align-items:center;
-    gap:12px; flex-wrap:wrap; margin-bottom:16px;
-}
-.atm-head-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; max-width:100%; }
-.atm-date { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--text-muted); }
+/* The shared page header, with the date and the shift schedule on its right.
+   The schedule keeps to one line, as tall as a button, so this header is the
+   same height as every other page's; on a narrower window its hours are cut
+   short (the whole line is in its tooltip) rather than wrapping under the
+   title. */
+.atm .page-head { flex-wrap:nowrap; }
+.atm .page-head-main { flex:none; }
+.atm .page-head-actions { flex:0 1 auto; min-width:0; flex-wrap:nowrap; gap:14px; }
+.atm-date { display:flex; align-items:center; gap:7px; flex:none; white-space:nowrap; font-size:13px; color:var(--text-muted); }
 
 /* The shifts in one line, and the way to change them. The page reads every
    day against these hours, so they are stated where the reading happens. */
 .atm-sched {
-    display:flex; align-items:center; gap:12px; max-width:100%;
-    padding:8px 10px 8px 12px; border:1px solid var(--border); border-radius:var(--radius-lg);
+    display:flex; align-items:center; gap:10px; min-width:0; max-width:100%; height:36px;
+    padding:0 4px 0 12px; border:1px solid var(--border); border-radius:var(--radius-lg);
     background:var(--surface); box-shadow:var(--shadow-xs);
     color:inherit; text-decoration:none; text-align:left;
 }
 a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:none; }
-.atm-sched > i { font-size:16px; color:var(--brand); flex:none; }
-.atm-sched-txt { display:flex; flex-direction:column; gap:1px; min-width:0; }
-.atm-sched-txt b { font-size:12.5px; color:var(--text-primary); }
-.atm-sched-txt small { font-size:11.5px; color:var(--text-muted); }
+.atm-sched > i { font-size:15px; color:var(--brand); flex:none; }
+.atm-sched-txt { display:flex; align-items:baseline; gap:8px; min-width:0; white-space:nowrap; }
+.atm-sched-txt b { flex:none; font-size:12.5px; color:var(--text-primary); }
+.atm-sched-txt small { min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:11.5px; color:var(--text-muted); }
 .atm-sched-go {
-    display:flex; align-items:center; gap:6px; white-space:nowrap;
+    display:flex; align-items:center; gap:6px; flex:none; white-space:nowrap;
     font-size:12px; font-weight:700; color:var(--brand);
     background:var(--brand-subtle); border-radius:var(--radius-sm); padding:6px 9px 6px 10px;
 }
@@ -327,7 +330,10 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     .atm-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width:700px) {
-    .atm-head-right { align-items:stretch; width:100%; }
+    .atm .page-head { flex-wrap:wrap; }
+    .atm .page-head-actions { flex:1 1 100%; flex-wrap:wrap; justify-content:flex-start; }
+    .atm-sched { height:auto; min-height:36px; padding:6px 10px; width:100%; }
+    .atm-sched-txt { flex-direction:column; align-items:flex-start; gap:1px; white-space:normal; }
     .atm-sched-go { display:none; }
     .atm-toolbar { padding:12px; }
     .atm-field, .atm-field input { width:100%; }
@@ -380,18 +386,17 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
 
 <div class="attendance-container atm">
 
-    <div class="atm-head">
-        <h3 class="attendance-title mb-0">{{ __('Attendance Monitoring') }}</h3>
-
-        <div class="atm-head-right">
+    <x-page-header :title="__('Attendance Monitoring')">
+        <x-slot:actions>
             <span class="atm-date"><i class="fas fa-calendar-day"></i>{{ now()->format('l, m/d/Y') }}</span>
 
             @if($scheduled->isNotEmpty())
                 @if($canEdit)
                     <a class="atm-sched" href="{{ route('settings.index', ['tab' => 'attendance']) }}"
+                       title="{{ $schedLine }}"
                        aria-label="{{ __('Edit the shift schedule in Payroll Settings') }}">
                 @else
-                    <div class="atm-sched">
+                    <div class="atm-sched" title="{{ $schedLine }}">
                 @endif
                         <i class="far fa-clock"></i>
                         <span class="atm-sched-txt"><b>{{ __('Shift schedule') }}</b><small>{{ $schedLine }}</small></span>
@@ -400,8 +405,8 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
                         @endif
                 @if($canEdit) </a> @else </div> @endif
             @endif
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- ── Cards ────────────────────────────────────────────────────────────
          They follow the site and shift chosen below, so the numbers and the

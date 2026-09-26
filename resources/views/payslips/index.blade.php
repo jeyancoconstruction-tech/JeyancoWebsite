@@ -4,10 +4,7 @@
 @section('content')
 <div class="mod-page">
 
-    @include('modules._head', [
-        'title' => __('Payslips'),
-        'sub'   => __('Issued from a payroll run the office has approved or finalised, so a slip reads the same whenever it is reprinted.'),
-    ])
+    <x-page-header :title="__('Payslips')" />
 
     @include('modules._flash')
 

@@ -3,27 +3,24 @@
 
 @section('content')
 @php
-    // The subtitle and the one button follow the open tab.
+    // The header's one button follows the open tab.
     $head = $tab === 'advances'
         ? [
-            'sub'    => __('Cash handed to a worker ahead of pay and collected back over several payrolls. Payroll takes the instalment the application asked for, every payroll, until nothing is left.'),
             'modal'  => 'advanceModal',
             'button' => __('New Cash Advance'),
         ]
         : [
-            'sub'    => __('Leave counts as soon as it is filed. Paid leave is picked up by Payroll Processing as its days come round and never writes an attendance record. Overtime is not filed — payroll counts it from attendance.'),
             'modal'  => 'leaveModal',
             'button' => __('File Leave'),
         ];
 @endphp
 <div class="mod-page">
 
-    @include('modules._head', [
-        'title'   => __('Leave & Advances'),
-        'sub'     => $head['sub'],
-        'actions' => '<button type="button" class="mod-btn primary" data-bs-toggle="modal" data-bs-target="#'
-                     . $head['modal'] . '"><i class="fas fa-plus"></i> ' . $head['button'] . '</button>',
-    ])
+    <x-page-header :title="__('Leave & Advances')">
+        <x-slot:actions>
+            <button type="button" class="mod-btn primary" data-bs-toggle="modal" data-bs-target="#{{ $head['modal'] }}"><i class="fas fa-plus"></i> {{ $head['button'] }}</button>
+        </x-slot:actions>
+    </x-page-header>
 
     @include('modules._flash')
 

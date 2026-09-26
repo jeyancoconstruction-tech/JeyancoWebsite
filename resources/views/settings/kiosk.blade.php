@@ -137,7 +137,6 @@
 <div class="sx-page">
     @include('settings._head', [
         'title' => 'Kiosk',
-        'sub'   => 'How the attendance kiosk records a scan. A saved change reaches the kiosk within a few seconds — nobody has to touch the Pi.',
     ])
 
     <div class="st-wrap">

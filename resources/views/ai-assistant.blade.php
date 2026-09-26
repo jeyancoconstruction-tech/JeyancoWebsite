@@ -6,17 +6,8 @@
 <div class="ai-page-wrapper">
 
     {{-- ── PAGE HEADER ────────────────────────────────── --}}
-    <div class="ai-page-header">
-        <div class="ai-header-left">
-            <div class="ai-header-icon">
-                <i class="fas fa-robot"></i>
-            </div>
-            <div>
-                <h4 class="ai-header-title">{{ __('Jeyanco Intelligence') }}</h4>
-                <p class="ai-header-sub">{{ __('Payroll, attendance, and workforce analytics — ask anything.') }}</p>
-            </div>
-        </div>
-        <div class="ai-header-actions">
+    <x-page-header :title="__('Jeyanco Intelligence')">
+        <x-slot:actions>
             <span class="ai-status-badge">
                 <span class="ai-status-dot"></span>
                 Connected to DB
@@ -29,8 +20,8 @@
                 <i data-lucide="plus" style="width:15px;height:15px;"></i>
                 <span class="d-none d-md-inline">{{ __('New Chat') }}</span>
             </button>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- ── MAIN CONTENT: SIDEBAR + CHAT ───────────────── --}}
     <div class="ai-main" id="aiMain">

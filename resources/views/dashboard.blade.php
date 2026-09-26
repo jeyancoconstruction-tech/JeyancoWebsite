@@ -26,14 +26,9 @@
 
 <div class="dash">
 
-    {{-- ── Strip: who, when, and the four things worth one click ────────── --}}
-    <div class="dash-bar">
-        <div class="dash-greet">
-            <h1>{{ $greet }}, {{ auth()->user()->name ?? 'Admin' }}</h1>
-            <p>{{ __('Here is what is happening at Jeyanco Construction today.') }}</p>
-        </div>
-
-        <div class="dash-bar-right">
+    {{-- ── Header: who, and when ─────────────────────────────────────────── --}}
+    <x-page-header :title="$greet . ', ' . (auth()->user()->name ?? 'Admin')">
+        <x-slot:actions>
             {{-- Same ids the live ticker and the month popover already use. --}}
             <div class="clock-shell" style="position:relative;">
                 <div class="dash-clock" id="clockWidget" role="button" tabindex="0"
@@ -46,8 +41,8 @@
                 </div>
                 <div class="mini-cal" id="miniCal" role="dialog" aria-label="{{ __('Calendar') }}" hidden></div>
             </div>
-        </div>
-    </div>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- ── Figures. Each tile links to the screen it summarises. ─────────── --}}
     {{-- Every one of these is a count of something that changes while the page

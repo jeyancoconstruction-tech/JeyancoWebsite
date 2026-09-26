@@ -27,17 +27,6 @@ html[data-bs-theme="dark"] {
 .sx-page button { font-family: inherit; cursor: pointer; }
 .mono { font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace; font-feature-settings: normal; letter-spacing: -.01em; }
 
-/* ── Page header ─────────────────────────────────────────────────────── */
-.sx-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin: 2px 0 14px; flex-wrap: wrap; }
-.sx-eyebrow {
-    font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10.5px; font-weight: 600;
-    letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted);
-    display: flex; align-items: center; gap: 8px; margin-bottom: 7px;
-}
-.sx-eyebrow::before { content: ""; width: 14px; height: 2px; background: var(--brand); border-radius: 1px; }
-.sx-page .sx-title { font-size: 20px !important; font-weight: 700; letter-spacing: -.02em; line-height: 1.2 !important; margin: 0; color: var(--text-primary); }
-.sx-sub { font-size: 13px; color: var(--text-secondary); margin: 5px 0 0; max-width: 80ch; line-height: 1.5; }
-.sx-actions { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; }
 
 /* ── Buttons & links ─────────────────────────────────────────────────── */
 .sx-btn {

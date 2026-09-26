@@ -21,7 +21,6 @@
     --ana-ico-amber: #D97706; --ana-ico-violet: #7C3AED;
     --ana-radius: 12px;
 
-    max-width: 1400px; margin: 0 auto;
     color: var(--ana-txt);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
@@ -41,10 +40,7 @@ html[data-bs-theme="dark"] .ana {
 .ana h1, .ana h3, .ana p { margin: 0; }
 
 /* Header */
-.ana-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-.ana .ana-head h1 { font-size: 22px !important; font-weight: 600 !important; letter-spacing: -.01em !important; line-height: 1.3; color: var(--ana-txt); }
-.ana-sub { font-size: 13px; color: var(--ana-txt-2); margin-top: 3px; }
-.ana-sub b { color: var(--ana-txt); font-weight: 500; }
+
 .ana-period { display: inline-flex; align-items: center; gap: 7px; background: var(--ana-panel); border: var(--ana-bw) solid var(--ana-line-2); border-radius: 20px; padding: 7px 14px; font-size: 13px; color: var(--ana-txt-2); }
 
 /* Filters */
@@ -127,13 +123,11 @@ html[data-bs-theme="dark"] .ana {
 @endphp
 <div class="ana" id="anaRoot" data-endpoint="{{ route('analytics.data') }}">
 
-    <div class="ana-head ana-anim" style="animation-delay:.02s">
-        <div>
-            <h1>Analytics &amp; insights</h1>
-            <div class="ana-sub">Performance overview for <b id="anaPeriodLabel">{{ $p['label'] }}{{ $p['scope'] !== '' ? ' — ' . $p['scope'] : '' }}</b></div>
-        </div>
-        <div class="ana-period" id="anaLive" title="Updated {{ $analytics['updated_at'] }}"><i class="ti ti-calendar"></i><span>Live data</span></div>
-    </div>
+    <x-page-header title="Analytics & insights" class="ana-anim" style="animation-delay:.02s">
+        <x-slot:actions>
+            <div class="ana-period" id="anaLive" title="Updated {{ $analytics['updated_at'] }}"><i class="ti ti-calendar"></i><span>Live data</span></div>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- A real form, so the filters still work with scripting off; with it on,
          every change redraws in place. --}}
@@ -457,7 +451,7 @@ html[data-bs-theme="dark"] .ana {
         setCards(a);
         renderAll(a);
         document.getElementById('anaTrendTag').textContent = a.period.tag;
-        document.getElementById('anaPeriodLabel').textContent = a.period.label + (a.period.scope ? ' — ' + a.period.scope : '');
+
         document.getElementById('anaLive').title = 'Updated ' + a.updated_at;
     }
 

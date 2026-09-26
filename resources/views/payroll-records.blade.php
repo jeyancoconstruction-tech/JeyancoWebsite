@@ -11,8 +11,6 @@
     .pr-page { padding: 20px 0 48px; }
     @media (max-width: 768px) { .pr-page { padding: 16px 0; } }
 
-    .pr-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin: 0; letter-spacing: -0.3px; }
-    .pr-header p  { color: var(--text-secondary); font-size: 0.9rem; margin: 2px 0 0; }
 
     .filter-bar { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 16px 18px; }
 
@@ -30,7 +28,7 @@
     @media (max-width: 768px) { .pr-stat { min-width: 50%; border-bottom: 1px solid var(--border); } }
 
     /* ── Dark mode ───────────────────────────────────────────────────────── */
-    [data-bs-theme="dark"] .pr-header h1  { color: var(--text-primary); }
+
     [data-bs-theme="dark"] .filter-bar    { background: var(--surface); border-color: var(--border); }
     [data-bs-theme="dark"] .mode-btn      { background: var(--bg-subtle); border-color: var(--border); color: var(--text-secondary); }
     [data-bs-theme="dark"] .mode-btn:hover  { background: var(--bg-subtle); }
@@ -143,16 +141,14 @@
     @php $isDaily = $period['mode'] === 'daily'; @endphp
 
     {{-- ── Page header ─────────────────────────────────────────────────────── --}}
-    <div class="pr-header d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h1>{{ __('Payroll Records') }}</h1>
-            <p>{{ $isDaily ? 'Daily' : 'Weekly' }} breakdown of pay, for the period below</p>
-        </div>
-        <button type="button" class="btn btn-success fw-600"
-                data-bs-toggle="modal" data-bs-target="#exportPreviewModal">
-            <i class="fas fa-file-excel me-1"></i> {{ __('Preview & Download') }}
-        </button>
-    </div>
+    <x-page-header :title="__('Payroll Records')">
+        <x-slot:actions>
+            <button type="button" class="btn btn-success fw-600"
+                    data-bs-toggle="modal" data-bs-target="#exportPreviewModal">
+                <i class="fas fa-file-excel me-1"></i> {{ __('Preview & Download') }}
+            </button>
+        </x-slot:actions>
+    </x-page-header>
 
     {{-- ── Filter bar ──────────────────────────────────────────────────────── --}}
     <div class="filter-bar mb-3">

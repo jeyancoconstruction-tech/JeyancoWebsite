@@ -8,66 +8,13 @@
 .ai-page-wrapper {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 68px);   /* subtract topbar */
+    /* One screen: less the top bar and the page container's padding above
+       and below, so the chat reaches the bottom without the page scrolling. */
+    height: calc(100vh - var(--topbar-height, 60px) - 40px);
     overflow: hidden;
     padding: 0;
 }
-
-/* ================================
-   PAGE HEADER
-   ================================ */
-.ai-page-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #ffffff;
-    flex-shrink: 0;
-    gap: 12px;
-}
-
-.ai-header-left {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.ai-header-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #4338ca, #6366f1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 18px;
-    flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(99,102,241,0.3);
-}
-
-.ai-header-title {
-    font-size: 17px;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0;
-    letter-spacing: -0.3px;
-    line-height: 1.2;
-}
-
-.ai-header-sub {
-    font-size: 12px;
-    color: #94a3b8;
-    margin: 2px 0 0;
-}
-
-.ai-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-}
+.ai-page-wrapper > .page-head { flex: none; }
 
 /* Status Badge */
 .ai-status-badge {
@@ -513,14 +460,8 @@
     .message { max-width: 90%; }
     .bubble { font-size: 13px; padding: 11px 14px; }
 
-    .ai-header-sub { display: none; }
     .ai-status-badge { display: none; }
 
     .chat-input-area { padding: 12px 16px 16px; }
 }
 
-@media (max-width: 480px) {
-    .ai-page-header { padding: 12px 16px; }
-    .ai-header-icon  { width: 36px; height: 36px; font-size: 15px; border-radius: 10px; }
-    .ai-header-title { font-size: 15px; }
-}
