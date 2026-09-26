@@ -43,7 +43,6 @@ final class Live
         'payroll',       // anything that changes what a payroll comes to
         'settings',      // payroll settings, rates, holidays, system settings
         'sites',         // sites and projects
-        'assignments',   // who is posted where
         'devices',       // kiosks: last seen, which site they are set to
         'kiosk',         // the kiosk's own live position, which is cached, not stored
         'accounts',      // logins and roles
@@ -60,7 +59,7 @@ final class Live
      */
     private const MODELS = [
         'Attendance'           => ['attendance', 'payroll'],
-        'Employee'             => ['employees', 'attendance', 'payroll', 'assignments'],
+        'Employee'             => ['employees', 'attendance', 'payroll'],
         'LeaveRequest'         => ['leave', 'payroll'],
         'Loan'                 => ['advances', 'payroll'],
         'LoanDeduction'        => ['advances', 'payroll'],
@@ -78,8 +77,7 @@ final class Live
         'GoogleHoliday'        => ['payroll', 'settings'],
         'SystemSetting'      => ['settings'],
         'Site'                 => ['sites', 'attendance', 'devices'],
-        'Project'              => ['sites', 'assignments'],
-        'ProjectAssignment'    => ['assignments', 'employees'],
+        'Project'              => ['sites'],
         'Kiosk'                => ['devices'],
         'User'                 => ['accounts'],
         'AuditLog'             => ['audit'],
@@ -110,7 +108,6 @@ final class Live
         'settings'           => ['payroll', 'settings'],
         'system-settings'    => ['settings'],
         'sites'              => ['sites', 'attendance'],
-        'assignments'        => ['assignments', 'employees'],
         'accounts'           => ['accounts'],
         'users-roles'        => ['accounts'],
         'notifications'      => ['notifications'],

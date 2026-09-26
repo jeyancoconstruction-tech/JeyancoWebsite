@@ -261,12 +261,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::delete('/loans/{loan}',   [\App\Http\Controllers\LoanController::class, 'destroy'])->name('loans.destroy');
     });
 
-    // ── PROJECT · Assignment ──────────────────────────────────────────────
-    Route::middleware('module:assignments')->group(function () {
-        Route::get ('/project-assignments', [\App\Http\Controllers\ProjectAssignmentController::class, 'index'])->name('assignments.index');
-        Route::post('/project-assignments', [\App\Http\Controllers\ProjectAssignmentController::class, 'store'])->name('assignments.store');
-        Route::patch('/project-assignments/{assignment}/end', [\App\Http\Controllers\ProjectAssignmentController::class, 'end'])->name('assignments.end');
-    });
+    // Project Assignment was removed on 2026-09-26; its address opens Sites,
+    // the page it sat under, so a bookmark does not end in a 404.
+    Route::get('/project-assignments', fn () => redirect()->route('sites.index'));
 
 
     // ── PAYROLL · Payslips (issued from a signed-off run) ─────────────────

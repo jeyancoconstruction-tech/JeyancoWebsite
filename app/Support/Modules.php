@@ -21,7 +21,6 @@ final class Modules
     // loans as well; it names a permission, and renaming it would only
     // rename a string.
     public const ADVANCES    = 'loans';
-    public const ASSIGNMENTS = 'assignments';
     public const PAYSLIPS    = 'payslips';
     public const REPORTS     = 'payroll-reports';
     public const USERS       = 'users-roles';
@@ -36,7 +35,7 @@ final class Modules
         // The office role, as Table 4.5 of Chapter 4 lists it: everything but
         // user administration and the audit trail, which stay with Admin.
         User::ROLE_HR => [
-            self::LEAVE, self::ADVANCES, self::ASSIGNMENTS,
+            self::LEAVE, self::ADVANCES,
             self::PAYSLIPS, self::REPORTS,
             self::DEVICES,
         ],
@@ -79,11 +78,11 @@ final class Modules
         return array_keys(self::labels());
     }
 
-    /** The eight modules in the three groups the access screens draw them in. */
+    /** The seven modules in the three groups the access screens draw them in. */
     public static function groups(): array
     {
         return [
-            'Workforce' => [self::LEAVE, self::ADVANCES, self::ASSIGNMENTS],
+            'Workforce' => [self::LEAVE, self::ADVANCES],
             'Payroll'   => [self::PAYSLIPS, self::REPORTS],
             'System'    => [self::USERS, self::AUDIT, self::DEVICES],
         ];
@@ -104,7 +103,6 @@ final class Modules
         return [
             self::LEAVE       => 'Leave',
             self::ADVANCES    => 'Cash Advances',
-            self::ASSIGNMENTS => 'Project Assignment',
             self::PAYSLIPS    => 'Payslips',
             self::REPORTS     => 'Payroll Reports',
             self::USERS       => 'Users & Roles',

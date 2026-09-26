@@ -17,7 +17,7 @@ use Tests\TestCase;
  *
  * Until registration is finished they are outside the directory, the counts,
  * attendance and payroll, and outside every dropdown that offers somebody to
- * file leave, a loan or an assignment against. The one place they must appear
+ * file leave or a loan against. The one place they must appear
  * is the kiosk roster, because that is where the registering happens.
  *
  * The leak this closes is not obvious: the kiosk's own sign-up creates a
@@ -175,7 +175,7 @@ class PendingEmployeeIsNotWorkforceTest extends TestCase
 
         $admin = $this->admin();
 
-        foreach (['/leave-advances', '/leave-advances?tab=advances', '/project-assignments'] as $url) {
+        foreach (['/leave-advances', '/leave-advances?tab=advances'] as $url) {
             $page = $this->actingAs($admin)->get($url)->assertOk();
 
             $names = collect($page->viewData('employees'))->pluck('name');

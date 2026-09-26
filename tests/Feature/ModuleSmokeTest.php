@@ -88,7 +88,6 @@ class ModuleSmokeTest extends TestCase
         $urls = [
             '/leave-advances',
             '/leave-advances?tab=advances',
-            '/project-assignments',
             '/payslips',
             '/payroll-reports',
             '/payroll-reports?report=employee',
@@ -177,7 +176,7 @@ class ModuleSmokeTest extends TestCase
             'role' => User::ROLE_HR, 'is_active' => true,
         ]);
 
-        foreach (['/leave-advances', '/leave-advances?tab=advances', '/project-assignments',
+        foreach (['/leave-advances', '/leave-advances?tab=advances',
                   '/payroll-reports', '/device-monitoring'] as $url) {
             $this->assertSame(200, $this->actingAs($hr)->get($url)->getStatusCode(), "HR lost {$url}");
         }

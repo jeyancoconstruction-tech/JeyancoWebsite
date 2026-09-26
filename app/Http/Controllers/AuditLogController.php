@@ -26,7 +26,6 @@ class AuditLogController extends Controller
         'Employee'          => 'employees.show',
         'Loan'              => 'leave.index',
         'LeaveRequest'      => 'leave.index',
-        'ProjectAssignment' => 'assignments.index',
         'Site'              => 'sites.index',
         'Kiosk'             => 'devices.index',
         'SystemSetting'     => 'system-settings.about',

@@ -234,12 +234,6 @@
                 <i data-lucide="map-pin"></i> <span>{{ __('Sites') }}</span>
             </a>
 
-            @if(auth()->user()?->canAccessModule('assignments'))
-                <a class="nav-link {{ request()->is('project-assignments*') ? 'active' : '' }}" href="{{ route('assignments.index') }}">
-                    <i data-lucide="clipboard-list"></i> <span>{{ __('Project Assignment') }}</span>
-                </a>
-            @endif
-
             <div class="menu-section">{{ __('PAYROLL') }}</div>
             @php
                 $onRecords = (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*'))

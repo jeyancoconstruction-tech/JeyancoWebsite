@@ -91,8 +91,8 @@ html[data-bs-theme="dark"] {
 
 /* ── 1b · MODAL HEADERS KEEP THE NAVY ─────────────────────────────────────
    A regression from the block above, and a wide one. Dialog headers were
-   painted with var(--sidebar-bg) — .emp-head for the employee, leave, loan,
-   assignment and payroll dialogs, and .modal-header for every Bootstrap modal
+   painted with var(--sidebar-bg) — .emp-head for the employee, leave, loan
+   and payroll dialogs, and .modal-header for every Bootstrap modal
    in the app. Making that token follow the theme turned all of them white,
    while their titles stayed white: an invisible heading and a close button you
    had to hunt for.

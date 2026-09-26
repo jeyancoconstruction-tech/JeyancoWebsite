@@ -92,7 +92,6 @@ class PageHeaderTest extends TestCase
             'leave'                   => ['/leave-advances'],
             'cash advances'           => ['/leave-advances?tab=advances'],
             'sites'                   => ['/sites'],
-            'project assignment'      => ['/project-assignments'],
             'payroll records'         => ['/payroll-records'],
             'remittance tracker'      => ['/remittances'],
             'payroll reports'         => ['/payroll-reports'],

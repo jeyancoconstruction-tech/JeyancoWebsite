@@ -19,8 +19,8 @@ class User extends Authenticatable
 
     /**
      * Everyone else in the office. Opens the day-to-day screens and the modules
-     * App\Support\Modules grants it — leave, cash advances, project assignment,
-     * payroll processing, payslips, payroll reports and device monitoring — but
+     * App\Support\Modules grants it — leave, cash advances, payslips, payroll
+     * reports and device monitoring — but
      * not Settings, Account Management, Users & Roles or the Audit Logs.
      */
     public const ROLE_HR = 'hr';

@@ -1,9 +1,8 @@
 {{-- Chrome for the employee form modal.
 
      It lived inside register.blade.php's page-scoped <style>, which meant the
-     five other screens using these class names — Leave & Advances,
-     Project Assignment and the Employee
-     directory — rendered their dialogs with no styling at all: a browser
+     other screens using these class names — Leave & Advances and the
+     Employee directory — rendered their dialogs with no styling at all: a browser
      default close button, unstyled Cancel and Save, no navy header.
 
      Included rather than copied, the same way employees/_profile_styles is,

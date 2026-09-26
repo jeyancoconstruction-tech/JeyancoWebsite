@@ -85,18 +85,6 @@ return [
         ]],
     ],
 
-    'project-assignments' => [
-        'en' => ['title' => 'Project Assignment', 'lines' => [
-            'New Assignment puts an employee on a project for a period.',
-            'End closes an assignment without deleting it, so the roster keeps its history.',
-            'The counts show how many are assigned and how many are on the roster.',
-        ]],
-        'tl' => ['title' => 'Atas sa Proyekto', 'lines' => [
-            'Ang New Assignment ang naglalagay ng empleyado sa isang proyekto sa loob ng takdang panahon.',
-            'Ang End ang nagsasara ng atas nang hindi binubura, kaya nananatili ang kasaysayan sa roster.',
-            'Ipinapakita ng bilang kung ilan ang naka-atas at ilan ang nasa roster.',
-        ]],
-    ],
 
 
     'payroll-records' => [

@@ -77,7 +77,7 @@ class SignInMethodTest extends TestCase
              ->assertSee('name="first_name"', false)
              ->assertSee('name="last_name"', false)
              ->assertSee('Ask them to change the password on first sign-in')
-             ->assertSee('<b id="modCount">6</b>', false);
+             ->assertSee('<b id="modCount">5</b>', false);
     }
 
     public function test_google_only_is_not_offered_until_google_is_set_up(): void

@@ -85,6 +85,34 @@ class SidebarEntriesTest extends TestCase
         $this->assertNotContains('payroll-processing', \App\Support\Modules::all());
     }
 
+    /** Removed on 2026-09-26 at Michael's request, the same way. */
+    public function test_project_assignment_is_gone_and_its_address_opens_sites(): void
+    {
+        foreach ([User::ROLE_ADMIN, User::ROLE_HR] as $i => $role) {
+            $rail = $this->rail($this->user($role, 'rail.project' . $i));
+
+            $this->assertStringNotContainsString('project-assignments', $rail, "{$role} still has Project Assignment");
+            $this->assertStringNotContainsString('Project Assignment', $rail);
+            $this->assertStringContainsString('href="' . route('sites.index') . '"', $rail, "{$role} lost Sites");
+        }
+
+        $admin = $this->user(User::ROLE_ADMIN, 'rail.project.admin');
+
+        // A bookmark lands on the page it sat under, not on a 404.
+        $this->actingAs($admin)->get('/project-assignments')
+             ->assertRedirect(route('sites.index'));
+
+        // Its actions and its place in the permissions went with it.
+        $this->actingAs($admin)->patch('/project-assignments/1/end')->assertNotFound();
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('assignments.index'));
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('assignments.store'));
+        $this->assertNotContains('assignments', \App\Support\Modules::all());
+        $this->assertNotContains('assignments', \App\Support\Live::TOPICS);
+
+        // The assignments already on file stay in the database.
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('project_assignments'));
+    }
+
     /** Off the rail is not off the system. */
     public function test_payslips_still_open(): void
     {

@@ -21,7 +21,7 @@
                     : ($at->isToday() ? 'Today, ' . $at->format('g:i A')
                     : ($at->isYesterday() ? 'Yesterday, ' . $at->format('g:i A') : $at->format('M j, Y')));
     $icons    = [
-        'leave' => 'calendar-days', 'loans' => 'wallet', 'assignments' => 'clipboard-list',
+        'leave' => 'calendar-days', 'loans' => 'wallet',
         'payslips' => 'file-text', 'payroll-reports' => 'file-bar-chart',
         'users-roles' => 'shield-check', 'audit-logs' => 'scroll-text', 'devices' => 'monitor-smartphone',
     ];
