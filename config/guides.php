@@ -128,14 +128,14 @@ return [
 
     'payroll-reports' => [
         'en' => ['title' => 'Payroll Reports', 'lines' => [
-            'Pick the report and the period, then Apply.',
-            'Print produces the copy to hand over or to file.',
-            'Reset clears the filters back to the default period.',
+            'Pick a report across the top, then a period: a preset, or two dates (whole pay weeks are used). Site and name narrow it as you type.',
+            'Every figure is the one Payroll Records shows for the same weeks; the totals compare with the period just before.',
+            'Click a column to sort it. Export Excel downloads the table; Print / PDF prints the report alone.',
         ]],
         'tl' => ['title' => 'Mga Ulat sa Sahod', 'lines' => [
-            'Piliin ang ulat at ang panahon, tapos Apply.',
-            'Ang Print ang gumagawa ng kopyang ibibigay o itatago.',
-            'Ang Reset ang nagbabalik ng filter sa karaniwang panahon.',
+            'Pumili ng ulat sa itaas, saka ng panahon: isang preset, o dalawang petsa (buong pay week ang ginagamit). Ang site at pangalan ang nagpapaliit dito habang nagta-type.',
+            'Ang bawat halaga ay kapareho ng ipinapakita ng Payroll Records sa parehong mga linggo; ikinukumpara ang kabuuan sa panahong nauna.',
+            'I-click ang column para ayusin. Ang Export Excel ang nagda-download ng talaan; ang Print / PDF ang nagpi-print ng ulat lamang.',
         ]],
     ],
 

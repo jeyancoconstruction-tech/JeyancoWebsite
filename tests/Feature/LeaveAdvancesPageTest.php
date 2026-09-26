@@ -209,36 +209,47 @@ class LeaveAdvancesPageTest extends TestCase
              ->assertDontSee('Leave & Overtime');
     }
 
-    /** The Overtime Report reads what payroll paid, not a list of claims. */
+    /**
+     * The Overtime report reads what payroll pays, not a list of claims: the
+     * same overtime minutes and pay the payroll computation gives (the
+     * reports read it live since 2026-09-26, as Payroll Records does).
+     */
     public function test_the_overtime_report_shows_overtime_as_payroll_paid_it(): void
     {
         $emp = $this->worker('Overtime Man');
-
-        $run = PayrollRun::create([
-            'code' => PayrollRun::nextCode(), 'period_start' => '2026-09-07',
-            'period_end' => '2026-09-13', 'status' => 'finalized',
-        ]);
-        PayrollRunItem::create([
-            'payroll_run_id' => $run->id, 'employee_id' => $emp->id, 'employee_name' => $emp->name,
-            'ot_hours' => 2, 'overtime_pay' => 312.5, 'gross_pay' => 1112.5, 'net_pay' => 1112.5,
-        ]);
+        foreach (['2026-09-08', '2026-09-09'] as $d) {
+            \App\Models\Attendance::create([
+                'employee_id' => $emp->id, 'date' => $d,
+                'time_in' => $d . ' 08:00:00', 'time_out' => $d . ' 19:00:00',
+            ]);
+        }
 
         // A claim still on file is not what was paid, so it is not reported.
         DB::table('overtime_requests')->insert([
-            'employee_id' => $emp->id, 'date' => '2026-09-08', 'hours' => 5, 'hourly_rate' => 100,
+            'employee_id' => $emp->id, 'date' => '2026-09-10', 'hours' => 5, 'hourly_rate' => 100,
             'multiplier' => 1.25, 'amount' => 625, 'status' => 'approved',
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
+        $paid  = app(\App\Services\PayrollService::class)->computeForRange('2026-09-07', '2026-09-13');
+        $otMin = 0;
+        foreach ($paid['days'] as $day) {
+            foreach ($day['details'] as $x) {
+                $otMin += $x['employee_id'] === $emp->id ? (int) $x['ot_minutes'] : 0;
+            }
+        }
+        $otPay = collect($paid['employees'])->firstWhere('employee_id', $emp->id)['totals']['overtime'];
+        $this->assertGreaterThan(0, $otMin, 'the long days ran into overtime');
+
         $rows = $this->actingAs($this->admin())
-            ->get('/payroll-reports?report=overtime&run=' . $run->id)
+            ->get('/payroll-reports?report=overtime&from=2026-09-07&to=2026-09-13')
             ->assertOk()
             ->viewData('rows');
 
         $this->assertCount(1, $rows);
-        $this->assertSame('Overtime Man', $rows[0]['label']);
-        $this->assertEqualsWithDelta(2.0, $rows[0]['days'], 0.001, 'the hours column');
-        $this->assertEqualsWithDelta(312.5, $rows[0]['gross'], 0.001);
+        $this->assertSame('Overtime Man', $rows[0]['employee']['t']);
+        $this->assertSame($otMin, $rows[0]['otMin'], "the hours are payroll's");
+        $this->assertEqualsWithDelta($otPay, $rows[0]['overtime'], 0.001, 'and so is the pay');
     }
 
     public function test_the_advances_report_lists_cash_advances_only(): void
@@ -254,8 +265,8 @@ class LeaveAdvancesPageTest extends TestCase
             ->viewData('rows');
 
         $this->assertCount(1, $rows, 'an old loan is not a cash advance');
-        $this->assertEqualsWithDelta(1000.0, $rows[0]['gross'], 0.001);
-        $this->assertEqualsWithDelta(600.0, $rows[0]['net'], 0.001);
+        $this->assertEqualsWithDelta(1000.0, $rows[0]['principal'], 0.001);
+        $this->assertEqualsWithDelta(600.0, $rows[0]['balance'], 0.001);
     }
 
     /**

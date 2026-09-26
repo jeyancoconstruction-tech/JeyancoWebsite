@@ -399,3 +399,23 @@
     #chatbot-window.is-full .msg-content { max-width: 84%; }
     #chatbot-window.is-full .chatbot-footer { padding: 10px 12px 12px; }
 }
+
+
+/* ── 13 · PAYROLL REPORTS ──────────────────────────────────────────────────
+   Six totals across fit a desktop, not a tablet or a phone: three to a row,
+   then two. On a phone the period presets wrap instead of running off the
+   card, the filters take the full width, and the bar labels give room to the
+   bars. */
+@media (max-width: 1024px) {
+    .rp-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 575.98px) {
+    .rp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .rp-chips { flex-wrap: wrap; }
+    .rp-filters .rp-sel { flex: 1 1 100%; }
+    html[data-bs-theme] .rp .rp-sel input.q,
+    html[data-bs-theme] .rp .rp-sel select { width: 100% !important; }
+    .rp-hb { grid-template-columns: minmax(0, 96px) minmax(0, 1fr) auto !important; }
+    .rp-hb .v { min-width: 64px !important; }
+    .rp-col .cv { font-size: 10px !important; }
+}

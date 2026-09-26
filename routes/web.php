@@ -273,9 +273,10 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/payslips/{item}/print',     [\App\Http\Controllers\PayslipsController::class, 'print'])->name('payslips.print');
     });
 
-    // ── INSIGHTS · Payroll Reports ────────────────────────────────────────
+    // ── PAYROLL · Payroll Reports (a sub-item of Payroll Records) ─────────
     Route::middleware('module:payroll-reports')->group(function () {
         Route::get('/payroll-reports', [\App\Http\Controllers\PayrollReportController::class, 'index'])->name('payroll-reports.index');
+        Route::get('/payroll-reports/export', [\App\Http\Controllers\PayrollReportController::class, 'export'])->name('payroll-reports.export');
     });
 
     // ── SYSTEM · Device Monitoring (read-only over the kiosk's own data) ───

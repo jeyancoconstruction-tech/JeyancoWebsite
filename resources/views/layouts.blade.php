@@ -310,7 +310,10 @@
                 // What is due or overdue, from the months the tracker last
                 // worked out; nothing is priced to draw the sidebar.
                 $remitDue  = app(\App\Services\RemittanceTracker::class)->badge();
-                $inRecords = $onRecords || $onRemit;
+                // Payroll Reports is the third page of the group (2026-09-26).
+                $canReports = (bool) auth()->user()?->canAccessModule('payroll-reports');
+                $onReports  = $canReports && request()->is('payroll-reports*');
+                $inRecords  = $onRecords || $onRemit || $onReports;
             @endphp
             {{-- Payroll Records holds its own pages, set up as Michael's
                  jeyanco-sidebar-submenu mockup: the parent is a toggle with a
@@ -337,6 +340,9 @@
                                 <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) to remit') }}">{{ $remitDue }}</span>
                             @endif
                         </a>
+                        @if($canReports)
+                            <a class="nav-sub-link {{ $onReports ? 'on' : '' }}" href="{{ route('payroll-reports.index') }}" @if($onReports) aria-current="page" @endif>{{ __('Reports') }}</a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -383,11 +389,7 @@
             <a class="nav-link {{ request()->is('analytics*') ? 'active' : '' }}" href="{{ url('/analytics') }}">
                 <i data-lucide="bar-chart-3"></i> <span>{{ __('Analytics') }}</span>
             </a>
-            @if(auth()->user()?->canAccessModule('payroll-reports'))
-                <a class="nav-link {{ request()->is('payroll-reports*') ? 'active' : '' }}" href="{{ route('payroll-reports.index') }}">
-                    <i data-lucide="file-bar-chart"></i> <span>{{ __('Payroll Reports') }}</span>
-                </a>
-            @endif
+            {{-- Payroll Reports moved under Payroll Records (2026-09-26). --}}
 
             @if(! auth()->user()?->isAdmin() && auth()->user()?->canAccessModule('devices'))
                 {{-- A Site Supervisor never sees the admin SYSTEM block below,
