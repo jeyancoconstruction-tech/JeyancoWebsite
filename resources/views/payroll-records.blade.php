@@ -86,8 +86,10 @@ html[data-bs-theme] .prx .prx-sel select {
 }
 
 /* ── Summary ──────────────────────────────────────────────────────────── */
+/* Kept short (Michael, 2026-09-26) so the list of employees sits higher:
+   tighter padding, a smaller total, one line per label. */
 .prx-sum { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 2fr); gap: 14px; }
-.prx-hero { padding: 18px 20px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.prx-hero { padding: 12px 18px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
 .prx-hero .k {
     display: flex; justify-content: space-between; align-items: center; gap: 8px;
     font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);
@@ -96,21 +98,21 @@ html[data-bs-theme] .prx .prx-sel select {
     font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-secondary);
     background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; white-space: nowrap;
 }
-.prx-hero .v { font-size: 34px; font-weight: 800; letter-spacing: -.01em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
-.prx-flow { display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--bg-subtle); }
+.prx-hero .v { font-size: 28px; font-weight: 800; letter-spacing: -.01em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.prx-flow { display: flex; height: 6px; border-radius: 4px; overflow: hidden; background: var(--bg-subtle); }
 .prx-flow i { display: block; height: 100%; }
-.prx-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; font-size: 12px; color: var(--text-secondary); }
-.prx-legend span { min-width: 0; }
-.prx-legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--c); margin-right: 6px; }
-.prx-legend b { display: block; margin-top: 2px; color: var(--text-primary); font-family: var(--prx-mono); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.prx-legend { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; gap: 10px; font-size: 11px; color: var(--text-secondary); }
+.prx-legend span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prx-legend span::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--c); margin-right: 5px; }
+.prx-legend b { display: block; margin-top: 1px; color: var(--text-primary); font-family: var(--prx-mono); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .prx-tiles {
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
     background: var(--border); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-xs);
 }
-.prx-tile { background: var(--surface); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.prx-tile span { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); }
-.prx-tile b { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
-.prx-tile small { font-size: 11.5px; color: var(--text-muted); }
+.prx-tile { background: var(--surface); padding: 7px 14px; display: flex; flex-direction: column; gap: 1px; min-width: 0; justify-content: center; }
+.prx-tile span { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prx-tile b { font-size: 16px; line-height: 1.25; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
+.prx-tile small { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prx-tile.zero b { color: var(--text-muted); }
 @media (max-width: 1200px) { .prx-sum { grid-template-columns: minmax(0, 1fr); } }
 
@@ -566,7 +568,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
                 ];
             @endphp
             @foreach($tiles as [$k, $v, $s, $n])
-                <div class="prx-tile {{ $n ? '' : 'zero' }}"><span>{{ $k }}</span><b>{{ $v }}</b><small>{{ $s }}</small></div>
+                <div class="prx-tile {{ $n ? '' : 'zero' }}"><span>{{ $k }}</span><b>{{ $v }}</b><small title="{{ $s }}">{{ $s }}</small></div>
             @endforeach
         </div>
     </section>
