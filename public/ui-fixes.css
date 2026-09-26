@@ -35,7 +35,13 @@ html {
 body {
     /* Bootstrap writes this inline on every modal open — always zero. */
     padding-right: 0 !important;
-    overflow-x: hidden;
+    /* clip, not hidden. hidden made <body> a scroll container that never
+       scrolls (the page scrolls on <html>), and every sticky element sticks
+       to its nearest scroll container, so the top bar scrolled away with the
+       page on nine pages. clip hides the same sideways overflow without that:
+       the top bar now stays put on every page (Michael, 2026-09-26). */
+    overflow-x: clip;
+    overflow-y: visible;
 }
 
 /* Scroll is locked on <html> (the real scroller) rather than <body>, so the

@@ -125,6 +125,10 @@
     margin-bottom: 14px;
     box-shadow: var(--shadow-md, 0 1px 3px rgba(0,0,0,.07));
 }
+/* Held to the bottom of the screen, it sits under the floating chat button
+   in the corner: room on the right keeps Save clear of it, as the list
+   pages do for their next-page arrow. */
+.ep-actions { padding-right: 84px; }
 .ep-actions-note {
     margin: 0 auto 0 0;
     font-size: .78rem;
