@@ -41,6 +41,12 @@ class SystemSetting extends Model
         'kiosk_attendance_mode',
         'kiosk_repeat_guard_seconds',
         'kiosk_idle_return_seconds',
+        // When each agency's remittance is due (Payroll Settings → Remittance
+        // due dates): a day of the following month.
+        'sss_due_day',
+        'philhealth_due_day',
+        'pagibig_due_day',
+        'bir_due_day',
     ];
 
     /** The worker presses TIME IN or TIME OUT, then scans. */
@@ -93,6 +99,10 @@ class SystemSetting extends Model
         'week_starts_on'          => 'integer',
         'kiosk_repeat_guard_seconds' => 'integer',
         'kiosk_idle_return_seconds'  => 'integer',
+        'sss_due_day'                => 'integer',
+        'philhealth_due_day'         => 'integer',
+        'pagibig_due_day'            => 'integer',
+        'bir_due_day'                => 'integer',
     ];
 
     /**
@@ -122,6 +132,10 @@ class SystemSetting extends Model
         'kiosk_attendance_mode'      => self::KIOSK_BUTTONS,
         'kiosk_repeat_guard_seconds' => 180,
         'kiosk_idle_return_seconds'  => 60,
+        'sss_due_day'                => 30,
+        'philhealth_due_day'         => 15,
+        'pagibig_due_day'            => 15,
+        'bir_due_day'                => 10,
     ];
 
     /** The container key the resolved row is memoised under. */

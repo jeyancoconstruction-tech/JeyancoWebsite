@@ -94,6 +94,7 @@ class PageHeaderTest extends TestCase
             'sites'                   => ['/sites'],
             'project assignment'      => ['/project-assignments'],
             'payroll records'         => ['/payroll-records'],
+            'remittance tracker'      => ['/remittances'],
             'payroll reports'         => ['/payroll-reports'],
             'payslips'                => ['/payslips'],
             'payslip'                 => ['/payslips/{slip}'],

@@ -45,7 +45,9 @@ use Throwable;
 final class ActivityRecorder
 {
     /** Never logged: the log itself, the assistant's chat, a run's per-worker lines. */
-    private const IGNORED = ['AuditLog', 'ChatMessage', 'PayrollRunItem'];
+    private const IGNORED = ['AuditLog', 'ChatMessage', 'PayrollRunItem',
+        // The receipt's own row: its payment's entry already says it was paid.
+        'RemittanceReceipt'];
 
     /** Columns whose change on its own is bookkeeping rather than an activity. */
     private const NOISE = ['updated_at', 'created_at', 'deleted_at', 'last_seen_at', 'last_login_at', 'remember_token',
@@ -78,6 +80,7 @@ final class ActivityRecorder
         'Payroll'           => 'Payroll',
         'PayrollRun'        => 'Payroll',
         'PayrollRemittance' => 'Payroll',
+        'RemittancePayment' => 'Remittances',
         'Kiosk'             => 'Kiosks',
         'User'              => 'Users',
         'SystemSetting'     => 'Settings',
@@ -91,6 +94,7 @@ final class ActivityRecorder
         'ValeAdvance'       => 'cash advance',
         'PayrollRun'        => 'payroll run',
         'PayrollRemittance' => 'remittance',
+        'RemittancePayment' => 'remittance payment',
         'LoanDeduction'     => 'loan deduction',
         'LaborType'         => 'labor type',
         'DeductionType'     => 'deduction type',

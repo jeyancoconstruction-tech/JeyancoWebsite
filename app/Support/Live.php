@@ -49,6 +49,7 @@ final class Live
         'accounts',      // logins and roles
         'audit',         // the audit log
         'notifications', // the bell
+        'remittances',   // remittances marked paid (Remittance Tracker)
     ];
 
     /**
@@ -66,6 +67,7 @@ final class Live
         'ValeAdvance'          => ['advances', 'payroll'],
         'Payroll'              => ['payroll'],
         'PayrollRun'           => ['payroll'],
+        'RemittancePayment'    => ['remittances'],
         'Bonus'                => ['payroll', 'settings'],
         'PayrollRate'          => ['payroll', 'settings'],
         'Setting'              => ['payroll', 'settings'],

@@ -366,3 +366,11 @@
     .prx-slip { padding: 18px 16px !important; }
     .prx-slip .two, .prx-slip .who { grid-template-columns: minmax(0, 1fr) !important; }
 }
+
+
+/* ── 11 · SIDEBAR SUB-ITEMS ─────────────────────────────────────────────────
+   Records and Remittance tracker, under Payroll Records: tall enough for a
+   finger in the drawer, like the rows above them. */
+@media (max-width: 1024px) and (pointer: coarse) {
+    .nav-menu .nav-sub-link { min-height: 36px; }
+}

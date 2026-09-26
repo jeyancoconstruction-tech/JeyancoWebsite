@@ -115,6 +115,14 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     // PAYROLL RECORDS — unified module (Reports / By Employee / Pay Periods)
     Route::get('/payroll-records', [PayrollRecordsController::class, 'index'])->name('payroll-records');
+
+    // Remittance Tracker — under Payroll Records in the sidebar: each month's
+    // SSS, PhilHealth, Pag-IBIG and BIR remittances, and whether they are paid.
+    Route::get   ('/remittances',                   [\App\Http\Controllers\RemittanceController::class, 'index'])->name('remittances.index');
+    Route::post  ('/remittances',                   [\App\Http\Controllers\RemittanceController::class, 'store'])->name('remittances.store');
+    Route::get   ('/remittances/report',            [\App\Http\Controllers\RemittanceController::class, 'report'])->name('remittances.report');
+    Route::get   ('/remittances/{payment}/receipt', [\App\Http\Controllers\RemittanceController::class, 'receipt'])->name('remittances.receipt');
+    Route::delete('/remittances/{payment}',         [\App\Http\Controllers\RemittanceController::class, 'destroy'])->name('remittances.destroy');
     Route::get('/payroll-records/export/excel', [PayrollRecordsController::class, 'exportExcel'])->name('payroll-records.export.excel');
 
     // Reports were consolidated into Payroll Records — keep old links working.
@@ -188,6 +196,7 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
 
     // Attendance is a payroll setting: it shapes the day payroll computes.
     Route::put('/settings/attendance', [SettingsController::class, 'updateAttendance'])->name('settings.attendance.update');
+    Route::put('/settings/remittance-due', [SettingsController::class, 'updateRemittanceDueDays'])->name('settings.remittance-due.update');
     Route::put('/settings/bonus',      [SettingsController::class, 'updateBonus'])->name('settings.bonus.update');
 
     // Bonuses given to named people. Created and deleted, never edited.

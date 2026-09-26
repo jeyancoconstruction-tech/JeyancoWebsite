@@ -216,3 +216,30 @@
     /* 20 x 25 + 5 x 9 + 20 + 40 = 605px, inside a 625px viewport. */
 }
 
+
+/* ── Sub-items ─────────────────────────────────────────────────────────────
+   Payroll Records carries its own pages under it (Records, Remittance
+   tracker): smaller rows on a thin rule, indented under the icon. They keep
+   their size rather than growing with the rail, so the group reads as one. */
+.nav-menu .nav-sub {
+    flex: 0 0 auto;
+    display: flex; flex-direction: column; gap: 1px;
+    margin: 1px 6px 3px 25px; padding-left: 9px;
+    border-left: 1px solid var(--sidebar-border);
+}
+.nav-menu .nav-sub-link {
+    display: flex; align-items: center; gap: 8px;
+    padding: 3px 10px; border-radius: var(--radius-sm);
+    color: var(--sidebar-text); font-size: 12px; font-weight: 500; line-height: 18px;
+    text-decoration: none; transition: background .15s ease, color .15s ease;
+}
+.nav-menu .nav-sub-link:hover { color: var(--sidebar-text-strong); background: var(--sidebar-hover); }
+.nav-menu .nav-sub-link.on { color: var(--sidebar-text-strong); background: rgba(255, 255, 255, 0.12); font-weight: 700; }
+.nav-sub-badge {
+    margin-left: auto; min-width: 18px; height: 18px; padding: 0 6px; border-radius: 999px;
+    background: #dc2626; color: #fff; font-size: 10.5px; font-weight: 800; line-height: 18px; text-align: center;
+}
+@media (min-height: 940px) {
+    .nav-menu .nav-sub { margin-left: 28px; }
+    .nav-menu .nav-sub-link { font-size: 12.5px; padding: 4px 10px; }
+}

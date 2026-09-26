@@ -241,9 +241,28 @@
             @endif
 
             <div class="menu-section">{{ __('PAYROLL') }}</div>
-            <a class="nav-link {{ (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*')) && ! request()->is('payroll-reports*') && ! request()->is('payslips*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
+            @php
+                $onRecords = (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*'))
+                           && ! request()->is('payroll-reports*') && ! request()->is('payslips*');
+                $onRemit   = request()->is('remittances*');
+                // What is due or overdue, from the months the tracker last
+                // worked out; nothing is priced to draw the sidebar.
+                $remitDue  = app(\App\Services\RemittanceTracker::class)->badge();
+            @endphp
+            <a class="nav-link {{ $onRecords || $onRemit ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
             </a>
+            {{-- Payroll Records carries its own pages under it: the records
+                 themselves, and the Remittance Tracker. --}}
+            <div class="nav-sub" aria-label="{{ __('Payroll Records') }}">
+                <a class="nav-sub-link {{ $onRecords ? 'on' : '' }}" href="{{ url('/payroll-records') }}" @if($onRecords) aria-current="page" @endif>{{ __('Records') }}</a>
+                <a class="nav-sub-link {{ $onRemit ? 'on' : '' }}" href="{{ route('remittances.index') }}" @if($onRemit) aria-current="page" @endif>
+                    <span>{{ __('Remittance tracker') }}</span>
+                    @if($remitDue > 0)
+                        <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
+                    @endif
+                </a>
+            </div>
             {{-- Payslips are off the rail: they open from their payroll run.
                  Workers have no web account — they use the kiosk. --}}
             {{-- Admin only, like the rest of the settings page it opens. It sits
@@ -751,7 +770,7 @@
         overlay.addEventListener('click', closeSidebar);
 
         // Close on nav-link click (mobile UX)
-        sidebar.querySelectorAll('.nav-link').forEach(function(link) {
+        sidebar.querySelectorAll('.nav-link, .nav-sub-link').forEach(function(link) {
             link.addEventListener('click', function() {
                 if (window.innerWidth <= 1024) closeSidebar();
             });

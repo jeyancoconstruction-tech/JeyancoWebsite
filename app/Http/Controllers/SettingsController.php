@@ -613,6 +613,32 @@ class SettingsController extends Controller
     }
 
     /**
+     * When each agency's monthly remittance falls due, for the Remittance
+     * Tracker: a day of the month after the one the contributions are for.
+     * A 31 in a 30-day month is its last day.
+     */
+    public function updateRemittanceDueDays(Request $request)
+    {
+        $rules = [];
+        foreach (\App\Services\RemittanceTracker::AGENCIES as $a) {
+            $rules[$a['due']] = ['required', 'integer', 'min:1', 'max:31'];
+        }
+        $data = $request->validate($rules, [
+            '*.min' => 'A due date is a day of the month, from 1 to 31.',
+            '*.max' => 'A due date is a day of the month, from 1 to 31.',
+        ]);
+
+        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
+        $settings->fill($data)->save();
+        SystemSetting::forget();
+
+        app(\App\Services\RemittanceTracker::class)->forgetBadge();
+
+        return redirect()->route('settings.index', ['tab' => 'payroll'])
+            ->with('success', 'Remittance due dates updated!');
+    }
+
+    /**
      * Hold every settled day at the rest-day answer it was settled under.
      *
      * The rest day is the seventh day of the working week, so moving where the

@@ -309,6 +309,45 @@
                     </div>
                 </div>
             </form>
+
+            {{-- ══ Remittance due dates ═════════════════════════════════════════
+                 When each agency's monthly remittance falls due, for the
+                 Remittance Tracker. Its own form: these are not dated like the
+                 rates above, and saving them does not add a rate row. --}}
+            <form method="POST" action="{{ route('settings.remittance-due.update') }}">
+                @csrf
+                @method('PUT')
+                <div class="ps-card mb-4" id="remittance-due">
+                    <div class="ps-card-header">
+                        <i class="fas fa-calendar-check"></i>
+                        <div>
+                            <h6>{{ __('Remittance due dates') }}</h6>
+                            <p>{{ __('The day of the following month each agency is due — read by the Remittance Tracker') }}</p>
+                        </div>
+                    </div>
+                    <div class="ps-card-body">
+                        <div class="row g-3">
+                            @foreach(\App\Services\RemittanceTracker::AGENCIES as $a)
+                                <div class="col-sm-6 col-lg-3">
+                                    <label class="ps-label" for="{{ $a['due'] }}">{{ $a['name'] }}</label>
+                                    <input type="number" min="1" max="31" step="1" id="{{ $a['due'] }}" name="{{ $a['due'] }}"
+                                           class="form-control ps-input @error($a['due']) is-invalid @enderror"
+                                           value="{{ old($a['due'], $system->{$a['due']} ?? $a['default_due']) }}" required>
+                                    <small class="text-muted d-block mt-1">{{ $a['form'] }}</small>
+                                    @error($a['due'])<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                            @endforeach
+                        </div>
+                        <small class="text-muted d-block mt-3">
+                            August's contributions are due on this day of September. A day past the end of a short
+                            month is its last day, so 31 means the last day of the month.
+                        </small>
+                    </div>
+                </div>
+                <button type="submit" class="btn ps-save-btn mb-4">
+                    <i class="fas fa-save me-2"></i>{{ __('Save Due Dates') }}
+                </button>
+            </form>
         </div>
 
         <!-- WORK SCHEDULE TAB -->
