@@ -281,7 +281,7 @@ class RemittanceTrackerTest extends TestCase
         $this->assertStringContainsString('<div class="nav-sub folded" id="navSubRecords">', $rail);
         $this->assertStringContainsString('class="nav-dot" title="' . $expected . ' remittance(s) to remit"', $rail);
         $this->assertStringNotContainsString('class="nav-sub-link on"', $rail);
-        $this->assertStringContainsString("IN = false", $rail, 'leaving the section forgets the fold');
+        $this->assertStringContainsString("jeyancoNavGroup('navRecordsBtn', 'navSubRecords', 'jeyanco-nav-records', false)", $rail, 'leaving the section forgets the fold');
     }
 
     public function test_the_reports_download_each_agency_with_the_id_numbers(): void

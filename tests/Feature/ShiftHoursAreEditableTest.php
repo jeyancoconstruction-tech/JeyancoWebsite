@@ -109,9 +109,12 @@ class ShiftHoursAreEditableTest extends TestCase
         $this->actingAs($this->admin())
              ->get(route('settings.index', ['tab' => 'attendance']))
              ->assertOk()
-             ->assertSeeInOrder(['id="attendance-tab"', 'Work Schedule', '</button>'], false)
+             // The section's title, and its sub-item lit in the sidebar.
+             ->assertSee('<h1 class="page-head-title">Work Schedule</h1>', false)
              ->assertSee('Save Work Schedule')
              ->assertDontSee('Save Attendance Settings');
+        $this->assertMatchesRegularExpression('~data-settings-pane="attendance"\s+aria-current="page"~',
+            $this->actingAs($this->admin())->get(route('settings.index', ['tab' => 'attendance']))->getContent());
 
         $this->save([])->assertSessionHas('success', 'Work schedule updated!');
     }

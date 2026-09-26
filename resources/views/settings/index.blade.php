@@ -4,8 +4,22 @@
 
 @section('content')
 <div class="settings-wrapper">
-    
-    <x-page-header :title="__('Settings')" />
+
+    {{-- Which section opens. The forms redirect back here, and landing on the
+         first one after saving the fourth reads as the save having been lost.
+         The four are sub-items of Payroll Settings in the sidebar now (they
+         replaced the tab row, 2026-09-26); the title names the one open. --}}
+    @php
+        $tab = in_array(request('tab'), ['attendance', 'labor', 'holiday'], true) ? request('tab') : 'payroll';
+        $sectionNames = [
+            'payroll'    => __('Multipliers and Deductions'),
+            'attendance' => __('Work Schedule'),
+            'labor'      => __('Labor Types'),
+            'holiday'    => __('Holidays'),
+        ];
+    @endphp
+
+    <x-page-header :title="$sectionNames[$tab]" id="settingsHead" />
 
     @if ($errors->any())
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -21,34 +35,7 @@
 
     {{-- session('success') is a toast now. --}}
 
-    {{-- Which tab opens. The forms redirect back here, and landing on the first
-         one after saving the fourth reads as the save having been lost. --}}
-    @php $tab = in_array(request('tab'), ['attendance', 'labor', 'holiday'], true) ? request('tab') : 'payroll'; @endphp
-
-    <ul class="nav nav-tabs settings-tabs mb-0" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link {{ $tab === 'payroll' ? 'active' : '' }}" id="payroll-tab" data-bs-toggle="tab" data-bs-target="#payroll" type="button" role="tab">
-                <i data-lucide="wallet" class="me-2"></i>{{ __('Multipliers and Deductions') }}
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link {{ $tab === 'attendance' ? 'active' : '' }}" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance" type="button" role="tab">
-                <i data-lucide="clock" class="me-2"></i>{{ __('Work Schedule') }}
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link {{ $tab === 'labor' ? 'active' : '' }}" id="labor-tab" data-bs-toggle="tab" data-bs-target="#labor" type="button" role="tab">
-                <i data-lucide="briefcase" class="me-2"></i>{{ __('Labor Types') }}
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link {{ $tab === 'holiday' ? 'active' : '' }}" id="holiday-tab" data-bs-toggle="tab" data-bs-target="#holiday" type="button" role="tab">
-                <i data-lucide="calendar" class="me-2"></i>{{ __('Holidays') }}
-            </button>
-        </li>
-    </ul>
-
-    <div class="tab-content settings-content">
+    <div class="tab-content settings-content" id="settingsPanes" data-names="{{ json_encode($sectionNames, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) }}">
         <!-- PAYROLL SETTINGS TAB -->
         <div class="tab-pane fade {{ $tab === 'payroll' ? 'show active' : '' }}" id="payroll" role="tabpanel">
 
@@ -1303,40 +1290,8 @@
 .settings-wrapper { background: none; padding: 0; border-radius: 0; box-shadow: none; }
 
 
-/* The tabs. .nav-link is also the sidebar's class, and the sidebar's active
-   pill (a tint, an inset ring, a bar down the left) was landing on the open
-   tab too. These put it back to the underline every tab row in the app uses. */
-.settings-tabs {
-    border-bottom: 1px solid var(--border) !important;
-    margin-bottom: 16px !important;   /* the markup's mb-0 is Bootstrap's !important */
-}
-
-/* Pantay ang lapad ng bawat tab. Ang lapad noon ay sunod sa haba ng pangalan,
-   kaya lumalaki ang "Multipliers and Deductions" at lumiliit ang "Holidays".
-   Hinahati na ngayon nang pantay ang buong hilera; ang pinakamahabang pangalan
-   ang nagtatakda ng pinakamaliit, kaya walang naiipit kahit kumitid ang
-   screen. */
-.settings-tabs { flex-wrap: nowrap; }
-
-.settings-tabs .nav-item { flex: 1 1 0; min-width: max-content; }
-
-html[data-bs-theme] .settings-tabs .nav-link {
-    width: 100%; text-align: center;
-    padding: 9px 16px; margin-bottom: -1px;
-    font-size: 13px; font-weight: 700 !important;
-    color: var(--text-secondary) !important;
-    background: none !important; box-shadow: none !important;
-    border: 0 !important; border-bottom: 2px solid transparent !important; border-radius: 0 !important;
-    transition: color .15s, border-color .15s;
-}
-html[data-bs-theme] .settings-tabs .nav-link::before { display: none !important; }
-html[data-bs-theme] .settings-tabs .nav-link:hover { color: var(--brand) !important; }
-html[data-bs-theme] .settings-tabs .nav-link.active {
-    color: var(--brand) !important; border-bottom-color: var(--brand) !important;
-}
-html[data-bs-theme] .settings-tabs .nav-link svg,
-html[data-bs-theme] .settings-tabs .nav-link i[data-lucide] { color: inherit !important; opacity: 1 !important; }
-
+/* The four sections are sub-items of Payroll Settings in the sidebar; the
+   tab row that used to sit here is gone. */
 .settings-content { padding: 0; }
 
 /* The rate history table. */
@@ -1678,50 +1633,72 @@ html[data-bs-theme] .settings-tabs .nav-link i[data-lucide] { color: inherit !im
 @endpush
 
 <script>
-// Initialize tabs based on URL parameters and hash
+// The four sections are Payroll Settings' sub-items in the sidebar. On this
+// page a pick switches the section in place, as the old tabs did: no reload,
+// what was typed in another section is kept, the address and the title follow
+// it, and Back goes to the section before. The server opens the one ?tab= names.
 document.addEventListener('DOMContentLoaded', function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hash = window.location.hash.substring(1);
-    const tab = urlParams.get('tab');
-    
-    // Map of hashes to their configuration
-    const hashMap = {
-        'ot_rate': { tabElement: 'payroll-tab', target: 'ot_rate_section' },
-        'sss': { tabElement: 'payroll-tab', target: 'sss_section' },
-        'philhealth': { tabElement: 'payroll-tab', target: 'philhealth_section' },
-        'pagibig': { tabElement: 'payroll-tab', target: 'pagibig_section' },
-        'labor': { tabElement: 'labor-tab', target: null }
-    };
-    
-    let targetTabElement = null;
-    let scrollTarget = null;
-    
-    // Priority 1: Hash navigation (from search results)
-    if (hash && hashMap[hash]) {
-            targetTabElement = hashMap[hash].tabElement;
-        scrollTarget = hashMap[hash].target;
-    }
-    // Priority 2: Query parameter (from form submissions)
-    else if (tab) {
-        if (tab === 'labor') {
-            targetTabElement = 'labor-tab';
-        } else if (tab === 'payroll') {
-            targetTabElement = 'payroll-tab';
-        } else if (tab === 'holiday') {
-            targetTabElement = 'holiday-tab';
+    const panes = document.getElementById('settingsPanes');
+    const title = document.querySelector('#settingsHead .page-head-title');
+    let names = {};
+    try { names = JSON.parse(panes.dataset.names || '{}'); } catch (e) {}
+
+    function show(key, push) {
+        if (!names[key]) return;
+        panes.querySelectorAll(':scope > .tab-pane').forEach(function (p) {
+            const on = p.id === key;
+            if (on && !p.classList.contains('active')) {
+                p.classList.add('active');
+                void p.offsetWidth;           // so .show fades it in
+                p.classList.add('show');
+            } else if (!on) {
+                p.classList.remove('active', 'show');
+            }
+        });
+        document.querySelectorAll('[data-settings-pane]').forEach(function (a) {
+            const on = a.dataset.settingsPane === key;
+            a.classList.toggle('on', on);
+            if (on) { a.setAttribute('aria-current', 'page'); } else { a.removeAttribute('aria-current'); }
+        });
+        if (title) title.textContent = names[key];
+        if (push) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', key);
+            if (key !== 'holiday') url.searchParams.delete('year');
+            url.hash = '';
+            history.pushState({ settingsPane: key }, '', url);
+            window.scrollTo({ top: 0 });
         }
     }
-    
-    // Switch to the appropriate tab
-    if (targetTabElement) {
-        setTimeout(function() {
-            const tabElement = document.getElementById(targetTabElement);
-            if (tabElement) {
-                try { new bootstrap.Tab(tabElement).show(); } catch (e) {}
-            }
-        }, 100);
+
+    document.addEventListener('click', function (e) {
+        const a = e.target.closest('[data-settings-pane]');
+        // Ctrl/⌘/Shift/middle click still opens it as a page.
+        if (!a || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        show(a.dataset.settingsPane, true);
+    });
+
+    window.addEventListener('popstate', function () {
+        const key = new URLSearchParams(window.location.search).get('tab');
+        show(names[key] ? key : 'payroll', false);
+    });
+
+    // Search results link to a rate by its hash.
+    const hash = window.location.hash.substring(1);
+    const hashMap = {
+        'ot_rate':    { pane: 'payroll', target: 'ot_rate_section' },
+        'sss':        { pane: 'payroll', target: 'sss_section' },
+        'philhealth': { pane: 'payroll', target: 'philhealth_section' },
+        'pagibig':    { pane: 'payroll', target: 'pagibig_section' },
+        'labor':      { pane: 'labor',   target: null }
+    };
+    let scrollTarget = null;
+    if (hash && hashMap[hash]) {
+        show(hashMap[hash].pane, false);
+        scrollTarget = hashMap[hash].target;
     }
-    
+
     // Scroll to target if needed
     if (scrollTarget) {
         setTimeout(function() {

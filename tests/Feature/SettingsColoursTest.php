@@ -44,16 +44,21 @@ class SettingsColoursTest extends TestCase
 
         $this->assertStringContainsString('.settings-wrapper { background: none; padding: 0;', $css, 'no card of its own around the page');
         $this->assertStringContainsString('.ps-card { background: var(--surface); border: 1px solid var(--border);', $css);
-        $this->assertStringContainsString('color: var(--brand) !important; border-bottom-color: var(--brand) !important;', $css, 'the open tab is underlined in brand blue');
     }
 
-    /** The sidebar's active pill does not land on the open tab. */
-    public function test_the_tabs_do_not_borrow_the_sidebar_pill(): void
+    /**
+     * The tab row is gone (2026-09-26): its four sections are Payroll
+     * Settings' sub-items in the sidebar, so the page carries no tab strip of
+     * its own and its title names the open section.
+     */
+    public function test_the_sections_live_in_the_sidebar_not_a_tab_row(): void
     {
         $html = $this->page();
 
-        $this->assertStringContainsString('html[data-bs-theme] .settings-tabs .nav-link::before { display: none !important; }', $html);
-        $this->assertStringContainsString('background: none !important; box-shadow: none !important;', $html);
+        $this->assertStringNotContainsString('settings-tabs', $html);
+        $this->assertStringNotContainsString('data-bs-toggle="tab"', $html);
+        $this->assertStringContainsString('<h1 class="page-head-title">Multipliers and Deductions</h1>', $html);
+        $this->assertStringContainsString('id="navSubSettings"', $html);
     }
 
     /** dark-mode.css no longer carries a palette just for this page. */

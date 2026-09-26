@@ -113,6 +113,32 @@ class SidebarEntriesTest extends TestCase
         $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('project_assignments'));
     }
 
+    /** Michael, 2026-09-26: Payroll Settings' four tabs became its sub-items. */
+    public function test_payroll_settings_carries_its_four_sections_like_payroll_records(): void
+    {
+        $admin = $this->user(User::ROLE_ADMIN, 'rail.settings');
+
+        $html = $this->actingAs($admin)->get(route('settings.index', ['tab' => 'labor']))->assertOk()->getContent();
+        $rail = substr($html, strpos($html, '<nav class="nav-menu">'));
+        $rail = substr($rail, 0, strpos($rail, '</nav>'));
+
+        $this->assertStringContainsString('<button type="button" class="nav-link nav-parent has-on" id="navSettingsBtn" aria-controls="navSubSettings" aria-expanded="true">', $rail);
+        foreach (['payroll' => 'Multipliers &amp; Deductions', 'attendance' => 'Work Schedule', 'labor' => 'Labor Types', 'holiday' => 'Holidays'] as $key => $name) {
+            $this->assertStringContainsString('href="' . route('settings.index', ['tab' => $key]) . '" data-settings-pane="' . $key . '"', $rail);
+            $this->assertStringContainsString($name, $rail);
+        }
+        $this->assertMatchesRegularExpression('~class="nav-sub-link on" href="' . preg_quote(route('settings.index', ['tab' => 'labor']), '~') . '" data-settings-pane="labor"\s+aria-current="page"~', $rail);
+        $this->assertStringContainsString('<h1 class="page-head-title">Labor Types</h1>', $html);
+
+        // Elsewhere they are folded, and Payroll Records is not lit by them.
+        $rail = $this->rail($admin);
+        $this->assertStringContainsString('<div class="nav-sub folded" id="navSubSettings">', $rail);
+        $this->assertStringContainsString('aria-controls="navSubSettings" aria-expanded="false"', $rail);
+
+        // HR has no Payroll Settings at all.
+        $this->assertStringNotContainsString('navSubSettings', $this->rail($this->user(User::ROLE_HR, 'rail.settings.hr')));
+    }
+
     /** Off the rail is not off the system. */
     public function test_payslips_still_open(): void
     {

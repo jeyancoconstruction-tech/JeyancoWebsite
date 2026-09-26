@@ -247,6 +247,43 @@
                 $remitDue  = app(\App\Services\RemittanceTracker::class)->badge();
                 $inRecords = $onRecords || $onRemit;
             @endphp
+            <script>
+                // A rail group's fold (Payroll Records, Payroll Settings). Runs
+                // before the rail is painted. Open while you are in one of its
+                // pages, folded everywhere else; a fold is kept while you move
+                // round the section, and arriving from elsewhere slides it open.
+                window.jeyancoNavGroup = function (btnId, subId, KEY, IN) {
+                    var sub = document.getElementById(subId);
+                    var btn = document.getElementById(btnId);
+                    if (!sub || !btn) return;
+                    function get() { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } }
+                    function put(v) { try { if (v === null) { sessionStorage.removeItem(KEY); } else { sessionStorage.setItem(KEY, v); } } catch (e) {} }
+                    function set(open) {
+                        sub.classList.toggle('folded', !open);
+                        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    }
+                    var was = get();
+                    if (!IN) {
+                        put(null);              // leaving the section folds them away
+                    } else if (was === 'closed') {
+                        set(false);             // folded stays folded while you are in it
+                    } else if (was === null) {
+                        set(false);             // arriving: they slide open
+                        requestAnimationFrame(function () {
+                            requestAnimationFrame(function () { set(true); });
+                        });
+                        put('open');
+                    }
+                    btn.addEventListener('click', function () {
+                        var open = sub.classList.contains('folded');
+                        set(open);
+                        // Inside the section a fold is kept (a filter reloads the
+                        // page). Opened elsewhere, the page picked opens with them
+                        // already open instead of sliding again.
+                        put(open ? 'open' : (IN ? 'closed' : null));
+                    });
+                };
+            </script>
             {{-- Payroll Records holds its own pages, set up as Michael's
                  jeyanco-sidebar-submenu mockup: the parent is a toggle with a
                  chevron and never turns solid blue; only the open page is lit,
@@ -275,50 +312,43 @@
                     </div>
                 </div>
             </div>
-            <script>
-                // Runs before the rail is painted.
-                (function () {
-                    var KEY = 'jeyanco-nav-records', IN = {{ $inRecords ? 'true' : 'false' }};
-                    var sub = document.getElementById('navSubRecords');
-                    var btn = document.getElementById('navRecordsBtn');
-                    if (!sub || !btn) return;
-                    function get() { try { return sessionStorage.getItem(KEY); } catch (e) { return null; } }
-                    function put(v) { try { if (v === null) { sessionStorage.removeItem(KEY); } else { sessionStorage.setItem(KEY, v); } } catch (e) {} }
-                    function set(open) {
-                        sub.classList.toggle('folded', !open);
-                        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-                    }
-                    var was = get();
-                    if (!IN) {
-                        put(null);              // leaving the section folds them away
-                    } else if (was === 'closed') {
-                        set(false);             // folded stays folded while you are in it
-                    } else if (was === null) {
-                        set(false);             // arriving: they slide open
-                        requestAnimationFrame(function () {
-                            requestAnimationFrame(function () { set(true); });
-                        });
-                        put('open');
-                    }
-                    btn.addEventListener('click', function () {
-                        var open = sub.classList.contains('folded');
-                        set(open);
-                        // Inside the section a fold is kept (a filter reloads the
-                        // page). Opened elsewhere, the page picked opens with them
-                        // already open instead of sliding again.
-                        put(open ? 'open' : (IN ? 'closed' : null));
-                    });
-                })();
-            </script>
+            <script>jeyancoNavGroup('navRecordsBtn', 'navSubRecords', 'jeyanco-nav-records', {{ $inRecords ? 'true' : 'false' }});</script>
             {{-- Payslips are off the rail: they open from their payroll run.
                  Workers have no web account — they use the kiosk. --}}
             {{-- Admin only, like the rest of the settings page it opens. It sits
                  under Payroll Records rather than in SYSTEM because that is what
                  it configures. --}}
             @if(auth()->user()?->isAdmin())
-                <a class="nav-link {{ request()->is('settings*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
+                {{-- Its four sections as sub-items, set up like Payroll Records
+                     (Michael, 2026-09-26): they replaced the tab row on the page.
+                     On the settings page itself a pick switches the section in
+                     place (settings/index), as the tabs did. --}}
+                @php
+                    $inSettings = request()->is('settings') || request()->is('settings/*');
+                    $setTab     = in_array(request('tab'), ['attendance', 'labor', 'holiday'], true) ? request('tab') : 'payroll';
+                    $setItems   = [
+                        'payroll'    => __('Multipliers & Deductions'),
+                        'attendance' => __('Work Schedule'),
+                        'labor'      => __('Labor Types'),
+                        'holiday'    => __('Holidays'),
+                    ];
+                @endphp
+                <button type="button" class="nav-link nav-parent {{ $inSettings ? 'has-on' : '' }}" id="navSettingsBtn" aria-controls="navSubSettings" aria-expanded="{{ $inSettings ? 'true' : 'false' }}">
                     <i data-lucide="settings"></i> <span>{{ __('Payroll Settings') }}</span>
-                </a>
+                    <span class="nav-end">
+                        <svg class="nav-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                    </span>
+                </button>
+                <div class="nav-sub {{ $inSettings ? '' : 'folded' }}" id="navSubSettings">
+                    <div class="nav-sub-in">
+                        <div class="nav-sub-list" role="group" aria-label="{{ __('Payroll Settings') }}">
+                            @foreach($setItems as $key => $name)
+                                <a class="nav-sub-link {{ $inSettings && $setTab === $key ? 'on' : '' }}" href="{{ route('settings.index', ['tab' => $key]) }}" data-settings-pane="{{ $key }}" @if($inSettings && $setTab === $key) aria-current="page" @endif>{{ $name }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                <script>jeyancoNavGroup('navSettingsBtn', 'navSubSettings', 'jeyanco-nav-settings', {{ $inSettings ? 'true' : 'false' }});</script>
             @endif
 
             <div class="menu-section">{{ __('INSIGHTS') }}</div>
