@@ -139,6 +139,33 @@ class SidebarEntriesTest extends TestCase
         $this->assertStringNotContainsString('navSubSettings', $this->rail($this->user(User::ROLE_HR, 'rail.settings.hr')));
     }
 
+    /** Michael, 2026-09-26: Leave & Advances' two tabs became its sub-items, Cash Advances first. */
+    public function test_leave_and_advances_carries_cash_advances_then_leave(): void
+    {
+        $admin = $this->user(User::ROLE_ADMIN, 'rail.leave');
+
+        $html = $this->actingAs($admin)->get(route('leave.index', ['tab' => 'advances']))->assertOk()->getContent();
+        $rail = substr($html, strpos($html, '<nav class="nav-menu">'));
+        $rail = substr($rail, 0, strpos($rail, '</nav>'));
+
+        $this->assertStringContainsString('<button type="button" class="nav-link nav-parent has-on" id="navLeaveBtn" aria-controls="navSubLeave" aria-expanded="true">', $rail);
+        $advances = strpos($rail, 'href="' . route('leave.index', ['tab' => 'advances']) . '"');
+        $leave    = strpos($rail, 'href="' . route('leave.index') . '"');
+        $this->assertNotFalse($advances);
+        $this->assertNotFalse($leave);
+        $this->assertLessThan($leave, $advances, 'Cash Advances comes first');
+        $this->assertMatchesRegularExpression('~class="nav-sub-link on" href="' . preg_quote(route('leave.index', ['tab' => 'advances']), '~') . '"\s+aria-current="page"\s*>Cash Advances<~', $rail);
+
+        // The page has no tab row of its own; its title names the section.
+        $this->assertStringNotContainsString('class="mod-tabs"', $html);
+        $this->assertStringContainsString('<h1 class="page-head-title">Cash Advances</h1>', $html);
+        $this->assertStringContainsString('<h1 class="page-head-title">Leave</h1>', $this->actingAs($admin)->get(route('leave.index'))->getContent());
+
+        // Elsewhere the group is folded.
+        $this->assertStringContainsString('<div class="nav-sub folded" id="navSubLeave">',
+            $this->actingAs($admin)->get('/dashboard')->getContent());
+    }
+
     /** Off the rail is not off the system. */
     public function test_payslips_still_open(): void
     {

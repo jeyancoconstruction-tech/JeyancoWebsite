@@ -16,7 +16,10 @@
 @endphp
 <div class="mod-page">
 
-    <x-page-header :title="__('Leave & Advances')">
+    {{-- Cash Advances and Leave are sub-items of Leave & Advances in the
+         sidebar (2026-09-26); the tab row that sat here is gone, and the
+         title names the section open. --}}
+    <x-page-header :title="$tab === 'advances' ? __('Cash Advances') : __('Leave')">
         <x-slot:actions>
             <button type="button" class="mod-btn primary" data-bs-toggle="modal" data-bs-target="#{{ $head['modal'] }}"><i class="fas fa-plus"></i> {{ $head['button'] }}</button>
         </x-slot:actions>
@@ -24,16 +27,6 @@
 
     @include('modules._flash')
 
-    <div class="mod-tabs">
-        <a class="mod-tab {{ $tab === 'leave' ? 'active' : '' }}" href="{{ route('leave.index', ['tab' => 'leave']) }}">
-            <i class="fas fa-calendar-day"></i> {{ __('Leave') }}
-        </a>
-        @if($canAdvances)
-            <a class="mod-tab {{ $tab === 'advances' ? 'active' : '' }}" href="{{ route('leave.index', ['tab' => 'advances']) }}">
-                <i class="fas fa-hand-holding-dollar"></i> {{ __('Cash Advances') }}
-            </a>
-        @endif
-    </div>
 
     @if($tab === 'leave')
         <div class="mod-card" data-fill-screen>

@@ -199,56 +199,8 @@
         </div>
 
         <nav class="nav-menu">
-
-            <div class="menu-section">{{ __('MAIN') }}</div>
-            <a class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}" href="{{ url('/dashboard') }}">
-                <i data-lucide="layout-dashboard"></i> <span>{{ __('Dashboard') }}</span>
-            </a>
-
-            <div class="menu-section">{{ __('WORKFORCE') }}</div>
-            <a class="nav-link {{ request()->is('attendance*') ? 'active' : '' }}" href="{{ url('/attendance') }}">
-                <i data-lucide="calendar-check"></i> <span>{{ __('Attendance') }}</span>
-            </a>
-            @php
-                // One entry for every worker page: the list, registering,
-                // editing and a worker's profile all start and end there. It
-                // was called Register & Manage beside an Employee Directory
-                // that duplicated it; with the directory retired it carries
-                // the plain name, and /employees leads here too.
-                $onRegisterHub = request()->is('employees*');
-                $pendingKiosk  = \App\Models\Employee::pending()->count();
-            @endphp
-            <a class="nav-link {{ $onRegisterHub ? 'active' : '' }}" href="{{ route('employees.register') }}">
-                <i data-lucide="users"></i> <span>{{ __('Employees') }}</span>
-                @if($pendingKiosk > 0)
-                    <span class="nav-pending-badge" title="{{ $pendingKiosk }} worker(s) detected by the kiosk awaiting registration">{{ $pendingKiosk }}</span>
-                @endif
-            </a>
-
-            {{-- Cash Advances is a tab on this page, not an entry of its own. --}}
-            @if(auth()->user()?->canAccessModule('leave'))
-                <a class="nav-link {{ request()->is('leave-advances*') ? 'active' : '' }}" href="{{ route('leave.index') }}">
-                    <i data-lucide="calendar-days"></i> <span>{{ __('Leave & Advances') }}</span>
-                </a>
-            @endif
-
-            <div class="menu-section">{{ __('PROJECT') }}</div>
-            <a class="nav-link {{ request()->is('sites*') ? 'active' : '' }}" href="{{ route('sites.index') }}">
-                <i data-lucide="map-pin"></i> <span>{{ __('Sites') }}</span>
-            </a>
-
-            <div class="menu-section">{{ __('PAYROLL') }}</div>
-            @php
-                $onRecords = (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*'))
-                           && ! request()->is('payroll-reports*') && ! request()->is('payslips*');
-                $onRemit   = request()->is('remittances*');
-                // What is due or overdue, from the months the tracker last
-                // worked out; nothing is priced to draw the sidebar.
-                $remitDue  = app(\App\Services\RemittanceTracker::class)->badge();
-                $inRecords = $onRecords || $onRemit;
-            @endphp
             <script>
-                // A rail group's fold (Payroll Records, Payroll Settings). Runs
+                // A rail group's fold (Leave & Advances, Payroll Records, Payroll Settings). Runs
                 // before the rail is painted. Open while you are in one of its
                 // pages, folded everywhere else; a fold is kept while you move
                 // round the section, and arriving from elsewhere slides it open.
@@ -287,6 +239,79 @@
                     });
                 };
             </script>
+
+            <div class="menu-section">{{ __('MAIN') }}</div>
+            <a class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}" href="{{ url('/dashboard') }}">
+                <i data-lucide="layout-dashboard"></i> <span>{{ __('Dashboard') }}</span>
+            </a>
+
+            <div class="menu-section">{{ __('WORKFORCE') }}</div>
+            <a class="nav-link {{ request()->is('attendance*') ? 'active' : '' }}" href="{{ url('/attendance') }}">
+                <i data-lucide="calendar-check"></i> <span>{{ __('Attendance') }}</span>
+            </a>
+            @php
+                // One entry for every worker page: the list, registering,
+                // editing and a worker's profile all start and end there. It
+                // was called Register & Manage beside an Employee Directory
+                // that duplicated it; with the directory retired it carries
+                // the plain name, and /employees leads here too.
+                $onRegisterHub = request()->is('employees*');
+                $pendingKiosk  = \App\Models\Employee::pending()->count();
+            @endphp
+            <a class="nav-link {{ $onRegisterHub ? 'active' : '' }}" href="{{ route('employees.register') }}">
+                <i data-lucide="users"></i> <span>{{ __('Employees') }}</span>
+                @if($pendingKiosk > 0)
+                    <span class="nav-pending-badge" title="{{ $pendingKiosk }} worker(s) detected by the kiosk awaiting registration">{{ $pendingKiosk }}</span>
+                @endif
+            </a>
+
+            {{-- Leave & Advances holds its two sections as sub-items, set up
+                 like Payroll Records (Michael, 2026-09-26): Cash Advances first,
+                 then Leave. They replaced the tab row on the page. Cash Advances
+                 shows only to an account that can open it. --}}
+            @if(auth()->user()?->canAccessModule('leave'))
+                @php
+                    $inLeave    = request()->is('leave-advances*');
+                    $leaveTab   = request('tab') === 'advances' && auth()->user()->canAccessModule('loans') ? 'advances' : 'leave';
+                    $leaveItems = [];
+                    if (auth()->user()->canAccessModule('loans')) {
+                        $leaveItems['advances'] = [__('Cash Advances'), route('leave.index', ['tab' => 'advances'])];
+                    }
+                    $leaveItems['leave'] = [__('Leave'), route('leave.index')];
+                @endphp
+                <button type="button" class="nav-link nav-parent {{ $inLeave ? 'has-on' : '' }}" id="navLeaveBtn" aria-controls="navSubLeave" aria-expanded="{{ $inLeave ? 'true' : 'false' }}">
+                    <i data-lucide="calendar-days"></i> <span>{{ __('Leave & Advances') }}</span>
+                    <span class="nav-end">
+                        <svg class="nav-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                    </span>
+                </button>
+                <div class="nav-sub {{ $inLeave ? '' : 'folded' }}" id="navSubLeave">
+                    <div class="nav-sub-in">
+                        <div class="nav-sub-list" role="group" aria-label="{{ __('Leave & Advances') }}">
+                            @foreach($leaveItems as $key => [$name, $href])
+                                <a class="nav-sub-link {{ $inLeave && $leaveTab === $key ? 'on' : '' }}" href="{{ $href }}" @if($inLeave && $leaveTab === $key) aria-current="page" @endif>{{ $name }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                <script>jeyancoNavGroup('navLeaveBtn', 'navSubLeave', 'jeyanco-nav-leave', {{ $inLeave ? 'true' : 'false' }});</script>
+            @endif
+
+            <div class="menu-section">{{ __('PROJECT') }}</div>
+            <a class="nav-link {{ request()->is('sites*') ? 'active' : '' }}" href="{{ route('sites.index') }}">
+                <i data-lucide="map-pin"></i> <span>{{ __('Sites') }}</span>
+            </a>
+
+            <div class="menu-section">{{ __('PAYROLL') }}</div>
+            @php
+                $onRecords = (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*'))
+                           && ! request()->is('payroll-reports*') && ! request()->is('payslips*');
+                $onRemit   = request()->is('remittances*');
+                // What is due or overdue, from the months the tracker last
+                // worked out; nothing is priced to draw the sidebar.
+                $remitDue  = app(\App\Services\RemittanceTracker::class)->badge();
+                $inRecords = $onRecords || $onRemit;
+            @endphp
             {{-- Payroll Records holds its own pages, set up as Michael's
                  jeyanco-sidebar-submenu mockup: the parent is a toggle with a
                  chevron and never turns solid blue; only the open page is lit,
