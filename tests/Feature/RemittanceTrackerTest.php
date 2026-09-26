@@ -164,9 +164,23 @@ class RemittanceTrackerTest extends TestCase
 
         // July had no pay at all.
         $this->assertSame('none', $grid['sss'][7]['status']);
-        // September is still going.
+        // September is still going: it is on the tracker with what payroll has
+        // deducted so far (Michael, 2026-09-26 — pay only began in September
+        // on the live site, so a tracker of ended months sat empty).
         $this->assertSame('fut', $grid['sss'][9]['status']);
-        $this->assertFalse($grid['sss'][9]['tracked'], 'and cannot be picked yet');
+        $this->assertTrue($grid['sss'][9]['tracked'], 'it can be picked');
+        $sep = $this->page(['month' => '2026-09']);
+        $this->assertTrue($sep->viewData('running'));
+        $this->assertEqualsWithDelta($this->week('2026-08-31', '2026-09-06', 'sssDeduction'), $sep->viewData('rows')['sss']['total'], 0.001, 'so far');
+        $this->assertSame('fut', $sep->viewData('rows')['sss']['status']);
+        $sep->assertSee('so far, month in progress')->assertDontSee('data-rmt-pay="sss"', false);
+        // With no month asked for, it opens on this one.
+        $this->assertSame('2026-09', $this->page([])->viewData('month')->format('Y-m'));
+        // And it cannot be marked paid until it has ended.
+        $this->actingAs($this->admin)->post(route('remittances.store'), [
+            'agency' => 'sss', 'month' => '2026-09', 'amount' => '10', 'paid_on' => '2026-09-25',
+            'reference' => 'X-1', 'channel' => 'Online (My.SSS PRN)',
+        ])->assertSessionHasErrors('month');
         $this->assertSame('due', $rows['sss']['status']);
     }
 
@@ -282,6 +296,14 @@ class RemittanceTrackerTest extends TestCase
         $this->assertStringContainsString('class="nav-dot" title="' . $expected . ' remittance(s) to remit"', $rail);
         $this->assertStringNotContainsString('class="nav-sub-link on"', $rail);
         $this->assertStringContainsString("jeyancoNavGroup('navRecordsBtn', 'navSubRecords', 'jeyanco-nav-records', false)", $rail, 'leaving the section forgets the fold');
+    }
+
+    /** Each employee's share sits beside their number at that agency. */
+    public function test_the_per_employee_list_shows_each_ones_id_number(): void
+    {
+        $this->page()
+             ->assertSeeInOrder(['<table class="rmt-ppl">', 'Employee', 'SSS No.', 'Amount'], false)
+             ->assertSee('<span class="rmt-idn">34-1234567-8</span>', false);
     }
 
     public function test_the_reports_download_each_agency_with_the_id_numbers(): void

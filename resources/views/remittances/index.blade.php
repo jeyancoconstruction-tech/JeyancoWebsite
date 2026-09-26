@@ -127,6 +127,17 @@ a.rmt-yc:hover, a.rmt-yc:focus-visible { outline: 2px solid var(--border-md); ou
 .rmt-net b { display: block; font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .rmt-net small { color: var(--text-secondary); font-size: 12.5px; text-align: right; }
 .rmt-dsec h4 { margin: 0 0 8px !important; font-size: 11px !important; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); font-weight: 700; }
+/* Each employee's share, with their number at that agency beside it. */
+.rmt-ppl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rmt-ppl th { text-align: left; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; padding: 0 0 7px; border-bottom: 1px solid var(--border); }
+.rmt-ppl td { padding: 9px 0; border-bottom: 1px dashed var(--border); vertical-align: middle; color: var(--text-secondary); }
+.rmt-ppl th + th, .rmt-ppl td + td { padding-left: 12px; }
+.rmt-ppl .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; }
+.rmt-ppl td b { display: block; font-weight: 600; color: var(--text-primary); }
+.rmt-ppl td small { display: block; font-size: 11px; color: var(--text-muted); }
+.rmt-ppl .rmt-idn { font-family: var(--rmt-mono); font-size: 12px; white-space: nowrap; color: var(--text-primary); }
+.rmt-ppl .missing { color: var(--warning); font-weight: 600; font-size: 12px; white-space: nowrap; }
+.rmt-ppl tfoot td { font-weight: 800; color: var(--text-primary); border-bottom: 0; border-top: 1px solid var(--border); }
 .rmt-lines { list-style: none; margin: 0; padding: 0; }
 .rmt-lines li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 13.5px; }
 .rmt-lines li > span { color: var(--text-secondary); min-width: 0; }
@@ -204,7 +215,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
                 {!! $icon['cal'] !!}
                 <select id="rmtMonth" aria-label="{{ __('Contribution month') }}">
                     @foreach($months as $m)
-                        <option value="{{ $m->format('Y-m') }}" @selected($m->format('Y-m') === $month->format('Y-m'))>{{ $m->format('M Y') }} {{ __('contributions') }}</option>
+                        <option value="{{ $m->format('Y-m') }}" @selected($m->format('Y-m') === $month->format('Y-m'))>{{ $m->format('M Y') }} {{ __('contributions') }}{{ $m->format('Y-m') === $today->format('Y-m') ? ' · ' . __('so far') : '' }}</option>
                     @endforeach
                 </select>
             </label>
@@ -217,7 +228,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
         <div class="rmt-card rmt-stat" style="--c:var(--brand)">
             <span><i></i>{{ __('Total to remit') }}</span>
             <b>{{ $peso($sum(collect($rows))) }}</b>
-            <small>{{ $mon }} · {{ __('employee contributions') }}</small>
+            <small>{{ $mon }} · {{ $running ? __('so far, month in progress') : __('employee contributions') }}</small>
         </div>
         <div class="rmt-card rmt-stat" style="--c:var(--success)">
             <span><i></i>{{ __('Paid') }}</span>
@@ -244,7 +255,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
     <section class="rmt-card" id="rmtList" data-live="remittances settings" aria-label="{{ __('Remittances') }}">
         <div class="rmt-thead">
             <h2 class="rmt-h">{!! $icon['list'] !!} {{ $mon }} {{ __('contributions') }}</h2>
-            <span class="rmt-note" title="{{ __('A pay week counts in the month it ends in') }}">{{ __('Pay weeks ending in') }} {{ $month->format('F') }} · {{ $wFrom->format('M j') }} – {{ $wTo->format('M j') }}</span>
+            <span class="rmt-note" title="{{ __('A pay week counts in the month it ends in') }}">{{ __('Pay weeks ending in') }} {{ $month->format('F') }} · {{ $wFrom->format('M j') }} – {{ $wTo->format('M j') }}{{ $running ? ' · ' . __('so far, worked out again as attendance comes in') : '' }}</span>
             <span class="sp"></span>
             <span class="rmt-note">{{ __("Click an agency to see each employee's contribution") }}</span>
         </div>
@@ -367,21 +378,33 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
                 <div class="rmt-dsec">
                     <h4>{{ __('Per employee') }}</h4>
                     @if($r['people'])
-                        <ul class="rmt-lines">
-                            @foreach($r['people'] as $p)
-                                <li>
-                                    <span>{{ $p['name'] }}
-                                        @if($p['id_number'] !== '')
-                                            <small>{{ $p['code'] }} · {{ $r['a']['id_label'] }} {{ $p['id_number'] }}</small>
-                                        @else
-                                            <small class="missing">{{ $p['code'] }} · {{ __('No') }} {{ $r['a']['id_label'] }} {{ __('on file') }}</small>
-                                        @endif
-                                    </span>
-                                    <b>{{ $peso($p['amount']) }}</b>
-                                </li>
-                            @endforeach
-                            <li class="tot"><span>{{ __('Total') }}</span><b>{{ $peso($r['total']) }}</b></li>
-                        </ul>
+                        <table class="rmt-ppl">
+                            <thead>
+                                <tr>
+                                    <th>{{ __('Employee') }}</th>
+                                    <th>{{ $r['a']['id_label'] }}</th>
+                                    <th class="n">{{ __('Amount') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($r['people'] as $p)
+                                    <tr>
+                                        <td><b>{{ $p['name'] }}</b><small>{{ $p['code'] }}</small></td>
+                                        <td>
+                                            @if($p['id_number'] !== '')
+                                                <span class="rmt-idn">{{ $p['id_number'] }}</span>
+                                            @else
+                                                <span class="missing" title="{{ __('Add it on the employee\'s profile') }}">{{ __('Not on file') }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="n">{{ $peso($p['amount']) }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                <tr><td colspan="2">{{ __('Total') }}</td><td class="n">{{ $peso($r['total']) }}</td></tr>
+                            </tfoot>
+                        </table>
                     @else
                         <div class="rmt-empty">{{ __('Nobody had this deducted in') }} {{ $mon }}.</div>
                     @endif

@@ -87,6 +87,7 @@ class RemittanceController extends Controller
             'grid'     => $grid,
             'year'     => $year,
             'weeks'    => $this->tracker->weeksOf($month),
+            'running'  => $month->gte($this->tracker->thisMonth()),
             'remind'   => $remind,
             'today'    => $today,
             'channels' => RemittanceTracker::CHANNELS,
@@ -96,7 +97,7 @@ class RemittanceController extends Controller
     /** Mark a month's remittance to one agency as paid. */
     public function store(Request $request)
     {
-        $months = array_map(fn (Carbon $m) => $m->format('Y-m'), $this->tracker->months());
+        $months = array_map(fn (Carbon $m) => $m->format('Y-m'), $this->tracker->closedMonths());
 
         $data = $request->validate([
             'agency'    => ['required', Rule::in(array_keys(RemittanceTracker::AGENCIES))],

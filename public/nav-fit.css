@@ -312,8 +312,8 @@ html[data-bs-theme="dark"] .nav-menu {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    margin: 2px 6px 6px 24px;
-    padding: 2px 0 2px 12px;
+    margin: 2px 0 6px 24px;
+    padding: 2px 0 2px 10px;
 }
 .nav-menu .nav-sub-list::before {
     content: "";
@@ -350,7 +350,7 @@ html[data-bs-theme="dark"] .nav-menu {
 .nav-menu .nav-sub-link.on::before {
     content: "";
     position: absolute;
-    left: -12.75px;
+    left: -10.75px;
     top: 8px;
     bottom: 8px;
     width: 3px;
@@ -374,8 +374,12 @@ html[data-bs-theme="dark"] .nav-menu {
 
 /* Same type as a main row at each tier; the line follows the icon. */
 @media (min-height: 940px) {
-    .nav-menu .nav-sub-list { margin-left: 28px; }
-    .nav-menu .nav-sub-link { font-size: 13px; min-height: 38px; }
+    /* The larger type needs the room: a little less padding keeps the
+       longest labels ("Multipliers & Deductions", "Remittance tracker" with
+       its count) on one line beside the scrollbar's gutter. */
+    .nav-menu .nav-sub-list { margin-left: 28px; padding-left: 8px; }
+    .nav-menu .nav-sub-link { font-size: 13px; min-height: 38px; padding: 0 8px; }
+    .nav-menu .nav-sub-link.on::before { left: -8.75px; }
 }
 @media (min-height: 1100px) {
     .nav-menu .nav-sub-link { font-size: 14px; min-height: 40px; }

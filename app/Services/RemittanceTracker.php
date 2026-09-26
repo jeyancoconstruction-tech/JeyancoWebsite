@@ -93,15 +93,26 @@ final class RemittanceTracker
         return $this->today()->startOfMonth()->subMonthNoOverflow();
     }
 
+    /** This month: still running, its contributions so far. */
+    public function thisMonth(): Carbon
+    {
+        return $this->today()->startOfMonth();
+    }
+
     /**
      * Every month the tracker covers, oldest first: from the first month with
-     * anything in payroll to last month, and no more than two years of it.
+     * anything in payroll to this one, and no more than two years of it.
+     *
+     * This month is in the list too (Michael, 2026-09-26: the tracker sat
+     * empty because pay only began in September, and only ended months were
+     * shown). It carries what payroll has deducted so far and is worked out
+     * again whenever payroll moves; it can be marked paid once it has ended.
      *
      * @return list<Carbon>
      */
     public function months(): array
     {
-        $last  = $this->lastClosed();
+        $last  = $this->thisMonth();
         $first = $this->firstPayrollMonth() ?? $last->copy();
         $floor = $last->copy()->subMonthsNoOverflow(self::MAX_MONTHS - 1);
 
@@ -118,6 +129,14 @@ final class RemittanceTracker
         }
 
         return $months;
+    }
+
+    /** The months that have ended: the ones that can be marked paid. */
+    public function closedMonths(): array
+    {
+        $now = $this->thisMonth();
+
+        return array_values(array_filter($this->months(), fn (Carbon $m) => $m->lt($now)));
     }
 
     private function firstPayrollMonth(): ?Carbon
@@ -197,6 +216,9 @@ final class RemittanceTracker
             $stale = $keys[$i] === $fresh
                 ? ($stamp === null || ($entry['stamp'] ?? null) !== $stamp)
                 : ($back !== null && ($entry['back'] ?? null) !== $back);
+            if (($entry['open'] ?? false) && $month->lt($this->thisMonth())) {
+                $stale = true;
+            }
 
             if (is_array($entry) && ! $stale) {
                 $out[$keys[$i]] = $entry;
@@ -209,6 +231,7 @@ final class RemittanceTracker
             foreach ($this->compute($missing) as $key => $entry) {
                 $entry['stamp'] = $stamp;
                 $entry['back']  = $back;
+                $entry['open']  = $key >= $this->thisMonth()->format('Y-m');
                 try {
                     Cache::put(self::MONTH_KEY . $key, $entry, now()->addDays(30));
                 } catch (\Throwable) {
