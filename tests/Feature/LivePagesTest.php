@@ -104,11 +104,6 @@ class LivePagesTest extends TestCase
                 'advanceList'    => ['advances', 'payroll'],
                 'advanceDialogs' => ['advances'],
             ],
-            // The roster only appears once a function is picked; that is
-            // the screen the office sits on while a week is being paid.
-            '/payroll-processing?view=tracker' => [
-                'ppList' => ['payroll', 'attendance'],
-            ],
             '/payslips' => [
                 'payslipList' => ['payroll'],
             ],

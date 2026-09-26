@@ -27,7 +27,7 @@ use Illuminate\Http\Request;
  * the one decision left on a row is to cancel it.
  *
  * Neither tab writes attendance. Filed leave and advance instalments are read
- * by Payroll Processing.
+ * by payroll (Payroll Records and the payslip).
  */
 class LeaveAdvancesController extends Controller
 {

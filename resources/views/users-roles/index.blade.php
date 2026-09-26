@@ -14,20 +14,22 @@
     $fp       = fn (string $bits, string $class = '') => '<span class="fp ' . $class . '">'
                     . collect(str_split($bits))->map(fn ($c) => '<i class="' . ($c === '1' ? 'on' : '') . '"></i>')->implode('')
                     . '</span>';
-    $n9       = fn (string $bits) => substr_count($bits, '1');
+    // How many of the modules a role opens, out of however many there are.
+    $nOpen    = fn (string $bits) => substr_count($bits, '1');
+    $nAll     = count($modules);
     $when     = fn ($at) => $at === null ? 'Never'
                     : ($at->isToday() ? 'Today, ' . $at->format('g:i A')
                     : ($at->isYesterday() ? 'Yesterday, ' . $at->format('g:i A') : $at->format('M j, Y')));
     $icons    = [
         'leave' => 'calendar-days', 'loans' => 'wallet', 'assignments' => 'clipboard-list',
-        'payroll-processing' => 'calculator', 'payslips' => 'file-text', 'payroll-reports' => 'file-bar-chart',
+        'payslips' => 'file-text', 'payroll-reports' => 'file-bar-chart',
         'users-roles' => 'shield-check', 'audit-logs' => 'scroll-text', 'devices' => 'monitor-smartphone',
     ];
     $moduleKeys = array_keys($modules);
     $me         = auth()->user();
     $onlyAdmin  = $stats['admins'] <= 1;
     $query      = fn (array $change) => route('users-roles.index', array_filter(array_merge(request()->except(['page', 'account']), $change), fn ($v) => $v !== null && $v !== ''));
-    $selFp      = $selected ? ($fingerprints[$selected->role] ?? str_repeat('0', 9)) : null;
+    $selFp      = $selected ? ($fingerprints[$selected->role] ?? str_repeat('0', $nAll)) : null;
     $selFirst   = $selected ? mb_strtoupper(Str::before(trim($selected->name ?: $selected->username), ' ')) : '';
 @endphp
 
@@ -220,7 +222,7 @@
             <a class="ur-tile {{ $cls($key) }} {{ $filters['role'] === $key ? 'on' : '' }}" href="{{ $query(['role' => $key]) }}">
                 <div class="ur-tile-top"><span class="pip"></span>{{ $label }}</div>
                 <div class="ur-tile-n">{{ $counts[$key] ?? 0 }}</div>
-                <div class="ur-tile-foot">{!! $fp($fingerprints[$key]) !!}<span class="mono">{{ $n9($fingerprints[$key]) }} / 9</span></div>
+                <div class="ur-tile-foot">{!! $fp($fingerprints[$key]) !!}<span class="mono">{{ $nOpen($fingerprints[$key]) }} / {{ $nAll }}</span></div>
             </a>
         @endforeach
     </div>
@@ -354,7 +356,7 @@
                 <details class="ins-sec ins-fold" data-fold="access">
                     <summary class="ins-sec-h">
                         <span class="fold-arrow"><i data-lucide="chevron-right"></i></span>
-                        <span class="sx-label">Can open · {{ $n9($selFp) }} of 9</span>{!! $fp($selFp, $cls($selected->role)) !!}
+                        <span class="sx-label">Can open · {{ $nOpen($selFp) }} of {{ $nAll }}</span>{!! $fp($selFp, $cls($selected->role)) !!}
                     </summary>
                     <div class="fold-body">
                     @foreach($groups as $group => $keys)
@@ -443,7 +445,7 @@
                             @php $hl = $selected && $selected->role === $key; @endphp
                             <th class="role {{ $cls($key) }} {{ $hl ? 'hl' : '' }}" @if($hl) style="--hlc: var(--rc)" @endif>
                                 @if($hl)<span class="mx-sel">{{ $selFirst }}’S ROLE</span>@endif
-                                <span class="mx-rh"><span class="sx-role"><span class="pip"></span>{{ $label }}</span><span class="mono">{{ $n9($fingerprints[$key]) }} of 9</span></span>
+                                <span class="mx-rh"><span class="sx-role"><span class="pip"></span>{{ $label }}</span><span class="mono">{{ $nOpen($fingerprints[$key]) }} of {{ $nAll }}</span></span>
                             </th>
                         @endforeach
                     </tr>

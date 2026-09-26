@@ -13,7 +13,7 @@
         <div class="mod-card"><div class="mod-empty">
             <i class="fas fa-file-invoice"></i>
             <p class="mod-empty-title">{{ __('No payslips yet') }}</p>
-            <p class="mod-empty-sub">{{ __('Approve a payroll run in Payroll Processing and its payslips appear here.') }}</p>
+            <p class="mod-empty-sub">{{ __('Payslips from approved payroll runs appear here.') }}</p>
         </div></div>
     @else
         <div class="mod-card">

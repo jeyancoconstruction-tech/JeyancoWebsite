@@ -2,7 +2,7 @@
 
      It lived inside register.blade.php's page-scoped <style>, which meant the
      five other screens using these class names — Leave & Advances,
-     Project Assignment, both Payroll Processing pages and the Employee
+     Project Assignment and the Employee
      directory — rendered their dialogs with no styling at all: a browser
      default close button, unstyled Cancel and Save, no navy header.
 

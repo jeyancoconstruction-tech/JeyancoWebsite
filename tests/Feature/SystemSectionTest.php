@@ -162,7 +162,7 @@ class SystemSectionTest extends TestCase
         $this->actingAs($admin)->get(route('users-roles.index', ['account' => $staff->id]))
             ->assertOk()
             ->assertSee('Selected account')
-            ->assertSee('Can open · 7 of 9')
+            ->assertSee('Can open · 6 of 8')
             ->assertSee('Access matrix')
             ->assertSee(route('accounts.edit', $staff), false);
     }

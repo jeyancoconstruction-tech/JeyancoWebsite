@@ -120,6 +120,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Reports were consolidated into Payroll Records — keep old links working.
     Route::get('/reports', fn () => redirect()->route('payroll-records'))->name('reports');
 
+    // Payroll Processing was removed on 2026-09-26; its address opens the
+    // page it was drawn from, so a bookmark does not end in a 404.
+    Route::get('/payroll-processing', fn () => redirect()->route('payroll-records'));
+
     // PAYSLIPS (per-employee, per-period) — view / print / export
     // Batch A4 print (all employees for a period as cut-out slips) declared
     // before the {employee} wildcard so "batch" isn't captured as an id.
@@ -255,19 +259,6 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::patch('/project-assignments/{assignment}/end', [\App\Http\Controllers\ProjectAssignmentController::class, 'end'])->name('assignments.end');
     });
 
-    // ── PAYROLL · Processing ──────────────────────────────────────────────
-    Route::middleware('module:payroll-processing')->group(function () {
-        Route::get   ('/payroll-processing',              [\App\Http\Controllers\PayrollProcessingController::class, 'index'])->name('payroll-processing.index');
-        Route::post  ('/payroll-processing',              [\App\Http\Controllers\PayrollProcessingController::class, 'store'])->name('payroll-processing.store');
-        Route::get   ('/payroll-processing/{run}',        [\App\Http\Controllers\PayrollProcessingController::class, 'show'])->name('payroll-processing.show');
-        Route::post  ('/payroll-processing/{run}/calculate', [\App\Http\Controllers\PayrollProcessingController::class, 'calculate'])->name('payroll-processing.calculate');
-        Route::post  ('/payroll-processing/{run}/approve',   [\App\Http\Controllers\PayrollProcessingController::class, 'approve'])->name('payroll-processing.approve');
-        Route::post  ('/payroll-processing/{run}/finalize',  [\App\Http\Controllers\PayrollProcessingController::class, 'finalize'])->name('payroll-processing.finalize');
-        Route::post  ('/payroll-processing/{run}/reopen',    [\App\Http\Controllers\PayrollProcessingController::class, 'reopen'])->name('payroll-processing.reopen');
-        Route::delete('/payroll-processing/{run}',        [\App\Http\Controllers\PayrollProcessingController::class, 'destroy'])->name('payroll-processing.destroy');
-        Route::post  ('/payroll-processing/track/{employee}/{kind}', [\App\Http\Controllers\PayrollProcessingController::class, 'track'])->name('payroll-processing.track');
-        Route::post  ('/payroll-processing/track-many',              [\App\Http\Controllers\PayrollProcessingController::class, 'trackMany'])->name('payroll-processing.track-many');
-    });
 
     // ── PAYROLL · Payslips (issued from a signed-off run) ─────────────────
     Route::middleware('module:payslips')->group(function () {

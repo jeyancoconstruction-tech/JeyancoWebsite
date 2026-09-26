@@ -235,17 +235,17 @@ class EmployeeBonusTest extends TestCase
         $this->assertEqualsWithDelta($before['net'] + 500, $after['net'], 0.011);
     }
 
-    /** Payroll Processing and the payslip show it. */
-    public function test_it_shows_on_payroll_processing_and_the_payslip(): void
+    /** Payroll Records and the payslip show it. */
+    public function test_it_shows_on_payroll_records_and_the_payslip(): void
     {
         $e = $this->worker(['2026-09-15', '2026-09-16']);
         $this->give($e, 500);
 
-        $sel = $this->actingAs($this->admin)->get(route('payroll-processing.index', [
-            'period' => '2026-09-14_2026-09-20', 'view' => 'workflow', 'employee' => $e->id,
-        ]))->assertOk()->viewData('sel');
+        $row = collect($this->actingAs($this->admin)
+            ->get(route('payroll-records', ['mode' => 'weekly', 'week' => '2026-W38']))
+            ->assertOk()->viewData('employees'))->firstWhere('employee_id', $e->id);
 
-        $this->assertEqualsWithDelta(500.0, $sel['bonus'], 0.001);
+        $this->assertEqualsWithDelta(500.0, $row['totals']['bonus'], 0.001);
 
         $slip = $this->actingAs($this->admin)
             ->get(route('payslip.batch', ['from' => '2026-09-14', 'to' => '2026-09-20', 'employee' => $e->id]))

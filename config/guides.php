@@ -98,18 +98,6 @@ return [
         ]],
     ],
 
-    'payroll-processing' => [
-        'en' => ['title' => 'Payroll Processing', 'lines' => [
-            'Pick a period and an employee on the left; the three cards switch between the salary computation, the remittance tracker and the payslip.',
-            'In the remittance tracker, Submit and then Mark done move each contribution along, and Mark paid records the net pay as released.',
-            'Every step records who took it and when, and Undo walks one step back.',
-        ]],
-        'tl' => ['title' => 'Pagproseso ng Sahod', 'lines' => [
-            'Pumili ng panahon at empleyado sa kaliwa; ang tatlong card ang nagpapalit sa kuwenta ng sahod, sa remittance tracker at sa payslip.',
-            'Sa remittance tracker, Submit at saka Mark done ang nagpapausad sa bawat kontribusyon, at Mark paid ang nagtatala na naibigay na ang net pay.',
-            'Nakatala kung sino at kailan ginawa ang bawat hakbang, at ibinabalik ng Undo ang isang hakbang.',
-        ]],
-    ],
 
     'payroll-records' => [
         'en' => ['title' => 'Payroll Records', 'lines' => [
@@ -126,12 +114,12 @@ return [
 
     'payslips' => [
         'en' => ['title' => 'Payslips', 'lines' => [
-            'Payslips appear here once their payroll run has been approved in Payroll Processing.',
+            'Payslips appear here once their payroll run has been approved.',
             'View opens one. Print All prints the whole filtered list in a single pass.',
             'A missing payslip means its run has not been approved yet.',
         ]],
         'tl' => ['title' => 'Mga Payslip', 'lines' => [
-            'Lumalabas dito ang payslip kapag naaprubahan na ang payroll run nito sa Payroll Processing.',
+            'Lumalabas dito ang payslip kapag naaprubahan na ang payroll run nito.',
             'Ang View ang nagbubukas ng isa. Ang Print All ang nagpi-print ng buong listahan nang sabay-sabay.',
             'Kapag may kulang na payslip, hindi pa naaprubahan ang run nito.',
         ]],

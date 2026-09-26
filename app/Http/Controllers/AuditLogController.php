@@ -24,7 +24,6 @@ class AuditLogController extends Controller
     private const LINKS = [
         'User'              => 'users-roles.index',
         'Employee'          => 'employees.show',
-        'PayrollRun'        => 'payroll-processing.show',
         'Loan'              => 'leave.index',
         'LeaveRequest'      => 'leave.index',
         'ProjectAssignment' => 'assignments.index',

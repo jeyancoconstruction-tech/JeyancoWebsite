@@ -5,8 +5,6 @@ namespace Tests\Feature;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\LaborType;
-use App\Models\Loan;
-use App\Models\LeaveRequest;
 use App\Models\PayrollRun;
 use App\Models\Shift;
 use App\Models\Site;
@@ -91,7 +89,6 @@ class ModuleSmokeTest extends TestCase
             '/leave-advances',
             '/leave-advances?tab=advances',
             '/project-assignments',
-            '/payroll-processing',
             '/payslips',
             '/payroll-reports',
             '/payroll-reports?report=employee',
@@ -148,121 +145,26 @@ class ModuleSmokeTest extends TestCase
         }
     }
 
-    /** The whole chain: leave + a cash advance, through a run, to a payslip — and no overtime claim or loan. */
-    public function test_payroll_run_computes_approves_and_finalises(): void
+    /**
+     * Payroll Processing, and with it the way to create, approve and
+     * finalise a run, was removed on 2026-09-26. The runs already on file are
+     * untouched, and their payslips still open off the figures they froze.
+     */
+    public function test_payslips_still_open_off_a_run_on_file(): void
     {
-        $from = now()->subDays(7)->toDateString();
-        $to   = now()->toDateString();
-
-        LeaveRequest::create([
-            'employee_id' => $this->employee->id, 'leave_type' => 'vacation',
-            'starts_on' => $from, 'ends_on' => $from, 'days' => 1,
-            'is_paid' => true, 'status' => 'approved',
+        $run = PayrollRun::create([
+            'code' => PayrollRun::nextCode(), 'period_start' => now()->subWeek()->toDateString(),
+            'period_end' => now()->toDateString(), 'status' => 'finalized',
+        ]);
+        $item = \App\Models\PayrollRunItem::create([
+            'payroll_run_id' => $run->id, 'employee_id' => $this->employee->id,
+            'employee_name' => $this->employee->name, 'gross_pay' => 1600, 'net_pay' => 1600,
         ]);
 
-        // A claim left on file from when overtime was filed by hand. Overtime
-        // is counted from attendance now, so this must not be paid on top.
-        \DB::table('overtime_requests')->insert([
-            'employee_id' => $this->employee->id, 'site_id' => $this->site->id,
-            'date' => $from, 'hours' => 3, 'hourly_rate' => 125,
-            'multiplier' => 1.25, 'amount' => 468.75, 'status' => 'approved',
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
-
-        $loan = Loan::create([
-            'employee_id' => $this->employee->id, 'type' => 'advance',
-            'principal' => 2000, 'balance' => 2000, 'installment' => 500,
-            'schedule' => 'per_payroll', 'issued_on' => $from, 'status' => 'active',
-        ]);
-
-        // A loan left on file from when loans were still issued, and older
-        // than the advance. Only the advance is charged now, and collecting it
-        // must not reach for this row just because it comes first.
-        $oldLoan = Loan::create([
-            'employee_id' => $this->employee->id, 'type' => 'loan',
-            'principal' => 3000, 'balance' => 3000, 'installment' => 700,
-            'schedule' => 'per_payroll', 'issued_on' => now()->subDays(30)->toDateString(), 'status' => 'active',
-        ]);
-
-        // Create — the controller calculates immediately.
-        $this->actingAs($this->admin)->post('/payroll-processing', [
-            'period_start' => $from, 'period_end' => $to,
-        ])->assertRedirect();
-
-        $run = PayrollRun::latest('id')->first();
-        $this->assertNotNull($run, 'run was not created');
-        $this->assertSame('calculated', $run->status);
-        $this->assertGreaterThan(0, $run->items()->count(), 'run produced no lines');
-
-        $item = $run->items()->first();
-
-        $computed = app(\App\Services\PayrollService::class)->computeForRange($from, $to);
-        $engine   = collect($computed['employees'])->firstWhere('employee_id', $this->employee->id);
-        $otHours  = collect($computed['days'])->flatMap(fn ($d) => $d['details'] ?? [])
-            ->where('employee_id', $this->employee->id)->sum('ot_hours');
-
-        $this->assertEqualsWithDelta((float) data_get($engine, 'totals.overtime', 0), $item->overtime_pay, 0.01,
-            'overtime is what attendance counted — the old claim must not be added');
-        $this->assertEqualsWithDelta((float) $otHours, $item->ot_hours, 0.01,
-            'the overtime hours on the line are the ones attendance counted');
-        $this->assertGreaterThan(0, $item->leave_pay, 'approved paid leave was not credited');
-        // Every pay week of the run that has pay in it takes an instalment — a
-        // week of paid leave as much as a week worked — and the run charges
-        // exactly what the engine did, no more. The range is the last eight
-        // days on the real clock, so how many weeks that is depends on the day.
-        $this->assertGreaterThanOrEqual(500.0, (float) $item->advance_deduction, 'the cash advance instalment was not charged');
-        $this->assertEqualsWithDelta((float) collect($engine['periods'])->sum('vale_advance'), (float) $item->advance_deduction, 0.001,
-            'the run charges the advance payroll took, once');
-        $this->assertSame(0.0, (float) $item->loan_deduction, 'an old loan must not be charged');
-
-        // Recalculating must not collect the loan twice.
-        $this->actingAs($this->admin)->post("/payroll-processing/{$run->id}/calculate");
-        $this->assertSame(2000.0, (float) $loan->fresh()->balance, 'balance moved before finalisation');
-
-        // Finalising without confirmation must fail.
-        $this->actingAs($this->admin)->post("/payroll-processing/{$run->id}/approve");
-        $this->actingAs($this->admin)
-            ->post("/payroll-processing/{$run->id}/finalize", [])
-            ->assertSessionHasErrors('confirm');
-        $this->assertSame('approved', $run->fresh()->status, 'run finalised without confirmation');
-
-        // With confirmation it finalises, and collects exactly once.
-        $this->actingAs($this->admin)
-            ->post("/payroll-processing/{$run->id}/finalize", ['confirm' => 1]);
-
-        $this->assertSame('finalized', $run->fresh()->status);
-
-        // Finalising no longer collects a cash advance: payroll takes its
-        // instalment from the application's own schedule every period, so
-        // settling it here as well would charge the worker twice.
-        $this->assertSame(0, $loan->deductions()->count(), 'the advance was collected twice');
-        $this->assertSame(3000.0, (float) $oldLoan->fresh()->balance, 'the advance was taken off an old loan');
-
-        // Re-read the line: recalculating replaces a run's items wholesale, so
-        // the row captured before that call no longer exists. A 404 on the old
-        // id is the right answer — the test was holding a stale one.
-        $item = $run->fresh()->items()->first();
-
-        // And the payslip renders off the frozen figures.
         $this->actingAs($this->admin)->get('/payslips?run=' . $run->id)->assertOk();
         $this->actingAs($this->admin)->get('/payslips/' . $item->id)->assertOk();
         $this->actingAs($this->admin)->get('/payslips/' . $item->id . '/print')->assertOk();
         $this->actingAs($this->admin)->get('/payslips/run/' . $run->id . '/print')->assertOk();
-    }
-
-    /** A finalised run is history and must refuse to move. */
-    public function test_finalised_run_cannot_be_recalculated_or_deleted(): void
-    {
-        $run = PayrollRun::create([
-            'code' => PayrollRun::nextCode(), 'period_start' => now()->subWeek(),
-            'period_end' => now(), 'status' => 'finalized',
-        ]);
-
-        $this->actingAs($this->admin)->post("/payroll-processing/{$run->id}/calculate");
-        $this->actingAs($this->admin)->delete("/payroll-processing/{$run->id}");
-
-        $this->assertNotNull(PayrollRun::find($run->id), 'a finalised run was deleted');
-        $this->assertSame('finalized', $run->fresh()->status);
     }
 
     /** The permission map must actually close doors, not just decorate them. */
@@ -276,7 +178,7 @@ class ModuleSmokeTest extends TestCase
         ]);
 
         foreach (['/leave-advances', '/leave-advances?tab=advances', '/project-assignments',
-                  '/payroll-processing', '/payroll-reports', '/device-monitoring'] as $url) {
+                  '/payroll-reports', '/device-monitoring'] as $url) {
             $this->assertSame(200, $this->actingAs($hr)->get($url)->getStatusCode(), "HR lost {$url}");
         }
         $this->assertTrue($hr->canAccessModule(\App\Support\Modules::PAYSLIPS));

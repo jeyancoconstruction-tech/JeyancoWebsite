@@ -214,7 +214,7 @@ class LoanController extends Controller
      * Only the pay week it is deleted in gets its deduction back. That week's
      * payroll is still being worked out, so its instalment comes off and the
      * pay is whole again. A week that has already closed was paid with the
-     * deduction in it, and keeps it: Payroll Records, Payroll Processing and
+     * deduction in it, and keeps it: Payroll Records and
      * the payslip show every closed week exactly as it was.
      *
      * So the advance is kept and marked deleted rather than removed — payroll

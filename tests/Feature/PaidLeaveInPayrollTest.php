@@ -7,7 +7,6 @@ use App\Models\Employee;
 use App\Models\LaborType;
 use App\Models\LeaveRequest;
 use App\Models\PayrollRate;
-use App\Models\PayrollRun;
 use App\Models\Shift;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -437,47 +436,6 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->assertEqualsWithDelta(800.0, $regular, 0.011, 'one day worked, at ₱800');
     }
 
-    /** Payroll Processing itemises it, and does not call it regular pay. */
-    public function test_it_shows_on_payroll_processing(): void
-    {
-        $e = $this->worker(['2026-09-10']);
-        $this->leave($e, '2026-09-08', '2026-09-09');
-
-        $page = $this->actingAs($this->admin)->get(route('payroll-processing.index', [
-            'period' => '2026-09-07_2026-09-13', 'view' => 'workflow', 'employee' => $e->id,
-        ]))->assertOk();
-
-        $sel = $page->viewData('sel');
-
-        $this->assertEqualsWithDelta(1600.0, $sel['leave'], 0.001);
-        $this->assertEqualsWithDelta(2.0, $sel['leave_days'], 0.001);
-        $this->assertEqualsWithDelta(800.0, $sel['basic'], 0.011, 'the day off is not regular pay');
-
-        $page->assertSee('Paid leave');
-
-        // The earnings still add up to the gross with the leave line in them.
-        $earn = $page->viewData('lines')['earn'];
-        $this->assertEqualsWithDelta($sel['gross'], array_sum(array_column($earn, 'amount')), 0.011);
-    }
-
-    /** And the payslip shows it, and adds up. */
-    public function test_it_shows_on_the_payslip(): void
-    {
-        $e = $this->worker(['2026-09-10']);
-        $this->leave($e, '2026-09-08', '2026-09-09');
-
-        $slip = $this->actingAs($this->admin)->get(route('payroll-processing.index', [
-            'period' => '2026-09-07_2026-09-13', 'view' => 'payslip', 'employee' => $e->id,
-        ]))->assertOk()->assertSee('Paid leave')->viewData('slip');
-
-        $this->assertEqualsWithDelta($slip['gross'], array_sum(array_column($slip['earn'], 1)), 0.011,
-            'the earnings are still the gross');
-
-        $this->actingAs($this->admin)
-            ->get(route('payslip.batch', ['from' => '2026-09-07', 'to' => '2026-09-13', 'employee' => $e->id]))
-            ->assertOk();
-    }
-
     // ── A day off is a record for that day ───────────────────────────────
 
     /** One worker's row on one date of the day-by-day breakdown. */
@@ -585,29 +543,6 @@ class PaidLeaveInPayrollTest extends TestCase
             ->assertSee('Sick Leave');
     }
 
-    /** Payroll Processing pays it, and its arithmetic still closes. */
-    public function test_payroll_processing_pays_a_week_of_nothing_but_leave(): void
-    {
-        Carbon::setTestNow(Carbon::parse('2026-09-17 14:00:00', 'Asia/Manila'));
-
-        $off = $this->worker([], 'Lawrence Bernas');
-        $this->leave($off, '2026-09-17', '2026-09-17');
-
-        $sel = $this->actingAs($this->admin)->get(route('payroll-processing.index', [
-            'period' => '2026-09-14_2026-09-20', 'view' => 'workflow', 'employee' => $off->id,
-        ]))->assertOk()->viewData('sel');
-
-        $this->assertEqualsWithDelta(800.0, $sel['leave'], 0.001);
-        $this->assertEqualsWithDelta(0.0, $sel['basic'], 0.001, 'no day was worked');
-        $this->assertTrue($sel['worked'], 'a paid day off is not nothing');
-
-        // Basic + premiums + leave is the gross, which is what the stages on
-        // the page say. With the leave left out they stopped adding up.
-        $premiums = $sel['overtime'] + $sel['night'] + $sel['holiday'] + $sel['rest'];
-
-        $this->assertEqualsWithDelta($sel['gross'], $sel['basic'] + $premiums + $sel['leave'], 0.011);
-    }
-
     /**
      * The printed payslip gives it a line of its own.
      *
@@ -633,53 +568,6 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->assertEqualsWithDelta($s['gross'],
             $s['regular'] + $s['overtime'] + $s['holidayPay'] + $s['restDayPay']
             + $s['nightDiffPay'] + $s['leavePay'], 0.011, 'the earnings are the gross');
-    }
-
-    /**
-     * A finalised run pays the leave once.
-     *
-     * The engine's gross has carried the leave ever since it reached Payroll
-     * Records, and the run took basic pay to be that gross less the premiums
-     * — leave not among them. So the leave stayed inside basic pay and was
-     * then added again as a line of its own: every finalised payslip paid an
-     * approved day off twice, and called half of it hours worked.
-     */
-    public function test_a_finalised_run_pays_the_leave_once(): void
-    {
-        $e = $this->worker(['2026-09-10']);
-        $this->leave($e, '2026-09-08', '2026-09-09');
-
-        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
-            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
-        ]);
-
-        $item   = PayrollRun::sole()->items()->sole();
-        $engine = $this->totals($e, ...self::WEEK);
-
-        $this->assertEqualsWithDelta(1600.0, (float) $item->leave_pay, 0.011);
-        $this->assertEqualsWithDelta(2.0, (float) $item->paid_leave_days, 0.011);
-        $this->assertEqualsWithDelta(800.0, (float) $item->basic_pay, 0.011,
-            'basic pay is the day worked, not the days off');
-        $this->assertEqualsWithDelta($engine['gross'], (float) $item->gross_pay, 0.02,
-            'and the run grosses what Payroll Records does');
-        $this->assertEqualsWithDelta($engine['net'], (float) $item->net_pay, 0.02);
-    }
-
-    /** A worker with nothing but leave in the period still gets a run item. */
-    public function test_a_run_pays_a_worker_who_only_had_leave(): void
-    {
-        $e = $this->worker([], 'Lawrence Bernas');
-        $this->leave($e, '2026-09-08', '2026-09-09');
-
-        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
-            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
-        ]);
-
-        $item = PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
-
-        $this->assertEqualsWithDelta(1600.0, (float) $item->leave_pay, 0.011);
-        $this->assertEqualsWithDelta(0.0, (float) $item->basic_pay, 0.011);
-        $this->assertEqualsWithDelta(1600.0, (float) $item->gross_pay, 0.011);
     }
 
     /**

@@ -740,56 +740,6 @@ class CashAdvanceCollectionTest extends TestCase
 
     // ── A finalised run ──────────────────────────────────────────────────
 
-    /**
-     * A payroll run takes the instalment once, and sees payments.
-     *
-     * The engine's vale already carries the week's instalment. The run worked
-     * it out again from the stored balance and added it on top, so every
-     * finalised payslip charged the advance twice — ₱500 under "Vale" and
-     * ₱500 more under "Cash Advance" — and never saw a payment made at the
-     * office.
-     */
-    public function test_a_payroll_run_charges_the_instalment_once(): void
-    {
-        $e = $this->worker(['2026-09-08', '2026-09-09', '2026-09-10']);
-        $this->advance($e, 3000, 500);
-
-        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
-            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
-        ]);
-
-        $item   = \App\Models\PayrollRun::sole()->items()->sole();
-        $engine = $this->totals($e, ...self::WEEK);
-
-        $this->assertEqualsWithDelta(500.0, (float) $item->advance_deduction, 0.001, 'the instalment, on its own line');
-        $this->assertEqualsWithDelta(0.0, (float) $item->vale, 0.001, 'and not in the vale as well');
-        $this->assertEqualsWithDelta($engine['totalDeductions'], (float) $item->total_deductions, 0.011);
-        $this->assertEqualsWithDelta($engine['net'], (float) $item->net_pay, 0.011, 'the run pays what Payroll Records says');
-    }
-
-    /** A run for a week after the advance was paid off at the office takes nothing for it. */
-    public function test_a_payroll_run_after_a_payment_in_full_takes_nothing(): void
-    {
-        $e       = $this->worker(['2026-09-10', '2026-09-22'], 'Aldrin Sapugay');
-        $advance = $this->startsLater($e);
-
-        $this->actingAs($this->admin)
-            ->post(route('loans.payment', $advance), ['amount' => 3000, 'deducted_on' => '2026-09-12']);
-
-        Carbon::setTestNow(Carbon::parse('2026-09-27 21:00:00', 'Asia/Manila'));
-
-        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
-            'period_start' => '2026-09-21', 'period_end' => '2026-09-27',
-        ]);
-
-        $item = \App\Models\PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
-
-        $this->assertEqualsWithDelta(0.0, (float) $item->advance_deduction, 0.001);
-        $this->assertEqualsWithDelta(0.0, (float) $item->vale, 0.001);
-        $this->assertEqualsWithDelta(3000.0, (float) LoanDeduction::sum('amount'), 0.001,
-            'the one payment, and nothing collected on top of it');
-    }
-
     // ── The ₱30,000 limit ────────────────────────────────────────────────
 
     /** Record a new advance through the form's own route. */
@@ -946,14 +896,6 @@ class CashAdvanceCollectionTest extends TestCase
         $this->assertEqualsWithDelta(1000.0, $this->advanceTaken($e, '2026-09-14', '2026-09-20'), 0.001);
         $this->assertEqualsWithDelta($before - 1000, $net(), 0.011, 'the net pay is ₱1,000 less');
 
-        // Payroll Processing.
-        $sel = $this->actingAs($this->admin)->get(route('payroll-processing.index', [
-            'period' => '2026-09-14_2026-09-20', 'view' => 'workflow', 'employee' => $e->id,
-        ]))->assertOk()->viewData('sel');
-
-        $this->assertEqualsWithDelta(1000.0, $sel['advance'], 0.001, 'named as the advance instalment');
-        $this->assertEqualsWithDelta(1000.0, $sel['vale'], 0.001, 'on the vale / cash advance line');
-        $this->assertEqualsWithDelta($before - 1000, $sel['net'], 0.011);
 
         // The payslip.
         $slip = $this->actingAs($this->admin)
@@ -962,16 +904,6 @@ class CashAdvanceCollectionTest extends TestCase
 
         $this->assertEqualsWithDelta(1000.0, $slip['ded']['vale'], 0.001, 'in the payslip deductions');
         $this->assertEqualsWithDelta($before - 1000, $slip['net'], 0.011);
-
-        // And a run for the week charges it once.
-        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
-            'period_start' => '2026-09-14', 'period_end' => '2026-09-20',
-        ]);
-
-        $item = \App\Models\PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
-
-        $this->assertEqualsWithDelta(1000.0, (float) $item->advance_deduction, 0.001);
-        $this->assertEqualsWithDelta($before - 1000, (float) $item->net_pay, 0.011);
     }
 
     /**
@@ -1292,13 +1224,6 @@ class CashAdvanceCollectionTest extends TestCase
         // Week 37, closed: exactly as it was paid.
         $this->assertSame($closed, $this->figures($e, ...self::WEEK), 'not a figure of the closed week moves');
 
-        // A payroll run for the closed week, worked out afresh after the delete, still charges it.
-        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
-            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
-        ]);
-        $item = \App\Models\PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
-        $this->assertEqualsWithDelta(1000.0, (float) $item->advance_deduction, 0.001);
-        $this->assertEqualsWithDelta($closed['totals']['net'], (float) $item->net_pay, 0.011);
 
         // Kept, so the closed week can still be worked out — but marked, and its payment kept with it.
         $this->assertSame(Loan::DELETED, $advance->fresh()->status);
@@ -1633,35 +1558,25 @@ class CashAdvanceCollectionTest extends TestCase
         $this->assertEqualsWithDelta(1000.0, $week['cash_advance_deferred'], 0.001, 'the cash advance, with nothing left for it, is deferred');
     }
 
-    /** Payroll Processing, the payslip and a payroll run all say it was deferred, and none of them take it. */
+    /** Payroll Records, the payslip and the Cash Advances history all say it was deferred, and none of them take it. */
     public function test_every_payroll_screen_shows_the_deferral(): void
     {
         $e     = $this->worker(['2026-09-10'], 'Lawrence Bernas', 800);
         $clean = $this->totals($e, ...self::WEEK)['net'];
         $this->advance($e, 5000, 1000);
 
-        $page = $this->actingAs($this->admin)->get(route('payroll-processing.index', [
-            'period' => '2026-09-07_2026-09-13', 'view' => 'workflow', 'employee' => $e->id,
-        ]))->assertOk();
-
-        $sel = $page->viewData('sel');
-        $this->assertEqualsWithDelta(1000.0, $sel['advance_deferred'], 0.001);
-        $this->assertEqualsWithDelta(0.0, $sel['advance'], 0.001);
-        $this->assertEqualsWithDelta($clean, $sel['net'], 0.001);
-        $page->assertSee('₱1,000.00 cash advance deferred — pay too low, carried forward');
+        // Payroll Records: the pay is whole, and the row's payslip carries the deferral.
+        $row = collect($this->actingAs($this->admin)
+            ->get(route('payroll-records', ['mode' => 'weekly', 'week' => '2026-W37']))
+            ->assertOk()->viewData('employees'))->firstWhere('employee_id', $e->id);
+        $this->assertEqualsWithDelta($clean, $row['totals']['net'], 0.001);
+        $this->assertEqualsWithDelta(1000.0, collect($row['periods'])->sum('cash_advance_deferred'), 0.001);
 
         $slip = $this->actingAs($this->admin)
             ->get(route('payslip.batch', ['from' => '2026-09-07', 'to' => '2026-09-13', 'employee' => $e->id]))
             ->assertOk()
             ->assertSee('Cash advance deferred');
         $this->assertEqualsWithDelta(1000.0, $slip->viewData('slips')->first()['advanceDeferred'], 0.001);
-
-        $this->actingAs($this->admin)->post(route('payroll-processing.store'), [
-            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
-        ]);
-        $item = \App\Models\PayrollRun::sole()->items()->where('employee_id', $e->id)->sole();
-        $this->assertEqualsWithDelta(0.0, (float) $item->advance_deduction, 0.001);
-        $this->assertEqualsWithDelta($clean, (float) $item->net_pay, 0.011);
 
         // And the Cash Advances history.
         $this->actingAs($this->admin)->get(route('leave.index', ['tab' => 'advances']))

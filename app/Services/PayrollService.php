@@ -1350,7 +1350,7 @@ class PayrollService
                 // from a week worked. It was not: this row carried the advance
                 // at zero, while the schedule on the advance counted the week's
                 // instalment as taken — so Leave & Advances showed a deduction
-                // that Payroll Records, Payroll Processing and the payslip never
+                // that Payroll Records and the payslip never
                 // made. Both ask the same schedule now.
                 $advances = $this->advancesFor(
                     (int) $leaveEmpId, $weekOpens, $weekStart, $cfg, $weekRates, $pay, $ded['total'], 0.0,

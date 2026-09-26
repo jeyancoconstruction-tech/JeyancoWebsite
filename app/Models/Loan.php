@@ -16,8 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * The table is still `loans`, and its type column still tells an advance from
  * a loan. Loans are no longer issued, but the ones that were keep their
- * history, and a run calculated while they were still charged settles them at
- * finalisation (PayrollRunService::collectLoans).
+ * history.
  */
 class Loan extends Model
 {

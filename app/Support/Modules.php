@@ -22,7 +22,6 @@ final class Modules
     // rename a string.
     public const ADVANCES    = 'loans';
     public const ASSIGNMENTS = 'assignments';
-    public const PROCESSING  = 'payroll-processing';
     public const PAYSLIPS    = 'payslips';
     public const REPORTS     = 'payroll-reports';
     public const USERS       = 'users-roles';
@@ -38,7 +37,7 @@ final class Modules
         // user administration and the audit trail, which stay with Admin.
         User::ROLE_HR => [
             self::LEAVE, self::ADVANCES, self::ASSIGNMENTS,
-            self::PROCESSING, self::PAYSLIPS, self::REPORTS,
+            self::PAYSLIPS, self::REPORTS,
             self::DEVICES,
         ],
 
@@ -80,12 +79,12 @@ final class Modules
         return array_keys(self::labels());
     }
 
-    /** The nine modules in the three groups the access screens draw them in. */
+    /** The eight modules in the three groups the access screens draw them in. */
     public static function groups(): array
     {
         return [
             'Workforce' => [self::LEAVE, self::ADVANCES, self::ASSIGNMENTS],
-            'Payroll'   => [self::PROCESSING, self::PAYSLIPS, self::REPORTS],
+            'Payroll'   => [self::PAYSLIPS, self::REPORTS],
             'System'    => [self::USERS, self::AUDIT, self::DEVICES],
         ];
     }
@@ -106,7 +105,6 @@ final class Modules
             self::LEAVE       => 'Leave',
             self::ADVANCES    => 'Cash Advances',
             self::ASSIGNMENTS => 'Project Assignment',
-            self::PROCESSING  => 'Payroll Processing',
             self::PAYSLIPS    => 'Payslips',
             self::REPORTS     => 'Payroll Reports',
             self::USERS       => 'Users & Roles',

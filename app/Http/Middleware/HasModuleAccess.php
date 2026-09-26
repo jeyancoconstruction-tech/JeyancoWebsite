@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Gate for the modules added alongside it: `module:payroll-processing`.
+ * Gate for the modules added alongside it: `module:payslips`.
  *
  * Applied only to the new routes. The existing 'is_admin' middleware is left
  * exactly where it is and is not replaced by this one.

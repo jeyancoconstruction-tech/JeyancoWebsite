@@ -37,17 +37,15 @@ class SidebarEntriesTest extends TestCase
         return substr($html, $start, strpos($html, '</nav>', $start) - $start);
     }
 
-    public function test_payroll_processing_leads_the_payroll_group_on_the_office_rail(): void
+    /** Payroll Processing was removed on 2026-09-26; Payroll Records leads the group. */
+    public function test_payroll_records_leads_the_payroll_group_on_the_office_rail(): void
     {
         foreach ([User::ROLE_ADMIN, User::ROLE_HR] as $i => $role) {
             $rail = $this->rail($this->user($role, 'rail.office' . $i));
 
-            $processing = strpos($rail, 'href="' . route('payroll-processing.index') . '"');
-            $records    = strpos($rail, 'href="' . url('/payroll-records') . '"');
-
-            $this->assertNotFalse($processing, "{$role} has no Payroll Processing");
-            $this->assertNotFalse($records, "{$role} lost Payroll Records");
-            $this->assertLessThan($records, $processing, 'Payroll Processing sits above Payroll Records');
+            $this->assertStringContainsString('href="' . url('/payroll-records') . '"', $rail, "{$role} lost Payroll Records");
+            $this->assertStringNotContainsString('payroll-processing', $rail, "{$role} still has Payroll Processing");
+            $this->assertStringNotContainsString('Payroll Processing', $rail);
             $this->assertStringNotContainsString(route('payslips.index'), $rail, "{$role} still has Payslips");
         }
     }
@@ -64,7 +62,7 @@ class SidebarEntriesTest extends TestCase
         $this->assertStringNotContainsString(route('payslips.index'), $rail);
     }
 
-    public function test_each_run_still_opens_on_its_own_page(): void
+    public function test_payroll_processing_is_gone_and_its_address_opens_payroll_records(): void
     {
         $admin = $this->user(User::ROLE_ADMIN, 'rail.admin');
         $run   = PayrollRun::create([
@@ -72,15 +70,19 @@ class SidebarEntriesTest extends TestCase
             'period_end' => now(), 'status' => 'calculated',
         ]);
 
-        // The old list and its dialog are gone; the page is one period at a time.
-        $this->actingAs($admin)->get(route('payroll-processing.index'))
-             ->assertOk()
-             ->assertDontSee('New Payroll Run');
+        // A bookmark lands on the page it was drawn from, not on a 404.
+        $this->actingAs($admin)->get('/payroll-processing')
+             ->assertRedirect(route('payroll-records'));
 
-        // The runs themselves are untouched, and each still opens.
-        $this->actingAs($admin)->get(route('payroll-processing.show', $run))
-             ->assertOk()
-             ->assertSee($run->code);
+        // Its run pages, run actions and remittance tracker went with it.
+        $this->actingAs($admin)->get('/payroll-processing/' . $run->id)->assertNotFound();
+        $this->actingAs($admin)->post('/payroll-processing/' . $run->id . '/finalize', ['confirm' => 1])->assertNotFound();
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('payroll-processing.index'));
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('payroll-processing.track-many'));
+
+        // The runs themselves are untouched: their payslips still open.
+        $this->assertModelExists($run);
+        $this->assertNotContains('payroll-processing', \App\Support\Modules::all());
     }
 
     /** Off the rail is not off the system. */

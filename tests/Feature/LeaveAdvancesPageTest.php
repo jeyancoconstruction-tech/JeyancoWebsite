@@ -151,12 +151,10 @@ class LeaveAdvancesPageTest extends TestCase
             'is_paid' => true, 'status' => 'approved',
         ]);
 
-        $this->actingAs($admin)->post('/payroll-processing', [
-            'period_start' => '2026-09-07', 'period_end' => '2026-09-13',
-        ])->assertRedirect();
-
-        $item = PayrollRun::latest('id')->first()->items()->where('employee_id', $emp->id)->sole();
-        $this->assertSame(0.0, (float) $item->loan_deduction, 'an old loan was charged');
+        $row = collect(app(\App\Services\PayrollService::class)->computeForRange('2026-09-07', '2026-09-13')['employees'])
+            ->firstWhere('employee_id', $emp->id);
+        $this->assertNotNull($row, 'the paid day off puts the worker on the payroll');
+        $this->assertEqualsWithDelta(0.0, (float) collect($row['periods'])->sum('vale'), 0.001, 'an old loan was charged');
 
         // Nor can it be paid against or edited through the advance forms.
         $this->actingAs($admin)
@@ -168,38 +166,6 @@ class LeaveAdvancesPageTest extends TestCase
 
         $this->assertSame(2000.0, (float) $loan->fresh()->balance);
         $this->assertSame('active', $loan->fresh()->status);
-    }
-
-    /**
-     * Finalising does not collect a cash advance any more.
-     *
-     * Payroll takes an advance's instalment from the application's own
-     * schedule now, every period — see CashAdvanceCollectionTest — so posting
-     * a second collection here would charge the worker twice. An old loan is
-     * not on that schedule, and still settles the way it did.
-     */
-    public function test_finalising_settles_an_old_loan_and_leaves_the_advance_to_the_schedule(): void
-    {
-        $emp     = $this->worker('Both Kinds');
-        $loan    = $this->onFile($emp, 'loan', 2000, 500, '2026-08-01');
-        $advance = $this->onFile($emp, Loan::ADVANCE, 1000, 300, '2026-09-01');
-
-        $run = PayrollRun::create([
-            'code' => PayrollRun::nextCode(), 'period_start' => '2026-09-07',
-            'period_end' => '2026-09-13', 'status' => 'approved',
-        ]);
-        PayrollRunItem::create([
-            'payroll_run_id' => $run->id, 'employee_id' => $emp->id, 'employee_name' => $emp->name,
-            'loan_deduction' => 500, 'advance_deduction' => 300, 'total_deductions' => 800,
-        ]);
-
-        $this->actingAs($this->admin())
-             ->post("/payroll-processing/{$run->id}/finalize", ['confirm' => 1]);
-
-        $this->assertSame('finalized', $run->fresh()->status);
-        $this->assertSame(1500.0, (float) $loan->fresh()->balance, 'the old loan still settles here');
-        $this->assertSame(0, $advance->deductions()->count(),
-            'and the advance is left to its own schedule, so it is not collected twice');
     }
 
     public function test_the_old_addresses_land_on_the_merged_page(): void

@@ -241,13 +241,7 @@
             @endif
 
             <div class="menu-section">{{ __('PAYROLL') }}</div>
-            {{-- Leads the group, above Payroll Records. --}}
-            @if(auth()->user()?->canAccessModule('payroll-processing'))
-                <a class="nav-link {{ request()->is('payroll-processing*') ? 'active' : '' }}" href="{{ route('payroll-processing.index') }}">
-                    <i data-lucide="calculator"></i> <span>{{ __('Payroll Processing') }}</span>
-                </a>
-            @endif
-            <a class="nav-link {{ (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*')) && ! request()->is('payroll-processing*') && ! request()->is('payroll-reports*') && ! request()->is('payslips*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
+            <a class="nav-link {{ (request()->is('payroll*') || request()->is('reports*') || request()->is('payslip*')) && ! request()->is('payroll-reports*') && ! request()->is('payslips*') ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
             </a>
             {{-- Payslips are off the rail: they open from their payroll run.
