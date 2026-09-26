@@ -408,9 +408,6 @@
                 <a class="nav-link {{ request()->is('users-roles*') || request()->is('accounts*') ? 'active' : '' }}" href="{{ route('users-roles.index') }}">
                     <i data-lucide="shield-check"></i> <span>{{ __('Users & Roles') }}</span>
                 </a>
-                <a class="nav-link {{ request()->is('audit-logs*') ? 'active' : '' }}" href="{{ route('audit-logs.index') }}">
-                    <i data-lucide="scroll-text"></i> <span>{{ __('Audit Logs') }}</span>
-                </a>
                 @if(auth()->user()?->canAccessModule('devices'))
                     <a class="nav-link {{ request()->is('device-monitoring*') ? 'active' : '' }}" href="{{ route('devices.index') }}">
                         <i data-lucide="monitor-smartphone"></i> <span>{{ __('Device Monitoring') }}</span>

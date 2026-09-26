@@ -96,7 +96,7 @@ class ModuleSmokeTest extends TestCase
             '/payroll-reports?report=deductions',
             '/payroll-reports?report=advances',
             '/users-roles',
-            '/audit-logs',
+            '/system-settings?section=audit',
             '/device-monitoring',
         ];
 
@@ -126,6 +126,7 @@ class ModuleSmokeTest extends TestCase
             '/system-settings',
             '/system-settings/security',
             '/system-settings/appearance',
+            '/system-settings/kiosk',
         ];
 
         foreach ($urls as $url) {

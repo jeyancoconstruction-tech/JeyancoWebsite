@@ -32,77 +32,54 @@ class AuditLogController extends Controller
         'Attendance'        => 'attendance',
     ];
 
+    /**
+     * The Audit Logs page is a section of System Settings now (Michael,
+     * 2026-09-26). Its address, and every link carrying filters, lands there
+     * with the same filters.
+     */
     public function index(Request $request)
+    {
+        return redirect()->route('system-settings.about', array_merge($request->query(), ['section' => 'audit']));
+    }
+
+    /**
+     * What the Audit logs section shows: the entries the filters leave, fifty
+     * to a page, newest first — the same period (seven days unless asked),
+     * search, area, action, person, quick and record filters as before, and
+     * the export takes the same ones.
+     */
+    public function feed(Request $request): array
     {
         [$from, $to, $range] = $this->period($request);
 
-        $filtered = $this->query($request, $from, $to);
-
-        $logs = (clone $filtered)
+        $logs = $this->query($request, $from, $to)
             ->orderByDesc('created_at')->orderByDesc('id')
             ->paginate(self::PER_PAGE)
-            ->withQueryString();
+            ->withPath(route('system-settings.about'))
+            ->appends(array_merge($request->except('page'), ['section' => 'audit']));
 
-        // What each option would leave, inside the period and the search.
         $facetBase = $this->query($request, $from, $to, false);
-        $facets = [
-            'modules' => (clone $facetBase)->selectRaw('module as k, COUNT(*) as n')->groupBy('module')->orderByDesc('n')->pluck('n', 'k'),
-            'actions' => (clone $facetBase)->selectRaw('action as k, COUNT(*) as n')->groupBy('action')->orderByDesc('n')->pluck('n', 'k'),
-            'people'  => (clone $facetBase)->selectRaw("COALESCE(user_name, 'System') as k, COUNT(*) as n")
-                ->groupBy('k')->orderByDesc('n')->limit(8)->pluck('n', 'k'),
-        ];
 
-        $outcome = ['ok' => 0, 'warn' => 0, 'danger' => 0, 'muted' => 0];
-        foreach ((clone $filtered)->selectRaw('action, COUNT(*) as n')->groupBy('action')->pluck('n', 'action') as $action => $n) {
-            $outcome[AuditLog::toneFor($action)] += $n;
-        }
-
-        // The status line reads the period as a whole, before any filter.
-        $period  = fn () => AuditLog::whereBetween('created_at', [$from, $to]);
-        $summary = [
-            'total'      => $period()->count(),
-            'deletions'  => $period()->where('action', 'deleted')->count(),
-            'rejections' => $period()->whereIn('action', ['rejected', 'cancelled'])->count(),
-            'roles'      => $period()->where('module', 'Users')->where('description', 'like', 'Changed % from % to %')->count(),
-            'settings'   => $period()->where('module', 'Settings')->count(),
-            'signins'    => $period()->whereIn('action', ['failed', 'locked out', 'blocked'])->count(),
-            'sensitive'  => $period()->sensitive()->count(),
-        ];
-
-        // The last thirty days, with the filters but not the period.
-        $chartFrom = now()->subDays(29)->startOfDay();
-        $daily = $this->query($request, $chartFrom, now()->endOfDay())
-            ->selectRaw('DATE(created_at) as d, COUNT(*) as n')->groupBy('d')->pluck('n', 'd');
-        $chart = collect(range(29, 0))->map(function ($ago) use ($daily) {
-            $day = now()->subDays($ago);
-
-            return ['date' => $day->toDateString(), 'day' => $day, 'n' => (int) ($daily[$day->toDateString()] ?? 0)];
-        });
-
-        $people = collect($logs->items())->pluck('user_id')->filter()->unique();
-
-        return view('audit.index', [
-            'logs'      => $logs,
-            'range'     => $range,
-            'from'      => $from,
-            'to'        => $to,
-            'facets'    => $facets,
-            'outcome'   => $outcome,
-            'summary'   => $summary,
-            'chart'     => $chart,
-            'dayTotals' => (clone $filtered)->selectRaw('DATE(created_at) as d, COUNT(*) as n')->groupBy('d')->pluck('n', 'd'),
-            'subjects'  => $this->subjects(collect($logs->items())),
-            'roles'     => User::whereIn('id', $people)->pluck('role', 'id'),
-            'nameRoles' => User::whereIn('name', $facets['people']->keys())->pluck('role', 'name'),
-            'lastEntry' => AuditLog::latest('id')->first(),
-            'firstDate' => AuditLog::min('created_at'),
-            'grandTotal'=> AuditLog::count(),
-            'selected'  => [
+        return [
+            'logs'     => $logs,
+            'range'    => $range,
+            'from'     => $from,
+            'to'       => $to,
+            'modules'  => (clone $facetBase)->selectRaw('module as k, COUNT(*) as n')->groupBy('module')->orderByDesc('n')->pluck('n', 'k'),
+            'actions'  => (clone $facetBase)->selectRaw('action as k, COUNT(*) as n')->groupBy('action')->orderByDesc('n')->pluck('n', 'k'),
+            'people'   => (clone $facetBase)->selectRaw("COALESCE(user_name, 'System') as k, COUNT(*) as n")
+                ->groupBy('k')->orderByDesc('n')->limit(20)->pluck('n', 'k'),
+            'subjects' => $this->subjects(collect($logs->items())),
+            'selected' => [
                 'module' => $this->many($request, 'module'),
                 'action' => $this->many($request, 'action'),
                 'person' => $this->many($request, 'person'),
             ],
-        ]);
+            'q'        => (string) $request->query('q', ''),
+            'quick'    => (string) $request->query('quick', ''),
+            'subject'  => $request->filled('subject_type') && $request->filled('subject_id')
+                ? $request->query('subject_type') . ' #' . $request->query('subject_id') : null,
+        ];
     }
 
     /** Exactly the entries the current filters show, as a CSV. */

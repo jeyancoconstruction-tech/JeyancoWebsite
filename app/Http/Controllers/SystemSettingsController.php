@@ -16,15 +16,18 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * The settings that are not payroll: who the company says it is, and how strict
- * the login is. The payroll page answers for pay.
+ * The settings that are not payroll: who the company says it is, how the
+ * screens look, how strict the sign-in is, and how the kiosk records — and,
+ * since 2026-09-26, the Audit Log, as sections of one page laid out after
+ * Michael's jeyanco-settings.html. The payroll page answers for pay.
  *
- * One row behind three tabs. They are separate actions rather than one form
- * split in thirds, so each validates only what it posts — a bad session
- * timeout must not refuse a corrected address.
+ * One row behind the sections. Each still has its own save action, which
+ * validates only what it posts; the page's one save bar sends every edited
+ * section to updateAll, which checks them all first and then runs each
+ * section's own save.
  *
  * Every save is written to the Audit Log as old value → new value, which is
- * what "Last saved by" and Security's "Recent changes" read.
+ * what "Last saved by" and the Audit logs section read.
  */
 class SystemSettingsController extends Controller
 {
@@ -57,16 +60,39 @@ class SystemSettingsController extends Controller
     /** An account this long without a sign-in is flagged on the Security tab. */
     private const IDLE_DAYS = 90;
 
-    public function about()
+    /** The sections, in the order the page lists them. */
+    public const SECTIONS_ON_PAGE = ['company', 'appearance', 'security', 'kiosk', 'audit'];
+
+    // Each old address opens the one page on its own section.
+    public function about(Request $request)
     {
-        return view('settings.about', $this->common());
+        return $this->page($request, 'company');
     }
 
-    public function security()
+    public function security(Request $request)
     {
-        $cut = now()->subDays(self::IDLE_DAYS);
+        return $this->page($request, 'security');
+    }
 
-        return view('settings.security', $this->common() + [
+    public function appearance(Request $request)
+    {
+        return $this->page($request, 'appearance');
+    }
+
+    public function kiosk(Request $request)
+    {
+        return $this->page($request, 'kiosk');
+    }
+
+    /** The whole page: every section's data, opened on one of them. */
+    private function page(Request $request, string $section)
+    {
+        $asked   = (string) $request->query('section', '');
+        $section = in_array($asked, self::SECTIONS_ON_PAGE, true) ? $asked : $section;
+        $cut     = now()->subDays(self::IDLE_DAYS);
+
+        return view('settings.system', $this->common() + $this->kioskData() + [
+            'section' => $section,
             'hygiene' => [
                 'admins'   => User::where('role', User::ROLE_ADMIN)->where('is_active', true)->count(),
                 'disabled' => User::where('is_active', false)->orderBy('name')->pluck('name'),
@@ -75,16 +101,7 @@ class SystemSettingsController extends Controller
                         ->orWhere(fn ($n) => $n->whereNull('last_login_at')->where('created_at', '<', $cut)))
                     ->orderBy('name')->pluck('name'),
             ],
-            'changes' => AuditLog::where('module', 'Settings')->where('description', 'like', 'Security:%')
-                ->latest()->latest('id')->limit(3)->get(),
-        ]);
-    }
-
-    public function appearance()
-    {
-        return view('settings.appearance', $this->common() + [
-            'changes' => AuditLog::where('module', 'Settings')->where('description', 'like', 'Appearance:%')
-                ->latest()->latest('id')->limit(3)->get(),
+            'audit'   => app(AuditLogController::class)->feed($request),
         ]);
     }
 
@@ -93,7 +110,7 @@ class SystemSettingsController extends Controller
      * buttons, or automatically from the scan alone. Shows how Automatic
      * reads each shift, and whether each kiosk has picked the setting up.
      */
-    public function kiosk()
+    private function kioskData(): array
     {
         $shifts = Shift::query()->orderBy('crosses_midnight')->orderBy('id')->get()
             ->filter(fn (Shift $s) => $s->hasSchedule())
@@ -106,14 +123,102 @@ class SystemSettingsController extends Controller
 
         $day = $shifts->firstWhere('crosses_midnight', false);
 
-        return view('settings.kiosk', $this->common() + [
+        return [
             'rulers'   => $shifts->map(fn (Shift $s) => $this->ruler($s, (int) ($crew[$s->id] ?? 0)))->all(),
             'examples' => $day ? $this->examples($day) : [],
             'cut'      => $day ? WorkSchedule::label(WorkSchedule::lunchCut($day->schedule(), self::ANY_DAY)) : '12:30 PM',
             'kiosks'   => Kiosk::with('site')->orderBy('name')->get()->map(fn (Kiosk $k) => $this->kioskRow($k))->all(),
-            'changes'  => AuditLog::where('module', 'Settings')->where('description', 'like', 'Kiosk:%')
-                ->latest()->latest('id')->limit(3)->get(),
-        ]);
+        ];
+    }
+
+    /**
+     * The page's one save bar. The edited sections come as sections[]; all
+     * of them are validated before any is saved, so one bad value leaves
+     * everything as it was. Then each section's own save runs, exactly as
+     * when it had a page of its own.
+     */
+    public function updateAll(Request $request)
+    {
+        $save = [
+            'company'    => 'updateAbout',
+            'appearance' => 'updateAppearance',
+            'security'   => 'updateSecurity',
+            'kiosk'      => 'updateKiosk',
+        ];
+        $dirty   = array_values(array_intersect(array_keys($save), (array) $request->input('sections', [])));
+        $current = in_array($request->input('current'), self::SECTIONS_ON_PAGE, true) ? $request->input('current') : ($dirty[0] ?? 'company');
+
+        $rules = $messages = [];
+        foreach ($dirty as $section) {
+            [$r, $m] = $this->rulesFor($section);
+            $rules    += $r;
+            $messages += $m;
+        }
+        if ($rules) {
+            $request->validate($rules, $messages);
+        }
+
+        foreach ($dirty as $section) {
+            $this->{$save[$section]}($request);
+        }
+
+        return redirect()->route('system-settings.about', ['section' => $current])->with('success', 'Saved.');
+    }
+
+    /**
+     * What each section's save accepts. One list per section, read by its
+     * own save and by updateAll.
+     *
+     * @return array{0: array, 1: array}
+     */
+    private function rulesFor(string $section): array
+    {
+        return match ($section) {
+            'company' => [[
+                'company_name'    => ['required', 'string', 'max:120'],
+                'company_tagline' => ['required', 'string', 'max:160'],
+                'company_address' => ['nullable', 'string', 'max:255'],
+                'logo'            => ['nullable', 'image', 'max:2048'],
+            ], []],
+
+            'security' => [[
+                // A session that never expires is not a setting anybody wants by
+                // accident, and one of a minute logs the office out mid-payroll.
+                'session_timeout_minutes' => ['required', 'integer', 'min:5', 'max:1440'],
+
+                // Below eight is shorter than the rule every password on file was
+                // already made to meet, so raising it later would lock nobody out
+                // but lowering it now would weaken accounts silently.
+                'password_min_length'     => ['required', 'integer', 'min:8', 'max:64'],
+
+                'max_login_attempts'      => ['required', 'integer', 'min:3', 'max:20'],
+                'lockout_seconds'         => ['required', 'integer', 'min:30', 'max:3600'],
+            ], [
+                'session_timeout_minutes.max' => 'A day is the longest a session should be able to stay open.',
+                'password_min_length.min'     => 'Eight is the shortest password the accounts on file were made to meet.',
+                'max_login_attempts.min'      => 'Fewer than three locks people out for a typo.',
+            ]],
+
+            'appearance' => [[
+                // 'system' follows each device's own light or dark setting.
+                'default_theme' => ['required', 'in:dark,light,system'],
+                // No 'locale' rule: the Language picker is gone and the form does
+                // not post one. Requiring it here would fail every save of this
+                // page over a field it no longer has.
+            ], []],
+
+            'kiosk' => [[
+                'kiosk_attendance_mode'      => ['required', 'in:' . implode(',', array_keys(SystemSetting::KIOSK_MODES))],
+                // Under a minute, a finger held a moment too long can still read twice.
+                'kiosk_repeat_guard_seconds' => ['required', 'integer', 'min:60', 'max:600'],
+                'kiosk_idle_return_seconds'  => ['required', 'integer', 'min:15', 'max:600'],
+            ], [
+                'kiosk_attendance_mode.in'       => 'Choose Buttons or Automatic.',
+                'kiosk_repeat_guard_seconds.min' => 'Under a minute, a finger held a moment too long can still read twice.',
+            ]],
+
+            default => [[], []],
+        };
     }
 
     /** One shift's day as a bar: TIME IN opens · first half · break · second half · OT. */
@@ -187,12 +292,7 @@ class SystemSettingsController extends Controller
 
     public function updateAbout(Request $request)
     {
-        $data = $request->validate([
-            'company_name'    => ['required', 'string', 'max:120'],
-            'company_tagline' => ['required', 'string', 'max:160'],
-            'company_address' => ['nullable', 'string', 'max:255'],
-            'logo'            => ['nullable', 'image', 'max:2048'],
-        ]);
+        $data = $request->validate(...$this->rulesFor('company'));
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 
@@ -214,23 +314,7 @@ class SystemSettingsController extends Controller
 
     public function updateSecurity(Request $request)
     {
-        $data = $request->validate([
-            // A session that never expires is not a setting anybody wants by
-            // accident, and one of a minute logs the office out mid-payroll.
-            'session_timeout_minutes' => ['required', 'integer', 'min:5', 'max:1440'],
-
-            // Below eight is shorter than the rule every password on file was
-            // already made to meet, so raising it later would lock nobody out
-            // but lowering it now would weaken accounts silently.
-            'password_min_length'     => ['required', 'integer', 'min:8', 'max:64'],
-
-            'max_login_attempts'      => ['required', 'integer', 'min:3', 'max:20'],
-            'lockout_seconds'         => ['required', 'integer', 'min:30', 'max:3600'],
-        ], [
-            'session_timeout_minutes.max' => 'A day is the longest a session should be able to stay open.',
-            'password_min_length.min'     => 'Eight is the shortest password the accounts on file were made to meet.',
-            'max_login_attempts.min'      => 'Fewer than three locks people out for a typo.',
-        ]);
+        $data = $request->validate(...$this->rulesFor('security'));
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 
@@ -239,13 +323,7 @@ class SystemSettingsController extends Controller
 
     public function updateAppearance(Request $request)
     {
-        $data = $request->validate([
-            // 'system' follows each device's own light or dark setting.
-            'default_theme' => ['required', 'in:dark,light,system'],
-            // No 'locale' rule: the Language picker is gone and the form does
-            // not post one. Requiring it here would fail every save of this
-            // page over a field it no longer has.
-        ]);
+        $data = $request->validate(...$this->rulesFor('appearance'));
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 
@@ -259,15 +337,7 @@ class SystemSettingsController extends Controller
 
     public function updateKiosk(Request $request)
     {
-        $data = $request->validate([
-            'kiosk_attendance_mode'      => ['required', 'in:' . implode(',', array_keys(SystemSetting::KIOSK_MODES))],
-            // Under a minute, a finger held a moment too long can still read twice.
-            'kiosk_repeat_guard_seconds' => ['required', 'integer', 'min:60', 'max:600'],
-            'kiosk_idle_return_seconds'  => ['required', 'integer', 'min:15', 'max:600'],
-        ], [
-            'kiosk_attendance_mode.in'       => 'Choose Buttons or Automatic.',
-            'kiosk_repeat_guard_seconds.min' => 'Under a minute, a finger held a moment too long can still read twice.',
-        ]);
+        $data = $request->validate(...$this->rulesFor('kiosk'));
 
         $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
 

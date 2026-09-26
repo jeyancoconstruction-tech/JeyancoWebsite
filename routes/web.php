@@ -188,6 +188,8 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::put('/system-settings/appearance', [SystemSettingsController::class, 'updateAppearance'])->name('system-settings.appearance.update');
     Route::get('/system-settings/kiosk',      [SystemSettingsController::class, 'kiosk'])->name('system-settings.kiosk');
     Route::put('/system-settings/kiosk',      [SystemSettingsController::class, 'updateKiosk'])->name('system-settings.kiosk.update');
+    // The page's one save bar: every edited section at once (2026-09-26).
+    Route::put('/system-settings/all',        [SystemSettingsController::class, 'updateAll'])->name('system-settings.update-all');
 
     // --- SETTINGS MODULE ---
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');

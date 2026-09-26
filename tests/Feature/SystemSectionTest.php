@@ -119,7 +119,8 @@ class SystemSectionTest extends TestCase
         $admin  = $this->admin();
         $before = AuditLog::count();
 
-        $this->actingAs($admin)->get(route('audit-logs.index'))->assertOk();
+        $this->actingAs($admin)->get(route('audit-logs.index'))->assertRedirect(route('system-settings.about', ['section' => 'audit']));
+        $this->actingAs($admin)->get(route('system-settings.about', ['section' => 'audit']))->assertOk();
         $this->actingAs($admin)->get(route('users-roles.index'))->assertOk();
         $this->actingAs($admin)->get(route('system-settings.about'))->assertOk();
 
@@ -141,8 +142,9 @@ class SystemSectionTest extends TestCase
 
         $this->actingAs($admin)->get(route('system-settings.security'))
             ->assertOk()
-            ->assertSee('Recent changes to these rules')
-            ->assertSee('by Aldrin Admin');
+            ->assertSee('Last saved')
+            ->assertSee('by Aldrin Admin')
+            ->assertSee('Security: session timeout 120 → 60 min');
     }
 
     // ── The screens ──────────────────────────────────────────────────────────
@@ -173,12 +175,16 @@ class SystemSectionTest extends TestCase
         AuditLog::entry(['user_name' => 'Maria', 'module' => 'Payroll', 'action' => 'approved', 'description' => 'Approved payroll run PR-1']);
         AuditLog::entry(['user_name' => 'Jessa', 'module' => 'Leave', 'action' => 'rejected', 'description' => 'Rejected leave for Noel']);
 
+        // The old address carries its filters to the Audit logs section.
         $this->actingAs($admin)->get(route('audit-logs.index', ['module' => ['Payroll']]))
+            ->assertRedirect(route('system-settings.about', ['module' => ['Payroll'], 'section' => 'audit']));
+
+        $this->actingAs($admin)->get(route('system-settings.about', ['section' => 'audit', 'module' => ['Payroll']]))
             ->assertOk()
             ->assertSee('Approved payroll run PR-1')
             ->assertDontSee('Rejected leave for Noel');
 
-        $this->actingAs($admin)->get(route('audit-logs.index', ['quick' => 'sensitive']))
+        $this->actingAs($admin)->get(route('system-settings.about', ['section' => 'audit', 'quick' => 'sensitive']))
             ->assertOk()
             ->assertSee('Rejected leave for Noel')
             ->assertDontSee('Approved payroll run PR-1');
@@ -274,20 +280,24 @@ class SystemSectionTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_every_settings_tab_renders_the_new_hub_and_save_bar(): void
+    public function test_every_settings_address_opens_the_one_page_on_its_section(): void
     {
         $admin = $this->admin();
 
         foreach ([
-            'system-settings.about'      => 'Company identity',
-            'system-settings.security'   => 'In plain words',
-            'system-settings.appearance' => 'Default theme',
-        ] as $route => $text) {
-            $this->actingAs($admin)->get(route($route))
-                ->assertOk()
-                ->assertSee($text)
-                ->assertSee('All changes saved')
-                ->assertSee('Accounts &amp; roles', false);
+            'system-settings.about'      => 'company',
+            'system-settings.security'   => 'security',
+            'system-settings.appearance' => 'appearance',
+            'system-settings.kiosk'      => 'kiosk',
+        ] as $route => $section) {
+            $page = $this->actingAs($admin)->get(route($route))->assertOk();
+            $this->assertSame($section, $page->viewData('section'));
+            $page->assertSee('data-sec="' . $section . '" >', false)
+                  ->assertSee('id="ssBar"', false)
+                  ->assertSee('Save changes')
+                  ->assertSee('Default theme')
+                  ->assertSee('Attendance mode')
+                  ->assertSee('id="auditEntries"', false);
         }
     }
 

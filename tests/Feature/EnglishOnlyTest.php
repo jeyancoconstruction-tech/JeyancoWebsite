@@ -111,7 +111,7 @@ class EnglishOnlyTest extends TestCase
             'lang/tl.json turned every __() string Tagalog; it must not come back'
         );
 
-        $appearance = File::get(resource_path('views/settings/appearance.blade.php'));
+        $appearance = File::get(resource_path('views/settings/system.blade.php'));
         $this->assertStringNotContainsString('name="locale"', $appearance, 'the Language picker should be gone');
 
         $middleware = File::get(app_path('Http/Middleware/SetLocale.php'));

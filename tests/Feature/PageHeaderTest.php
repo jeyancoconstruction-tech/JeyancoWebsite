@@ -103,7 +103,7 @@ class PageHeaderTest extends TestCase
             'users & roles'           => ['/users-roles'],
             'create account'          => ['/accounts/create'],
             'edit account'            => ['/accounts/{admin}/edit'],
-            'audit logs'              => ['/audit-logs'],
+            'audit logs'              => ['/system-settings?section=audit'],
             'device monitoring'       => ['/device-monitoring'],
             'system: company'         => ['/system-settings'],
             'system: appearance'      => ['/system-settings/appearance'],

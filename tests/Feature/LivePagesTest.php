@@ -110,7 +110,7 @@ class LivePagesTest extends TestCase
             '/payroll-reports' => [
                 'reportList' => ['payroll', 'attendance'],
             ],
-            '/audit-logs' => [
+            '/system-settings?section=audit' => [
                 'auditEntries' => ['audit'],
             ],
             '/users-roles' => [

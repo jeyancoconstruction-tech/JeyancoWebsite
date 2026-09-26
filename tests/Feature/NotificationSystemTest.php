@@ -78,7 +78,7 @@ class NotificationSystemTest extends TestCase
      */
     public function test_leaving_a_dirty_settings_form_asks_in_the_apps_own_dialog(): void
     {
-        $src = File::get(resource_path('views/settings/_form-script.blade.php'));
+        $src = File::get(resource_path('views/settings/system.blade.php'));
 
         $this->assertStringContainsString('Notify.confirm', $src,
             'an in-app link should be answered by the app dialog');
@@ -103,7 +103,7 @@ class NotificationSystemTest extends TestCase
      */
     public function test_the_leave_guard_leaves_other_links_alone(): void
     {
-        $src = File::get(resource_path('views/settings/_form-script.blade.php'));
+        $src = File::get(resource_path('views/settings/system.blade.php'));
 
         foreach ([
             'url.origin !== location.origin' => 'a link to another site',

@@ -275,7 +275,14 @@
     .ur-grid { grid-template-columns: minmax(0, 1fr) !important; }
 }
 @media (max-width: 900px) {
-    .st-wrap { grid-template-columns: minmax(0, 1fr) !important; }
+    /* System Settings: the section list becomes a row of chips above the
+       section, scrolling sideways, instead of a column beside it. */
+    .ss-set { grid-template-columns: minmax(0, 1fr) !important; gap: 12px !important; }
+    .ss-nav { position: static !important; flex-direction: row !important; overflow-x: auto; scrollbar-width: none; padding: 6px !important; gap: 4px !important; }
+    .ss-nav::-webkit-scrollbar { display: none; }
+    .ss-nav h6, .ss-nav .hint { display: none !important; }
+    .ss-si { width: auto !important; flex: none; height: 36px !important; white-space: nowrap; }
+    .ss-si .dot { margin-left: 2px !important; }
 }
 @media (max-width: 767.98px) {
     /* Users & Roles */
@@ -286,6 +293,24 @@
 
     /* Device Monitoring: the list of silent kiosks wraps. */
     .sx-status > span { white-space: normal !important; min-width: 0; }
+
+    /* System Settings: a label above its field; the log's time above its
+       line; the save bar across the width. */
+    .ss-row { grid-template-columns: minmax(0, 1fr) !important; gap: 8px !important; }
+    .ss-grp { padding: 2px 14px !important; }
+    .ss-log { grid-template-columns: minmax(0, 1fr) auto !important; row-gap: 2px !important; padding: 10px 14px !important; }
+    .ss-log time { grid-column: 1 / -1; }
+    .ss-tools { padding: 10px 14px !important; }
+    .ss-tools .ss-sel { flex: 1 1 140px; min-width: 0; }
+    .ss-tools .ss-sel input.q { width: 100% !important; }
+    .ss-tools .sp { display: none; }
+    .ss-li { padding: 11px 14px !important; flex-wrap: wrap; }
+    .ss-li .rt { max-width: none !important; text-align: left !important; flex-basis: 100%; padding-left: 46px; }
+    /* Above the chat button, which sits in the corner. */
+    .ss-bar { bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important; left: 12px !important; right: 12px !important; max-width: none !important; transform: translateY(160%) !important; padding-left: 12px !important; }
+    .ss-bar.show { transform: translateY(0) !important; }
+    .ss-bar > span { flex: 1; }
+    .ss-bar > span small { display: none; }
 
     /* System › Kiosk: each shift's day ruler runs the full width under its
        name, so the segments are wide enough to carry their labels. */

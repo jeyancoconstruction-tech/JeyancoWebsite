@@ -80,7 +80,8 @@ class SystemSettingsTest extends TestCase
         $this->actingAs($this->admin())
              ->get(route('system-settings.about'))
              ->assertOk()
-             ->assertSee('Company identity');
+             ->assertSee('Company name')
+             ->assertSee('data-sec="company" >', false);
     }
 
     public function test_an_admin_can_open_security(): void
@@ -88,7 +89,8 @@ class SystemSettingsTest extends TestCase
         $this->actingAs($this->admin())
              ->get(route('system-settings.security'))
              ->assertOk()
-             ->assertSee('Sign-in rules');
+             ->assertSee('Failed sign-ins before lockout')
+             ->assertSee('data-sec="security" >', false);
     }
 
     public function test_staff_cannot(): void
@@ -238,7 +240,8 @@ class SystemSettingsTest extends TestCase
      * Every settings page carries the same category nav down its left. They are
      * links rather than panes — the forms post and need a real address to come
      * back to — so each page has to render the whole nav or the one you are on
-     * loses its way back.
+     * loses its way back. Since 2026-09-26 they are sections of one page, so
+     * the nav switches sections and points on to the two other settings pages.
      *
      * "Accounts & roles" opens Users & Roles, which is the one people screen
      * now; the old accounts list forwards there.
@@ -250,7 +253,8 @@ class SystemSettingsTest extends TestCase
             route('system-settings.security'),
             route('system-settings.appearance'),
         ];
-        $links = [...$pages, route('users-roles.index')];
+        $links = ['data-s="company"', 'data-s="appearance"', 'data-s="security"', 'data-s="kiosk"', 'data-s="audit"',
+                  'href="' . route('users-roles.index') . '"', 'href="' . route('settings.index') . '"'];
 
         foreach ($pages as $page) {
             $response = $this->actingAs($this->admin())->get($page)->assertOk();
