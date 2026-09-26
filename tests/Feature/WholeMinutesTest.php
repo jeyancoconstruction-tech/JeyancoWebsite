@@ -120,8 +120,8 @@ class WholeMinutesTest extends TestCase
         // the breakdown on screen is for reading.
         $this->actingAs($admin)->get('/payroll-records?mode=weekly&week=2026-W37')
             ->assertOk()
-            ->assertSee('<td class="text-end">1m</td>', false)
-            ->assertSee('&#8369;1.67', false);
+            ->assertSee('<td>1m</td>', false)
+            ->assertSee('₱1.67', false);
     }
 
     public function test_a_duration_is_written_in_hours_and_minutes(): void

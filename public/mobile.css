@@ -346,3 +346,23 @@
     .leaflet-touch .leaflet-bar a { width: 36px; height: 36px; line-height: 36px; }
     .page-link { min-width: 36px; min-height: 36px; display: flex; align-items: center; justify-content: center; }
 }
+
+
+/* ── 10 · PAYROLL RECORDS ───────────────────────────────────────────────────
+   Eight figures across and four legend entries across fit a laptop, not a
+   phone: two of each to a row. The search takes the bar's full width, the
+   hours-per-day strip in the payslip panel goes to two rows, and a printed
+   payslip's two columns stack. */
+@media (max-width: 767.98px) {
+    .prx-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .prx-legend { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .prx-hero .v { font-size: 28px !important; }
+    .prx-period .sp { display: none; }
+    .prx-period .prx-sel { flex: 1 1 100%; }
+    html[data-bs-theme] .prx .prx-period .prx-sel input { width: 100% !important; }
+    .prx-when { min-width: 0 !important; }
+    .prx-thead .prx-note:last-child { display: none; }
+    .prx-days { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+    .prx-slip { padding: 18px 16px !important; }
+    .prx-slip .two, .prx-slip .who { grid-template-columns: minmax(0, 1fr) !important; }
+}
