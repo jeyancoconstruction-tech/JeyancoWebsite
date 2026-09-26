@@ -248,21 +248,30 @@
                 // What is due or overdue, from the months the tracker last
                 // worked out; nothing is priced to draw the sidebar.
                 $remitDue  = app(\App\Services\RemittanceTracker::class)->badge();
+                $inRecords = $onRecords || $onRemit;
             @endphp
-            <a class="nav-link {{ $onRecords || $onRemit ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
+            <a class="nav-link {{ $inRecords ? 'active' : '' }}" href="{{ url('/payroll-records') }}">
                 <i data-lucide="receipt"></i> <span>{{ __('Payroll Records') }}</span>
+                {{-- With its pages folded away, the count of what is due
+                     rides on Payroll Records itself, so it is not lost. --}}
+                @if(! $inRecords && $remitDue > 0)
+                    <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
+                @endif
             </a>
             {{-- Payroll Records carries its own pages under it: the records
-                 themselves, and the Remittance Tracker. --}}
-            <div class="nav-sub" aria-label="{{ __('Payroll Records') }}">
-                <a class="nav-sub-link {{ $onRecords ? 'on' : '' }}" href="{{ url('/payroll-records') }}" @if($onRecords) aria-current="page" @endif>{{ __('Records') }}</a>
-                <a class="nav-sub-link {{ $onRemit ? 'on' : '' }}" href="{{ route('remittances.index') }}" @if($onRemit) aria-current="page" @endif>
-                    <span>{{ __('Remittance tracker') }}</span>
-                    @if($remitDue > 0)
-                        <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
-                    @endif
-                </a>
-            </div>
+                 themselves, and the Remittance Tracker. They open out only
+                 while you are in one of them, and fold away when you leave. --}}
+            @if($inRecords)
+                <div class="nav-sub" aria-label="{{ __('Payroll Records') }}">
+                    <a class="nav-sub-link {{ $onRecords ? 'on' : '' }}" href="{{ url('/payroll-records') }}" @if($onRecords) aria-current="page" @endif>{{ __('Records') }}</a>
+                    <a class="nav-sub-link {{ $onRemit ? 'on' : '' }}" href="{{ route('remittances.index') }}" @if($onRemit) aria-current="page" @endif>
+                        <span>{{ __('Remittance tracker') }}</span>
+                        @if($remitDue > 0)
+                            <span class="nav-sub-badge" title="{{ $remitDue }} {{ __('remittance(s) due or overdue') }}">{{ $remitDue }}</span>
+                        @endif
+                    </a>
+                </div>
+            @endif
             {{-- Payslips are off the rail: they open from their payroll run.
                  Workers have no web account — they use the kiosk. --}}
             {{-- Admin only, like the rest of the settings page it opens. It sits

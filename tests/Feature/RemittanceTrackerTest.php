@@ -234,25 +234,39 @@ class RemittanceTrackerTest extends TestCase
         $this->assertSame('late', $this->page()->viewData('rows')['philhealth']['status']);
     }
 
+    private function rail(string $url): string
+    {
+        $html  = $this->actingAs($this->admin)->get($url)->assertOk()->getContent();
+        $start = strpos($html, '<nav class="nav-menu">');
+
+        return substr($html, $start, strpos($html, '</nav>', $start) - $start);
+    }
+
     public function test_the_sidebar_lists_the_tracker_under_payroll_records_with_what_is_due(): void
     {
-        $this->page();   // the tracker works the months out
-
-        $html = $this->actingAs($this->admin)->get('/dashboard')->assertOk()->getContent();
-        $start = strpos($html, '<nav class="nav-menu">');
-        $rail  = substr($html, $start, strpos($html, '</nav>', $start) - $start);
-
-        $records = strpos($rail, 'href="' . url('/payroll-records') . '"');
-        $sub     = strpos($rail, 'class="nav-sub"');
-        $tracker = strpos($rail, 'href="' . route('remittances.index') . '"');
-        $this->assertNotFalse($tracker, 'Remittance tracker is on the rail');
-        $this->assertTrue($records < $sub && $sub < $tracker, 'under Payroll Records');
-        $this->assertStringContainsString('Remittance tracker', $rail);
-
         // SSS pending; PhilHealth, Pag-IBIG (and BIR, if anything was withheld) overdue.
-        preg_match('/nav-sub-badge[^>]*>(\d+)</', $rail, $m);
-        $expected = collect($this->page()->viewData('rows'))->whereIn('status', ['pend', 'late'])->count();
-        $this->assertSame((string) $expected, $m[1] ?? null);
+        $expected = (string) collect($this->page()->viewData('rows'))->whereIn('status', ['pend', 'late'])->count();
+
+        // In Payroll Records or the tracker, its pages open out under it.
+        foreach (['/payroll-records', '/remittances'] as $url) {
+            $rail    = $this->rail($url);
+            $records = strpos($rail, 'href="' . url('/payroll-records') . '"');
+            $sub     = strpos($rail, 'class="nav-sub"');
+            $tracker = strpos($rail, 'href="' . route('remittances.index') . '"');
+
+            $this->assertNotFalse($sub, "{$url}: the sub-items are open");
+            $this->assertTrue($records < $sub && $sub < $tracker, "{$url}: under Payroll Records");
+            $this->assertStringContainsString('Remittance tracker', $rail);
+            preg_match('/nav-sub-badge[^>]*>(\d+)</', $rail, $m);
+            $this->assertSame($expected, $m[1] ?? null, "{$url}: the count sits on the tracker");
+        }
+
+        // Anywhere else they fold away, and the count rides on Payroll Records.
+        $rail = $this->rail('/dashboard');
+        $this->assertStringNotContainsString('class="nav-sub"', $rail);
+        $this->assertStringNotContainsString('Remittance tracker', $rail);
+        $this->assertMatchesRegularExpression(
+            '/href="' . preg_quote(url('/payroll-records'), '/') . '">.*?Payroll Records.*?nav-sub-badge[^>]*>' . $expected . '</s', $rail);
     }
 
     public function test_the_reports_download_each_agency_with_the_id_numbers(): void
