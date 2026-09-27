@@ -328,12 +328,12 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 .km-bar .ss-btn { height: 32px; }
 /* The screen is drawn at the kiosk's own 1280 × 800 and scaled to fit, so
    it reads exactly as the one on site does. */
-.km-frame { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: 12px; background: #05080d; padding: 10px; box-shadow: 0 0 0 1px #1b2433 inset; }
+.km-frame { position: relative; width: 100%; aspect-ratio: 1024 / 600; border-radius: 12px; background: #05080d; padding: 10px; box-shadow: 0 0 0 1px #1b2433 inset; }
 .km-glass { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 4px; background: #0b111a; }
 /* Full screen: the kiosk at the size of the office's screen. */
 .km-frame:fullscreen { border-radius: 0; padding: 0; display: grid; place-items: center; background: #000; }
-.km-frame:fullscreen .km-glass { width: min(100vw, 160vh); height: auto; aspect-ratio: 16 / 10; border-radius: 0; }
-.km-screen { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; transform-origin: 0 0; }
+.km-frame:fullscreen .km-glass { width: min(100vw, 170.67vh); height: auto; aspect-ratio: 1024 / 600; border-radius: 0; }
+.km-screen, .km-off { position: absolute; left: 0; top: 0; width: 1024px; height: 600px; transform-origin: 0 0; border: 0; background: #0a0e14; }
 .km-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line-soft); border-radius: 10px; background: var(--panel); overflow: hidden; }
 .km-facts > div { padding: 9px 12px; border-right: 1px solid var(--line-soft); min-width: 0; }
 .km-facts > div:last-child { border-right: 0; }
@@ -349,124 +349,16 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 .km-log li span { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
 .km-log li span.in { color: var(--success); background: var(--success-soft); }
 .km-log li span.out { color: var(--danger); background: var(--danger-soft); }
-.km-log .none { padding: 18px 12px; text-align: center; color: var(--muted); font-size: 12.5px; }
+.km-log li.none { display: block; padding: 18px 12px; text-align: center; color: var(--muted); font-size: 12.5px; }
 .km-facts b { display: block; font-size: 13.5px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 .km-facts b.ok { color: var(--success); } .km-facts b.off { color: var(--danger); } .km-facts b.late { color: var(--warning); }
 .km-none { padding: 40px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; }
 
-/* The kiosk's own look (kiosk-screen.css on the Pi), at its own size. */
-.kx { --kx-bg: #0d131c; --kx-panel: #161e2a; --kx-line: #263245; --kx-text: #eef2f8; --kx-muted: #8b98ab; --kx-blue: #2f7bf6; --kx-green: #34c05a; --kx-red: #ef4444; --kx-amber: #f5b223;
-    width: 1280px; height: 800px; background: var(--kx-bg); color: var(--kx-text); font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; }
-.kx-top { height: 78px; display: flex; align-items: center; gap: 16px; padding: 0 26px; background: #111823; border-bottom: 1px solid var(--kx-line); }
-.kx-logo { width: 50px; height: 50px; border-radius: 10px; background: #fff; display: grid; place-items: center; overflow: hidden; }
-.kx-logo img { width: 44px; height: 44px; object-fit: contain; }
-.kx-co b { display: block; font-size: 20px; font-weight: 800; letter-spacing: .06em; }
-.kx-co small { display: block; font-size: 13px; color: var(--kx-muted); margin-top: 2px; font-weight: 500; }
-.kx-top .sp { flex: 1; }
-.kx-lang { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--kx-line); border-radius: 10px; }
-.kx-lang span { padding: 6px 12px; border-radius: 7px; font-size: 13px; font-weight: 800; color: var(--kx-muted); }
-.kx-lang span.on { background: var(--kx-blue); color: #fff; }
-.kx-sess { height: 34px; padding: 0 18px; border-radius: 999px; border: 1.5px solid var(--kx-blue); color: #7fb0ff; display: flex; align-items: center; font-weight: 800; letter-spacing: .06em; font-size: 14px; }
-.kx-clock { text-align: right; }
-.kx-clock b { display: block; font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
-.kx-clock small { display: block; font-size: 13px; color: var(--kx-muted); letter-spacing: .06em; margin-top: 4px; }
-.kx-strip { height: 60px; display: flex; align-items: center; gap: 12px; padding: 0 20px; background: #141c28; border-bottom: 1px solid var(--kx-line); }
-.kx-strip .lbl { font-size: 12px; font-weight: 800; letter-spacing: .08em; color: #c9d3e2; }
-.kx-site { height: 36px; padding: 0 16px; border-radius: 9px; background: var(--kx-blue); color: #fff; font-weight: 800; font-size: 15px; display: flex; align-items: center; }
-.kx-strip .sp { flex: 1; }
-.kx-strip .ok { color: var(--kx-green); font-weight: 700; font-size: 13px; }
-.kx-strip .saved { font-size: 11.5px; font-weight: 800; color: var(--kx-green); border: 1px solid color-mix(in srgb, var(--kx-green) 60%, transparent); border-radius: 999px; padding: 3px 10px; background: color-mix(in srgb, var(--kx-green) 12%, transparent); }
-.kx-tabs { height: 48px; display: flex; padding: 0 18px; border-bottom: 1px solid var(--kx-line); }
-.kx-tabs button { width: 308px; border: 0; background: none; color: var(--kx-muted); font: 800 14px Inter, sans-serif; letter-spacing: .08em; border-bottom: 3px solid transparent; cursor: pointer; }
-.kx-tabs button.on { color: #7fb0ff; border-bottom-color: var(--kx-blue); background: linear-gradient(to bottom, transparent, rgba(47,123,246,.12)); }
-.kx-body { flex: 1; display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 18px; padding: 18px; min-height: 0; }
-.kx-card { background: var(--kx-panel); border: 1px solid var(--kx-line); border-radius: 12px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.kx-card > .kx-h { margin: 0; height: 44px; padding: 0 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--kx-line); font-size: 13px; font-weight: 800; letter-spacing: .1em; color: #c9d3e2; }
-.kx-card > .kx-h .sp { flex: 1; }
-.kx-card > .kx-h small { font-size: 11.5px; letter-spacing: 0; color: var(--kx-muted); font-weight: 700; }
-.kx-scan { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 18px; text-align: center; }
-.kx-fp { width: 116px; height: 116px; border-radius: 50%; border: 2px solid var(--kx-line); display: grid; place-items: center; color: #9aa6b8; background: #1c2533; }
-.kx-fp svg { width: 56px; height: 56px; }
-.kx-fp.hit { border-color: var(--kx-green); color: var(--kx-green); box-shadow: 0 0 0 8px rgba(52,192,90,.08); }
-.kx-fp.hit.out { border-color: var(--kx-red); color: var(--kx-red); box-shadow: 0 0 0 8px rgba(239,68,68,.08); }
-.kx-scan .big { font-size: 18px; font-weight: 800; letter-spacing: .04em; }
-.kx-scan .sub { font-size: 14px; color: var(--kx-muted); }
-.kx .kx-who { color: #eef2f8 !important; font-weight: 800; }
-.kx-inout { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
-.kx-inout span { height: 74px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; }
-.kx-inout span small { font-size: 11px; letter-spacing: .08em; margin-top: 3px; }
-.kx-inout .in { border: 1.5px solid #2c7a45; background: #13261c; color: var(--kx-green); }
-.kx-inout .out { border: 1.5px solid #8a2d2d; background: #2a1618; color: var(--kx-red); }
-.kx-inout.auto { grid-template-columns: 1fr; }
-.kx-inout.auto span { border: 1.5px solid #274b86; background: #122036; color: #7fb0ff; }
-.kx-foot { height: 42px; border-top: 1px solid var(--kx-line); display: flex; align-items: center; justify-content: space-between; padding: 0 18px; font-size: 13px; color: var(--kx-muted); }
-.kx-foot .ok { color: var(--kx-muted); } .kx-foot .ok::before { content: "● "; color: var(--kx-green); }
-.kx-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--kx-line); }
-.kx-kpis > div { border: 1px solid var(--kx-line); border-left: 3px solid var(--c); border-radius: 10px; padding: 10px 14px; background: #1b2431; }
-.kx-kpis b { display: block; font-size: 32px; font-weight: 800; color: var(--c); line-height: 1.1; }
-.kx-kpis span { font-size: 13px; color: #b7c2d3; font-weight: 600; }
-.kx-tbl { width: 100%; border-collapse: collapse; }
-.kx-tbl th { height: 40px; font-size: 12px; font-weight: 800; letter-spacing: .06em; color: var(--kx-muted); text-align: right; padding: 0 12px; border-bottom: 1px solid var(--kx-line); background: #141c28; }
-.kx-tbl th:first-child, .kx-tbl td:first-child { text-align: left; padding-left: 18px; }
-.kx-tbl td { height: 64px; padding: 0 12px; text-align: right; border-bottom: 1px solid var(--kx-line); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.kx-tbl td small { font-size: 11px; color: var(--kx-muted); margin-left: 2px; font-weight: 700; }
-.kx-tbl td.nm b { display: block; font-size: 16px; }
-.kx-tbl td.nm span { font-size: 12.5px; color: var(--kx-muted); font-weight: 600; }
-.kx-tbl td.nm em { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: 2px; background: rgba(245,178,35,.14); color: var(--kx-amber); }
-.kx-tbl td.nm em.n { background: rgba(127,176,255,.14); color: #7fb0ff; }
-.kx-tbl td.brk { width: 54px; padding: 0; background: repeating-linear-gradient(135deg, #2a2a20 0 6px, #1b1c18 6px 12px); }
-.kx-tbl td.dim { color: #4d5a6d; }
-.kx-tbl td.ot { color: #5b9dff; }
-.kx-tbl tr.w td { background: rgba(52,192,90,.045); }
-.kx-tbl tr.w td.brk { background: repeating-linear-gradient(135deg, #2a2a20 0 6px, #1b1c18 6px 12px); }
-.kx-st { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 800; letter-spacing: .06em; white-space: nowrap; }
-.kx-st.working { color: var(--kx-green); border: 1.5px solid #2c7a45; background: #13261c; }
-.kx-st.working::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.kx-st.ot { color: #7fb0ff; border: 1.5px solid #274b86; background: #122036; }
-.kx-st.notback, .kx-st.lunch { color: var(--kx-amber); border: 1.5px dashed #8a6a1c; }
-.kx-st.done { color: var(--kx-muted); border: 1.5px solid var(--kx-line); }
-.kx-empty { flex: 1; display: grid; place-items: center; color: var(--kx-muted); font-size: 15px; text-align: center; padding: 20px; }
-.kx-scroll { flex: 1; overflow: hidden; }
-.kx-roster { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; }
-.kx-roster > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border: 1px solid var(--kx-line); border-radius: 10px; background: #1b2431; }
-.kx-roster b { font-size: 16px; }
-.kx-roster b em { font-style: normal; font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 4px; background: var(--kx-blue); color: #fff; margin-left: 8px; vertical-align: 2px; }
-.kx-roster small { display: block; color: var(--kx-muted); font-size: 12.5px; margin-top: 2px; }
-.kx-badge { font-size: 11px; font-weight: 800; letter-spacing: .06em; padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
-.kx-badge.need { color: var(--kx-amber); border: 1.5px solid #8a6a1c; }
-.kx-badge.have { color: var(--kx-green); border: 1.5px solid #2c7a45; }
-.kx-lock { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--kx-muted); text-align: center; font-size: 15px; padding: 30px; }
-.kx-lock svg { width: 64px; height: 64px; color: #3b4a60; }
-.kx-lock b { color: var(--kx-text); font-size: 20px; letter-spacing: .04em; }
-.kx-viewonly { position: absolute; right: 18px; bottom: 16px; font: 800 11px Inter, sans-serif; letter-spacing: .12em; color: #8b98ab; background: rgba(13,19,28,.85); border: 1px solid var(--kx-line); border-radius: 6px; padding: 5px 9px; }
 /* Off: the screen is dark, and says so. */
-.kx-res { justify-content: center; gap: 12px; }
-.kx-fp.read { border-color: var(--kx-blue); color: #7fb0ff; box-shadow: 0 0 0 8px rgba(47,123,246,.1); }
-.kx-verb { width: 100%; min-height: 66px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 6px 12px; text-align: center; font-size: 26px; font-weight: 900; letter-spacing: 2px; color: #fff; line-height: 1.1; }
-.kx-verb.in { background: #2ea043; box-shadow: 0 0 0 4px rgba(46,160,67,.2); }
-.kx-verb.out { background: #f0473e; box-shadow: 0 0 0 4px rgba(240,71,62,.2); }
-.kx-verb.scan { background: #122036; color: #7fb0ff; border: 1.5px solid #274b86; font-size: 22px; }
-.kx-verb.warn { background: rgba(242,176,36,.14); color: #f2b024; border: 1.5px solid #8a6a1c; font-size: 20px; }
-.kx-verb.rej, .kx-verb.unknown { background: rgba(240,71,62,.14); color: #ff8a82; border: 1.5px solid #8a2d2d; font-size: 20px; }
-.kx-rwho { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 10px; background: #1b2431; border: 1px solid var(--kx-line); text-align: left; }
-.kx-rwho b { display: block; font-size: 19px; }
-.kx-rwho small { display: block; font-size: 13px; color: var(--kx-muted); margin-top: 2px; }
-.kx-rwho > span { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.kx-rnote { width: 100%; padding: 9px 12px; border-radius: 8px; font-size: 14px; background: #1b2431; border: 1px solid var(--kx-line); color: #b7c2d3; }
-.kx-rnote.warn { color: #f2b024; border-color: #8a6a1c; }
-.kx-rnote.rej, .kx-rnote.unknown { color: #ff8a82; border-color: #8a2d2d; }
-.kx-rbar { width: 100%; height: 5px; border-radius: 99px; background: #232d3b; overflow: hidden; }
-.kx-rbar i { display: block; height: 100%; background: #7fb0ff; animation: kx-drain linear forwards; }
-@keyframes kx-drain { from { width: 100%; } to { width: 0; } }
-.kx .kx-live { color: #34c05a !important; letter-spacing: .08em !important; animation: kx-blink 1.2s steps(2) infinite; }
-.kx-strip .kx-onair { color: #34c05a; border-color: rgba(52,192,90,.6); animation: kx-blink 1.6s ease-in-out infinite; }
-@keyframes kx-blink { 50% { opacity: .45; } }
-.km-log li.fresh span, .km-log li span.rej { color: var(--warning); background: var(--warning-soft); }
-@media (prefers-reduced-motion: reduce) { .kx .kx-live, .kx-strip .kx-onair { animation: none; } }
-.kx-off { width: 1280px; height: 800px; background: #030507; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: #5d6a7d; font-family: Inter, system-ui, sans-serif; text-align: center; }
-.kx-off svg { width: 120px; height: 120px; color: #3a4658; }
-.kx-off b { font-size: 48px; letter-spacing: .2em; color: #c9d3e2; }
-.kx-off p { margin: 0; font-size: 24px; max-width: 900px; line-height: 1.5; }
+.kx-off { width: 1024px; height: 600px; background: #030507; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: #5d6a7d; font-family: Inter, system-ui, sans-serif; text-align: center; }
+.kx-off svg { width: 96px; height: 96px; color: #3a4658; }
+.kx-off b { font-size: 38px; letter-spacing: .2em; color: #c9d3e2; }
+.kx-off p { margin: 0; font-size: 19px; max-width: 760px; line-height: 1.5; }
 .kx-off p strong { color: #c9d3e2; }
 
 /* Unsaved bar */
@@ -736,7 +628,10 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                             @if($kiosks->isEmpty())
                                 <p class="km-none">{{ __('No kiosk is registered yet. A kiosk appears here once it has been added.') }}</p>
                             @else
-                                <div class="km-frame"><div class="km-glass"><div class="km-screen" data-km-screen></div></div></div>
+                                <div class="km-frame"><div class="km-glass">
+                                    <iframe class="km-screen" data-km-frame title="{{ __('Kiosk screen') }}" allow="fullscreen" loading="lazy"></iframe>
+                                    <div class="km-off" data-km-off hidden></div>
+                                </div></div>
                                 <div class="km-facts" data-km-facts></div>
                                 <div class="km-log"><header><span>{{ __('Scans today at this kiosk') }}</span><span data-km-count></span></header><ol data-km-log></ol></div>
                             @endif
@@ -1105,158 +1000,58 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 })();
 
 // ── The kiosk monitor ────────────────────────────────────────────────────────
-// Each kiosk's screen as the site sees it, drawn at the kiosk's own 1280 × 800
-// from what it reads from us, refreshed every ten seconds while the section is
-// open. A kiosk that has stopped its heartbeat shows as switched off.
+// The kiosk's own screen — its v8 files, run in a frame at its own 1024 × 600
+// and fed from this system (kiosk-monitor.js) — scaled to the column. While
+// it is on, every scan the kiosk sends is handed to the screen as it happens
+// (a quick poll every two seconds) and drawn in its own result card. A kiosk
+// that has stopped its heartbeat shows as switched off.
 (function () {
     const box = document.getElementById('kioskMonitor');
-    const screen = box && box.querySelector('[data-km-screen]');
-    if (!screen) return;
+    const frame = box && box.querySelector('[data-km-frame]');
+    if (!frame) return;
 
+    const glass   = frame.parentElement;
+    const offBox  = box.querySelector('[data-km-off]');
     const facts   = box.querySelector('[data-km-facts]');
     const checked = box.querySelector('[data-km-checked]');
-    const glass   = screen.parentElement;
-    const logo    = @json($s->logoUrl());
-    const company = @json(mb_strtoupper($name ?: 'Company'));
-    const T = {
-        attendance: @json(__('ATTENDANCE')), enroll: @json(__('ENROLL FINGERPRINT')), payroll: @json(__('MY PAYROLL')),
-        youAre: @json(__('YOU ARE AT')), saved: @json(__('Saved to web')), scan: @json(__('BIOMETRIC SCAN')),
-        onSite: @json(__('WHO IS ON SITE TODAY')), working: @json(__('Working now')), today: @json(__('On site today')), ot: @json(__('Overtime')),
-        none: @json(__('Nobody has scanned in yet today')), capture: @json(__('CAPTURE FINGERPRINT')), workers: @json(__('WORKERS AT THIS SITE')),
-        noFp: @json(__('No fingerprint yet')), fpOn: @json(__('Fingerprint on file')), need: @json(__('NEEDS FINGERPRINT')), have: @json(__('ENROLLED')),
-        viewOnly: @json(__('VIEW ONLY · MONITOR')), off: @json(__('KIOSK IS OFF')), lastScan: @json(__('LAST SCAN')), noScan: @json(__('NO SCANS YET TODAY')),
-    };
-    let current = null, tab = 'attendance', timer = null, data = null;
-    // Live: the last event number read, the scan on screen now, and the
-    // scans turned away since the monitor opened (the board has no row for them).
-    let seq = null, flash = null, flashTimer = null, quick = null, recent = [];
-    const FLASH_MS = 5000;
+    const logBox  = box.querySelector('[data-km-log]'), logCount = box.querySelector('[data-km-count]');
+    const W = 1024, H = 600;
+    const screenUrl = id => @json(url('system-settings/kiosk')) + '/' + id + '/screen';
     const WARN = { already_in: 'ALREADY TIMED IN', no_open: 'NO OPEN TIME IN', just_timed_in: 'JUST TIMED IN',
                    just_timed_out: 'JUST TIMED OUT', session_done: 'SESSION DONE', wrong_shift: 'REJECTED',
                    not_registered: 'NOT REGISTERED YET', mode_buttons: 'PRESS A BUTTON FIRST',
                    no_gps: 'LOCATION NOT CONFIRMED', outside_location: 'LOCATION NOT CONFIRMED' };
 
+    let current = null, data = null, seq = null, recent = [], timer = null, loaded = null;
+    const seen = new Set();   // each scan once, though both polls may bring it
     const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const fp = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 11v3a8 8 0 01-1.5 4.7M8.5 7.2A5 5 0 0117 11v1.5M7 11a5 5 0 01.3-1.8M16.9 16a13 13 0 01-.9 3M5 16.5A12 12 0 006 11a6 6 0 011.2-3.6M12 3a8 8 0 018 8v1M4 11a8 8 0 012-5.3"/></svg>';
-    const t12 = v => { if (!v) return '—'; const m = String(v).match(/^(\d{1,2}:\d{2})\s*([AP]M)$/i); return m ? m[1] + '<small>' + m[2].toUpperCase() + '</small>' : esc(v); };
-    const hrs = v => (v || v === 0) && Number(v) > 0 ? Number(v).toFixed(2) : '—';
-    const stLabel = { working: 'WORKING', ot: 'OVERTIME', lunch: 'ON LUNCH', notback: 'NOT BACK', done: 'DONE' };
 
-    function fit() { const w = glass.clientWidth; screen.style.transform = 'scale(' + (w / 1280) + ')'; }
+    function fit() {
+        const s = glass.clientWidth / W;
+        frame.style.transform = offBox.style.transform = 'scale(' + s + ')';
+    }
     new ResizeObserver(fit).observe(glass);
     document.addEventListener('fullscreenchange', () => setTimeout(fit, 50));
 
-    function clock() {
-        const n = new Date();
-        const c = screen.querySelector('[data-kx-clock]'); if (c) c.textContent = n.toLocaleTimeString('en-GB', { hour12: false });
-        const d = screen.querySelector('[data-kx-date]'); if (d) d.textContent = n.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
-    }
-    setInterval(clock, 1000);
-
-    function attendanceView(s) {
-        const b = s.board || {}, rows = b.records || [], last = s.last;
-        const auto = s.mode === 'auto';
-        const left = flash ? flashCard(s, flash) : `
-            <div class="kx-card"><div class="kx-h">${fp.replace('<svg', '<svg width="18" height="18"')} ${T.scan}</div>
-                <div class="kx-scan">
-                    <div class="kx-fp ${last ? 'hit' + (last.type === 'out' ? ' out' : '') : ''}">${fp}</div>
-                    ${last ? `<div class="big">${T.lastScan}: ${last.type === 'out' ? 'TIME OUT' : 'TIME IN'}</div>
-                               <div class="sub"><span class="kx-who">${esc(last.name)}</span> · ${esc(last.at)} · ${esc(last.ago)}</div>`
-                           : `<div class="big">${T.noScan}</div><div class="sub">${esc(s.site || '')}</div>`}
-                    <div class="kx-inout ${auto ? 'auto' : ''}">${auto
-                        ? `<span>SCAN<small>AUTOMATIC · ${esc(s.session)}</small></span>`
-                        : `<span class="in">TIME IN<small>${esc(s.session)}</small></span><span class="out">TIME OUT<small>${esc(s.session)}</small></span>`}</div>
-                </div>
-                <div class="kx-foot"><span>${esc(s.site || '')}</span><span class="ok">System online</span></div>
-            </div>`;
-        const body = rows.length ? `<div class="kx-scroll"><table class="kx-tbl"><thead><tr><th>EMPLOYEE</th><th>AM IN</th><th>AM OUT</th><th></th><th>PM IN</th><th>PM OUT</th><th>PAID HRS</th><th>OT</th><th>STATUS</th></tr></thead><tbody>
-            ${rows.slice(0, 7).map(r => `<tr class="${r.working ? 'w' : ''}">
-                <td class="nm"><b>${esc(r.name)}<em class="${r.night ? 'n' : ''}">${r.night ? 'NIGHT' : 'DAY'}</em></b><span>${esc(r.position)}</span></td>
-                <td class="${r.am_in ? '' : 'dim'}">${t12(r.am_in)}</td><td class="${r.am_out ? '' : 'dim'}">${t12(r.am_out)}</td><td class="brk"></td>
-                <td class="${r.pm_in ? '' : 'dim'}">${t12(r.pm_in)}</td><td class="${r.pm_out ? '' : 'dim'}">${t12(r.pm_out)}</td>
-                <td class="ot">${hrs(r.total_hours)}</td><td class="${r.overtime_hours > 0 ? 'ot' : 'dim'}">${hrs(r.overtime_hours)}</td>
-                <td><span class="kx-st ${esc(r.state || r.status)}">${stLabel[r.state || r.status] || esc(r.status)}</span></td></tr>`).join('')}
-            </tbody></table></div>` : `<div class="kx-empty">${T.none}</div>`;
-        const sum = b.summary || {};
-        return left + `
-            <div class="kx-card"><div class="kx-h">${T.onSite}<span class="sp"></span><small>${esc(b.kiosk || '')}</small></div>
-                <div class="kx-kpis">
-                    <div style="--c:#34c05a"><b>${b.working ?? 0}</b><span>${T.working}</span></div>
-                    <div style="--c:#eef2f8"><b>${b.total ?? 0}</b><span>${T.today}</span></div>
-                    <div style="--c:#f5b223"><b>${sum.overtime ?? b.overtime ?? 0}</b><span>${T.ot}</span></div>
-                </div>${body}
-            </div>`;
-    }
-
-    // A scan as the kiosk shows it the moment it happens: the verb in its
-    // colour, who, when, and why when it was turned away.
-    function flashCard(s, e) {
-        const verb = e.kind === 'in' ? 'TIME IN' : e.kind === 'out' ? 'TIME OUT'
-                   : e.kind === 'scan' ? 'FINGER READ' : e.kind === 'unknown' ? 'FINGERPRINT NOT RECOGNISED'
-                   : (WARN[e.code] || 'REJECTED');
-        const sub = e.kind === 'in' || e.kind === 'out'
-                  ? [e.session ? e.session + ' SESSION' : '', e.auto ? 'AUTOMATIC' : ''].filter(Boolean).join(' · ')
-                  : e.kind === 'scan' ? 'Waiting for TIME IN or TIME OUT' : (e.message || '');
-        const at = e.time ? String(e.time).replace(/:\d{2}(\s*[AP]M)$/i, '$1') : '';
-        return `<div class="kx-card"><div class="kx-h">${fp.replace('<svg', '<svg width="18" height="18"')} ${T.scan}<span class="sp"></span><small class="kx-live">● LIVE</small></div>
-            <div class="kx-scan kx-res">
-                <div class="kx-fp hit ${e.kind === 'in' ? '' : e.kind === 'scan' ? 'read' : 'out'}">${fp}</div>
-                <div class="kx-verb ${esc(e.kind)}">${esc(verb)}</div>
-                ${e.name ? `<div class="kx-rwho"><div><b class="kx-who">${esc(e.name)}</b><small>${esc(e.position || '')}</small></div><span>${esc(at)}</span></div>` : ''}
-                ${sub ? `<div class="kx-rnote ${esc(e.kind)}">${esc(sub)}</div>` : ''}
-                <div class="kx-rbar"><i style="animation-duration:${FLASH_MS}ms"></i></div>
-            </div>
-            <div class="kx-foot"><span>${esc(s.site || '')}</span><span class="ok">System online</span></div></div>`;
-    }
-
-    function enrollView(s) {
-        const r = s.roster || {}, list = r.employees || [], c = r.counts || {};
-        return `
-            <div class="kx-card"><div class="kx-h">${fp.replace('<svg', '<svg width="18" height="18"')} ${T.capture}</div>
-                <div class="kx-scan"><div class="kx-fp">${fp}</div><div class="big">CHOOSE A NAME FIRST</div>
-                <div class="sub">Details come from the web — only the finger is needed here</div></div></div>
-            <div class="kx-card"><div class="kx-h">${T.workers}</div>
-                <div class="kx-kpis" style="grid-template-columns:1fr 1fr">
-                    <div style="--c:#f5b223"><b>${c.pending ?? 0}</b><span>${T.noFp}</span></div>
-                    <div style="--c:#34c05a"><b>${c.enrolled ?? 0}</b><span>${T.fpOn}</span></div>
-                </div>
-                <div class="kx-scroll"><div class="kx-roster">${list.slice(0, 6).map(e => `<div><div><b>${esc(e.name)}${e.is_new ? '<em>NEW</em>' : ''}</b>
-                    <small>${esc(e.position)} · ${esc(e.employment_label || '')}${e.shift?.name ? ' · ' + esc(e.shift.name) : ''}</small></div>
-                    <span class="kx-badge ${e.enrolled ? 'have' : 'need'}">${e.enrolled ? T.have : T.need}</span></div>`).join('') || `<div class="kx-empty">No workers at this site</div>`}</div></div>
-            </div>`;
-    }
-
-    function payrollView() {
-        return `<div class="kx-card" style="grid-column:1/-1"><div class="kx-lock">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
-            <b>MY PAYROLL</b><span>Each worker sees their own pay here after scanning their finger.<br>It is not shown in the monitor.</span></div></div>`;
-    }
-
-    function render() {
+    // The screen: the kiosk's own page when it is on, a dark screen when not.
+    function showScreen() {
         const s = data && data.screen;
-        if (!s) { screen.innerHTML = ''; return; }
+        if (!s) return;
         if (!s.on) {
             const k = s.kiosk;
-            screen.innerHTML = `<div class="kx-off">
+            offBox.innerHTML = `<div class="kx-off">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 3v8M6.3 6.3a8 8 0 1011.4 0"/></svg>
-                <b>${T.off}</b>
+                <b>{{ __('KIOSK IS OFF') }}</b>
                 <p><strong>${esc(k.name)}</strong> ${k.seen_at ? 'has sent no heartbeat since <strong>' + esc(k.seen_at) + '</strong> (' + esc(k.seen) + ').' : 'has never reported to the web.'}</p>
                 <p>Its screen shows here again on its own once it is switched on and online.</p></div>`;
+            offBox.hidden = false;
+            frame.hidden = true;
+            if (loaded !== null) { frame.src = 'about:blank'; loaded = null; }
             return;
         }
-        screen.innerHTML = `<div class="kx">
-            <div class="kx-top"><span class="kx-logo"><img src="${esc(logo)}" alt=""></span>
-                <div class="kx-co"><b>${esc(company)}</b><small>${esc(s.site || '')} — Attendance Kiosk</small></div>
-                <span class="sp"></span><span class="kx-lang"><span class="on">EN</span><span>TL</span></span>
-                <span class="kx-sess">${esc(s.session)}</span>
-                <span class="kx-clock"><b data-kx-clock></b><small data-kx-date></small></span></div>
-            <div class="kx-strip"><span class="lbl">${T.youAre}</span><span class="kx-site">${esc(s.site || '—')}</span><span class="sp"></span>
-                <span class="ok">✓ ${esc(s.site || '')}</span><span class="saved">${T.saved}</span><span class="saved kx-onair">● LIVE</span></div>
-            <div class="kx-tabs">${[['attendance', T.attendance], ['enroll', T.enroll], ['payroll', T.payroll]].map(([k, l]) =>
-                `<button type="button" data-kx-tab="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>
-            <div class="kx-body">${tab === 'enroll' ? enrollView(s) : tab === 'payroll' ? payrollView() : attendanceView(s)}</div>
-            <span class="kx-viewonly">${T.viewOnly}</span></div>`;
-        clock();
+        offBox.hidden = true;
+        frame.hidden = false;
+        if (loaded !== s.kiosk.id) { loaded = s.kiosk.id; frame.src = screenUrl(s.kiosk.id); }
     }
 
     function renderFacts() {
@@ -1271,8 +1066,8 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
             cell(@json(__('Scanned today')), s.on ? (b.total ?? 0) + ' ' + @json(__('workers')) : '—');
     }
 
-    // Every time in and time out on today's board, newest first.
-    const logBox = box.querySelector('[data-km-log]'), logCount = box.querySelector('[data-km-count]');
+    // Every time in and time out on today's board, and the scans turned away
+    // since the monitor opened, newest first.
     const minutes = v => { const m = String(v || '').match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)$/i); if (!m) return -1; let h = +m[1] % 12; if (m[3].toUpperCase() === 'PM') h += 12; return h * 60 + +m[2]; };
     function renderLog() {
         if (!logBox) return;
@@ -1283,7 +1078,8 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
             if (e.in) ev.push({ t: e.in, who: r.name, type: 'in', ses: e.session });
             if (e.out) ev.push({ t: e.out, who: r.name, type: 'out', ses: e.session, auto: e.auto });
         }));
-        recent.forEach(e => ev.push({ t: String(e.time || '').replace(/:\d{2}(\s*[AP]M)$/i, '$1'), who: e.name || @json(__('Unknown finger')), type: 'rej', label: e.kind === 'unknown' ? 'NOT RECOGNISED' : (WARN[e.code] || 'REJECTED'), fresh: true }));
+        recent.forEach(e => ev.push({ t: String(e.time || '').replace(/:\d{2}(\s*[AP]M)$/i, '$1'), who: e.name || @json(__('Unknown finger')), type: 'rej',
+                                      label: e.kind === 'unknown' ? 'NOT RECOGNISED' : (WARN[e.code] || 'REJECTED'), fresh: true }));
         ev.sort((a, b) => minutes(b.t) - minutes(a.t));
         logCount.textContent = ev.length;
         logBox.innerHTML = ev.length ? ev.map(e => `<li class="${e.fresh ? 'fresh' : ''}"><time>${esc(e.t)}</time><b>${esc(e.who)}</b><span class="${e.type}">${e.label ? esc(e.label) : (e.type === 'in' ? 'TIME IN' : 'TIME OUT') + ' · ' + esc(e.ses) + (e.auto ? ' · AUTO' : '')}</span></li>`).join('')
@@ -1294,26 +1090,9 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
         (data.kiosks || []).forEach(k => {
             const b = box.querySelector('[data-km-kiosk="' + k.id + '"]');
             if (!b) return;
-            b.classList.toggle('on', data.screen && data.screen.kiosk && data.screen.kiosk.id === k.id);
+            b.classList.toggle('on', !!(data.screen && data.screen.kiosk && data.screen.kiosk.id === k.id));
             b.querySelector('i').className = k.state;
         });
-    }
-
-    async function load() {
-        if (!data) {
-            checked.textContent = @json(__('Connecting…'));
-            screen.innerHTML = '<div class="kx-off"><b style="font-size:22px">' + @json(__('CONNECTING TO THE KIOSK…')) + '</b></div>';
-        }
-        try {
-            const next = await ask(false);
-            data = next;
-            current = data.screen && data.screen.kiosk ? data.screen.kiosk.id : current;
-            checked.textContent = '● ' + @json(__('Live')) + ' · ' + data.checked;
-            take(next);
-            render(); renderFacts(); renderLog(); renderPicks(); fit();
-        } catch (e) {
-            checked.textContent = @json(__('Could not reach the server — retrying'));
-        }
     }
 
     async function ask(light) {
@@ -1326,21 +1105,38 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
         return res.json();
     }
 
-    // New scans from the feed: the newest one is shown; a recorded one means
-    // the board has changed, so it is read again at once.
+    // New scans: each goes to the kiosk screen, turned-away ones to the list.
     function take(r) {
         const events = r.events || [];
         if (r.seq !== undefined) seq = r.seq;
-        if (!events.length) return false;
-        events.filter(e => !['in', 'out', 'scan'].includes(e.kind)).forEach(e => recent.push(e));
+        events.forEach(e => {
+            if (seen.has(e.seq)) return;
+            seen.add(e.seq);
+            if (!['in', 'out', 'scan'].includes(e.kind)) recent.push(e);
+            if (frame.contentWindow && !frame.hidden) frame.contentWindow.postMessage({ type: 'kiosk-event', event: e }, location.origin);
+        });
         recent = recent.slice(-20);
-        flash = events[events.length - 1];
-        clearTimeout(flashTimer);
-        flashTimer = setTimeout(() => { flash = null; render(); }, FLASH_MS);
         return events.some(e => e.kind === 'in' || e.kind === 'out');
     }
 
-    // The quick poll, every two seconds: on or off, and anybody scanning.
+    async function load() {
+        if (!data) checked.textContent = @json(__('Connecting…'));
+        try {
+            const next = await ask(false);
+            data = next;
+            current = data.screen && data.screen.kiosk ? data.screen.kiosk.id : current;
+            checked.textContent = '● ' + @json(__('Live')) + ' · ' + data.checked;
+            take(next);
+            showScreen(); renderFacts(); renderLog(); renderPicks(); fit();
+        } catch (e) {
+            checked.textContent = @json(__('Could not reach the server — retrying'));
+        }
+    }
+
+    const visible = () => !box.closest('.ss-sec').hidden && !document.hidden;
+
+    // Every two seconds: on or off, and anybody scanning. The rest every ten,
+    // or at once when a scan was recorded or the kiosk went on or off.
     async function tick() {
         if (visible() && data) {
             try {
@@ -1349,23 +1145,18 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                 data.kiosks = r.kiosks;
                 checked.textContent = '● ' + @json(__('Live')) + ' · ' + r.checked;
                 const recorded = take(r);
-                if (recorded || !!(r.screen && r.screen.on) !== wasOn) { await load(); }
-                else if ((r.events || []).length) { render(); renderLog(); renderPicks(); }
-                else { renderPicks(); }
+                if (recorded || !!(r.screen && r.screen.on) !== wasOn) await load();
+                else { renderLog(); renderPicks(); }
             } catch (e) { /* the slow poll says so */ }
         }
-        quick = setTimeout(tick, 2000);
+        setTimeout(tick, 2000);
     }
-
-    const visible = () => !box.closest('.ss-sec').hidden && !document.hidden;
     function schedule() { clearTimeout(timer); timer = setTimeout(async () => { if (visible()) await load(); schedule(); }, 10000); }
 
     box.addEventListener('click', e => {
         const k = e.target.closest('[data-km-kiosk]');
-        if (k) { current = Number(k.dataset.kmKiosk); tab = 'attendance'; seq = null; flash = null; recent = []; load(); return; }
-        const t = e.target.closest('[data-kx-tab]');
-        if (t) { tab = t.dataset.kxTab; render(); return; }
-        if (e.target.closest('[data-km-refresh]')) load();
+        if (k) { current = Number(k.dataset.kmKiosk); seq = null; recent = []; seen.clear(); load(); return; }
+        if (e.target.closest('[data-km-refresh]')) { if (frame.contentWindow && !frame.hidden) frame.contentWindow.location.reload(); load(); }
         if (e.target.closest('[data-km-full]')) {
             const f = box.querySelector('.km-frame');
             if (document.fullscreenElement) document.exitFullscreen();

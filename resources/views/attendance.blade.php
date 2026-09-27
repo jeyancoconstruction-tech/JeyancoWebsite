@@ -33,7 +33,7 @@
 /* The shifts in one line, and the way to change them. The page reads every
    day against these hours, so they are stated where the reading happens. */
 .atm-sched {
-    display:flex; align-items:center; gap:10px; min-width:0; max-width:100%; height:36px;
+    display:flex; align-items:center; gap:10px; min-width:0; max-width:100%; height:32px;
     padding:0 4px 0 12px; border:1px solid var(--border); border-radius:var(--radius-lg);
     background:var(--surface); box-shadow:var(--shadow-xs);
     color:inherit; text-decoration:none; text-align:left;
@@ -46,7 +46,7 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
 .atm-sched-go {
     display:flex; align-items:center; gap:6px; flex:none; white-space:nowrap;
     font-size:12px; font-weight:700; color:var(--brand);
-    background:var(--brand-subtle); border-radius:var(--radius-sm); padding:6px 9px 6px 10px;
+    background:var(--brand-subtle); border-radius:var(--radius-sm); padding:4px 9px 4px 10px;
 }
 .atm-sched-go i { font-size:10px; }
 
@@ -56,7 +56,7 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
    office can bookmark or send to somebody. */
 .atm-stats { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; margin-bottom:10px; }
 .atm-stat {
-    display:flex; flex-direction:column; gap:2px; padding:9px 14px;
+    display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:baseline; column-gap:10px; row-gap:2px; padding:8px 14px;
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
     box-shadow:var(--shadow-xs); color:inherit; text-decoration:none;
     transition:border-color .15s, box-shadow .15s;
@@ -69,8 +69,9 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
     color:var(--text-secondary);
 }
 .atm-dot { width:8px; height:8px; border-radius:50%; background:var(--atm-dot); flex:none; }
-.atm-stat-num { font-size:22px; font-weight:800; line-height:1.1; color:var(--text-primary); font-variant-numeric:tabular-nums; }
-.atm-stat-sub { font-size:11px; color:var(--text-muted); }
+.atm-stat-lbl { grid-column:1 / -1; }
+.atm-stat-num { font-size:21px; font-weight:800; line-height:1.1; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+.atm-stat-sub { font-size:11.5px; color:var(--text-muted); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .atm .is-brand { --atm-dot:var(--brand); }
 .atm .is-good  { --atm-dot:var(--success); }
 .atm .is-brk   { --atm-dot:var(--atm-brk); }
@@ -154,7 +155,7 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
    filters included, and the list is as long as the crew. Wide enough for
    its columns; narrower than that, it scrolls sideways inside the card. */
 .atm-scroll { overflow-x:auto; }
-.atm-table { width:100%; min-width:1180px; border-collapse:separate; border-spacing:0; }
+.atm-table { width:100%; min-width:1060px; border-collapse:separate; border-spacing:0; }
 .atm-table thead th {
     padding:7px 10px; text-align:left; white-space:nowrap;
     font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
@@ -164,7 +165,7 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
 .atm-grp th.s { text-align:center; }
 .atm-grp th.s span { display:block; padding-bottom:5px; border-bottom:1px solid var(--border); }
 .atm-table tbody td {
-    padding:7px 10px; vertical-align:middle; font-size:12.5px; color:var(--text-primary);
+    padding:5px 9px; vertical-align:middle; font-size:12.5px; color:var(--text-primary);
     background:var(--surface); border-bottom:1px solid var(--border);
 }
 .atm-table td.atm-sep, .atm-table th.atm-sep { border-left:1px dashed var(--border); }
@@ -189,14 +190,14 @@ tr.atm-dayhead td {
 }
 .atm-empty-state i { font-size:1.6rem; opacity:.35; }
 
-.atm-emp { display:flex; align-items:center; gap:10px; min-width:190px; }
+.atm-emp { display:flex; align-items:center; gap:8px; min-width:190px; }
 .atm-ini {
-    display:grid; place-items:center; flex:none; width:34px; height:34px; border-radius:50%;
-    font-size:12px; font-weight:700; color:var(--text-secondary);
+    display:grid; place-items:center; flex:none; width:28px; height:28px; border-radius:50%;
+    font-size:11px; font-weight:700; color:var(--text-secondary);
     background:var(--bg-subtle); border:1px solid var(--border);
 }
-.atm-emp b { display:block; font-size:13.5px; color:var(--text-primary); }
-.atm-emp small { font-size:12px; color:var(--text-muted); }
+.atm-emp b { display:block; font-size:13px; color:var(--text-primary); white-space:nowrap; }
+.atm-emp small { font-size:11.5px; color:var(--text-muted); white-space:nowrap; }
 .atm-site {
     display:inline-flex; align-items:center; gap:4px; margin-left:6px; padding:1px 6px; white-space:nowrap;
     font-size:11px; font-weight:600; color:var(--text-secondary);
@@ -204,13 +205,13 @@ tr.atm-dayhead td {
 }
 .atm-site i { font-size:9px; color:var(--text-muted); }
 
-.atm-shift { display:inline-flex; align-items:center; gap:6px; padding:3px 8px; border-radius:7px; font-size:12px; font-weight:700; white-space:nowrap; }
+.atm-shift { display:inline-flex; align-items:center; gap:6px; padding:2px 7px; border-radius:6px; font-size:11.5px; font-weight:700; white-space:nowrap; }
 .atm-shift i { font-size:11px; }
 .atm-shift.day   { background:var(--warning-soft); color:var(--warning); }
 .atm-shift.night { background:var(--brand-subtle); color:var(--brand); }
-.atm-shift-hrs { display:block; margin-top:4px; font-size:11px; color:var(--text-muted); white-space:nowrap; }
+.atm-shift-hrs { display:block; margin-top:2px; font-size:11px; color:var(--text-muted); white-space:nowrap; }
 
-.atm-punch { display:flex; flex-direction:column; gap:3px; min-width:84px; }
+.atm-punch { display:flex; flex-direction:column; gap:2px; min-width:84px; }
 .atm-t { display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .atm-t.is-mute { color:var(--text-muted); font-weight:500; }
 .atm-edited { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--brand); }
@@ -226,7 +227,7 @@ tr.atm-dayhead td {
 
 /* The day against its shift, an hour either side. Positions come from the
    server as percentages, so the bar is drawn by CSS alone. */
-.atm-tl { position:relative; width:230px; height:22px; }
+.atm-tl { position:relative; width:190px; height:22px; }
 .atm-tl > span { position:absolute; display:block; }
 .atm-tl .base { top:8px; height:6px; border-radius:3px; background:var(--atm-track); }
 .atm-tl .bw   { top:5px; height:12px; border-radius:3px; background:repeating-linear-gradient(135deg, var(--atm-hatch) 0 4px, transparent 4px 8px); }
@@ -240,7 +241,7 @@ tr.atm-dayhead td {
 .atm-tl .now::after { content:""; position:absolute; top:-3px; left:-3px; width:8px; height:8px; border-radius:50%; background:var(--text-primary); }
 /* The shift's own times under the bar, each at the point it marks: the start
    reads from its tick, the end up to its tick, the break centred on it. */
-.atm-tlax { position:relative; width:230px; height:13px; margin-top:2px; font-size:10px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+.atm-tlax { position:relative; width:190px; height:13px; margin-top:2px; font-size:10px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
 .atm-tlax span { position:absolute; top:0; white-space:nowrap; }
 .atm-tlax .is-mid { transform:translateX(-50%); }
 .atm-tlax .is-end { transform:translateX(-100%); }
@@ -248,11 +249,11 @@ tr.atm-dayhead td {
 .atm-hrs { font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .atm-hrs small { display:block; font-size:11px; font-weight:500; color:var(--text-muted); }
 .atm-hrs small.d-inline { display:inline; }
-.atm-hrs .atm-tag { display:block; margin-top:4px; }
+.atm-hrs .atm-tag { display:block; margin-top:2px; }
 
 .atm-status { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .atm-status-tags { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
-.atm-pill { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
+.atm-pill { display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap; }
 .atm-pill .atm-dot { width:7px; height:7px; }
 .atm-pill.good    { background:var(--success-soft); color:var(--success); --atm-dot:var(--success); }
 .atm-pill.warn    { background:var(--warning-soft); color:var(--warning); --atm-dot:var(--warning); }

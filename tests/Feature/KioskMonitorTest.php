@@ -152,6 +152,54 @@ class KioskMonitorTest extends TestCase
             ->assertExactJsonStructure(array_keys($this->postJson('/api/kiosk/scan-attendance', ['fingerprint_id' => '404'])->json()));
     }
 
+    /**
+     * The monitor shows the kiosk's own screen: its v8 files, unchanged, with
+     * kiosk-monitor.js standing in for the Pi, reading from this system.
+     */
+    public function test_the_kiosk_screen_runs_the_kiosks_own_files(): void
+    {
+        $kiosk = $this->kiosk('SITE_A', 5);
+
+        $page = $this->actingAs($this->admin())->get(route('system-settings.kiosk.screen', $kiosk))->assertOk();
+        foreach (['kiosk-monitor.js', 'script.js', 'kiosk-clock.js', 'kiosk-summary.js', 'kiosk-screen.css', 'id="att-panel"', 'id="tab-summary"'] as $bit) {
+            $page->assertSee($bit, false);
+        }
+        foreach (['script.js', 'kiosk-clock.js', 'kiosk-summary.js', 'style.css', 'kiosk-sites.css', 'kiosk-v3.css', 'kiosk-screen.css'] as $file) {
+            $this->assertFileExists(public_path('kiosk-screen/' . $file));
+        }
+    }
+
+    public function test_the_kiosk_screen_reads_this_kiosks_data_without_checking_in(): void
+    {
+        $kiosk = $this->kiosk('SITE_A', 5);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->getJson(route('system-settings.kiosk.screen-api', [$kiosk, 'sites']))
+            ->assertOk()->assertJsonPath('kiosk_code', 'SITE_A')->assertJsonPath('active.id', $kiosk->site_id);
+
+        $v = $this->actingAs($admin)->getJson(route('system-settings.kiosk.screen-api', [$kiosk, 'settings']))
+            ->assertOk()->assertJsonStructure(['success', 'v', 'attendance' => ['mode', 'shifts']])->json('v');
+        $this->actingAs($admin)->getJson(route('system-settings.kiosk.screen-api', [$kiosk, 'settings']) . '?v=' . $v)
+            ->assertJson(['same' => true]);
+
+        $this->actingAs($admin)->getJson(route('system-settings.kiosk.screen-api', [$kiosk, 'today-attendance']))->assertOk()->assertJsonStructure(['records']);
+        $this->actingAs($admin)->getJson(route('system-settings.kiosk.screen-api', [$kiosk, 'roster']))->assertOk()->assertJsonStructure(['employees']);
+
+        $this->assertNull($kiosk->fresh()->settingsReadAt(), 'the monitor is not the kiosk checking in');
+
+        // The kiosk itself still is.
+        $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A')->assertOk();
+        $this->assertNotNull($kiosk->fresh()->settingsReadAt());
+    }
+
+    public function test_a_guest_cannot_see_the_kiosk_screen(): void
+    {
+        $kiosk = $this->kiosk('SITE_A', 5);
+
+        $this->get(route('system-settings.kiosk.screen', $kiosk))->assertRedirect();
+        $this->getJson(route('system-settings.kiosk.screen-api', [$kiosk, 'roster']))->assertUnauthorized();
+    }
+
     public function test_a_guest_cannot_read_the_monitor(): void
     {
         $this->getJson(route('system-settings.kiosk.monitor'))->assertUnauthorized();

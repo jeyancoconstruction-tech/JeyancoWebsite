@@ -192,6 +192,10 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::put('/system-settings/kiosk',      [SystemSettingsController::class, 'updateKiosk'])->name('system-settings.kiosk.update');
     // What each kiosk's screen shows, read only, for the monitor under Kiosks.
     Route::get('/system-settings/kiosk/monitor', [SystemSettingsController::class, 'kioskMonitor'])->name('system-settings.kiosk.monitor');
+    // The kiosk's own screen (its v8 files) for the monitor, and what it reads.
+    Route::get('/system-settings/kiosk/{kiosk}/screen', [SystemSettingsController::class, 'kioskScreen'])->name('system-settings.kiosk.screen');
+    Route::get('/system-settings/kiosk/{kiosk}/screen-api/{what}', [SystemSettingsController::class, 'kioskScreenApi'])
+        ->where('what', 'sites|settings|today-attendance|roster')->name('system-settings.kiosk.screen-api');
     // The page's one save bar: every edited section at once (2026-09-26).
     Route::put('/system-settings/all',        [SystemSettingsController::class, 'updateAll'])->name('system-settings.update-all');
     Route::get('/system-settings/notifications', [SystemSettingsController::class, 'notifications'])->name('system-settings.notifications');

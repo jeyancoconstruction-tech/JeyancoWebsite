@@ -198,6 +198,44 @@ class SystemSettingsController extends Controller
         ] + $feed);
     }
 
+    /**
+     * The kiosk's own screen — its v8 files, unchanged, in public/kiosk-screen
+     * — drawn from this system's data, for the monitor to hold in a frame.
+     */
+    public function kioskScreen(Kiosk $kiosk)
+    {
+        $files = glob(public_path('kiosk-screen/*')) ?: [];
+
+        return view('kiosk-screen', [
+            'kiosk' => $kiosk,
+            // The kiosk's reads go to screen-api/{sites|settings|…}.
+            'api'   => url('system-settings/kiosk/' . $kiosk->id . '/screen-api'),
+            'v'     => $files ? max(array_map('filemtime', $files)) : 1,
+        ]);
+    }
+
+    /**
+     * What the kiosk screen reads, for one kiosk: its sites, its settings,
+     * today's board and its roster — the same answers the device gets. Read
+     * only; asking for the settings here is not the kiosk checking in.
+     */
+    public function kioskScreenApi(Request $request, Kiosk $kiosk, string $what)
+    {
+        $as = Request::create('/', 'GET', ['kiosk_id' => $kiosk->id]);
+        $kiosks = app(KioskController::class);
+
+        return match ($what) {
+            'sites' => response()->json($kiosks->getSites()->getData(true) + [
+                'active'     => $kiosk->site ? ['slug' => Str::slug($kiosk->site->name), 'id' => $kiosk->site->id, 'name' => $kiosk->site->name] : null,
+                'kiosk_code' => $kiosk->code,
+            ]),
+            'settings'         => response()->json($kiosks->settingsAnswer((string) $request->query('v'))),
+            'today-attendance' => $kiosks->todayAttendance($as),
+            'roster'           => $kiosks->roster($as),
+            default            => abort(404),
+        };
+    }
+
     /** One kiosk as the monitor's picker lists it. */
     private function kioskLine(Kiosk $kiosk, Carbon $now): array
     {

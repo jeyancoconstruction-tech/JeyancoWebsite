@@ -1,0 +1,121 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   JEYANCO KIOSK — v3 additions
+   Loads after style.css and kiosk-sites.css. Adds the TIME IN / TIME OUT
+   buttons, the window controls, the new board markers, and the board
+   markers. v4: the 7-inch layout moved to kiosk-screen.css.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── WINDOW CONTROLS ─────────────────────────────────────────────────── */
+.win-ctl { display: flex; gap: 6px; padding-left: 12px; border-left: 1px solid var(--border); position: relative; }
+.win-btn {
+    width: 38px; height: 38px; border-radius: var(--radius-xs);
+    background: var(--surface-3); border: 1px solid var(--border);
+    color: var(--text-2); font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; position: relative;
+}
+.win-btn:hover { border-color: var(--accent); color: var(--accent-2); }
+.win-btn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.win-btn.holding {
+    border: 2px solid var(--warning); color: var(--warning);
+    background: conic-gradient(rgba(242,176,36,.38) calc(var(--hold, 0) * 1%), var(--surface-3) 0);
+}
+.win-tip {
+    position: absolute; top: 46px; right: 0; z-index: 30;
+    background: var(--warning); color: #1a1a1a; font-size: 12px; font-weight: 800;
+    padding: 6px 10px; border-radius: 6px; white-space: nowrap;
+}
+
+/* ── SITE SYNC CHIP ──────────────────────────────────────────────────── */
+.site-sync {
+    font-size: 11px; font-weight: 800; letter-spacing: .4px; padding: 3px 9px; border-radius: 99px;
+    display: inline-flex; gap: 5px; align-items: center; margin-left: 8px;
+}
+.site-sync.ok     { background: var(--success-glow); color: var(--success-2); border: 1px solid var(--success); }
+.site-sync.saving { background: var(--accent-glow); color: var(--accent-2); border: 1px solid var(--accent); }
+.site-sync.bad    { background: var(--danger-glow); color: #ffb3ae; border: 1px solid var(--danger); }
+
+/* ── SESSION PILL AT NIGHT ───────────────────────────────────────────── */
+.session-pill.night { background: rgba(137,87,229,.18); border-color: #8957e5; color: #c3a6ff; }
+
+/* ── TIME IN / TIME OUT ──────────────────────────────────────────────── */
+.clock-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 18px 0; }
+.clock-btn {
+    height: 76px; border-radius: 12px; border: 2px solid; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    font-family: var(--font); font-size: 1.15rem; font-weight: 800; letter-spacing: 1px;
+    transition: transform .1s, box-shadow .2s, opacity .2s;
+    -webkit-tap-highlight-color: transparent;
+}
+.clock-btn i { font-size: 1.2rem; }
+.clock-btn small { font-size: .66rem; letter-spacing: 1px; font-weight: 700; opacity: .9; }
+.clock-btn:active { transform: scale(.97); }
+.clock-btn.in  { background: rgba(46,160,67,.10); border-color: rgba(46,160,67,.55); color: var(--success-2); }
+.clock-btn.out { background: rgba(240,71,62,.08); border-color: rgba(240,71,62,.5); color: var(--danger); }
+.clock-btn.in.glow  { border-color: var(--success); box-shadow: 0 0 0 4px var(--success-glow), 0 0 26px rgba(46,160,67,.35); }
+.clock-btn.out.glow { border-color: var(--danger);  box-shadow: 0 0 0 4px var(--danger-glow),  0 0 26px rgba(240,71,62,.3); }
+.clock-btn.in.on  { background: var(--success); border-color: var(--success); color: #fff; box-shadow: 0 0 0 5px var(--success-glow); }
+.clock-btn.out.on { background: var(--danger);  border-color: var(--danger);  color: #fff; box-shadow: 0 0 0 5px var(--danger-glow); }
+.clock-btn.dim { opacity: .3; }
+.clock-btn:disabled { cursor: default; }
+
+.clock-cap { font-size: .72rem; color: var(--text-muted); text-align: center; margin: 6px 18px 0; }
+.clock-bar { height: 5px; background: var(--surface-3); border-radius: 99px; overflow: hidden; margin: 8px 18px 0; }
+.clock-bar span { display: block; height: 100%; width: 100%; transition: width 1s linear; background: var(--success); }
+.clock-bar.out span { background: var(--danger); }
+
+.fp-ring.armed-in  { border-color: var(--success); box-shadow: 0 0 0 8px var(--success-glow), 0 0 40px var(--success-glow); }
+.fp-ring.armed-in .fp-icon  { color: var(--success-2); }
+.fp-ring.armed-out { border-color: var(--danger);  box-shadow: 0 0 0 8px var(--danger-glow),  0 0 40px var(--danger-glow); }
+.fp-ring.armed-out .fp-icon { color: var(--danger); }
+.fp-ring.muted { border-color: var(--text-muted); }
+.fp-ring.muted .fp-icon { color: var(--text-2); }
+
+/* ── RESULT ──────────────────────────────────────────────────────────── */
+.result-box.none { border-left-color: var(--text-muted); }
+.result-box.rej  { border-left-color: var(--danger); }
+.result-box.auto { border-left-color: var(--warning); }
+.result-box.in   { border-left-color: var(--success); }
+.result-box.out  { border-left-color: var(--danger); }
+.result-badge.none { background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border); }
+.result-badge.rej  { background: var(--danger-glow); color: #ff8a82; border: 1px solid var(--danger); }
+.result-note {
+    margin: 0 18px; padding: 8px 11px; border-radius: 8px; font-size: .8rem; line-height: 1.4;
+    display: flex; gap: 8px; align-items: flex-start;
+    color: var(--warning); background: var(--warning-glow); border: 1px solid rgba(242,176,36,.5);
+}
+.result-note.good { color: var(--success-2); background: var(--success-glow); border-color: rgba(46,160,67,.5); }
+.result-note.info { color: var(--text-2); background: var(--surface-2); border-color: var(--border); }
+.result-note.bad  { color: #ff8a82; background: var(--danger-glow); border-color: rgba(240,71,62,.5); }
+
+/* ── BOARD MARKERS ───────────────────────────────────────────────────── */
+.mon-tap { margin-left: auto; font-size: .68rem; font-weight: 600; letter-spacing: .3px; color: var(--text-muted); text-transform: none; }
+.mon-tap + .live-dot { margin-left: 10px; }
+.shift-tag { font-size: .6rem; font-weight: 800; letter-spacing: .5px; padding: 0 5px; border-radius: 3px; margin-left: 6px; vertical-align: 1px; }
+.shift-tag.day   { background: rgba(242,176,36,.14); color: var(--warning); }
+.shift-tag.night { background: rgba(137,87,229,.2); color: #c3a6ff; }
+.x2 { font-size: .6rem; font-weight: 800; color: var(--accent-2); background: var(--accent-glow);
+      border: 1px solid var(--accent); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+.auto-tag { font-size: .58rem; font-weight: 800; color: var(--warning); border: 1px solid var(--warning);
+            border-radius: 4px; padding: 0 3px; margin-left: 4px; }
+.t-val.auto { color: var(--warning); }
+.st-badge.st-review { background: var(--warning-glow); color: var(--warning); border: 1px solid var(--warning); }
+.monitor-table tbody tr { cursor: pointer; }
+.monitor-table tbody tr.mon-empty { cursor: default; }
+.mon-chev { color: var(--text-muted); font-size: .7rem; opacity: .6; }
+
+/* ── DETAIL MODAL (extends style.css .emp-modal) ─────────────────────── */
+.emp-sessions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px 20px 4px; }
+.emp-sbox { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+.emp-sbox-h { display: flex; justify-content: space-between; font-size: .7rem; font-weight: 800; letter-spacing: 1px;
+              color: var(--text-muted); text-transform: uppercase; }
+.emp-ent { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.emp-ent .in { color: var(--success-2); } .emp-ent .out { color: #ff8a82; } .emp-ent .out.auto { color: var(--warning); }
+.emp-ent .ar { color: var(--text-muted); font-size: .75rem; }
+.emp-ent .open { color: var(--success-2); font-size: .72rem; font-weight: 800; letter-spacing: .5px; }
+.emp-ent .none { color: var(--border); }
+.emp-modal-totals.three { grid-template-columns: 1fr 1fr 1fr; padding-top: 12px; }
+
+/* ── PAYROLL QUICK QUESTIONS ─────────────────────────────────────────── */
+.chat-quick { display: grid; grid-template-columns: repeat(3, 1fr); }
+.chat-quick button { border-radius: var(--radius-sm); display: flex; gap: 6px; align-items: center; justify-content: center; text-align: center; }
+.chat-quick button i { color: var(--accent-2); }

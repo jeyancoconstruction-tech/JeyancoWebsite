@@ -18,6 +18,16 @@
 
 .emp-dialog { max-width: 620px; }
 
+/* A modal whose <form> holds both the body and the footer. Bootstrap's
+   scrollable dialog scrolls .modal-body, a direct child of .modal-content;
+   with the form in between, a tall form (File Leave with its calendar, on a
+   laptop) pushed the footer — and its Save button — below the screen. The
+   form is made the column instead: header and footer stay, the body scrolls. */
+.modal-dialog-scrollable .emp-modal > form { display: flex; flex-direction: column; min-height: 0; max-height: 100%; overflow: hidden; }
+.modal-dialog-scrollable .emp-modal > form > .emp-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.modal-dialog-scrollable .emp-modal > form > .emp-head,
+.modal-dialog-scrollable .emp-modal > form > .emp-foot { flex: none; }
+
 .emp-modal {
     border: 1px solid var(--border, #e4e9f0) !important;
     border-radius: var(--radius-lg, 12px) !important;

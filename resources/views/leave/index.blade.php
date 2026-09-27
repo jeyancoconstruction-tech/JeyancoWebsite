@@ -683,10 +683,10 @@
     color: var(--text-secondary); display: grid; place-items: center; cursor: pointer; font-size: 11px;
 }
 .lvc-nav:hover { border-color: var(--brand); color: var(--brand); }
-.lvc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.lvc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 .lvc-dow span { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); padding: 2px 0 4px; }
 .lvc-day {
-    height: 32px; border: 1px solid transparent; border-radius: 7px; background: none; cursor: pointer;
+    height: 28px; border: 1px solid transparent; border-radius: 7px; background: none; cursor: pointer;
     font-size: 12.5px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums;
 }
 .lvc-day:hover { background: var(--bg-subtle); border-color: var(--border-md); }

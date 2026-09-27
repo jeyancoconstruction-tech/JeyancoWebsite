@@ -480,6 +480,18 @@ class KioskController extends Controller
      */
     public function getSettings(Request $request)
     {
+        $this->noteSettingsRead($request);
+
+        return response()->json($this->settingsAnswer((string) $request->query('v')));
+    }
+
+    /**
+     * What /settings answers, for a kiosk that holds version $v. Shared with
+     * the kiosk monitor in System Settings, which reads the same settings
+     * without being counted as the kiosk checking in.
+     */
+    public function settingsAnswer(string $v = ''): array
+    {
         $system = SystemSetting::current();
 
         // How the kiosk records a scan, and the hours of every shift. The
@@ -504,18 +516,16 @@ class KioskController extends Controller
         // costs next to nothing.
         $version = substr(sha1(json_encode($attendance)), 0, 16);
 
-        $this->noteSettingsRead($request);
-
-        if ((string) $request->query('v') === $version) {
-            return response()->json(['success' => true, 'same' => true, 'v' => $version]);
+        if ($v === $version) {
+            return ['success' => true, 'same' => true, 'v' => $version];
         }
 
-        return response()->json([
+        return [
             'success'     => true,
             'v'           => $version,
             'labor_types' => LaborType::select('id', 'name', 'daily_rate')->get(),
             'attendance'  => $attendance,
-        ]);
+        ];
     }
 
     /**

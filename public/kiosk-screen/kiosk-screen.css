@@ -1,0 +1,627 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   JEYANCO KIOSK — screen layer (v4)
+   Loads LAST, after style.css, kiosk-sites.css and kiosk-v3.css.
+
+   One job: every tab fits the screen it runs on, and nothing else fights
+   it. It replaces kiosk-sites.css §1 ("the whole page scrolls"), §7 and
+   FIX 1–5, and the two 7-inch blocks that ended kiosk-v3.css — those are
+   deleted from the v4 copies of both files, not overridden.
+
+   Three screen profiles, and they do not overlap:
+     S  height ≤ 520px          800×480  (official Pi 7")
+     M  height 521–760px        1024×600 (HDMI 7")
+     L  anything taller         a monitor
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root { --pad: 18px; --gap: 16px; --left: 380px; }
+
+/* Hidden means hidden. A class that sets `display: flex` or `grid` beats the
+   browser's own [hidden] rule, which once left the "PM IN" line on screen
+   beside "TIME IN is closed". */
+[hidden] { display: none !important; }
+
+/* ── ONE SCREEN, ALWAYS ──────────────────────────────────────────────────
+   The page never scrolls. Header, site bar and tabs keep their height; the
+   active tab takes what is left; the lists inside it scroll by themselves. */
+html, body { height: 100%; min-height: 0; overflow: hidden; }
+body { display: flex; flex-direction: column; }
+.top-bar, .site-bar, .site-warning, .tab-nav { position: static; flex: none; }
+.tab-content.active { flex: 1 1 auto; min-height: 0; }
+
+.kiosk-main { overflow: hidden; align-items: stretch; padding: var(--pad); gap: var(--gap); }
+#tab-attendance.kiosk-main,
+#tab-register.kiosk-main,
+#tab-askai.kiosk-main { grid-template-columns: var(--left) minmax(0, 1fr); }
+
+.panel { min-height: 0; max-height: 100%; overflow: hidden; }
+.monitor-table-wrap, .roster-list, .chat-messages, .attn-list {
+    flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto;
+    -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+}
+.monitor-table-wrap::-webkit-scrollbar, .roster-list::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar, .attn-list::-webkit-scrollbar { width: 10px; }
+.monitor-table-wrap::-webkit-scrollbar-thumb, .roster-list::-webkit-scrollbar-thumb,
+.chat-messages::-webkit-scrollbar-thumb, .attn-list::-webkit-scrollbar-thumb {
+    background: var(--border); border-radius: 8px; border: 2px solid var(--surface);
+}
+
+/* The scan column: the fingerprint block gives way, the buttons never do. */
+.scan-panel { display: flex; flex-direction: column; }
+.scan-panel > .panel-label, .scan-panel > .site-info, .scan-panel > .panel-foot,
+.scan-panel > .clock-btns, .scan-panel > .clock-cap, .scan-panel > .day-strip { flex: none; }
+#tab-register .scan-panel > .fp-display { flex: 1 1 auto; min-height: 0; overflow: hidden; justify-content: center; }
+#tab-register .enroll-who, #tab-register .enroll-steps, #tab-register .reg-status { flex: none; }
+#tab-register .log-panel, #tab-askai .chat-panel { display: flex; flex-direction: column; }
+#tab-register .roster-stats { flex: none; }
+#tab-askai .scan-panel > .fp-display { flex: 1 1 auto; min-height: 0; overflow: hidden; justify-content: center; }
+#tab-askai .chat-body { flex: 1 1 auto; min-height: 0; }
+#tab-askai .pay-card { flex: none; max-height: 58%; overflow-y: auto; }
+/* The questions stay one tidy row: tapped, never typed. */
+.chat-quick { flex: none; }
+/* Block, not flex: a flex button cannot show "…" and clips both ends. */
+.chat-quick .quick-q { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; text-align: center; }
+#tab-askai .result-box .result-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-locked { flex: 1 1 auto; min-height: 0; }
+.fp-ring { flex: none; aspect-ratio: 1 / 1; }
+
+/* ── TABS — four equal tabs that never wrap ──────────────────────────── */
+.tab-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 0 var(--pad); }
+.tab-btn { justify-content: center; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ═══ SCAN PANEL ════════════════════════════════════════════════════════ */
+.panel-label .mode-chip { margin-left: auto; }
+.mode-chip {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    font-size: .62rem; font-weight: 800; letter-spacing: 1px;
+    padding: 3px 9px; border-radius: 99px;
+    color: var(--text-2); background: var(--surface-3); border: 1px solid var(--border);
+}
+.mode-chip i { font-size: .7rem; color: inherit; }
+.mode-chip.auto { color: var(--success-2); background: var(--success-glow); border-color: var(--success); }
+
+/* The ring and the result take turns in one box of fixed size, so a
+   result never pushes anything off the screen. */
+.fp-stage { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+.fp-stage .fp-display { flex: 1; min-height: 0; padding: 12px 16px; gap: 10px; justify-content: center; }
+.fp-ring.auto { border-color: rgba(46,160,67,.65); box-shadow: 0 0 0 8px rgba(46,160,67,.08); }
+.fp-ring.auto .fp-icon { color: var(--success-2); }
+.fp-display .clock-bar { width: 78%; margin: 0; flex: none; }
+.fp-display .clock-bar[hidden] { display: none; }
+.fp-display .clock-bar span { transition: none; }
+
+.scan-result {
+    position: absolute; inset: 10px 16px; display: none;
+    flex-direction: column; justify-content: center; gap: 9px;
+}
+.scan-panel.has-result .fp-display { visibility: hidden; }
+.scan-panel.has-result .scan-result { display: flex; }
+
+.sr-verb {
+    display: flex; align-items: center; justify-content: center; gap: 10px; flex: none;
+    min-height: 54px; padding: 4px 10px; border-radius: 10px; color: #fff; text-align: center;
+    font-size: 1.35rem; font-weight: 900; letter-spacing: 2px; line-height: 1.1;
+}
+.sr-verb small { font-size: .7rem; font-weight: 800; letter-spacing: 1px; opacity: .85; }
+.scan-result.in   .sr-verb { background: var(--success); box-shadow: 0 0 0 4px var(--success-glow); }
+.scan-result.out  .sr-verb { background: var(--danger);  box-shadow: 0 0 0 4px var(--danger-glow); }
+.scan-result.none .sr-verb { background: var(--surface-3); color: var(--text); border: 1px solid var(--border); font-size: 1.05rem; letter-spacing: 1.2px; }
+.scan-result.rej  .sr-verb { background: var(--danger-glow); color: #ff8a82; border: 1px solid var(--danger); font-size: 1.05rem; letter-spacing: 1.2px; }
+.scan-result.warn .sr-verb { background: var(--warning-glow); color: var(--warning); border: 1px solid var(--warning); font-size: 1.05rem; letter-spacing: 1.2px; }
+.sr-who { display: flex; align-items: center; gap: 11px; flex: none; min-width: 0; }
+.sr-who[hidden] { display: none; }
+.sr-who > div { min-width: 0; }
+.sr-av {
+    width: 40px; height: 40px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; font-size: 1rem;
+    background: var(--accent-glow); border: 1px solid var(--accent); color: var(--accent-2);
+}
+.sr-name { font-size: 1.05rem; font-weight: 800; color: var(--text); line-height: 1.2;
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sr-sub  { font-size: .74rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Who, and when, on one line — so the card fits above the buttons. */
+.sr-who { padding: 9px 11px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); }
+.sr-id { flex: 1; min-width: 0; }
+.sr-clock { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.sr-clock[hidden] { display: none; }
+.sr-clock b { font-size: 1.3rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: .3px; white-space: nowrap; line-height: 1.1; }
+.sr-clock span { font-size: .6rem; font-weight: 800; letter-spacing: .8px; color: var(--text-muted); white-space: nowrap; }
+.sr-notes { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow: hidden; }
+.scan-result .result-note { margin: 0; }
+.sr-bar { height: 4px; border-radius: 99px; background: var(--surface-3); overflow: hidden; flex: none; }
+.sr-bar span { display: block; height: 100%; width: 100%; background: var(--success); }
+.scan-result.out .sr-bar span, .scan-result.rej .sr-bar span { background: var(--danger); }
+.scan-result.none .sr-bar span { background: var(--text-muted); }
+.scan-result.warn .sr-bar span { background: var(--warning); }
+
+/* Automatic mode: what a scan does right now, in two lines. */
+.auto-now {
+    width: 100%; display: grid; gap: 6px; padding: 9px 11px; flex: none;
+    border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border);
+}
+.auto-now[hidden] { display: none; }
+.an-k { font-size: .62rem; font-weight: 800; letter-spacing: 1.2px; color: var(--text-muted); }
+.an-r { display: flex; align-items: center; gap: 8px; font-size: .76rem; color: var(--text-2); }
+.an-p { flex: none; min-width: 64px; text-align: center; font-size: .64rem; font-weight: 800; letter-spacing: .8px;
+        padding: 3px 6px; border-radius: 5px; }
+.an-p.in  { color: var(--success-2); background: var(--success-glow); border: 1px solid var(--success); }
+.an-p.out { color: #ff8a82; background: var(--danger-glow); border: 1px solid var(--danger); }
+
+.scan-panel .clock-btns { margin: 0 16px 10px; }
+.scan-panel .clock-btns[hidden], .scan-panel .clock-cap[hidden] { display: none; }
+.scan-panel .clock-cap  { margin: -4px 16px 8px; }
+
+/* ── The day, as a strip: AM · 12 lunch · PM · OT, with a "now" line ── */
+.day-strip { margin: 0 16px 12px; }
+.ds-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px;
+           font-size: .6rem; font-weight: 800; letter-spacing: 1px; color: var(--text-muted); white-space: nowrap; }
+.ds-head b { color: var(--text-2); }
+.ds-track { position: relative; height: 22px; border-radius: 6px; overflow: hidden;
+            background: var(--surface-3); border: 1px solid var(--border); }
+.ds-seg { position: absolute; top: 0; bottom: 0; display: grid; place-items: center;
+          font-size: .58rem; font-weight: 800; letter-spacing: .8px; white-space: nowrap; overflow: hidden; }
+.ds-seg.work  { background: rgba(47,129,247,.20); color: var(--accent-2); }
+.ds-seg.lunch { background: repeating-linear-gradient(45deg, rgba(242,176,36,.22) 0 4px, transparent 4px 8px); color: var(--warning); }
+.ds-seg.ot    { background: rgba(242,176,36,.09); color: var(--warning); }
+.ds-cut { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--warning); }
+.ds-now { position: absolute; top: -1px; bottom: -1px; width: 3px; margin-left: -1px; background: #fff; border-radius: 2px;
+          box-shadow: 0 0 0 2px rgba(255,255,255,.18); }
+.ds-ticks { position: relative; height: 13px; margin-top: 3px; font-size: .58rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.ds-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ds-ticks span.first { transform: none; }
+.ds-ticks span.last { transform: translateX(-100%); }
+
+/* ═══ THE BOARD on the Attendance tab — names and times, no totals ══════ */
+.monitor-panel { display: flex; flex-direction: column; }
+.monitor-table thead tr.grp th {
+    top: 0; height: 24px; padding: 4px 5px; font-size: .58rem; letter-spacing: 1px;
+    color: var(--accent-2); border-bottom: 1px solid var(--border); background: var(--surface-2);
+}
+.monitor-table thead tr.grp th.g { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+.monitor-table thead tr + tr th { top: 24px; }
+.monitor-table th.c-gap, .monitor-table td.c-gap {
+    width: 12px; min-width: 12px; padding: 0 !important;
+    background: repeating-linear-gradient(45deg, rgba(242,176,36,.16) 0 3px, transparent 3px 7px) !important;
+}
+.monitor-table thead tr.grp th.c-gap { color: var(--warning); font-size: .52rem; background: var(--surface-2) !important; }
+.monitor-table tbody td.c-gap { border-bottom-color: transparent; }
+.t-val small { font-size: .68em; font-weight: 700; color: var(--text-muted); margin-left: 2px; }
+.t-val.auto small { color: var(--warning); }
+.mon-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.st-badge.st-lunch   { background: var(--warning-glow); color: var(--warning); border: 1px solid var(--warning); }
+.st-badge.st-notback { background: transparent; color: var(--warning); border: 1px dashed var(--warning); }
+.st-badge.st-ot      { background: rgba(242,176,36,.2); color: var(--warning); border: 1px solid var(--warning); }
+.st-badge.st-ot .st-pulse { background: var(--warning); }
+
+/* The detail modal: never taller than the screen. */
+.emp-modal { max-height: calc(100vh - 24px); }
+.emp-modal-overlay { padding: 12px; }
+
+/* ═══ SUMMARY TAB — every total the kiosk has, in one place ═════════════ */
+#tab-summary.kiosk-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.sum-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.stile {
+    position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 13px; align-items: center; padding: 10px 14px 10px 17px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px;
+}
+.stile::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--border); }
+.stile .n { grid-row: span 2; min-width: 1.3ch; font-size: 2.1rem; font-weight: 800; line-height: 1; color: var(--text);
+            font-variant-numeric: tabular-nums; }
+.stile .l { font-size: .8rem; font-weight: 700; color: var(--text-2); display: flex; align-items: center; gap: 6px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stile .l i { font-size: .78rem; color: var(--text-muted); }
+.stile .s { font-size: .68rem; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stile.ok::before   { background: var(--success); }  .stile.ok .n   { color: var(--success-2); }
+.stile.info::before { background: var(--accent); }
+.stile.warn::before { background: var(--warning); }  .stile.warn .n { color: var(--warning); }
+.stile.live::before { background: var(--warning); }  .stile.live .n { color: var(--warning); }
+.stile.live .n::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 6px; vertical-align: middle;
+                        border-radius: 50%; background: var(--warning); animation: live-pulse 1.4s infinite; }
+.stile.bad::before  { background: var(--danger); }   .stile.bad .n  { color: #ff8a82; }
+.stile.zero .n { color: var(--text-muted); }
+.stile.zero::before { background: var(--border); }
+.stile.zero .n::after { display: none; }
+
+.sum-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--gap); min-height: 0; }
+.sum-row .panel { display: flex; flex-direction: column; }
+.sum-note { margin-left: auto; font-size: .64rem; font-weight: 600; letter-spacing: .3px; color: var(--text-muted); text-transform: none;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.punches { display: grid; grid-template-columns: 1fr 1fr 26px 1fr 1fr; gap: 8px; padding: 12px 16px 10px; flex: none; }
+.pc { padding: 9px 11px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border); border-top-width: 3px; min-width: 0; }
+.pc.in  { border-top-color: var(--success); }
+.pc.out { border-top-color: var(--danger); }
+.pc-k { font-size: .64rem; font-weight: 800; letter-spacing: 1px; color: var(--text-muted); }
+.pc-n { font-size: 1.75rem; font-weight: 800; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
+.pc-s { font-size: .64rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 1em; }
+.pc-gap { display: grid; place-items: center; border-radius: 7px;
+          background: repeating-linear-gradient(45deg, rgba(242,176,36,.18) 0 4px, transparent 4px 9px);
+          border: 1px dashed rgba(242,176,36,.45); }
+.pc-gap span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: .56rem; font-weight: 800; letter-spacing: 1px; color: var(--warning); }
+.sum-sessions .day-strip { margin: 2px 16px 0; flex: none; }
+.sum-sessions .ds-track { height: 26px; }
+.sum-night { display: flex; align-items: center; gap: 10px; margin: 12px 16px 0; padding: 9px 12px; border-radius: 9px; flex: none;
+             background: rgba(137,87,229,.08); border: 1px solid rgba(137,87,229,.35); font-size: .76rem; color: var(--text-2); }
+.sum-night[hidden] { display: none; }
+.sum-night .shift-tag { margin-left: 0; }
+.sum-night b { color: var(--text); }
+.sum-night span.r { margin-left: auto; color: var(--text-muted); font-size: .7rem; white-space: nowrap; }
+.sum-foot { margin-top: auto; padding: 9px 16px; border-top: 1px solid var(--border); background: var(--surface-2); flex: none;
+            display: flex; gap: 16px; font-size: .7rem; color: var(--text-muted); }
+.sum-foot b { color: var(--text-2); }
+.sum-foot .bad { color: var(--danger); font-weight: 700; }
+
+.attn-list { padding: 4px 0; }
+.attn-row { display: flex; align-items: center; gap: 11px; padding: 9px 16px; border-bottom: 1px solid var(--border-soft); }
+.attn-row:last-child { border-bottom: none; }
+.attn-row > div { min-width: 0; }
+.attn-ic { width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: .8rem; }
+.attn-ic.ot   { background: var(--warning-glow); color: var(--warning); border: 1px solid var(--warning); }
+.attn-ic.auto { background: var(--warning-glow); color: var(--warning); border: 1px dashed var(--warning); }
+.attn-ic.home { background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border); }
+.attn-ic.late { background: var(--accent-glow); color: var(--accent-2); border: 1px solid var(--accent); }
+.attn-t { font-size: .9rem; font-weight: 700; color: var(--text); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.attn-d { font-size: .7rem; color: var(--text-muted); margin-top: 2px; }
+.attn-v { margin-left: auto; font-size: .88rem; font-weight: 800; color: var(--warning); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.attn-v.muted { color: var(--text-muted); font-weight: 700; font-size: .72rem; }
+.attn-empty { padding: 30px 16px; text-align: center; color: var(--text-muted); font-size: .86rem; line-height: 1.5; }
+.attn-empty i { display: block; font-size: 1.6rem; margin-bottom: 8px; color: var(--success-2); opacity: .8; }
+
+/* ═══ M · 1024×600 ══════════════════════════════════════════════════════ */
+@media (min-height: 521px) and (max-height: 760px) {
+    :root { --pad: 12px; --gap: 12px; --left: 330px; }
+
+    .top-bar { padding: 7px 16px; }
+    .brand-logo { width: 38px; height: 38px; }
+    .brand-name { font-size: .95rem; }
+    .brand-sub  { font-size: .68rem; margin-top: 2px; }
+    .header-right { gap: 12px; }
+    .clock-time { font-size: 1.4rem; }
+    .clock-date { font-size: .62rem; margin-top: 3px; }
+    .session-pill { font-size: .7rem; padding: 5px 10px; }
+    .lang-opt { padding: 5px 11px; font-size: .72rem; }
+    .win-btn { width: 34px; height: 34px; font-size: 13px; }
+
+    .site-bar { padding: 6px 16px; gap: 12px; }
+    .site-bar-label { font-size: .64rem; }
+    .site-opt { padding: 7px 14px; font-size: .8rem; }
+    .site-bar-current { font-size: .78rem; }
+    .site-warning { padding: 7px 16px; font-size: .74rem; }
+    .tab-btn { padding: 11px 8px; font-size: .74rem; letter-spacing: .8px; }
+
+    .panel-label { padding: 9px 14px; font-size: .7rem; letter-spacing: 1.2px; }
+    .fp-ring { width: 104px; height: 104px; }
+    .fp-icon { font-size: 3rem; }
+    .scan-panel.mode-auto .fp-ring { width: 112px; height: 112px; }
+    .scan-panel.mode-auto .fp-icon { font-size: 3.2rem; }
+    .fp-status-text { font-size: .9rem; }
+    .fp-hint { font-size: .76rem; line-height: 1.4; }
+    .clock-btn { height: 60px; font-size: 1rem; }
+    .site-info { padding: 8px 14px; }
+    .site-row { font-size: .74rem; }
+
+    .monitor-table { font-size: .8rem; }
+    .monitor-table thead th { padding: 7px 4px; font-size: .6rem; }
+    .monitor-table tbody td { padding: 8px 4px; font-size: .8rem; }
+    .monitor-table .col-emp { min-width: 0; max-width: 190px; padding-left: 12px !important; }
+    .mon-name { font-size: .86rem; }
+    .mon-sub  { font-size: .68rem; }
+    .t-val, .t-total { font-size: .8rem; }
+    .st-badge { font-size: .6rem; padding: 4px 8px; }
+    .ot-badge { font-size: .72rem; padding: 2px 7px; }
+
+    /* Enrol + payroll: the same two columns, tightened to fit */
+    .enroll-who { margin: 10px 14px 0; padding: 10px 12px; }
+    .who-name { font-size: 1.1rem; }
+    .who-sub { font-size: .8rem; }
+    .enroll-steps { padding: 2px 12px 8px; }
+    .step-dot { width: 28px; height: 28px; font-size: .74rem; }
+    .step-line { width: 22px; margin-bottom: 17px; }
+    .btn-enroll { padding: 12px; font-size: .88rem; }
+    .panel-foot { padding: 10px 14px; margin-top: 0; }
+    .roster-stats { padding: 10px 12px; gap: 9px; }
+    .rstat { padding: 9px 12px; }
+    .rstat-num { font-size: 1.45rem; }
+    .roster-item { padding: 11px 13px; }
+    .roster-name { font-size: 1rem; }
+    .reg-list-note { padding: 8px 14px; font-size: .72rem; }
+    .pay-card { margin: 10px 12px 0; padding: 12px 14px; }
+    .chat-locked { padding: 20px; }
+    .quick-q { padding: 8px 10px; font-size: .74rem; }
+    /* The ring already says VERIFIED; the badge only crowded the name. */
+    #tab-askai .result-box { margin: 0 14px 10px; padding: 10px 12px; gap: 10px; }
+    #tab-askai .result-box .result-badge { display: none; }
+    #tab-askai .result-avatar { width: 38px; height: 38px; font-size: 1rem; }
+
+    .stile .n { font-size: 1.9rem; }
+    .pc-n { font-size: 1.55rem; }
+
+    /* Room for a whole name beside the time in the result card */
+    .sr-name { font-size: .98rem; }
+    .sr-clock b { font-size: 1.12rem; }
+    .sr-av { width: 36px; height: 36px; font-size: .9rem; }
+    .sr-who { gap: 9px; padding: 8px 10px; }
+}
+
+/* ═══ S · 800×480 ═══════════════════════════════════════════════════════ */
+@media (max-height: 520px) {
+    :root { --pad: 8px; --gap: 8px; --left: 262px; --radius: 10px; --radius-sm: 7px; }
+
+    body { font-size: 15px; }
+    .top-bar { padding: 5px 10px; gap: 10px; }
+    .brand { gap: 10px; }
+    .brand-logo { width: 32px; height: 32px; padding: 3px; }
+    .brand-name { font-size: .86rem; letter-spacing: .5px; }
+    .brand-sub, .clock-date, .session-pill i { display: none; }
+    .header-right { gap: 8px; }
+    .clock-time { font-size: 1.12rem; }
+    .session-pill { font-size: .62rem; padding: 4px 8px; }
+    .lang-opt { padding: 4px 9px; font-size: .66rem; }
+    .win-ctl { padding-left: 8px; gap: 5px; }
+    .win-btn { width: 30px; height: 30px; font-size: 12px; }
+    .win-tip { top: 36px; font-size: 11px; }
+
+    .site-bar { padding: 4px 10px; gap: 8px; flex-wrap: nowrap; }
+    .site-bar-btns { flex-wrap: nowrap; overflow: hidden; }
+    .site-bar-label { font-size: .58rem; letter-spacing: 1px; }
+    .site-opt { padding: 6px 11px; font-size: .74rem; }
+    .site-bar-current { font-size: .7rem; }
+    .site-bar-current small, .site-sync { display: none; }
+    .site-warning { padding: 5px 10px; font-size: .66rem; }
+    .tab-btn { padding: 8px 4px; font-size: .64rem; letter-spacing: .5px; gap: 6px; }
+    .tab-btn i { font-size: .8rem; }
+
+    .panel-label { padding: 7px 10px; font-size: .64rem; letter-spacing: .8px; gap: 7px; }
+    .mode-chip { font-size: .56rem; padding: 2px 7px; }
+    .fp-stage .fp-display, .fp-display { padding: 6px 10px; gap: 7px; }
+    .fp-ring { width: 74px; height: 74px; border-width: 2.5px; }
+    .fp-icon { font-size: 2.1rem; }
+    .scan-panel.mode-auto .fp-ring { width: 80px; height: 80px; }
+    .scan-panel.mode-auto .fp-icon { font-size: 2.3rem; }
+    .fp-status-text { font-size: .78rem; letter-spacing: .6px; }
+    .fp-hint { font-size: .66rem; line-height: 1.35; }
+    .auto-now { padding: 6px 8px; gap: 4px; }
+    .an-r { font-size: .64rem; gap: 6px; }
+    .an-p { min-width: 52px; font-size: .56rem; padding: 2px 4px; }
+    .an-k { font-size: .56rem; }
+
+    .scan-panel .clock-btns { margin: 0 10px 6px; gap: 6px; }
+    .clock-btn { height: 46px; font-size: .86rem; gap: 1px; border-radius: 9px; }
+    .clock-btn i { font-size: .8rem; }
+    .clock-btn small { font-size: .52rem; }
+    .scan-panel .clock-cap { display: none; }
+
+    .scan-result { inset: 6px 10px; gap: 6px; }
+    .sr-verb { min-height: 38px; font-size: 1rem; letter-spacing: 1.4px; border-radius: 8px; }
+    .scan-result.none .sr-verb, .scan-result.rej .sr-verb, .scan-result.warn .sr-verb { font-size: .8rem; }
+    .sr-av { width: 30px; height: 30px; font-size: .8rem; }
+    .sr-name { font-size: .86rem; }
+    .sr-sub { font-size: .64rem; }
+    .sr-who { padding: 6px 8px; gap: 8px; }
+    .sr-clock b { font-size: .98rem; }
+    .sr-clock span { font-size: .5rem; letter-spacing: .5px; }
+    .scan-result .result-note { font-size: .64rem; padding: 5px 8px; }
+
+    .day-strip { margin: 0 10px 7px; }
+    .ds-head { font-size: .54rem; margin-bottom: 3px; }
+    .ds-track { height: 17px; }
+    .ds-seg { font-size: .5rem; }
+    .ds-ticks { font-size: .52rem; height: 11px; }
+    .site-info { padding: 6px 10px; }
+    .site-row { font-size: .64rem; }
+
+    /* style.css hides the four time columns below 900px; they fit now. */
+    .monitor-table thead th:nth-child(n), .monitor-table tbody td:nth-child(n) { display: table-cell; }
+    .monitor-table .c-paid, .monitor-table .c-ot { display: none !important; }
+    .monitor-table { font-size: .74rem; }
+    .monitor-table thead tr.grp th { height: 20px; padding: 3px 4px; font-size: .52rem; }
+    .monitor-table thead tr + tr th { top: 20px; padding: 5px 3px; font-size: .56rem; }
+    .monitor-table tbody td { padding: 6px 3px; font-size: .74rem; }
+    .monitor-table .col-emp { min-width: 0; max-width: 150px; padding-left: 9px !important; }
+    .mon-name { font-size: .78rem; }
+    .mon-sub { font-size: .6rem; }
+    .t-val { font-size: .72rem; }
+    .shift-tag, .monitor-table .auto-tag { display: none; }
+    .x2 { font-size: .5rem; padding: 0 3px; margin-left: 2px; }
+    .st-badge { font-size: .54rem; padding: 3px 6px; gap: 4px; }
+    .mon-tap, .mon-chev { display: none; }
+
+    /* Enrol: scanner and list side by side, the list scrolling */
+    .enroll-who { margin: 6px 10px 0; padding: 7px 10px; border-radius: 9px; }
+    .enroll-who-icon { font-size: 1.2rem; margin-bottom: 3px; }
+    .enroll-who-text { font-size: .76rem; }
+    .who-name { font-size: .92rem; }
+    .who-sub { font-size: .7rem; }
+    .who-warn { font-size: .66rem; padding: 5px 8px; margin-top: 5px; }
+    .enroll-steps { padding: 0 8px 5px; }
+    .step-dot { width: 22px; height: 22px; font-size: .64rem; }
+    .step-line { width: 14px; margin-bottom: 14px; }
+    .step-lbl { font-size: .58rem; }
+    .btn-enroll { padding: 9px; font-size: .78rem; }
+    .panel-foot { padding: 7px 10px; margin-top: 0; }
+    .reg-status { margin: 0 10px; font-size: .7rem; padding: 6px 9px; }
+    .roster-stats { padding: 6px 8px; gap: 6px; }
+    .rstat { padding: 6px 9px; }
+    .rstat-num { font-size: 1.2rem; }
+    .rstat-lbl { font-size: .6rem; }
+    .roster-list { padding: 8px; gap: 6px; }
+    .roster-item { padding: 8px 10px; gap: 9px; border-radius: 9px; }
+    .roster-name { font-size: .86rem; }
+    .roster-sub { font-size: .66rem; }
+    .rbadge { font-size: .56rem; padding: 4px 8px; }
+    .reg-list-note, .reg-site-note { display: none; }
+
+    /* Payroll */
+    .pay-card { margin: 6px 8px 0; padding: 9px 10px; }
+    .pay-name { font-size: .92rem; }
+    .pay-grid { grid-template-columns: 1fr 1fr; gap: 5px 12px; }
+    .pay-k { font-size: .7rem; }
+    .pay-v { font-size: .78rem; }
+    .pay-net { padding: 8px 10px; margin-top: 8px; }
+    .pay-net strong { font-size: 1.1rem; }
+    .pay-vale { padding: 7px 10px; font-size: .72rem; }
+    .chat-locked { padding: 14px; gap: 8px; }
+    .chat-lock-icon { font-size: 1.6rem; }
+    .chat-locked p { font-size: .76rem; }
+    .chat-body { padding: 8px 10px; gap: 8px; }
+    .quick-q { padding: 6px 8px; font-size: .64rem; border-radius: 16px; }
+    .chat-quick { gap: 5px; padding-top: 0; }
+    #tab-askai .pay-card { max-height: 50%; }
+    #tab-askai .result-box { margin: 0 10px 6px; padding: 7px 9px; gap: 8px; }
+    #tab-askai .result-box .result-badge { display: none; }
+    #tab-askai .result-avatar { width: 30px; height: 30px; font-size: .8rem; }
+    #tab-askai .result-name { font-size: .86rem; }
+    #tab-askai .result-pos { font-size: .66rem; }
+    .msg-text { font-size: .76rem; padding: 8px 11px; }
+    .ai-session-timer { font-size: .64rem; padding: 2px 8px; }
+
+    /* Modal */
+    .emp-modal-head { padding: 10px 14px; }
+    .emp-modal-avatar { width: 38px; height: 38px; font-size: 1rem; }
+    .emp-modal-name { font-size: 1.05rem; }
+    .emp-sessions { padding: 10px 14px 2px; gap: 8px; }
+    .emp-modal-totals.three { padding: 8px 14px 12px; gap: 8px; }
+    .emp-total { padding: 8px; }
+    .emp-total-val { font-size: 1.2rem; }
+
+    /* Summary */
+    .sum-tiles { gap: 6px; }
+    .stile { padding: 6px 9px 6px 12px; column-gap: 9px; border-radius: 8px; }
+    .stile .n { font-size: 1.35rem; }
+    .stile .l { font-size: .66rem; }
+    .stile .l i { display: none; }
+    .stile .s { font-size: .56rem; }
+    .punches { padding: 7px 10px 6px; gap: 5px; grid-template-columns: 1fr 1fr 18px 1fr 1fr; }
+    .pc { padding: 5px 7px; border-radius: 7px; }
+    .pc-k { font-size: .54rem; }
+    .pc-n { font-size: 1.15rem; }
+    .pc-s { display: none; }
+    .sum-sessions .day-strip { margin: 0 10px; }
+    .sum-sessions .ds-track { height: 18px; }
+    .sum-night { margin: 7px 10px 0; padding: 5px 8px; font-size: .62rem; gap: 7px; }
+    .sum-night span.r { display: none; }
+    .sum-foot { padding: 5px 10px; font-size: .58rem; gap: 10px; }
+    .attn-row { padding: 6px 10px; gap: 8px; }
+    .attn-ic { width: 24px; height: 24px; font-size: .62rem; }
+    .attn-t { font-size: .74rem; }
+    .attn-d { font-size: .58rem; }
+    .attn-v { font-size: .72rem; }
+    .attn-empty { padding: 16px 10px; font-size: .72rem; }
+    .sum-note { display: none; }
+}
+
+/* A narrow portrait screen: one column, and the tab may scroll inside. */
+@media (max-width: 700px) and (min-height: 521px) {
+    #tab-attendance.kiosk-main, #tab-register.kiosk-main, #tab-askai.kiosk-main { grid-template-columns: 1fr; overflow-y: auto; }
+    .sum-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sum-row { grid-template-columns: 1fr; }
+}
+
+/* ═══ v6 — three fixes, no new design ══════════════════════════════════
+   The ENROLL list keeps the room the two counters used to take, MY PAYROLL
+   is the pay card alone, and the long lists move by themselves. */
+
+/* A long name ("REPLACE FINGERPRINT OF ANA VILLANUEVA") used to run under
+   the step dots and be cut mid-word. Two lines, then an ellipsis. */
+#tab-register .fp-status-text, #tab-register .fp-hint {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ENROLL: nothing above the list now, so it is that much longer — and each
+   name takes a little less room, so more of the crew is on the screen at
+   once. Same card, same badge, same colours. */
+#tab-register .roster-list { padding-top: 12px; gap: 7px; }
+#tab-register .roster-item { padding: 10px 13px; gap: 11px; }
+#tab-register .roster-name { font-size: 1.02rem; }
+#tab-register .roster-sub  { font-size: .76rem; margin-top: 2px; }
+#tab-register .rbadge { font-size: .64rem; padding: 5px 10px; }
+
+/* The eight totals plus the two counters from ENROLL: five to a row. */
+.sum-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+/* A list that moves by itself says so, quietly, in its own label. */
+.auto-chip { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; font-size: .56rem; font-weight: 800;
+             letter-spacing: .8px; padding: 2px 7px; border-radius: 99px; color: var(--accent-2);
+             background: var(--accent-glow); border: 1px solid var(--accent); }
+.auto-chip::after { content: "AUTO"; }
+.auto-chip[hidden] { display: none; }
+.reg-list-refresh { margin-left: 8px; }
+
+/* MY PAYROLL: no chat, so the pay card takes the panel — bigger, no scrolling. */
+#tab-askai .pay-card { flex: 1 1 auto; max-height: none; overflow-y: auto; margin: 14px 16px 16px; padding: 18px 22px;
+                       display: flex; flex-direction: column; }
+#tab-askai .pay-head { order: -2; }
+#tab-askai .pay-net  { order: -1; margin: 14px 0 12px; padding: 16px 20px; }
+#tab-askai .pay-name { font-size: 1.45rem; }
+#tab-askai .pay-pos  { font-size: .92rem; }
+#tab-askai .pay-period strong { font-size: .95rem; }
+#tab-askai .pay-grid { gap: 12px 26px; }
+#tab-askai .pay-k { font-size: .98rem; }
+#tab-askai .pay-v { font-size: 1.2rem; }
+#tab-askai .pay-net span   { font-size: 1rem; }
+#tab-askai .pay-net strong { font-size: 2.7rem; }
+#tab-askai .pay-vale { margin-top: auto; font-size: .92rem; padding: 12px 16px; }
+#tab-askai .pay-vale strong { font-size: 1.2rem; }
+
+@media (min-height: 521px) and (max-height: 760px) {
+    #tab-askai .pay-card { margin: 10px 12px 12px; padding: 14px 18px; }
+    #tab-askai .pay-net strong { font-size: 2.3rem; }
+    #tab-askai .pay-v { font-size: 1.08rem; }
+    #tab-askai .pay-k { font-size: .88rem; }
+    .stile .n { font-size: 1.75rem; }
+    .stile .l { font-size: .74rem; }
+}
+@media (max-height: 520px) {
+    .sum-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+    #tab-register .roster-list { padding-top: 8px; gap: 5px; }
+    #tab-register .roster-item { padding: 7px 10px; }
+    #tab-register .roster-name { font-size: .86rem; }
+    #tab-register .roster-sub { font-size: .66rem; margin-top: 1px; }
+    #tab-register .rbadge { font-size: .56rem; padding: 4px 8px; }
+    #tab-askai .pay-card { margin: 6px 8px 8px; padding: 9px 12px; }
+    #tab-askai .pay-name { font-size: 1.05rem; }
+    #tab-askai .pay-pos { font-size: .72rem; }
+    #tab-askai .pay-grid { gap: 5px 16px; }
+    #tab-askai .pay-k { font-size: .74rem; }
+    #tab-askai .pay-v { font-size: .9rem; }
+    #tab-askai .pay-net { margin: 8px 0 6px; padding: 9px 12px; }
+    #tab-askai .pay-net span { font-size: .78rem; }
+    #tab-askai .pay-net strong { font-size: 1.6rem; }
+    #tab-askai .pay-vale { font-size: .72rem; padding: 7px 10px; }
+    #tab-askai .pay-vale strong { font-size: .9rem; }
+}
+
+/* ═══ v7 — drag the lists, not the scroll bar; window buttons on touch ═════
+   The long lists (ENROLL names, the ATTENDANCE board, NEEDS ATTENTION, the
+   pay card, the detail pop-up) scroll by dragging the names themselves —
+   script.js does the dragging. The scroll bar is gone: nothing to aim for,
+   and nothing that looks like the only way to move the list. */
+.monitor-table-wrap, .roster-list, .attn-list, #tab-askai .pay-card, .emp-modal {
+    scrollbar-width: none;                 /* Firefox, newer Chromium */
+    -ms-overflow-style: none;
+    touch-action: pan-y;                   /* a real touch screen scrolls natively */
+    -webkit-user-select: none; user-select: none;   /* a drag must not paint text blue */
+    overscroll-behavior: contain;
+}
+.monitor-table-wrap::-webkit-scrollbar, .roster-list::-webkit-scrollbar, .attn-list::-webkit-scrollbar,
+#tab-askai .pay-card::-webkit-scrollbar, .emp-modal::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none; }
+.drag-scrolling, .drag-scrolling * { cursor: grabbing !important; }
+/* While dragging, a name under the finger must not light up as if tapped. */
+.drag-scrolling .roster-item:hover { border-color: var(--border); background: var(--surface-2); }
+.drag-scrolling .roster-item.picked:hover { border-color: var(--accent); background: var(--accent-glow); }
+.drag-scrolling .roster-item:active { transform: none; }
+
+/* The window buttons keep the finger for the whole 2-second hold. */
+.win-btn { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* The tip under ▁ / ⛶ used to be painted UNDER the site bar (the site bar
+   sits higher in the stack), so "Keep holding…" was never seen. The header
+   now sits on top, and the tip is as wide as its words. */
+.top-bar { position: relative; z-index: 40; }
+.win-tip { width: max-content; max-width: 280px; white-space: normal; line-height: 1.35; text-align: left; }
+@media (max-height: 520px) { .win-tip { max-width: 230px; } }
+@media (max-height: 520px) { .pc-gap span { font-size: .5rem; letter-spacing: .4px; } }
+
+/* v8: no shift running (past the day shift, no night crew set on the web). */
+.session-pill.off { background: var(--surface-3); border-color: var(--border); color: var(--text-muted); }
