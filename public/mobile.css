@@ -273,6 +273,8 @@
    1fr)` lets it shrink and the content wrap. */
 @media (max-width: 1024px) {
     .ur-grid { grid-template-columns: minmax(0, 1fr) !important; }
+    /* Users & Roles: an account tapped in the list is shown above it, not under the matrix. */
+    .ur-grid.picked .ins { order: -1; }
 }
 @media (max-width: 900px) {
     /* System Settings: the section list becomes a row of chips above the
@@ -328,8 +330,13 @@
     .sh-def { min-width: 0; padding: 12px !important; }
     .sh-def .form-control { min-width: 0; }
 }
-@media (max-width: 575.98px) {
-    .ur-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+@media (max-width: 767.98px) {
+    /* Users & Roles: the filters wrap under the search; the status control takes its own line. */
+    .ur-search { width: 100% !important; margin-left: 0 !important; }
+    .ur-tabs { gap: 16px !important; overflow-x: auto; scrollbar-width: none; }
+    .ur-seg { margin: 4px 0 8px !important; }
+    .mx-legend { margin-left: 0 !important; flex-wrap: wrap; gap: 8px 14px !important; }
+    .mx-table th.role, .mx-table td.c { width: auto !important; }
 }
 
 
