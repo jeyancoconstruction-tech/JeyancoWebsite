@@ -39,7 +39,6 @@ class SystemSetting extends Model
         'schedule_rules_from',
         // How the attendance kiosk records a scan (System Settings → Kiosk).
         'kiosk_attendance_mode',
-        'kiosk_repeat_guard_seconds',
         'kiosk_idle_return_seconds',
         // The rest of jeyanco-settings.html (2026-09-27).
         'company_tin',
@@ -48,13 +47,16 @@ class SystemSetting extends Model
         'signin_intro',
         'google_sign_in',
         'sessions_revoked_at',
-        'kiosk_repeat_guard_on',
         'kiosk_unknown_alert',
         'kiosk_offline_alert_minutes',
         'notify_missing_scans',
         'notify_remittances',
         'notify_payroll',
         'notify_email',
+        // kiosk_repeat_guard_seconds and kiosk_repeat_guard_on are still
+        // columns, but nothing reads them since 2026-09-27: the kiosk takes one
+        // time in and one time out per session instead.
+        //
         // sss_due_day … bir_due_day are still columns (with their defaults)
         // but nothing reads them since 2026-09-26: the Remittance Tracker
         // reminds in the last week of the month after instead.
@@ -108,12 +110,10 @@ class SystemSetting extends Model
         'unpaid_break_minutes'    => 'integer',
         'auto_count_overtime'     => 'boolean',
         'week_starts_on'          => 'integer',
-        'kiosk_repeat_guard_seconds' => 'integer',
         'kiosk_idle_return_seconds'  => 'integer',
         'signin_intro'               => 'boolean',
         'google_sign_in'             => 'boolean',
         'sessions_revoked_at'        => 'datetime',
-        'kiosk_repeat_guard_on'      => 'boolean',
         'kiosk_unknown_alert'        => 'boolean',
         'kiosk_offline_alert_minutes' => 'integer',
         'notify_missing_scans'       => 'boolean',
@@ -197,7 +197,6 @@ class SystemSetting extends Model
         'locale'                  => 'en',
         'shift'                   => 'day',
         'kiosk_attendance_mode'      => self::KIOSK_BUTTONS,
-        'kiosk_repeat_guard_seconds' => 180,
         'kiosk_idle_return_seconds'  => 60,
         'company_tin'                => null,
         'accent_color'               => 'blue',
@@ -205,7 +204,6 @@ class SystemSetting extends Model
         'signin_intro'               => true,
         'google_sign_in'             => true,
         'sessions_revoked_at'        => null,
-        'kiosk_repeat_guard_on'      => true,
         'kiosk_unknown_alert'        => true,
         'kiosk_offline_alert_minutes' => 10,
         'notify_missing_scans'       => true,

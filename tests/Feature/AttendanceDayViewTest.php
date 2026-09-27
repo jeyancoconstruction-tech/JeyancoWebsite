@@ -171,12 +171,15 @@ class AttendanceDayViewTest extends TestCase
         $emp = $this->worker('Busy Night', true);
 
         // A night in three stretches: away for a while, back, then still on
-        // site. Three rows, all one man, all one workday.
-        $this->clock($emp, 'time_in', '2026-09-10 20:00:00');
-        $this->clock($emp, 'time_out', '2026-09-10 22:00:00');
-        $this->clock($emp, 'time_in', '2026-09-10 22:30:00');
-        $this->clock($emp, 'time_out', '2026-09-10 23:00:00');
-        $this->clock($emp, 'time_in', '2026-09-10 23:30:00');
+        // site. Three rows, all one man, all one workday. The kiosk takes one
+        // time in and out per session since 2026-09-27, so rows like these
+        // come from before then or from the office; the day still reads as one.
+        foreach ([['20:00:00', '22:00:00'], ['22:30:00', '23:00:00'], ['23:30:00', null]] as [$in, $out]) {
+            Attendance::create([
+                'employee_id' => $emp->id, 'shift_id' => $emp->shift_id, 'date' => '2026-09-10', 'session' => 'AM',
+                'time_in' => '2026-09-10 ' . $in, 'time_out' => $out ? '2026-09-10 ' . $out : null,
+            ]);
+        }
 
         $page = $this->page('2026-09-10 23:45:00');
         $days = $page->viewData('todayAttendances');

@@ -23,8 +23,8 @@ use Tests\TestCase;
  *   Night  20:00–00:00 · 01:00–05:00 · overtime after 05:00
  *
  * A worker presses TIME IN or TIME OUT and scans. TIME IN is only open around
- * their own shift; TIME IN after a TIME OUT starts a new stretch instead of
- * rewriting the first; a session left open is closed at its end, marked AUTO.
+ * their own shift; each session takes one TIME IN and one TIME OUT (Michael,
+ * 2026-09-27); a session left open is closed at its end, marked AUTO.
  * Payroll counts the hours inside the sessions as regular and the hours after
  * the shift as overtime.
  */
@@ -137,7 +137,7 @@ class KioskScheduleTest extends TestCase
 
     // ── Coming back ─────────────────────────────────────────────────────────
 
-    public function test_time_in_after_a_time_out_opens_a_new_stretch(): void
+    public function test_a_session_takes_one_time_in_and_one_time_out(): void
     {
         $e = $this->worker('Juan Dela Cruz');
 
@@ -146,13 +146,38 @@ class KioskScheduleTest extends TestCase
         $this->at('2026-09-15 10:00:00');
         $this->clock($e, 'time_out');
 
+        // Back in the same morning: the morning is done.
         $this->at('2026-09-15 10:10:00');
-        $this->clock($e, 'time_in')->assertJson(['success' => true, 'again' => true, 'gap_from' => '10:00 AM']);
+        $this->clock($e, 'time_in')->assertJson(['success' => false, 'code' => 'session_done', 'session' => 'AM', 'since' => '10:00 AM']);
 
-        $rows = Attendance::where('employee_id', $e->id)->orderBy('id')->get();
-        $this->assertCount(2, $rows);
-        $this->assertStringContainsString('08:00:00', (string) $rows[0]->time_in, 'the first stretch is not rewritten');
+        $rows = Attendance::where('employee_id', $e->id)->get();
+        $this->assertCount(1, $rows, 'no second stretch');
+        $this->assertStringContainsString('08:00:00', (string) $rows[0]->time_in, 'the morning is not rewritten');
         $this->assertStringContainsString('10:00:00', (string) $rows[0]->time_out);
+
+        // The afternoon is a session of its own.
+        $this->at('2026-09-15 12:55:00');
+        $this->clock($e, 'time_in')->assertJson(['success' => true, 'session' => 'PM']);
+        $this->at('2026-09-15 17:00:00');
+        $this->clock($e, 'time_out')->assertJson(['success' => true]);
+        $this->at('2026-09-15 17:05:00');
+        $this->clock($e, 'time_in')->assertJson(['success' => false]);
+        $this->assertSame(2, Attendance::where('employee_id', $e->id)->count());
+    }
+
+    public function test_a_second_read_right_after_a_time_out_records_nothing(): void
+    {
+        $e = $this->worker('Double Read');
+
+        $this->at('2026-09-15 08:00:00');
+        $this->clock($e, 'time_in');
+        $this->at('2026-09-15 12:02:00');
+        $this->clock($e, 'time_out');
+
+        // Past the end of the morning, so without this it would open the afternoon.
+        $this->at('2026-09-15 12:02:20');
+        $this->clock($e, 'time_in')->assertJson(['success' => false, 'code' => 'just_timed_out', 'since' => '12:02 PM']);
+        $this->assertSame(1, Attendance::where('employee_id', $e->id)->count());
     }
 
     public function test_a_second_time_in_while_in_is_refused(): void

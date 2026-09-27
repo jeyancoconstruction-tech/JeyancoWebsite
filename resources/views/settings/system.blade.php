@@ -36,7 +36,6 @@
 
     $savedTheme = $s->default_theme ?: 'dark';
     $savedMode  = $s->kioskMode();
-    $savedGuard = (int) ($s->kiosk_repeat_guard_seconds ?? 180);
     $savedIdle  = (int) ($s->kiosk_idle_return_seconds ?? 60);
     $savedOff   = (int) ($s->kiosk_offline_alert_minutes ?: 10);
     $accent     = old('accent_color', $s->accent_color ?: 'blue');
@@ -51,7 +50,7 @@
         'company_name' => 'company', 'company_tagline' => 'company', 'company_address' => 'company', 'company_tin' => 'company', 'logo' => 'company',
         'default_theme' => 'appearance', 'accent_color' => 'appearance', 'table_density' => 'appearance',
         'session_timeout_minutes' => 'security', 'password_min_length' => 'security', 'max_login_attempts' => 'security', 'lockout_seconds' => 'security',
-        'kiosk_attendance_mode' => 'kiosk', 'kiosk_repeat_guard_seconds' => 'kiosk', 'kiosk_idle_return_seconds' => 'kiosk',
+        'kiosk_attendance_mode' => 'kiosk', 'kiosk_idle_return_seconds' => 'kiosk',
         'kiosk_offline_alert_minutes' => 'kiosk', 'kiosk_opens_minutes' => 'kiosk',
     ];
     foreach ($errors->keys() as $k) {
@@ -175,8 +174,6 @@ html[data-bs-theme] .ss .ss-inp select:focus { border-color: var(--accent) !impo
 .ss-tg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ss-tgrow { display: flex; gap: 12px; align-items: center; }
 .ss-tgrow > small { color: var(--muted); font-size: 12px; }
-.ss-tgrow .ss-inp.short { flex: none; }
-.ss-tgrow .ss-inp.short.off select { opacity: .45; pointer-events: none; }
 .ss-sw { display: flex; gap: 8px; }
 .ss-sw label { margin: 0; }
 .ss-sw span { display: block; width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; background: var(--c); }
@@ -379,12 +376,6 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                 @if($opens === null)<option value="" @selected((string) $openNow === '')>{{ __('Varies by shift') }}</option>@endif
                                 @foreach($choices([30, 60, 90], $opens) as $m)<option value="{{ $m }}" @selected((string) $openNow === (string) $m)>{{ $m }} min</option>@endforeach
                             </select>@error('kiosk_opens_minutes')<span class="ss-err">{{ $message }}</span>@enderror</div></div>
-                        <div class="ss-row"><div class="lb"><b>{{ __('Ignore duplicate scans') }}</b><small>{{ __("Skips repeat scans within the set time, so double taps don't count.") }}</small></div>
-                            <div class="ss-inp"><div class="ss-tgrow"><input type="hidden" name="kiosk_repeat_guard_on" value="0"><label class="ss-tg"><input type="checkbox" id="kdupOn" name="kiosk_repeat_guard_on" value="1" @checked($isOn('kiosk_repeat_guard_on')) aria-label="{{ __('Ignore duplicate scans') }}" data-track data-saved="{{ $sw('kiosk_repeat_guard_on') }}" data-label="{{ __('Ignore duplicate scans') }}"><span></span></label><small></small>
-                                <div class="ss-inp short" id="kdupWrap"><select name="kiosk_repeat_guard_seconds" aria-label="{{ __('Duplicate window') }}" data-track data-saved="{{ $savedGuard }}" data-label="{{ __('Duplicate window') }}">
-                                    @foreach($choices([60, 180, 300], $savedGuard) as $x)<option value="{{ $x }}" @selected((int) old('kiosk_repeat_guard_seconds', $savedGuard) === $x)>{{ $span($x) }}</option>@endforeach
-                                </select></div></div>
-                            @error('kiosk_repeat_guard_seconds')<span class="ss-err">{{ $message }}</span>@enderror</div></div>
                         <div class="ss-row"><div class="lb"><b>{{ __('Unknown fingerprints') }}</b><small>{{ __("Tell admins when a finger that isn't registered is scanned.") }}</small></div>
                             <div class="ss-tgrow"><input type="hidden" name="kiosk_unknown_alert" value="0"><label class="ss-tg"><input type="checkbox" name="kiosk_unknown_alert" value="1" @checked($isOn('kiosk_unknown_alert')) aria-label="{{ __('Unknown fingerprints') }}" data-track data-saved="{{ $sw('kiosk_unknown_alert') }}" data-label="{{ __('Unknown fingerprints') }}"><span></span></label><small></small></div></div>
                         <div class="ss-row"><div class="lb"><b>{{ __('Offline alert') }}</b><small>{{ __('Notify admins when a kiosk stops sending scans.') }}</small></div>
@@ -519,9 +510,8 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
         file.dispatchEvent(new Event('change', { bubbles: true }));
     });
 
-    // ── Switches read On / Off; the duplicate window follows its switch ──
+    // ── Switches read On / Off; the lockout text follows its select ──────
     function tgLabels() { $$('.ss-tgrow').forEach(r => { const c = r.querySelector('input[type=checkbox]'); r.querySelector(':scope > small').textContent = c.checked ? @json(__('On')) : @json(__('Off')); }); }
-    function dupState() { document.getElementById('kdupWrap').classList.toggle('off', !document.getElementById('kdupOn').checked); }
     function lockText() { const o = form.elements.lockout_seconds.selectedOptions[0]; $('[data-lockout]').textContent = o ? o.dataset.text : ''; }
 
     // ── Accent and density show on this page before they are saved ───────
@@ -556,7 +546,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
     const sectionOf = el => el.closest('.ss-sec')?.dataset.sec;
     function update() {
         bar.classList.toggle('show', dirty().length > 0);
-        tgLabels(); dupState(); lockText(); looks();
+        tgLabels(); lockText(); looks();
     }
     form.addEventListener('input', update);
     form.addEventListener('change', update);

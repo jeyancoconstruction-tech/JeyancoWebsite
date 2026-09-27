@@ -36,7 +36,7 @@ class SystemSettingsPageTest extends TestCase
             'default_theme' => $s->default_theme ?: 'dark',
             'session_timeout_minutes' => $s->session_timeout_minutes, 'password_min_length' => $s->password_min_length,
             'max_login_attempts' => $s->max_login_attempts, 'lockout_seconds' => $s->lockout_seconds,
-            'kiosk_attendance_mode' => $s->kioskMode(), 'kiosk_repeat_guard_seconds' => $s->kiosk_repeat_guard_seconds ?? 180,
+            'kiosk_attendance_mode' => $s->kioskMode(),
             'kiosk_idle_return_seconds' => $s->kiosk_idle_return_seconds ?? 60,
         ], $over);
     }
@@ -68,13 +68,13 @@ class SystemSettingsPageTest extends TestCase
         // Appearance posts a changed theme, but the bar only named Kiosk.
         $this->actingAs($this->admin())
              ->put(route('system-settings.update-all'), $this->everything([
-                 'default_theme' => 'system', 'kiosk_repeat_guard_seconds' => 120, 'sections' => ['kiosk'],
+                 'default_theme' => 'system', 'kiosk_idle_return_seconds' => 120, 'sections' => ['kiosk'],
              ]))
              ->assertSessionHasNoErrors();
 
         SystemSetting::forget();
         $this->assertNotSame('system', SystemSetting::current()->default_theme);
-        $this->assertSame(120, (int) SystemSetting::current()->kiosk_repeat_guard_seconds);
+        $this->assertSame(120, (int) SystemSetting::current()->kiosk_idle_return_seconds);
         $this->assertSame(1, AuditLog::where('module', 'Settings')->count());
     }
 

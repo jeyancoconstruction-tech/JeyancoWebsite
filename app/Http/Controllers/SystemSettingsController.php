@@ -45,14 +45,12 @@ class SystemSettingsController extends Controller
         'lockout_seconds'         => ['lockout length', ' s'],
         'default_theme'           => ['default theme', ''],
         'kiosk_attendance_mode'      => ['attendance mode', ''],
-        'kiosk_repeat_guard_seconds' => ['repeat scans ignored within', ' s'],
         'kiosk_idle_return_seconds'  => ['back to Attendance after', ' s'],
         'company_tin'                => ['TIN', ''],
         'accent_color'               => ['accent colour', ''],
         'table_density'              => ['table density', ''],
         'signin_intro'               => ['intro animation', ''],
         'google_sign_in'             => ['Google sign-in', ''],
-        'kiosk_repeat_guard_on'      => ['ignore duplicate scans', ''],
         'kiosk_unknown_alert'        => ['unknown fingerprint alert', ''],
         'kiosk_offline_alert_minutes' => ['offline alert after', ' min'],
         'notify_missing_scans'       => ['missing scans', ''],
@@ -63,7 +61,7 @@ class SystemSettingsController extends Controller
 
     /** Switches: saved as true/false, written to the Audit Log as on/off. */
     private const SWITCHES = [
-        'signin_intro', 'google_sign_in', 'kiosk_repeat_guard_on', 'kiosk_unknown_alert',
+        'signin_intro', 'google_sign_in', 'kiosk_unknown_alert',
         'notify_missing_scans', 'notify_remittances', 'notify_payroll', 'notify_email',
     ];
 
@@ -205,17 +203,15 @@ class SystemSettingsController extends Controller
 
             'kiosk' => [[
                 'kiosk_attendance_mode'      => ['required', 'in:' . implode(',', array_keys(SystemSetting::KIOSK_MODES))],
-                // Under a minute, a finger held a moment too long can still read twice.
-                'kiosk_repeat_guard_seconds' => ['required', 'integer', 'min:60', 'max:600'],
+                // No duplicate-scan setting since 2026-09-27: the kiosk takes one
+                // time in and one time out per session (KioskController::recordClock).
                 'kiosk_idle_return_seconds'  => ['required', 'integer', 'min:15', 'max:600'],
-                'kiosk_repeat_guard_on'      => ['sometimes', 'boolean'],
                 'kiosk_unknown_alert'        => ['sometimes', 'boolean'],
                 'kiosk_offline_alert_minutes' => ['sometimes', 'integer', 'min:5', 'max:240'],
                 // Written to every shift; empty leaves shifts that differ as they are.
                 'kiosk_opens_minutes'        => ['sometimes', 'nullable', 'integer', 'min:15', 'max:240'],
             ], [
-                'kiosk_attendance_mode.in'       => 'Choose Buttons or Automatic.',
-                'kiosk_repeat_guard_seconds.min' => 'Under a minute, a finger held a moment too long can still read twice.',
+                'kiosk_attendance_mode.in'       => 'Choose Automatic or Worker picks.',
             ]],
 
             'notif' => [[

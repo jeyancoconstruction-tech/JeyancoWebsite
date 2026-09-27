@@ -487,8 +487,10 @@ class KioskController extends Controller
         // it almost at once — nobody touches the Pi.
         $attendance = [
             'mode'                 => $system->kioskMode(),
-            // 0 when System Settings → Kiosks → Ignore duplicate scans is off.
-            'repeat_guard_seconds' => $system->enabled('kiosk_repeat_guard_on') ? (int) ($system->kiosk_repeat_guard_seconds ?? 180) : 0,
+            // No duplicate-scan setting since 2026-09-27 (one time in and one
+            // time out per session instead). Still sent, as 0, so a kiosk
+            // that reads it does not fall back to a guard of its own.
+            'repeat_guard_seconds' => 0,
             'idle_return_seconds'  => (int) ($system->kiosk_idle_return_seconds ?? 60),
             'shifts'               => Shift::query()->orderBy('crosses_midnight')->orderBy('id')->get()
                 ->filter(fn (Shift $s) => $s->hasSchedule())
@@ -668,9 +670,12 @@ class KioskController extends Controller
      *   • TIME IN is open only around the worker's own shift: a day-shift worker
      *     cannot clock in at night. TIME OUT is always accepted, so the rule can
      *     never keep somebody "on site".
-     *   • TIME IN after a TIME OUT opens a new stretch. It used to reuse the
-     *     session's row and overwrite the time-in already recorded, which is how
-     *     a worker coming back from a mistaken time-out erased their own morning.
+     *   • One TIME IN and one TIME OUT per session (Michael, 2026-09-27). Once
+     *     a session has both, the kiosk refuses anything more for it — the
+     *     office corrects a mistaken time-out on the Attendance page. It used to
+     *     open a second stretch, and before that it overwrote the first one.
+     *   • A second read of the same finger within a minute of a TIME IN or a
+     *     TIME OUT records nothing: the sensor read twice, nobody came back.
      *   • TIME IN while a stretch from an earlier session is still open closes
      *     that one at its session's end, marked AUTO for the office to review.
      *     A worker who forgot to clock out at lunch used to be refused all
@@ -815,23 +820,56 @@ class KioskController extends Controller
                     'message'  => 'Already timed in since ' . WorkSchedule::label($openIn) . '. To leave, press TIME OUT.',
                 ];
             }
-
-            $openDay = WorkSchedule::shiftDayFor($sched, $openIn);
-            $end     = WorkSchedule::sessionEnd($sched, $openSession ?? WorkSchedule::sessionAt($sched, $openIn), $openDay);
-            $closeAt = $end->lessThan($now) ? $end : $now->copy();
-
-            $open->autoClose($closeAt, 'Timed in for the next session without timing out');
-            $autoClosed = ['session' => $open->session, 'at' => WorkSchedule::label($closeAt)];
         }
 
-        // Back after a time-out in this same session: a second stretch, and the
-        // minutes between the two are not counted.
-        $previous = Attendance::where('employee_id', $employee->id)
-            ->where('date', $shiftDay)
+        // The same finger read twice as somebody times out. At lunch the second
+        // read would otherwise open the afternoon at 12:02, and the real 1:00 PM
+        // scan would then close it.
+        if (($last = $this->lastPunch($employee->id, $now)) && $last[1] === 'time_out'
+            && $last[0]->diffInSeconds($now, true) < self::DOUBLE_READ_SECONDS) {
+            return [
+                'success'  => false,
+                'code'     => 'just_timed_out',
+                'employee' => $who,
+                'since'    => WorkSchedule::label($last[0]),
+                'message'  => 'Timed out a moment ago, at ' . WorkSchedule::label($last[0]) . '. Nothing else was recorded.',
+            ];
+        }
+
+        // One TIME IN and one TIME OUT per session.
+        $label = $shift?->sessionLabel($session) ?? "{$session} SESSION";
+        $done  = Attendance::where('employee_id', $employee->id)
+            ->whereDate('date', $shiftDay)
             ->where('session', $session)
             ->whereNotNull('time_out')
             ->orderByDesc('time_out')
             ->first();
+
+        if ($done) {
+            $out = WorkSchedule::moment($done->time_out, (string) $done->date);
+
+            return [
+                'success'       => false,
+                'code'          => 'session_done',
+                'employee'      => $who,
+                'session'       => $session,
+                'session_label' => $label,
+                'since'         => WorkSchedule::label($out),
+                'message'       => 'The ' . $label . ' is done: timed out at ' . WorkSchedule::label($out)
+                                 . '. Each session takes one time in and one time out. If this is a mistake, ask the office.',
+            ];
+        }
+
+        if ($open) {
+            $openIn      = WorkSchedule::moment($open->time_in, (string) $open->date);
+            $openSession = in_array($open->session, ['AM', 'PM'], true) ? $open->session : null;
+            $openDay     = WorkSchedule::shiftDayFor($sched, $openIn);
+            $end         = WorkSchedule::sessionEnd($sched, $openSession ?? WorkSchedule::sessionAt($sched, $openIn), $openDay);
+            $closeAt     = $end->lessThan($now) ? $end : $now->copy();
+
+            $open->autoClose($closeAt, 'Timed in for the next session without timing out');
+            $autoClosed = ['session' => $open->session, 'at' => WorkSchedule::label($closeAt)];
+        }
 
         $row = Attendance::create([
             'employee_id' => $employee->id,
@@ -847,17 +885,11 @@ class KioskController extends Controller
             'success'       => true,
             'type'          => 'time_in',
             'session'       => $session,
-            'session_label' => $shift?->sessionLabel($session) ?? "{$session} SESSION",
+            'session_label' => $label,
             'employee'      => $who,
             'message'       => 'Time-in recorded.',
             'attendance'    => $this->attendancePayload($row),
         ];
-
-        if ($previous) {
-            $payload['again']    = true;
-            $payload['gap_from'] = WorkSchedule::label(WorkSchedule::moment($previous->time_out, (string) $previous->date));
-            $payload['gap_to']   = WorkSchedule::label($now);
-        }
 
         if ($autoClosed) {
             $payload['auto_closed'] = $autoClosed;
@@ -904,28 +936,9 @@ class KioskController extends Controller
 
         Attendance::closeStale($employee->id, $now);
 
-        // A second touch must never turn a TIME IN into a TIME OUT. Kept here
-        // rather than only on the kiosk, so a scan sent twice — weak signal,
-        // a retry — is still recorded once.
-        $guard = $system->enabled('kiosk_repeat_guard_on') ? max(0, (int) ($system->kiosk_repeat_guard_seconds ?? 180)) : 0;
-        if ($guard && ($last = $this->lastPunch($employee->id, $now))) {
-            [$at, $kind] = $last;
-
-            if ($at->diffInSeconds($now, true) < $guard) {
-                $verb    = $kind === 'time_in' ? 'TIME IN' : 'TIME OUT';
-                $minutes = intdiv($guard + 59, 60);
-
-                return [
-                    'success'  => false,
-                    'code'     => 'repeat',
-                    'last'     => $kind,
-                    'since'    => WorkSchedule::label($at),
-                    'employee' => $who,
-                    'message'  => "Already recorded {$verb} at " . WorkSchedule::label($at)
-                                . ". A second scan within {$minutes} " . ($minutes === 1 ? 'minute' : 'minutes') . ' is not counted.',
-                ];
-            }
-        }
+        // No repeat guard of its own since 2026-09-27: recordClock allows one
+        // time in and one time out per session, and turns away a second read
+        // of the same finger within a minute either way.
 
         $open = Attendance::openRow($employee->id, $now);
         if (! $open) {

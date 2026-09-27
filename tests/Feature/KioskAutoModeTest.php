@@ -47,9 +47,9 @@ class KioskAutoModeTest extends TestCase
         parent::tearDown();
     }
 
-    private function mode(string $mode, int $guard = 180): void
+    private function mode(string $mode): void
     {
-        SystemSetting::current()->forceFill(['kiosk_attendance_mode' => $mode, 'kiosk_repeat_guard_seconds' => $guard])->save();
+        SystemSetting::current()->forceFill(['kiosk_attendance_mode' => $mode])->save();
         SystemSetting::forget();
     }
 
@@ -95,12 +95,12 @@ class KioskAutoModeTest extends TestCase
 
     public function test_the_kiosk_reads_the_mode_and_the_day_from_settings(): void
     {
-        $this->mode('auto', 120);
+        $this->mode('auto');
 
         $json = $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A')->assertOk()->json('attendance');
 
         $this->assertSame('auto', $json['mode']);
-        $this->assertSame(120, $json['repeat_guard_seconds']);
+        $this->assertSame(0, $json['repeat_guard_seconds'], 'no duplicate-scan guard since 2026-09-27');
         $this->assertSame(60, $json['idle_return_seconds']);
 
         $day = collect($json['shifts'])->firstWhere('night', false);
@@ -212,37 +212,40 @@ class KioskAutoModeTest extends TestCase
         $this->assertNull(Attendance::where('employee_id', $e->id)->whereNull('time_out')->first(), 'nobody is left on site');
     }
 
-    public function test_a_repeat_scan_within_the_guard_records_nothing(): void
+    public function test_a_second_read_of_the_same_finger_records_nothing(): void
     {
-        $this->mode('auto', 180);
+        $this->mode('auto');
         $e = $this->worker('Twice');
 
         $this->at('2026-09-16 07:52:00');
         $this->scan($e);
 
-        $this->at('2026-09-16 07:54:30');
-        $this->scan($e)->assertJson(['success' => false, 'code' => 'repeat', 'last' => 'time_in', 'since' => '7:52 AM']);
+        $this->at('2026-09-16 07:52:30');
+        $this->scan($e)->assertJson(['success' => false, 'code' => 'just_timed_in']);
         $this->assertSame(1, Attendance::where('employee_id', $e->id)->count());
-        $this->assertNull(Attendance::where('employee_id', $e->id)->value('time_out'), 'the repeat did not become a time out');
-
-        // Past the guard, the next scan is a real one.
-        $this->at('2026-09-16 07:56:00');
-        $this->scan($e)->assertJson(['success' => true, 'type' => 'time_out']);
+        $this->assertNull(Attendance::where('employee_id', $e->id)->value('time_out'), 'the second read did not become a time out');
     }
 
-    public function test_the_guard_also_covers_a_time_out(): void
+    public function test_a_session_with_its_time_in_and_out_takes_no_more_scans(): void
     {
-        $this->mode('auto', 180);
+        $this->mode('auto');
         $e = $this->worker('Out Twice');
 
         $this->at('2026-09-16 07:52:00');
         $this->scan($e);
-        $this->at('2026-09-16 12:02:00');
-        $this->scan($e);
+        $this->at('2026-09-16 11:40:00');
+        $this->scan($e)->assertJson(['success' => true, 'type' => 'time_out', 'session' => 'AM']);
 
-        $this->at('2026-09-16 12:03:00');
-        $this->scan($e)->assertJson(['success' => false, 'code' => 'repeat', 'last' => 'time_out']);
-        $this->assertSame(1, Attendance::where('employee_id', $e->id)->count(), 'no afternoon opened by the second touch');
+        // A second read as they leave, then a scan later the same morning.
+        $this->at('2026-09-16 11:40:20');
+        $this->scan($e)->assertJson(['success' => false, 'code' => 'just_timed_out']);
+        $this->at('2026-09-16 11:50:00');
+        $this->scan($e)->assertJson(['success' => false, 'code' => 'session_done', 'session' => 'AM']);
+        $this->assertSame(1, Attendance::where('employee_id', $e->id)->count(), 'no second morning');
+
+        // The afternoon still opens.
+        $this->at('2026-09-16 12:58:00');
+        $this->scan($e)->assertJson(['success' => true, 'type' => 'time_in', 'session' => 'PM']);
     }
 
     public function test_the_shift_window_still_applies(): void
@@ -339,17 +342,15 @@ class KioskAutoModeTest extends TestCase
 
         $this->actingAs($admin)->put(route('system-settings.kiosk.update'), [
             'kiosk_attendance_mode'      => 'auto',
-            'kiosk_repeat_guard_seconds' => 120,
             'kiosk_idle_return_seconds'  => 60,
         ])->assertRedirect(route('system-settings.kiosk'))->assertSessionHasNoErrors();
 
         SystemSetting::forget();
         $this->assertSame('auto', SystemSetting::current()->kioskMode());
-        $this->assertSame(120, SystemSetting::current()->kiosk_repeat_guard_seconds);
 
         $entries = AuditLog::where('module', 'Settings')->get();
         $this->assertCount(1, $entries);
-        $this->assertSame('Kiosk: attendance mode Buttons → Automatic, repeat scans ignored within 180 → 120 s', $entries->first()->description);
+        $this->assertSame('Kiosk: attendance mode Buttons → Automatic', $entries->first()->description);
 
         $this->actingAs($admin)->get(route('system-settings.kiosk'))
              ->assertOk()
@@ -362,9 +363,8 @@ class KioskAutoModeTest extends TestCase
     {
         $this->actingAs($this->admin())->put(route('system-settings.kiosk.update'), [
             'kiosk_attendance_mode'      => 'magic',
-            'kiosk_repeat_guard_seconds' => 5,
-            'kiosk_idle_return_seconds'  => 60,
-        ])->assertSessionHasErrors(['kiosk_attendance_mode', 'kiosk_repeat_guard_seconds']);
+            'kiosk_idle_return_seconds'  => 5,
+        ])->assertSessionHasErrors(['kiosk_attendance_mode', 'kiosk_idle_return_seconds']);
 
         SystemSetting::forget();
         $this->assertSame('buttons', SystemSetting::current()->kioskMode());
