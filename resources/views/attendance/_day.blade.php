@@ -157,15 +157,14 @@
                     <h4>{{ __('Fix missing scans') }}</h4>
                     @foreach($fixes as $f)
                         @if($f['kind'] === 'break')
-                            {{-- In and out scanned, nothing at the break (2026-09-27). --}}
-                            <form class="atm-fix" data-fix-break="{{ route('attendance.break', $f['row']) }}">
-                                <b>{{ __('1st session time out and 2nd session time in are missing') }}@if($f['bo']) · {{ __('break :from – :to', ['from' => WorkSchedule::label($f['bo']), 'to' => WorkSchedule::label($f['bi'])]) }}@endif</b>
-                                <small>{{ __('Scanned in at :in and out at :out, with nothing at the break. Confirm it was worked straight through, or enter the break.', ['in' => WorkSchedule::label($f['in']), 'out' => WorkSchedule::label($f['out'])]) }}</small>
-                                <button type="submit" class="atm-btn pri" name="through" value="1">{{ __('Worked through the break') }}</button>
-                                <span class="atm-note">{{ __('or') }}</span>
-                                <label class="atm-fix-t">{{ __('Out') }} <input type="time" name="out" value="{{ $f['bo']?->format('H:i') }}" aria-label="{{ __('1st session time out for :name', ['name' => $name]) }}"></label>
-                                <label class="atm-fix-t">{{ __('Back in') }} <input type="time" name="in" value="{{ $f['bi']?->format('H:i') }}" aria-label="{{ __('2nd session time in for :name', ['name' => $name]) }}"></label>
-                                <button type="submit" class="atm-btn">{{ __('Save break') }}</button>
+                            {{-- In and out scanned, nothing at the break: accept or decline (2026-09-27). --}}
+                            <form class="atm-fix" data-fix-break="{{ route('attendance.break', $f['row']) }}"
+                                  data-who="{{ $name }}" data-day="{{ $day->date()->format('m/d/Y') }}"
+                                  data-times="{{ WorkSchedule::label($f['in']) }} – {{ WorkSchedule::label($f['out']) }}">
+                                <b>{{ __('1st session time out and 2nd session time in are missing') }}</b>
+                                <small>{{ __('Scanned in at :in and out at :out, with nothing at the break. Accept it as worked straight through the break, or decline and remove this attendance.', ['in' => WorkSchedule::label($f['in']), 'out' => WorkSchedule::label($f['out'])]) }}</small>
+                                <button type="submit" class="atm-btn pri" name="decision" value="accept">{{ __('Accept · straight through the break') }}</button>
+                                <button type="submit" class="atm-btn danger" name="decision" value="decline">{{ __('Decline · remove this attendance') }}</button>
                             </form>
                             @continue
                         @endif
@@ -188,7 +187,9 @@
                             <button type="submit" class="atm-btn">{{ __('Save time') }}</button>
                         </form>
                     @endforeach
-                    <p class="atm-note">{{ __('A saved time is marked as edited and written to the audit log.') }}</p>
+                    <p class="atm-note">{{ collect($fixes)->every(fn ($f) => $f['kind'] === 'break')
+                        ? __('Your choice is written to the audit log.')
+                        : __('A saved time is marked as edited and written to the audit log.') }}</p>
                 </div>
             @elseif($hours)
                 <div class="atm-dbox">

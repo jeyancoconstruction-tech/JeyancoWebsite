@@ -17,8 +17,9 @@ use Tests\TestCase;
 /**
  * A day scanned in and out with nothing at the break — no 1st session time
  * out, no 2nd session time in — waits in "needs review" (Michael,
- * 2026-09-27). It used to read "Present", worked straight through. The office
- * confirms it was, or enters the break, from under the row.
+ * 2026-09-27). It used to read "Present", worked straight through. From under
+ * the row the office accepts it as worked straight through the break, or
+ * declines it and the attendance is removed.
  *
  *   Day    08:00–12:00 · 13:00–17:00
  *   Night  20:00–00:00 · 01:00–05:00
@@ -132,26 +133,27 @@ class AttendanceBreakReviewTest extends TestCase
         $this->assertSame(0, Attendance::where('employee_id', $e->id)->where('needs_review', true)->count());
     }
 
-    public function test_the_office_confirms_it_was_worked_through(): void
+    public function test_the_office_accepts_it_as_worked_straight_through(): void
     {
-        $e = $this->worker('Confirmed');
+        $e = $this->worker('Accepted');
         $this->clock($e, 'time_in', '2026-09-15 08:00:00');
         $this->clock($e, 'time_out', '2026-09-15 17:00:00');
         $row = Attendance::where('employee_id', $e->id)->sole();
 
         $pay = fn () => collect(app(PayrollService::class)->computeForRange('2026-09-14', '2026-09-20')['employees'])
-            ->firstWhere('employee_id', $e->id)['totals']['gross'];
+            ->firstWhere('employee_id', $e->id)['totals']['gross'] ?? 0;
         $before = $pay();
+        $this->assertGreaterThan(0, $before);
 
         Carbon::setTestNow(Carbon::parse('2026-09-16 10:00:00', 'Asia/Manila'));
-        $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['through' => true])
+        $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['decision' => 'accept'])
              ->assertOk()->assertJson(['success' => true]);
 
         $row->refresh();
         $this->assertFalse($row->needs_review);
         $this->assertSame('Worked through the break', $row->close_reason);
         $this->assertSame($this->admin()->id, (int) $row->reviewed_by);
-        $this->assertTrue(AuditLog::where('description', 'Confirmed Confirmed worked through the break on 09/15/2026')->exists());
+        $this->assertTrue(AuditLog::where('description', "Accepted Accepted's 09/15/2026 as worked straight through the break (8:00 AM – 5:00 PM)")->exists());
         $this->assertEqualsWithDelta($before, $pay(), 0.001, 'the pay is as it was');
 
         $day = $this->historyRow($e, '2026-09-16 10:00:00');
@@ -159,60 +161,64 @@ class AttendanceBreakReviewTest extends TestCase
         $this->assertSame('No break scan', $day->tag('bo')['text']);
 
         // Settled once; not again.
-        $this->patchJson(route('attendance.break', $row), ['through' => true])->assertStatus(422);
+        $this->patchJson(route('attendance.break', $row), ['decision' => 'decline'])->assertStatus(422);
+        $this->assertNotNull($row->fresh(), 'an accepted day cannot be declined from here');
     }
 
-    public function test_the_office_enters_the_break(): void
-    {
-        $e = $this->worker('Break Entered');
-        $this->clock($e, 'time_in', '2026-09-15 08:00:00');
-        $this->clock($e, 'time_out', '2026-09-15 17:00:00');
-        $row = Attendance::where('employee_id', $e->id)->sole();
-
-        Carbon::setTestNow(Carbon::parse('2026-09-16 10:00:00', 'Asia/Manila'));
-        $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['out' => '18:00', 'in' => '18:30'])
-             ->assertStatus(422);
-
-        $this->patchJson(route('attendance.break', $row), ['out' => '12:05', 'in' => '12:55'])
-             ->assertOk()->assertJson(['success' => true]);
-
-        $rows = Attendance::where('employee_id', $e->id)->orderBy('time_in')->get();
-        $this->assertCount(2, $rows);
-        $this->assertSame(['2026-09-15 08:00:00', '2026-09-15 12:05:00'], [(string) $rows[0]->time_in, (string) $rows[0]->time_out]);
-        $this->assertSame('admin', $rows[0]->close_type);
-        $this->assertFalse($rows[0]->needs_review);
-        $this->assertSame(['2026-09-15 12:55:00', '2026-09-15 17:00:00', 'PM'], [(string) $rows[1]->time_in, (string) $rows[1]->time_out, $rows[1]->session]);
-        $this->assertTrue(AuditLog::where('description', 'Entered the break for Break Entered on 09/15/2026: 1st session out 12:05 PM, 2nd session in 12:55 PM')->exists());
-
-        $day = $this->historyRow($e, '2026-09-16 10:00:00');
-        $this->assertSame('done', $day->key());
-        $this->assertSame('12:05 PM', \App\Support\WorkSchedule::label($day->slot('bo')['at']));
-        $this->assertSame('12:55 PM', \App\Support\WorkSchedule::label($day->slot('bi')['at']));
-
-        // The typed time in reads as the office's, not as a scan.
-        $in = collect($day->scans())->first(fn ($s) => \App\Support\WorkSchedule::label($s['at']) === '12:55 PM');
-        $this->assertSame(['Edited', 'Set by Office Admin'], [$in['tag'], $in['where']]);
-    }
-
-    public function test_a_night_crew_day_is_flagged_and_its_break_crosses_midnight(): void
+    public function test_the_office_declines_it_and_the_attendance_is_removed(): void
     {
         // Aldrin's 09/26: in at 8:23 PM, out at 8:22 AM, nothing between.
-        $e = $this->worker('Night Crew', true);
+        $e = $this->worker('Declined Night', true);
         $this->clock($e, 'time_in', '2026-09-15 20:23:00');
         $this->clock($e, 'time_out', '2026-09-16 08:22:00');
         $row = Attendance::where('employee_id', $e->id)->sole();
         $this->assertTrue($row->breakUnscanned());
 
         Carbon::setTestNow(Carbon::parse('2026-09-16 12:00:00', 'Asia/Manila'));
-        $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['out' => '00:00', 'in' => '01:00'])
-             ->assertOk();
+        $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['decision' => 'nonsense'])
+             ->assertStatus(422);
+        $this->patchJson(route('attendance.break', $row), ['decision' => 'decline'])
+             ->assertOk()->assertJson(['success' => true]);
 
-        $rows = Attendance::where('employee_id', $e->id)->orderBy('time_in')->get();
-        $this->assertSame('2026-09-16 00:00:00', (string) $rows[0]->time_out);
-        $this->assertSame(['2026-09-16 01:00:00', '2026-09-16 08:22:00'], [(string) $rows[1]->time_in, (string) $rows[1]->time_out]);
-        $this->assertSame('2026-09-15', \Carbon\Carbon::parse($rows[1]->date)->toDateString(), 'the same workday');
+        $this->assertSame(0, Attendance::where('employee_id', $e->id)->count(), 'the attendance is gone');
+        $this->assertTrue(AuditLog::where('action', 'deleted')
+            ->where('description', 'Declined and removed the attendance of Declined Night on 09/15/2026 (8:23 PM – 8:22 AM, no break scans)')->exists(),
+            'the Audit Log keeps the times');
+
+        // Nothing of it is paid, and nothing is left waiting for review.
+        $paid = collect(app(PayrollService::class)->computeForRange('2026-09-14', '2026-09-20')['employees'])
+            ->firstWhere('employee_id', $e->id);
+        $this->assertEqualsWithDelta(0, $paid['totals']['gross'] ?? 0, 0.001);
+        $this->assertNull($this->historyRow($e, '2026-09-17 10:00:00', 'missed'));
     }
 
+    public function test_only_a_day_waiting_on_its_break_can_be_declined(): void
+    {
+        $e = $this->worker('Ordinary');
+        $this->clock($e, 'time_in', '2026-09-15 08:00:00');
+        $this->clock($e, 'time_out', '2026-09-15 12:00:00');
+        $row = Attendance::where('employee_id', $e->id)->sole();
+
+        Carbon::setTestNow(Carbon::parse('2026-09-16 10:00:00', 'Asia/Manila'));
+        $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['decision' => 'decline'])
+             ->assertStatus(422);
+        $this->assertNotNull($row->fresh());
+    }
+
+    public function test_the_panel_offers_accept_and_decline(): void
+    {
+        $e = $this->worker('Panel');
+        $this->clock($e, 'time_in', '2026-09-15 08:00:00');
+        $this->clock($e, 'time_out', '2026-09-15 17:00:00');
+
+        Carbon::setTestNow(Carbon::parse('2026-09-16 10:00:00', 'Asia/Manila'));
+        $this->actingAs($this->admin())->get(route('attendance', ['tab' => 'history', 'view' => 'missed']))
+             ->assertOk()
+             ->assertSee('Accept · straight through the break')
+             ->assertSee('Decline · remove this attendance')
+             ->assertSee('name="decision" value="decline"', false)
+             ->assertDontSee('Save break');
+    }
     public function test_days_already_on_file_are_flagged_by_the_migration(): void
     {
         $e = $this->worker('Before Today');

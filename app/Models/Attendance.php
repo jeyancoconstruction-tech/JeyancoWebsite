@@ -475,9 +475,6 @@ class Attendance extends Model
     /** Why a stretch waits in "needs review" when its break was never scanned. */
     public const NO_BREAK = 'No break scans';
 
-    /** A second session the office made by entering a break the worker never scanned. */
-    public const BREAK_ENTERED = 'Break entered by the office';
-
     /** A time out the system filled in because nobody scanned one. */
     public function guessedOut(): bool
     {
@@ -494,8 +491,9 @@ class Attendance extends Model
      * Flag a first session that was timed out after the second one began,
      * with no second session of its own: the worker scanned in and out and
      * nothing at the break — no 1st session time out, no 2nd session time in
-     * (Michael, 2026-09-27). The office confirms it was worked straight
-     * through, or enters the break. Nothing changes in the pay until then.
+     * (Michael, 2026-09-27). The office accepts it as worked straight through
+     * the break, or declines it and the attendance is removed. Nothing changes
+     * in the pay until then.
      *
      * Only a time out a worker scanned: one the system guessed is flagged
      * already, and one the office set is the office's word.

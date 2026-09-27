@@ -600,10 +600,7 @@ final class AttendanceDayView
             [$in, $out] = $this->day->partsOf($row);
             $where = $row->kiosk ? $row->kiosk->name . ' · ' . __('Fingerprint') : __('Control Panel');
 
-            $list[] = $row->close_reason === Attendance::BREAK_ENTERED
-                ? ['at' => $in, 'what' => $this->scanLabel($row, 'in'),
-                   'where' => __('Set by :name', ['name' => $row->reviewer?->name ?? __('the office')]), 'tag' => __('Edited'), 'tone' => 'brk']
-                : ['at' => $in, 'what' => $this->scanLabel($row, 'in'), 'where' => $where, 'tag' => __('OK'), 'tone' => 'good'];
+            $list[] = ['at' => $in, 'what' => $this->scanLabel($row, 'in'), 'where' => $where, 'tag' => __('OK'), 'tone' => 'good'];
 
             if (! $out) {
                 continue;
@@ -659,8 +656,8 @@ final class AttendanceDayView
      * on one, with what the shift says it should have been and, when the
      * system already closed it, the time it guessed.
      *
-     * A day with no break scans is settled here too (kind 'break'): confirmed
-     * as worked straight through, or given its break out and back in.
+     * A day with no break scans is settled here too (kind 'break'): accepted
+     * as worked straight through the break, or declined and removed.
      *
      * @return list<array<string, mixed>>
      */
@@ -670,15 +667,13 @@ final class AttendanceDayView
             $inFirst = $this->sessionOf($row) === 'AM';
 
             // No 1st session time out and no 2nd session time in: the office
-            // says it was worked straight through, or enters the break.
+            // accepts it as worked straight through, or declines and removes it.
             if ($row->breakUnscanned()) {
                 return [
-                    'kind'  => 'break',
-                    'row'   => $row,
-                    'in'    => AttendanceDay::momentIn($row),
-                    'out'   => AttendanceDay::momentOut($row),
-                    'bo'    => $this->w ? $this->w['AM'][1]->copy() : null,
-                    'bi'    => $this->w ? $this->w['PM'][0]->copy() : null,
+                    'kind' => 'break',
+                    'row'  => $row,
+                    'in'   => AttendanceDay::momentIn($row),
+                    'out'  => AttendanceDay::momentOut($row),
                 ];
             }
 
