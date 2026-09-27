@@ -222,10 +222,11 @@ class AttendanceBreakReviewTest extends TestCase
             'time_in' => "$date $in", 'time_out' => "$date $out",
         ]);
 
-        $through = $mk('2026-09-10', '08:00:00', '17:00:00');
+        // Ordinary days first: the backfill must not stop at the first day it skips.
         $mk('2026-09-11', '08:00:00', '12:00:00');
         $mk('2026-09-11', '13:00:00', '17:00:00', 'PM');
         $half = $mk('2026-09-12', '08:00:00', '12:00:00');
+        $through = $mk('2026-09-10', '08:00:00', '17:00:00');
 
         (require database_path('migrations/2026_09_27_120000_flag_days_with_no_break_scans.php'))->up();
 

@@ -23,7 +23,11 @@ return new class extends Migration
             ->where('needs_review', false)
             ->where('date', '>=', $from)
             ->orderBy('id')
-            ->each(fn (Attendance $row) => $row->flagIfBreakUnscanned());
+            // A closure that returns nothing: each() stops at the first false,
+            // which is what flagIfBreakUnscanned() answers for every other day.
+            ->each(function (Attendance $row): void {
+                $row->flagIfBreakUnscanned();
+            });
     }
 
     public function down(): void
