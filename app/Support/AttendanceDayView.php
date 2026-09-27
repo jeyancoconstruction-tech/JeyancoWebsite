@@ -229,6 +229,11 @@ final class AttendanceDayView
             return $this->unscannedStatus();
         }
 
+        // Declined by the office: shown, not paid.
+        if ($this->day->stretches()->contains(fn (Attendance $r) => $r->notRecorded())) {
+            return ['key' => 'norec', 'label' => __('Not recorded'), 'tone' => 'bad', 'live' => false];
+        }
+
         $problem = $this->problems()->first();
 
         if ($problem && $problem->breakUnscanned()) {
@@ -389,9 +394,13 @@ final class AttendanceDayView
         }
 
         if ($this->through && in_array($slot, ['bo', 'bi'], true)) {
-            return $this->first->last()?->breakUnscanned()
-                ? ['text' => __('Missing'), 'tone' => 'bad']
-                : ['text' => __('No break scan'), 'tone' => 'mute'];
+            $row = $this->first->last();
+
+            return match (true) {
+                (bool) $row?->notRecorded()    => ['text' => __('Not recorded'), 'tone' => 'bad'],
+                (bool) $row?->breakUnscanned() => ['text' => __('Missing'), 'tone' => 'bad'],
+                default                        => ['text' => __('No break scan'), 'tone' => 'mute'],
+            };
         }
 
         if (! $this->live || ! $this->w || ! in_array($this->status['key'], ['work', 'break'], true)) {
@@ -643,7 +652,7 @@ final class AttendanceDayView
         }
 
         if ($this->through && $inFirst) {
-            return $row->breakUnscanned()
+            return $row->breakUnscanned() || $row->notRecorded()
                 ? __('Time out · nothing scanned at the break')
                 : __('Time out · worked through the break');
         }
@@ -652,12 +661,34 @@ final class AttendanceDayView
     }
 
     /**
+     * What the office decided about a day with no break scans, so it can be
+     * undone: accepted as worked straight through, or declined as not recorded.
+     *
+     * @return array{kind: string, row: Attendance, by: ?string, at: ?Carbon}|null
+     */
+    public function decision(): ?array
+    {
+        $row = $this->day->stretches()->first(fn (Attendance $r) => $r->notRecorded() || $r->breakAccepted());
+
+        if (! $row) {
+            return null;
+        }
+
+        return [
+            'kind' => $row->notRecorded() ? 'declined' : 'accepted',
+            'row'  => $row,
+            'by'   => $row->reviewer?->name,
+            'at'   => $row->reviewed_at ? Carbon::parse($row->reviewed_at) : null,
+        ];
+    }
+
+    /**
      * The time outs the office can settle from the row: each stretch waiting
      * on one, with what the shift says it should have been and, when the
      * system already closed it, the time it guessed.
      *
      * A day with no break scans is settled here too (kind 'break'): accepted
-     * as worked straight through the break, or declined and removed.
+     * as worked straight through the break, or declined as not recorded.
      *
      * @return list<array<string, mixed>>
      */
@@ -667,7 +698,7 @@ final class AttendanceDayView
             $inFirst = $this->sessionOf($row) === 'AM';
 
             // No 1st session time out and no 2nd session time in: the office
-            // accepts it as worked straight through, or declines and removes it.
+            // accepts it as worked straight through, or declines it as not recorded.
             if ($row->breakUnscanned()) {
                 return [
                     'kind' => 'break',

@@ -34,6 +34,7 @@ class Attendance extends Model
         'deductions' => 'float',
         'rest_day_applied' => 'boolean',
         'needs_review' => 'boolean',
+        'not_recorded' => 'boolean',
         'reviewed_at' => 'datetime',
     ];
 
@@ -419,6 +420,7 @@ class Attendance extends Model
 
         $rows = static::where('employee_id', $employeeId)
             ->whereDate('date', $shiftDay)
+            ->recorded()
             ->whereNotNull('time_in')
             ->whereNotNull('time_out')
             ->when($exceptId, fn (Builder $q) => $q->whereKeyNot($exceptId))
@@ -475,6 +477,27 @@ class Attendance extends Model
     /** Why a stretch waits in "needs review" when its break was never scanned. */
     public const NO_BREAK = 'No break scans';
 
+    /** A day with no break scans the office accepted as worked straight through. */
+    public const THROUGH = 'Worked through the break';
+
+    /** Accepted by the office as worked straight through the break. */
+    public function breakAccepted(): bool
+    {
+        return ! $this->needs_review && ! $this->not_recorded && $this->close_reason === self::THROUGH;
+    }
+
+    /** Declined by the office: shown as "Not recorded", and not paid. */
+    public function notRecorded(): bool
+    {
+        return (bool) $this->not_recorded;
+    }
+
+    /** Rows that count: everything but a day the office declined. */
+    public function scopeRecorded(Builder $query): Builder
+    {
+        return $query->where('not_recorded', false);
+    }
+
     /** A time out the system filled in because nobody scanned one. */
     public function guessedOut(): bool
     {
@@ -492,8 +515,8 @@ class Attendance extends Model
      * with no second session of its own: the worker scanned in and out and
      * nothing at the break — no 1st session time out, no 2nd session time in
      * (Michael, 2026-09-27). The office accepts it as worked straight through
-     * the break, or declines it and the attendance is removed. Nothing changes
-     * in the pay until then.
+     * the break, or declines it and it is marked "Not recorded" and not paid —
+     * either can be undone. Nothing changes in the pay until then.
      *
      * Only a time out a worker scanned: one the system guessed is flagged
      * already, and one the office set is the office's word.

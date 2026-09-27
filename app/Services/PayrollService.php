@@ -288,7 +288,9 @@ class PayrollService
         //
         // The labour type comes along: pricing reads its daily rate for every
         // worker, and left to load itself that was a query per worker.
-        $query = Attendance::with(['employee.laborType', 'shift'])->ofRegistered()
+        //
+        // Nor is a day the office declined ("Not recorded", 2026-09-27).
+        $query = Attendance::with(['employee.laborType', 'shift'])->ofRegistered()->recorded()
             ->when($only !== null, fn ($q) => $q->whereIn('employee_id', $only));
         if ($from && $to) {
             $query->whereBetween('date', [$from, $to]);

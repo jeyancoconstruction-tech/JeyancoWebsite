@@ -22,6 +22,7 @@
     $initials = collect(preg_split('/\s+/', trim($name)))->filter()->map(fn ($p) => mb_strtoupper(mb_substr($p, 0, 1)))->take(2)->implode('');
     $isHoliday = in_array($day->date()->toDateString(), $holidayDates ?? []);
     $review  = $status['key'] === 'review';
+    $decided = $d->decision();
 @endphp
 <tr class="atm-row" data-live-key="{{ $key }}" data-day="{{ $key }}"
     tabindex="0" aria-expanded="false" aria-controls="{{ $key }}-detail">
@@ -111,6 +112,9 @@
             <small>{{ $review ? __('Pending review') : WorkSchedule::duration($hours['worked']) . ' ' . __('worked') }}</small>
         @elseif($day->isUnscanned())
             <span class="atm-t is-mute">&mdash;</span>
+        @elseif($status['key'] === 'norec')
+            &mdash;
+            <small>{{ __('Not paid') }}</small>
         @else
             &mdash;
             <small>{{ $review ? __('Pending review') : __('In progress') }}</small>
@@ -162,9 +166,9 @@
                                   data-who="{{ $name }}" data-day="{{ $day->date()->format('m/d/Y') }}"
                                   data-times="{{ WorkSchedule::label($f['in']) }} – {{ WorkSchedule::label($f['out']) }}">
                                 <b>{{ __('1st session time out and 2nd session time in are missing') }}</b>
-                                <small>{{ __('Scanned in at :in and out at :out, with nothing at the break. Accept it as worked straight through the break, or decline and remove this attendance.', ['in' => WorkSchedule::label($f['in']), 'out' => WorkSchedule::label($f['out'])]) }}</small>
+                                <small>{{ __('Scanned in at :in and out at :out, with nothing at the break. Accept it as worked straight through the break, or decline it: the day is marked Not recorded and not paid. Either can be undone.', ['in' => WorkSchedule::label($f['in']), 'out' => WorkSchedule::label($f['out'])]) }}</small>
                                 <button type="submit" class="atm-btn pri" name="decision" value="accept">{{ __('Accept · straight through the break') }}</button>
-                                <button type="submit" class="atm-btn danger" name="decision" value="decline">{{ __('Decline · remove this attendance') }}</button>
+                                <button type="submit" class="atm-btn danger" name="decision" value="decline">{{ __('Decline · not recorded') }}</button>
                             </form>
                             @continue
                         @endif
@@ -191,9 +195,25 @@
                         ? __('Your choice is written to the audit log.')
                         : __('A saved time is marked as edited and written to the audit log.') }}</p>
                 </div>
+            @elseif($decided && $decided['kind'] === 'declined')
+                <div class="atm-dbox">
+                    <h4>{{ __('Not recorded') }}</h4>
+                    <form class="atm-decided" data-fix-break="{{ route('attendance.break', $decided['row']) }}">
+                        <span>{{ __('Declined — nothing was scanned at the break, so this day is not recorded and not paid.') }}
+                            @if($decided['by'])<small>{{ __('By :name', ['name' => $decided['by']]) }}@if($decided['at']) · {{ $decided['at']->format('m/d/Y g:i A') }}@endif</small>@endif</span>
+                        <button type="submit" class="atm-btn" name="decision" value="undo"><i class="fas fa-rotate-left me-1"></i>{{ __('Undo') }}</button>
+                    </form>
+                </div>
             @elseif($hours)
                 <div class="atm-dbox">
                     <h4>{{ __('Hours') }}</h4>
+                    @if($decided)
+                        <form class="atm-decided" data-fix-break="{{ route('attendance.break', $decided['row']) }}">
+                            <span>{{ __('Accepted as worked straight through the break.') }}
+                                @if($decided['by'])<small>{{ __('By :name', ['name' => $decided['by']]) }}@if($decided['at']) · {{ $decided['at']->format('m/d/Y g:i A') }}@endif</small>@endif</span>
+                            <button type="submit" class="atm-btn" name="decision" value="undo"><i class="fas fa-rotate-left me-1"></i>{{ __('Undo') }}</button>
+                        </form>
+                    @endif
                     <div class="atm-sum">
                         @if($d->workedThrough())
                             <div><span>{{ __('Straight through') }}</span><b>{{ WorkSchedule::duration($hours['worked']) }}</b></div>

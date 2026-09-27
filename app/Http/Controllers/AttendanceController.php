@@ -31,7 +31,7 @@ class AttendanceController extends Controller
      */
     private const VIEWS = [
         'all'        => null,
-        'present'    => ['work', 'break', 'review', 'done'],
+        'present'    => ['work', 'break', 'review', 'done', 'norec'],
         'clocked-in' => ['work'],
         'break'      => ['break'],
         'missed'     => ['review'],
@@ -218,7 +218,7 @@ class AttendanceController extends Controller
         // open and nothing the system had to close.
         if ($historyView === 'done') {
             $daysQuery->havingRaw(
-                'SUM(CASE WHEN needs_review = 1 OR (time_in IS NOT NULL AND time_out IS NULL) THEN 1 ELSE 0 END) = 0'
+                'SUM(CASE WHEN needs_review = 1 OR not_recorded = 1 OR (time_in IS NOT NULL AND time_out IS NULL) THEN 1 ELSE 0 END) = 0'
             );
         }
 
@@ -537,40 +537,50 @@ class AttendanceController extends Controller
      *
      *   accept   it was worked straight through the break — the day stays as
      *            scanned and is paid as before;
-     *   decline  it is not a real day of work — the attendance is removed and
-     *            nothing of it is paid.
-     *
-     * Either way the Audit Log keeps the times that were scanned.
+     *   decline  it is not accepted — the day stays on the page as "Not
+     *            recorded" and is not paid;
+     *   undo     either choice goes back to "needs review".
      */
     public function setBreak(Request $request, Attendance $attendance)
     {
-        $data = $request->validate(['decision' => ['required', 'in:accept,decline']]);
+        $data = $request->validate(['decision' => ['required', 'in:accept,decline,undo']]);
 
-        if (! $attendance->breakUnscanned()) {
-            return response()->json(['success' => false, 'message' => __('This day is not waiting on its break.')], 422);
+        $pending = $attendance->breakUnscanned();
+        $decided = $attendance->breakAccepted() || $attendance->notRecorded();
+
+        if (($data['decision'] === 'undo' && ! $decided) || ($data['decision'] !== 'undo' && ! $pending)) {
+            return response()->json(['success' => false, 'message' => $data['decision'] === 'undo'
+                ? __('There is no decision on this day to undo.')
+                : __('This day is not waiting on its break.')], 422);
         }
 
         $name  = $attendance->employee?->name ?? __('Unknown');
         $date  = Carbon::parse($attendance->date)->format('m/d/Y');
         $times = WorkSchedule::label(AttendanceDay::momentIn($attendance)) . ' – ' . WorkSchedule::label(AttendanceDay::momentOut($attendance));
+        $who   = ['reviewed_by' => auth()->id(), 'reviewed_at' => Carbon::now()];
 
-        if ($data['decision'] === 'decline') {
-            AuditLog::record('Attendance', 'deleted', "Declined and removed the attendance of {$name} on {$date} ({$times}, no break scans)", $attendance);
-            $attendance->delete();
+        [$fill, $log, $message] = match ($data['decision']) {
+            'accept' => [
+                ['needs_review' => false, 'not_recorded' => false, 'close_reason' => Attendance::THROUGH] + $who,
+                "Accepted {$name}'s {$date} as worked straight through the break ({$times})",
+                __(':name worked straight through the break — accepted.', ['name' => $name]),
+            ],
+            'decline' => [
+                ['needs_review' => false, 'not_recorded' => true, 'close_reason' => Attendance::NO_BREAK] + $who,
+                "Declined {$name}'s {$date} ({$times}, no break scans): marked Not recorded, not paid",
+                __(':name — :date marked Not recorded.', ['name' => $name, 'date' => $date]),
+            ],
+            'undo' => [
+                ['needs_review' => true, 'not_recorded' => false, 'close_reason' => Attendance::NO_BREAK, 'reviewed_by' => null, 'reviewed_at' => null],
+                "Undid the decision on {$name}'s {$date} ({$times}): back to Needs review",
+                __(':name — :date is back in Needs review.', ['name' => $name, 'date' => $date]),
+            ],
+        };
 
-            return response()->json(['success' => true, 'message' => __('Attendance of :name on :date removed.', ['name' => $name, 'date' => $date])]);
-        }
+        $attendance->forceFill($fill)->save();
+        AuditLog::record('Attendance', 'updated', $log, $attendance);
 
-        $attendance->forceFill([
-            'needs_review' => false,
-            'close_reason' => __('Worked through the break'),
-            'reviewed_by'  => auth()->id(),
-            'reviewed_at'  => Carbon::now(),
-        ])->save();
-
-        AuditLog::record('Attendance', 'updated', "Accepted {$name}'s {$date} as worked straight through the break ({$times})", $attendance);
-
-        return response()->json(['success' => true, 'message' => __(':name worked straight through the break — accepted.', ['name' => $name])]);
+        return response()->json(['success' => true, 'message' => $message]);
     }
     /** Delete selected history records (past days only). */
     public function bulkDeleteHistory(Request $request)

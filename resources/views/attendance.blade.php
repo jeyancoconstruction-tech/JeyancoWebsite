@@ -291,6 +291,12 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     padding:5px 8px; border:1px solid var(--border-md); border-radius:var(--radius-sm);
     background:var(--surface); color:var(--text-primary); color-scheme:inherit; font-variant-numeric:tabular-nums;
 }
+.atm-decided {
+    display:flex; align-items:center; gap:10px; margin:0 0 12px; padding:10px 12px;
+    background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); font-size:13px; color:var(--text-primary);
+}
+.atm-decided > span { flex:1; min-width:0; }
+.atm-decided small { display:block; font-size:12px; color:var(--text-muted); margin-top:2px; }
 .atm-sum { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
 .atm-sum > div { display:flex; flex-direction:column; gap:2px; }
 .atm-sum span { font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-muted); }
@@ -915,16 +921,16 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
         e.preventDefault();
 
         const decision = e.submitter && e.submitter.value;
-        if (decision !== 'accept' && decision !== 'decline') return;
+        if (!['accept', 'decline', 'undo'].includes(decision)) return;
 
-        // Removing a day of attendance is asked about first, by name.
+        // Declining takes a day out of the pay, so it is asked about first, by name.
         if (decision === 'decline') {
             const ok = await Notify.confirm({
-                title:        @json(__('Remove this attendance?')),
-                message:      @json(__(':name — :day, :times. It is deleted and not paid. The Audit Log keeps the times.'))
+                title:        @json(__('Mark this day Not recorded?')),
+                message:      @json(__(':name — :day, :times. It stays on the page as Not recorded and is not paid. You can undo it.'))
                                   .replace(':name', f.dataset.who).replace(':day', f.dataset.day).replace(':times', f.dataset.times),
-                confirmLabel: @json(__('Decline and remove')),
-                cancelLabel:  @json(__('Keep it')),
+                confirmLabel: @json(__('Decline · not recorded')),
+                cancelLabel:  @json(__('Cancel')),
                 tone:         'danger',
             });
             if (!ok) return;

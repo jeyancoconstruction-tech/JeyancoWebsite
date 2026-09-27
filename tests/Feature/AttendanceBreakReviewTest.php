@@ -19,7 +19,8 @@ use Tests\TestCase;
  * out, no 2nd session time in — waits in "needs review" (Michael,
  * 2026-09-27). It used to read "Present", worked straight through. From under
  * the row the office accepts it as worked straight through the break, or
- * declines it and the attendance is removed.
+ * declines it — kept on the page as "Not recorded" and not paid. Either can
+ * be undone.
  *
  *   Day    08:00–12:00 · 13:00–17:00
  *   Night  20:00–00:00 · 01:00–05:00
@@ -165,33 +166,68 @@ class AttendanceBreakReviewTest extends TestCase
         $this->assertNotNull($row->fresh(), 'an accepted day cannot be declined from here');
     }
 
-    public function test_the_office_declines_it_and_the_attendance_is_removed(): void
+    public function test_declined_is_not_recorded_not_paid_and_can_be_undone(): void
     {
         // Aldrin's 09/26: in at 8:23 PM, out at 8:22 AM, nothing between.
         $e = $this->worker('Declined Night', true);
         $this->clock($e, 'time_in', '2026-09-15 20:23:00');
         $this->clock($e, 'time_out', '2026-09-16 08:22:00');
         $row = Attendance::where('employee_id', $e->id)->sole();
-        $this->assertTrue($row->breakUnscanned());
+
+        $pay = fn () => collect(app(PayrollService::class)->computeForRange('2026-09-14', '2026-09-20')['employees'])
+            ->firstWhere('employee_id', $e->id)['totals']['gross'] ?? 0;
+        $before = $pay();
+        $this->assertGreaterThan(0, $before);
 
         Carbon::setTestNow(Carbon::parse('2026-09-16 12:00:00', 'Asia/Manila'));
-        $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['decision' => 'nonsense'])
-             ->assertStatus(422);
-        $this->patchJson(route('attendance.break', $row), ['decision' => 'decline'])
-             ->assertOk()->assertJson(['success' => true]);
+        $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['decision' => 'nonsense'])->assertStatus(422);
+        $this->patchJson(route('attendance.break', $row), ['decision' => 'undo'])->assertStatus(422);
 
-        $this->assertSame(0, Attendance::where('employee_id', $e->id)->count(), 'the attendance is gone');
-        $this->assertTrue(AuditLog::where('action', 'deleted')
-            ->where('description', 'Declined and removed the attendance of Declined Night on 09/15/2026 (8:23 PM – 8:22 AM, no break scans)')->exists(),
-            'the Audit Log keeps the times');
+        $this->patchJson(route('attendance.break', $row), ['decision' => 'decline'])->assertOk()->assertJson(['success' => true]);
 
-        // Nothing of it is paid, and nothing is left waiting for review.
-        $paid = collect(app(PayrollService::class)->computeForRange('2026-09-14', '2026-09-20')['employees'])
-            ->firstWhere('employee_id', $e->id);
-        $this->assertEqualsWithDelta(0, $paid['totals']['gross'] ?? 0, 0.001);
-        $this->assertNull($this->historyRow($e, '2026-09-17 10:00:00', 'missed'));
+        // Kept, marked, and out of the pay.
+        $row->refresh();
+        $this->assertTrue($row->notRecorded());
+        $this->assertFalse($row->needs_review);
+        $this->assertSame('2026-09-16 08:22:00', (string) $row->time_out, 'the scans are kept as they were');
+        $this->assertEqualsWithDelta(0, $pay(), 0.001, 'a day not recorded is not paid');
+        $this->assertTrue(AuditLog::where('description', "Declined Declined Night's 09/15/2026 (8:23 PM – 8:22 AM, no break scans): marked Not recorded, not paid")->exists());
+
+        $day = $this->historyRow($e, '2026-09-17 10:00:00');
+        $this->assertSame('norec', $day->key());
+        $this->assertSame('Not recorded', $day->status()['label']);
+        $this->assertSame('Not recorded', $day->tag('bo')['text']);
+        $this->assertSame('declined', $day->decision()['kind']);
+        $this->assertSame([], $day->fixes(), 'nothing left to settle');
+        $this->assertNull($this->historyRow($e, '2026-09-17 10:00:00', 'missed'), 'not under Needs review');
+        $this->assertNull($this->historyRow($e, '2026-09-17 10:00:00', 'done'), 'not under Completed');
+
+        // Undo: back to Needs review, and back in the pay once it is settled.
+        $this->patchJson(route('attendance.break', $row), ['decision' => 'undo'])->assertOk();
+        $row->refresh();
+        $this->assertTrue($row->breakUnscanned());
+        $this->assertFalse($row->notRecorded());
+        $this->assertNull($row->reviewed_by);
+        $this->assertEqualsWithDelta($before, $pay(), 0.001);
+        $this->assertSame('review', $this->historyRow($e, '2026-09-17 10:00:00', 'missed')->key());
+        $this->assertTrue(AuditLog::where('description', "Undid the decision on Declined Night's 09/15/2026 (8:23 PM – 8:22 AM): back to Needs review")->exists());
     }
 
+    public function test_an_accepted_day_can_be_undone_too(): void
+    {
+        $e = $this->worker('Accepted Then Undone');
+        $this->clock($e, 'time_in', '2026-09-15 08:00:00');
+        $this->clock($e, 'time_out', '2026-09-15 17:00:00');
+        $row = Attendance::where('employee_id', $e->id)->sole();
+
+        Carbon::setTestNow(Carbon::parse('2026-09-16 10:00:00', 'Asia/Manila'));
+        $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['decision' => 'accept'])->assertOk();
+        $this->assertSame('accepted', $this->historyRow($e, '2026-09-16 10:00:00')->decision()['kind']);
+
+        $this->patchJson(route('attendance.break', $row), ['decision' => 'undo'])->assertOk();
+        $this->assertTrue($row->fresh()->breakUnscanned());
+        $this->assertNull($this->historyRow($e, '2026-09-16 10:00:00')->decision());
+    }
     public function test_only_a_day_waiting_on_its_break_can_be_declined(): void
     {
         $e = $this->worker('Ordinary');
@@ -215,9 +251,18 @@ class AttendanceBreakReviewTest extends TestCase
         $this->actingAs($this->admin())->get(route('attendance', ['tab' => 'history', 'view' => 'missed']))
              ->assertOk()
              ->assertSee('Accept · straight through the break')
-             ->assertSee('Decline · remove this attendance')
+             ->assertSee('Decline · not recorded')
              ->assertSee('name="decision" value="decline"', false)
              ->assertDontSee('Save break');
+
+        // Once decided, the row offers Undo instead.
+        $row = Attendance::where('employee_id', $e->id)->sole();
+        $this->patchJson(route('attendance.break', $row), ['decision' => 'decline'])->assertOk();
+        $this->get(route('attendance', ['tab' => 'history', 'view' => 'all']))
+             ->assertOk()
+             ->assertSee('name="decision" value="undo"', false)
+             ->assertSee('Not paid')
+             ->assertDontSee('Accept · straight through the break');
     }
     public function test_days_already_on_file_are_flagged_by_the_migration(): void
     {

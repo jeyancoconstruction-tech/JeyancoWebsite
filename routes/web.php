@@ -142,7 +142,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get   ('/attendance',                     [AttendanceController::class, 'index'])->name('attendance');
     Route::delete('/attendance/history/bulk-delete', [AttendanceController::class, 'bulkDeleteHistory'])->name('attendance.history.bulk-delete');
     Route::patch ('/attendance/{attendance}/time-out', [AttendanceController::class, 'setTimeOut'])->name('attendance.time-out');
-    // A day with no break scans: accepted as worked straight through, or declined and removed (2026-09-27).
+    // A day with no break scans: accepted as worked straight through, declined as Not recorded, or undone (2026-09-27).
     Route::patch ('/attendance/{attendance}/break',    [AttendanceController::class, 'setBreak'])->name('attendance.break');
 
     // --- INSIGHTS & AI ROUTES ---
