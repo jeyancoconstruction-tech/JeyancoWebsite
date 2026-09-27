@@ -54,9 +54,9 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
    Each card asks a question, so each card is a link — to the same status the
    control under the tabs sets. Anchors, not buttons: the answer is a URL the
    office can bookmark or send to somebody. */
-.atm-stats { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px; margin-bottom:16px; }
+.atm-stats { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; margin-bottom:10px; }
 .atm-stat {
-    display:flex; flex-direction:column; gap:6px; padding:14px 16px;
+    display:flex; flex-direction:column; gap:2px; padding:9px 14px;
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
     box-shadow:var(--shadow-xs); color:inherit; text-decoration:none;
     transition:border-color .15s, box-shadow .15s;
@@ -65,12 +65,12 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
 .atm-stat.is-active { border-color:var(--atm-dot); box-shadow:inset 0 0 0 1px var(--atm-dot); }
 .atm-stat-lbl {
     display:flex; align-items:center; gap:8px;
-    font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
     color:var(--text-secondary);
 }
 .atm-dot { width:8px; height:8px; border-radius:50%; background:var(--atm-dot); flex:none; }
-.atm-stat-num { font-size:28px; font-weight:800; line-height:1.1; color:var(--text-primary); font-variant-numeric:tabular-nums; }
-.atm-stat-sub { font-size:12px; color:var(--text-muted); }
+.atm-stat-num { font-size:22px; font-weight:800; line-height:1.1; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+.atm-stat-sub { font-size:11px; color:var(--text-muted); }
 .atm .is-brand { --atm-dot:var(--brand); }
 .atm .is-good  { --atm-dot:var(--success); }
 .atm .is-brk   { --atm-dot:var(--atm-brk); }
@@ -85,27 +85,27 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
        container queries at the end. */
     container:atm / inline-size;
 }
-.atm-tabs { display:flex; gap:4px; margin:0; padding:6px 16px 0; border-bottom:1px solid var(--border); }
+.atm-tabs { display:flex; gap:4px; margin:0; padding:2px 14px 0; border-bottom:1px solid var(--border); }
 .atm-tab {
-    display:flex; align-items:center; gap:8px; margin-bottom:-1px; padding:10px 14px;
+    display:flex; align-items:center; gap:8px; margin-bottom:-1px; padding:8px 12px;
     border:0; border-bottom:2px solid transparent; border-radius:0; background:none;
-    font-size:13.5px; font-weight:600; color:var(--text-muted);
+    font-size:13px; font-weight:600; color:var(--text-muted);
 }
 .atm-tab:hover { color:var(--text-primary); }
 .atm-tab.active { color:var(--brand); border-bottom-color:var(--brand); }
 .atm-count { font-size:11px; font-weight:700; border-radius:999px; padding:1px 7px; background:var(--danger-soft); color:var(--danger); }
 .atm-count[hidden] { display:none; }
 
-.atm-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0; padding:14px 16px; }
+.atm-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0; padding:9px 14px; }
 .atm-field {
-    display:flex; align-items:center; gap:8px; height:38px; padding:0 10px;
+    display:flex; align-items:center; gap:8px; height:32px; padding:0 10px;
     border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface);
 }
 .atm-field[hidden] { display:none; }
 .atm-field > i { font-size:13px; color:var(--text-muted); }
 .atm-field input, .atm-field select {
-    height:36px; min-width:0; border:0; outline:none; box-shadow:none; background:transparent;
-    font-size:13px; font-weight:500; color:var(--text-primary);
+    height:30px; min-width:0; border:0; outline:none; box-shadow:none; background:transparent;
+    font-size:12.5px; font-weight:500; color:var(--text-primary);
 }
 .atm-field input { width:170px; }
 .atm-field input::placeholder { color:var(--text-muted); }
@@ -126,8 +126,8 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
 .atm-seg label[hidden] { display:none; }
 .atm-seg input { position:absolute; opacity:0; pointer-events:none; }
 .atm-seg span {
-    display:flex; align-items:center; gap:6px; height:36px; padding:0 12px; cursor:pointer;
-    font-size:12.5px; font-weight:600; color:var(--text-muted); white-space:nowrap;
+    display:flex; align-items:center; gap:6px; height:30px; padding:0 10px; cursor:pointer;
+    font-size:12px; font-weight:600; color:var(--text-muted); white-space:nowrap;
 }
 .atm-seg span:hover { color:var(--text-primary); }
 .atm-seg input:checked + span { background:var(--brand-subtle); color:var(--brand); }
@@ -143,7 +143,7 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
 .atm-btn.pri:hover { background:var(--brand-strong); border-color:var(--brand-strong); }
 .atm-btn.danger { background:var(--danger-soft); border-color:color-mix(in srgb, var(--danger) 35%, transparent); color:var(--danger); }
 .atm-btn:disabled { opacity:.5; cursor:not-allowed; }
-.atm-toolbar .atm-btn { height:38px; }
+.atm-toolbar .atm-btn { height:32px; }
 
 /* While a filter is being fetched the lists dim, so the reader does not take
    the old rows for the answer. */
@@ -156,15 +156,15 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
 .atm-scroll { overflow-x:auto; }
 .atm-table { width:100%; min-width:1180px; border-collapse:separate; border-spacing:0; }
 .atm-table thead th {
-    padding:10px 12px; text-align:left; white-space:nowrap;
+    padding:7px 10px; text-align:left; white-space:nowrap;
     font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
     color:var(--text-muted); background:var(--bg-subtle); border-bottom:1px solid var(--border);
 }
-.atm-table thead tr.atm-grp th { padding:8px 12px 0; border-bottom:0; font-size:10px; }
+.atm-table thead tr.atm-grp th { padding:6px 10px 0; border-bottom:0; font-size:10px; }
 .atm-grp th.s { text-align:center; }
 .atm-grp th.s span { display:block; padding-bottom:5px; border-bottom:1px solid var(--border); }
 .atm-table tbody td {
-    padding:12px; vertical-align:middle; font-size:13px; color:var(--text-primary);
+    padding:7px 10px; vertical-align:middle; font-size:12.5px; color:var(--text-primary);
     background:var(--surface); border-bottom:1px solid var(--border);
 }
 .atm-table td.atm-sep, .atm-table th.atm-sep { border-left:1px dashed var(--border); }
@@ -341,7 +341,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     .atm-sched { height:auto; min-height:36px; padding:6px 10px; width:100%; }
     .atm-sched-txt { flex-direction:column; align-items:flex-start; gap:1px; white-space:normal; }
     .atm-sched-go { display:none; }
-    .atm-toolbar { padding:12px; }
+    .atm-toolbar { padding:9px 12px; }
     .atm-field, .atm-field input { width:100%; }
     .atm-field input { flex:1; }
     .atm-seg { max-width:100%; overflow-x:auto; }

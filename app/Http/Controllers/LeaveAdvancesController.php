@@ -8,6 +8,7 @@ use App\Models\LeaveRequest;
 use App\Models\Loan;
 use App\Support\Modules;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Leave and cash advances, on one screen with two tabs — the same shape the
@@ -129,38 +130,92 @@ class LeaveAdvancesController extends Controller
 
     public function storeLeave(Request $request)
     {
+        // The form sends the days picked on its calendar, one by one, so HR
+        // can file exactly the days the worker is off — Monday and Thursday,
+        // say — rather than everything between two dates. A start and an end
+        // are still taken, for anything that posts a range.
+        $picked = $request->filled('dates');
+
         $data = $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'leave_type'  => 'required|string|max:40',
-            'starts_on'   => 'required|date',
-            'ends_on'     => 'required|date|after_or_equal:starts_on',
+            'dates'       => 'nullable|array|max:366',
+            'dates.*'     => 'date_format:Y-m-d',
+            'starts_on'   => $picked ? 'nullable' : 'required|date',
+            'ends_on'     => $picked ? 'nullable' : 'required|date|after_or_equal:starts_on',
             'days'        => 'nullable|numeric|min:0|max:365',
             'is_paid'     => 'nullable|boolean',
             'reason'      => 'nullable|string|max:1000',
+        ], [
+            'starts_on.required' => 'Pick at least one day on the calendar.',
         ]);
+
+        // A leave is a run of days, starts_on to ends_on, and payroll credits
+        // every day inside it. Days picked apart from each other are filed as
+        // one leave per unbroken run, so the days between them are not paid
+        // as leave.
+        $runs = $picked
+            ? $this->runsOf($data['dates'])
+            : [[$data['starts_on'], $data['ends_on']]];
 
         // Calendar days when the filer did not say otherwise. The office often
         // wants a different figure — a half day, or a range crossing a holiday
-        // it chose not to charge — so the field stays editable.
-        $data['days'] = ($data['days'] ?? null)
-            ?: \Carbon\Carbon::parse($data['starts_on'])->diffInDays($data['ends_on']) + 1;
+        // it chose not to charge — so the field stays editable. It is one
+        // figure, so it only applies when the days picked are one run.
+        $typedDays = count($runs) === 1 ? ($data['days'] ?? null) : null;
 
-        // Filed is decided. Only the owner, HR and staff file leave, and they
-        // are the ones who would have approved it — so it counts from the
-        // moment it is entered, and paid leave reaches payroll as its days
-        // come round without anybody pressing a second button.
-        $data['is_paid']     = $request->boolean('is_paid');
-        $data['status']      = 'approved';
-        $data['filed_by']    = auth()->id();
-        $data['approved_by'] = auth()->id();
-        $data['approved_at'] = now();
+        $leaves = DB::transaction(function () use ($runs, $data, $typedDays, $request) {
+            return array_map(fn (array $run) => LeaveRequest::create([
+                'employee_id' => $data['employee_id'],
+                'leave_type'  => $data['leave_type'],
+                'reason'      => $data['reason'] ?? null,
+                'starts_on'   => $run[0],
+                'ends_on'     => $run[1],
+                'days'        => $typedDays ?: \Carbon\Carbon::parse($run[0])->diffInDays($run[1]) + 1,
+                // Filed is decided. Only the owner, HR and staff file leave, and
+                // they are the ones who would have approved it — so it counts
+                // from the moment it is entered, and paid leave reaches payroll
+                // as its days come round without anybody pressing a second button.
+                'is_paid'     => $request->boolean('is_paid'),
+                'status'      => 'approved',
+                'filed_by'    => auth()->id(),
+                'approved_by' => auth()->id(),
+                'approved_at' => now(),
+            ]), $runs);
+        });
 
-        $leave = LeaveRequest::create($data);
-
-        AuditLog::record('Leave', 'created',
-            'Filed ' . $leave->type_label . ' for ' . $leave->employee->name, $leave);
+        foreach ($leaves as $leave) {
+            AuditLog::record('Leave', 'created',
+                'Filed ' . $leave->type_label . ' for ' . $leave->employee->name
+                . ' (' . $leave->starts_on->format('M j') . ($leave->ends_on->ne($leave->starts_on) ? '–' . $leave->ends_on->format('M j') : '') . ')',
+                $leave);
+        }
 
         return back()->with('success', 'Leave filed.');
+    }
+
+    /**
+     * Days picked on the calendar, as unbroken runs: [[first, last], …].
+     *
+     * @param  list<string>  $dates  Y-m-d, in any order, repeats allowed
+     * @return list<array{0: string, 1: string}>
+     */
+    private function runsOf(array $dates): array
+    {
+        $dates = array_values(array_unique($dates));
+        sort($dates);
+
+        $runs = [];
+        foreach ($dates as $d) {
+            $last = count($runs) - 1;
+            if ($last >= 0 && \Carbon\Carbon::parse($runs[$last][1])->addDay()->toDateString() === $d) {
+                $runs[$last][1] = $d;
+            } else {
+                $runs[] = [$d, $d];
+            }
+        }
+
+        return $runs;
     }
 
     /**

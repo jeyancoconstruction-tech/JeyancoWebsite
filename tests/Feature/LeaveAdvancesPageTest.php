@@ -341,6 +341,74 @@ class LeaveAdvancesPageTest extends TestCase
         $this->assertTrue(LeaveRequest::approved()->whereKey($leave->id)->exists(), 'so payroll reads it');
     }
 
+    /**
+     * HR picks the days off on a calendar. Days apart from each other are
+     * filed as one leave per unbroken run, so the days between them are not
+     * paid as leave.
+     */
+    public function test_days_picked_on_the_calendar_are_filed_one_leave_per_run(): void
+    {
+        $emp = $this->worker('Picked Days');
+
+        $this->actingAs($this->admin())
+             ->from(route('leave.index'))
+             ->post(route('leave.store'), [
+                 'employee_id' => $emp->id, 'leave_type' => 'vacation', 'is_paid' => 1,
+                 // Out of order and with a repeat, as a form could send them.
+                 'dates' => ['2026-09-18', '2026-09-16', '2026-09-22', '2026-09-17', '2026-09-16'],
+                 // One figure cannot speak for two leaves, so it is not used.
+                 'days' => 0.5,
+             ])
+             ->assertRedirect(route('leave.index'))
+             ->assertSessionHas('success', 'Leave filed.');
+
+        $leaves = LeaveRequest::orderBy('starts_on')->get();
+
+        $this->assertCount(2, $leaves);
+        $this->assertSame(['2026-09-16', '2026-09-18', 3.0],
+            [$leaves[0]->starts_on->toDateString(), $leaves[0]->ends_on->toDateString(), $leaves[0]->days]);
+        $this->assertSame(['2026-09-22', '2026-09-22', 1.0],
+            [$leaves[1]->starts_on->toDateString(), $leaves[1]->ends_on->toDateString(), $leaves[1]->days]);
+        $this->assertTrue($leaves->every(fn ($l) => $l->status === 'approved' && $l->is_paid));
+        $this->assertSame(0.0, $leaves[0]->daysWithin('2026-09-19', '2026-09-21'), 'the days between are not leave');
+    }
+
+    /** One run of picked days keeps the Days figure the office typed — a half day, say. */
+    public function test_one_run_of_picked_days_keeps_a_typed_day_count(): void
+    {
+        $emp = $this->worker('Half Day');
+
+        $this->actingAs($this->admin())
+             ->post(route('leave.store'), [
+                 'employee_id' => $emp->id, 'leave_type' => 'sick', 'is_paid' => 1,
+                 'dates' => ['2026-09-16'], 'days' => 0.5,
+             ]);
+
+        $leave = LeaveRequest::sole();
+        $this->assertSame(['2026-09-16', '2026-09-16', 0.5],
+            [$leave->starts_on->toDateString(), $leave->ends_on->toDateString(), $leave->days]);
+    }
+
+    public function test_leave_needs_at_least_one_day(): void
+    {
+        $emp = $this->worker('No Days');
+
+        $this->actingAs($this->admin())
+             ->from(route('leave.index'))
+             ->post(route('leave.store'), ['employee_id' => $emp->id, 'leave_type' => 'sick'])
+             ->assertSessionHasErrors('starts_on');
+
+        $this->assertSame(0, LeaveRequest::count());
+    }
+
+    public function test_the_leave_form_has_a_calendar_to_pick_days_on(): void
+    {
+        $this->actingAs($this->admin())->get(route('leave.index'))
+             ->assertOk()
+             ->assertSee('id="lvCal"', false)
+             ->assertDontSee('name="starts_on"', false);
+    }
+
     /** A leave written without a status is approved, not stranded on the old default. */
     public function test_a_leave_written_without_a_status_is_approved(): void
     {

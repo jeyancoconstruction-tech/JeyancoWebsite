@@ -16,48 +16,48 @@
 
 @push('styles')
 <style>
-.prx { --prx-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace; display: flex; flex-direction: column; gap: 14px; }
+.prx { --prx-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace; display: flex; flex-direction: column; gap: 10px; }
 /* The column's gap is under the shared header already; its own margin comes
    in by the difference, so the period bar sits 12px under it as the content
    does on every page. */
 html[data-bs-theme] .main-content .prx > .page-head { margin-bottom: -2px !important; }
 
-.prx-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-xs); }
+.prx-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-xs); }
 
 .prx-btn {
-    display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px;
-    border-radius: 10px; border: 1px solid var(--border-md); background: var(--surface);
-    color: var(--text-primary); font-size: 13px; font-weight: 600; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px;
+    border-radius: 9px; border: 1px solid var(--border-md); background: var(--surface);
+    color: var(--text-primary); font-size: 12.5px; font-weight: 600; white-space: nowrap;
     text-decoration: none; cursor: pointer; transition: border-color .15s, filter .15s;
 }
 .prx-btn:hover { border-color: var(--brand); color: var(--text-primary); }
 .prx-btn.pri { background: var(--brand); border-color: var(--brand); color: #fff; }
 .prx-btn.pri:hover { filter: brightness(1.08); color: #fff; }
 .prx-btn[aria-disabled="true"] { opacity: .5; pointer-events: none; }
-.prx-btn svg { width: 16px; height: 16px; flex: none; }
+.prx-btn svg { width: 15px; height: 15px; flex: none; }
 .prx-ib {
-    width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border-md);
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border-md);
     background: var(--surface); color: var(--text-secondary); display: grid; place-items: center;
     text-decoration: none; cursor: pointer; flex: none;
 }
 .prx-ib:hover { color: var(--text-primary); border-color: var(--brand); }
-.prx-ib svg { width: 16px; height: 16px; }
+.prx-ib svg { width: 14px; height: 14px; }
 
 /* ── Period bar ───────────────────────────────────────────────────────── */
-.prx-period { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; }
-.prx-seg { display: flex; border: 1px solid var(--border-md); border-radius: 10px; overflow: hidden; background: var(--bg-subtle); }
-.prx-seg button { border: 0; background: none; height: 34px; padding: 0 14px; color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; }
+.prx-period { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; }
+.prx-seg { display: flex; border: 1px solid var(--border-md); border-radius: 9px; overflow: hidden; background: var(--bg-subtle); }
+.prx-seg button { border: 0; background: none; height: 30px; padding: 0 12px; color: var(--text-secondary); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .prx-seg button:hover { color: var(--text-primary); }
 .prx-seg button.on { background: var(--brand); color: #fff; }
 .prx-wk { display: flex; align-items: center; gap: 6px; position: relative; }
 .prx-when {
-    display: flex; flex-direction: column; align-items: flex-start; min-width: 150px;
-    padding: 2px 6px; border: 0; border-radius: 8px; background: none; text-align: left; cursor: pointer;
+    display: flex; flex-direction: column; align-items: flex-start; min-width: 140px;
+    padding: 1px 6px; border: 0; border-radius: 8px; background: none; text-align: left; cursor: pointer;
     color: var(--text-primary);
 }
 .prx-when:hover { background: var(--bg-subtle); }
-.prx-when b { font-size: 15px; font-weight: 700; line-height: 1.25; }
-.prx-when small { font-size: 12px; color: var(--text-secondary); font-family: var(--prx-mono); font-variant-numeric: tabular-nums; }
+.prx-when b { font-size: 14px; font-weight: 700; line-height: 1.25; }
+.prx-when small { font-size: 11px; color: var(--text-secondary); font-family: var(--prx-mono); font-variant-numeric: tabular-nums; }
 /* The native week or date picker the label opens. It stays in the layout
    (a picker cannot open from nothing) but takes no room and no clicks; a
    browser without pickers gets it shown as a plain field instead. */
@@ -74,76 +74,76 @@ html[data-bs-theme] .main-content .prx > .page-head { margin-bottom: -2px !impor
 .prx-chip a:hover { background: color-mix(in srgb, var(--brand) 18%, transparent); }
 .prx-period .sp { flex: 1; }
 .prx-sel {
-    display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; margin: 0;
-    border: 1px solid var(--border-md); border-radius: 10px; background: var(--surface);
+    display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; margin: 0;
+    border: 1px solid var(--border-md); border-radius: 9px; background: var(--surface);
 }
 .prx-sel:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-subtle); }
 .prx-sel svg { width: 15px; height: 15px; color: var(--text-muted); flex: none; }
 html[data-bs-theme] .prx .prx-sel input,
 html[data-bs-theme] .prx .prx-sel select {
     border: 0 !important; background: transparent !important; box-shadow: none !important; outline: none;
-    height: 34px; width: 200px; padding: 0; color: var(--text-primary); font-size: 13px; font-weight: 500;
+    height: 30px; width: 190px; padding: 0; color: var(--text-primary); font-size: 12.5px; font-weight: 500;
 }
 
 /* ── Summary ──────────────────────────────────────────────────────────── */
 /* Kept short (Michael, 2026-09-26) so the list of employees sits higher:
    tighter padding, a smaller total, one line per label. */
-.prx-sum { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 2fr); gap: 14px; }
-.prx-hero { padding: 12px 18px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.prx-sum { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 2fr); gap: 10px; }
+.prx-hero { padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
 .prx-hero .k {
     display: flex; justify-content: space-between; align-items: center; gap: 8px;
-    font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);
 }
 .prx-tag {
-    font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-secondary);
-    background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; white-space: nowrap;
+    font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-secondary);
+    background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 6px; padding: 1px 7px; white-space: nowrap;
 }
-.prx-hero .v { font-size: 28px; font-weight: 800; letter-spacing: -.01em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
-.prx-flow { display: flex; height: 6px; border-radius: 4px; overflow: hidden; background: var(--bg-subtle); }
+.prx-hero .v { font-size: 22px; font-weight: 800; letter-spacing: -.01em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.prx-flow { display: flex; height: 5px; border-radius: 4px; overflow: hidden; background: var(--bg-subtle); }
 .prx-flow i { display: block; height: 100%; }
-.prx-legend { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; gap: 10px; font-size: 11px; color: var(--text-secondary); }
+.prx-legend { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--text-secondary); }
 .prx-legend span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prx-legend span::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--c); margin-right: 5px; }
-.prx-legend b { display: block; margin-top: 1px; color: var(--text-primary); font-family: var(--prx-mono); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.prx-legend b { display: block; margin-top: 1px; color: var(--text-primary); font-family: var(--prx-mono); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .prx-tiles {
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
-    background: var(--border); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-xs);
+    background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-xs);
 }
-.prx-tile { background: var(--surface); padding: 7px 14px; display: flex; flex-direction: column; gap: 1px; min-width: 0; justify-content: center; }
-.prx-tile span { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prx-tile b { font-size: 16px; line-height: 1.25; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
-.prx-tile small { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prx-tile { background: var(--surface); padding: 5px 12px; display: flex; flex-direction: column; gap: 1px; min-width: 0; justify-content: center; }
+.prx-tile span { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prx-tile b { font-size: 14px; line-height: 1.25; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
+.prx-tile small { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prx-tile.zero b { color: var(--text-muted); }
 @media (max-width: 1200px) { .prx-sum { grid-template-columns: minmax(0, 1fr); } }
 
 /* ── Breakdown ────────────────────────────────────────────────────────── */
 .prx-list { overflow: hidden; }
-.prx-thead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.prx-thead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 14px; border-bottom: 1px solid var(--border); }
 html[data-bs-theme] .prx .prx-h {
-    margin: 0 !important; font-size: 15px !important; font-weight: 700 !important; line-height: 1.3 !important;
+    margin: 0 !important; font-size: 14px !important; font-weight: 700 !important; line-height: 1.3 !important;
     letter-spacing: 0 !important; color: var(--text-primary); display: flex; gap: 8px; align-items: center;
 }
-.prx-h svg { width: 17px; height: 17px; color: var(--brand); }
+.prx-h svg { width: 15px; height: 15px; color: var(--brand); }
 .prx-thead .sp { flex: 1; }
-.prx-note { font-size: 12px; color: var(--text-muted); }
+.prx-note { font-size: 11.5px; color: var(--text-muted); }
 .prx-wrap { overflow: auto; }
-.prx-table { width: 100%; min-width: 1080px; border-collapse: separate; border-spacing: 0; }
+.prx-table { width: 100%; min-width: 980px; border-collapse: separate; border-spacing: 0; }
 .prx-table th, .prx-table td { text-align: right; white-space: nowrap; }
 .prx-table thead th {
-    position: sticky; top: 0; z-index: 2; padding: 10px 8px;
+    position: sticky; top: 0; z-index: 2; padding: 7px 7px;
     background: var(--bg-subtle); border-bottom: 1px solid var(--border);
     font-size: 10px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);
 }
 .prx-table tbody td {
-    padding: 10px 8px; border-bottom: 1px solid var(--border);
-    font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--text-primary);
+    padding: 6px 7px; border-bottom: 1px solid var(--border);
+    font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-primary);
 }
 /* The table's outer edges keep the card's inset. */
-.prx-table tr > :first-child { padding-left: 16px; }
-.prx-table tr > :last-child { padding-right: 16px; }
+.prx-table tr > :first-child { padding-left: 14px; }
+.prx-table tr > :last-child { padding-right: 14px; }
 /* A long name takes a second line rather than the width the figures need,
    and the employee stays in view while the figures scroll sideways. */
-.prx-table td.emp { white-space: normal; min-width: 200px; }
+.prx-table td.emp { white-space: normal; min-width: 180px; }
 .prx-table th:first-child, .prx-table td:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); }
 .prx-table thead th:first-child, .prx-table tfoot td:first-child { z-index: 3; background: var(--bg-subtle); }
 .prx-table tbody tr.prx-dategrp td:first-child { background: var(--bg); }
@@ -151,36 +151,36 @@ html[data-bs-theme] .prx .prx-h {
 .prx-table .sepl { border-left: 1px dashed var(--border-md); }
 .prx-table td.z { color: var(--text-muted); }
 .prx-table td.ded { color: var(--danger); }
-.prx-table td.net { font-weight: 800; font-size: 13.5px; }
+.prx-table td.net { font-weight: 800; font-size: 12.5px; }
 .prx-table tbody tr.pr-row { cursor: pointer; }
 .prx-table tbody tr.pr-row:hover td { background: var(--bg-subtle); }
 .prx-table tbody tr.pr-row:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
-.prx-table td small { display: block; font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.prx-table td small { display: block; font-size: 10.5px; color: var(--text-muted); font-weight: 500; }
 .prx-table tfoot td {
-    position: sticky; bottom: 0; z-index: 2; padding: 12px 8px;
+    position: sticky; bottom: 0; z-index: 2; padding: 8px 7px;
     background: var(--bg-subtle); border-top: 1px solid var(--border-md);
-    font-size: 12.5px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-primary);
+    font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-primary);
 }
-.prx-table tfoot td.l { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); }
+.prx-table tfoot td.l { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); }
 .prx-dategrp td { text-align: left !important; background: var(--bg) !important; font-size: 12px !important; font-weight: 700; letter-spacing: .04em; color: var(--text-secondary) !important; cursor: default; }
 .prx-empty td { text-align: center !important; padding: 48px 16px !important; color: var(--text-muted) !important; }
 
-.prx-emp { display: flex; gap: 10px; align-items: center; }
+.prx-emp { display: flex; gap: 8px; align-items: center; }
 .prx-av {
-    width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none;
-    font-weight: 700; font-size: 12.5px; color: #fff; background: var(--c, var(--brand));
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    font-weight: 700; font-size: 11.5px; color: #fff; background: var(--c, var(--brand));
 }
-.prx-emp b { display: block; font-size: 13px; font-weight: 700; line-height: 1.3; }
-.prx-emp small { display: block; color: var(--text-muted); font-size: 11.5px; }
-.prx-shift { display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; border-radius: 7px; padding: 3px 8px; background: var(--bg-subtle); color: var(--text-secondary); }
+.prx-emp b { display: block; font-size: 12.5px; font-weight: 700; line-height: 1.3; }
+.prx-emp small { display: block; color: var(--text-muted); font-size: 11px; }
+.prx-shift { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 2px 7px; background: var(--bg-subtle); color: var(--text-secondary); }
 .prx-shift.day { background: var(--warning-soft); color: var(--warning); }
 .prx-shift.night { background: var(--brand-subtle); color: var(--brand); }
 
 /* Lateness is reported, never deducted — so it is a note on the row, not a
    figure in the money columns. */
 .pr-late, .pr-leave {
-    display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px;
-    font-size: 10.5px; font-weight: 700; vertical-align: 1px;
+    display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px;
+    font-size: 10px; font-weight: 700; vertical-align: 1px;
 }
 .pr-late { color: var(--warning); background: var(--warning-soft); }
 /* A day of approved leave is a paid day with no hours on it; the row says

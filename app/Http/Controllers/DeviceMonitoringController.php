@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Kiosk;
 use App\Models\Shift;
+use App\Support\KioskFeed;
+use App\Support\KioskStatus;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * The attendance kiosks, and whether they are talking to us.
@@ -18,17 +19,9 @@ use Illuminate\Support\Facades\Cache;
  */
 class DeviceMonitoringController extends Controller
 {
-    /** The prefix KioskLocationController writes. Read here, never written. */
-    private const LOC_PREFIX = 'kiosk_location_';
-
-    /** A device silent for longer than this is treated as offline. */
-    private const OFFLINE_AFTER_SECONDS = 180;
-
-    /**
-     * Past this a kiosk is still online, but has missed a heartbeat or two.
-     * A display tier only: nothing else reads it, and offline is unchanged.
-     */
-    private const LATE_AFTER_SECONDS = 90;
+    /** How long silence makes a kiosk late, then offline: see KioskStatus. */
+    private const OFFLINE_AFTER_SECONDS = KioskStatus::OFFLINE_AFTER_SECONDS;
+    private const LATE_AFTER_SECONDS = KioskStatus::LATE_AFTER_SECONDS;
 
     /** The strip draws 6 AM to 8 PM, one column an hour. */
     private const FIRST_HOUR = 6;
@@ -67,20 +60,7 @@ class DeviceMonitoringController extends Controller
 
     private function device(Kiosk $kiosk, Carbon $now): array
     {
-        // The Pi may be keyed by numeric id or by code, depending on how the
-        // device was configured. Try both rather than showing a working kiosk
-        // as silent.
-        $fix = Cache::get(self::LOC_PREFIX . $kiosk->id) ?? Cache::get(self::LOC_PREFIX . $kiosk->code);
-
-        $lastSeen = ! empty($fix['last_seen']) ? Carbon::parse($fix['last_seen']) : null;
-        $seconds  = $lastSeen ? (int) abs($lastSeen->diffInSeconds($now, true)) : null;
-
-        $state = match (true) {
-            $seconds === null                         => 'off',
-            $seconds <= self::LATE_AFTER_SECONDS      => 'ok',
-            $seconds <= self::OFFLINE_AFTER_SECONDS   => 'late',
-            default                                   => 'off',
-        };
+        ['state' => $state, 'seconds' => $seconds, 'last_seen' => $lastSeen, 'fix' => $fix] = KioskStatus::of($kiosk, $now);
 
         $hasCoords = isset($fix['lat'], $fix['lng']) && $fix['lat'] !== null && $fix['lng'] !== null;
         $gps = match (true) {
@@ -90,18 +70,37 @@ class DeviceMonitoringController extends Controller
         };
 
         // Today's time-ins and time-outs at this kiosk, by the hour they happened.
+        // And each of them as a line, newest first, for the card's list.
         $hours = array_fill(0, self::HOURS, 0);
         $scans = 0;
-        foreach (Attendance::where('kiosk_id', $kiosk->id)->onWorkday()->get(['id', 'time_in', 'time_out']) as $row) {
+        $today = [];
+        foreach (Attendance::with('employee:id,name')->where('kiosk_id', $kiosk->id)->onWorkday()->get(['id', 'employee_id', 'session', 'time_in', 'time_out', 'close_type']) as $row) {
             foreach (['time_in', 'time_out'] as $column) {
                 if (! $row->{$column}) {
                     continue;
                 }
+                $today[] = [
+                    'name'    => $row->employee?->name ?? 'Unknown worker',
+                    'kind'    => $column === 'time_in' ? 'in' : 'out',
+                    'session' => $row->session,
+                    'auto'    => $column === 'time_out' && $row->close_type === 'auto',
+                    'at'      => Carbon::parse($row->{$column}),
+                ];
                 $scans++;
                 $slot = Carbon::parse($row->{$column})->hour - self::FIRST_HOUR;
                 $hours[max(0, min(self::HOURS - 1, $slot))]++;
             }
         }
+
+        // Scans the web turned away today — a finger nobody knows, a time in
+        // twice — are not attendance, but they happened at the kiosk.
+        foreach (KioskFeed::since($kiosk) as $e) {
+            if (in_array($e['kind'], ['rej', 'warn', 'unknown'], true) && KioskFeed::when($e)->isSameDay($now)) {
+                $today[] = ['name' => $e['name'] ?? 'Unknown finger', 'kind' => 'rej', 'session' => null, 'auto' => false,
+                            'at' => KioskFeed::when($e), 'why' => $e['kind'] === 'unknown' ? 'Not recognised' : ($e['message'] ?? 'Turned away')];
+            }
+        }
+        usort($today, fn ($a, $b) => $b['at'] <=> $a['at']);
 
         $last = Attendance::with('employee:id,name')->where('kiosk_id', $kiosk->id)->latest('updated_at')->first();
 
@@ -118,6 +117,7 @@ class DeviceMonitoringController extends Controller
             'lng'         => $hasCoords ? (float) $fix['lng'] : null,
             'hours'       => $hours,
             'scans'       => $scans,
+            'today'       => array_slice($today, 0, 40),
             // Where a silence began on today's strip, if it began today.
             'silent_from' => $state === 'off' && $lastSeen && $lastSeen->isSameDay($now) ? $this->position($lastSeen) : null,
             'last'        => $last,

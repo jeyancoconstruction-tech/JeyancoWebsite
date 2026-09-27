@@ -31,37 +31,54 @@
 <style>
 .dv-fleet { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.55fr; margin-bottom: 14px; }
 @media (max-width: 1100px) { .dv-fleet { grid-template-columns: 1fr 1fr; } }
-.dv-fleet > div { padding: 14px 18px 15px; border-right: 1px solid var(--border); }
+.dv-fleet > div { padding: 10px 16px 11px; border-right: 1px solid var(--border); }
 .dv-fleet > div:last-child { border-right: none; }
 .dv-k { font-size: 12px; color: var(--text-secondary); font-weight: 500; display: flex; align-items: center; gap: 6px; }
 .dv-k svg { width: 14px; height: 14px; color: var(--text-muted); }
-.dv-v { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-top: 7px; line-height: 1; color: var(--text-primary); }
+.dv-v { font-size: 21px; font-weight: 700; letter-spacing: -.02em; margin-top: 5px; line-height: 1; color: var(--text-primary); }
 .dv-v small { font-size: 14px; color: var(--text-muted); font-weight: 600; margin-left: 2px; }
-.dv-s { font-size: 11.5px; color: var(--text-muted); margin-top: 8px; }
+.dv-s { font-size: 11.5px; color: var(--text-muted); margin-top: 5px; }
 .dv-seg { display: flex; gap: 3px; margin-top: 10px; }
 .dv-seg i { flex: 1; height: 8px; border-radius: 2px; background: var(--success); }
 .dv-seg i.late { background: var(--warning); } .dv-seg i.off { background: var(--danger); }
-.dv-rule { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); align-items: center; }
+.dv-rule { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin-top: 5px; font-size: 12px; color: var(--text-secondary); align-items: center; }
 .dv-rule .sx-badge { justify-self: start; }
 
 .dv-listhead { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; flex-wrap: wrap; }
-.dv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media (max-width: 1100px) { .dv-grid { grid-template-columns: 1fr; } }
+/* The kiosks share the width and reach the bottom of the screen: one kiosk
+   takes the row, two split it. Each card's list of today's scans takes what
+   height is left, so there is no empty space under or beside them. */
+.dv-live { display: flex; flex-direction: column; min-height: calc(100dvh - var(--topbar-height, 60px) - 118px); }
+.dv-grid { flex: 1 1 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 14px; align-items: stretch; }
+.dv-card { display: flex; flex-direction: column; }
+.dv-today { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 150px; border-bottom: 1px solid var(--border); }
+.dv-today .dv-row { padding: 9px 14px 6px; }
+.dv-today ol { list-style: none; margin: 0; padding: 0; flex: 1 1 0; min-height: 110px; overflow-y: auto; }
+.dv-today li { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 14px; border-top: 1px solid var(--border); font-size: 12.5px; }
+.dv-today li:nth-child(even) { background: color-mix(in srgb, var(--bg-subtle) 60%, transparent); }
+.dv-today time { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-muted); }
+.dv-today li b { font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv-today li span { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
+.dv-today li span.in { color: var(--success); background: var(--success-soft); }
+.dv-today li span.out { color: var(--danger); background: var(--danger-soft); }
+.dv-today li span.rej { color: var(--warning); background: var(--warning-soft); }
+.dv-today .none { display: grid; place-items: center; padding: 20px; color: var(--text-muted); font-size: 12.5px; border-top: 1px solid var(--border); flex: 1; }
+@media (max-width: 1100px) { .dv-grid { grid-template-columns: 1fr; } .dv-live { min-height: 0; } }
 .dv-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-xs); position: relative; }
 .dv-card.is-off { border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
 .dv-card.is-off::before, .dv-card.is-late::before { content: ""; position: absolute; left: -1px; right: -1px; top: -1px; height: 3px; border-radius: 12px 12px 0 0; background: var(--danger); }
 .dv-card.is-late::before { background: var(--warning); }
-.dv-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
-.dv-ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--success-soft); color: var(--success); position: relative; flex: none; }
-.dv-ico svg { width: 19px; height: 19px; }
+.dv-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.dv-ico { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--success-soft); color: var(--success); position: relative; flex: none; }
+.dv-ico svg { width: 16px; height: 16px; }
 .dv-ico::after { content: ""; position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 50%; background: var(--success); border: 2.5px solid var(--surface); }
 .is-late .dv-ico { background: var(--warning-soft); color: var(--warning); } .is-late .dv-ico::after { background: var(--warning); }
 .is-off .dv-ico { background: var(--danger-soft); color: var(--danger); } .is-off .dv-ico::after { background: var(--danger); }
-.dv-name { font-size: 14.5px; font-weight: 700; color: var(--text-primary); }
+.dv-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
 .dv-meta { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-top: 2px; flex-wrap: wrap; }
 .dv-meta svg { width: 12px; height: 12px; }
 .dv-head .sx-badge { margin-left: auto; }
-.dv-sec { padding: 12px 16px 14px; border-bottom: 1px solid var(--border); }
+.dv-sec { padding: 9px 14px 10px; border-bottom: 1px solid var(--border); }
 .dv-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 9px; }
 .dv-lbl { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
 .dv-val { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text-primary); }
@@ -81,7 +98,7 @@
 .ruler-over { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--danger); }
 .ruler-over svg { width: 14px; height: 14px; }
 
-.hr { position: relative; height: 62px; display: grid; grid-template-columns: repeat({{ $hours }}, 1fr); gap: 4px; align-items: end; }
+.hr { position: relative; height: 48px; display: grid; grid-template-columns: repeat({{ $hours }}, 1fr); gap: 4px; align-items: end; }
 .hr-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--brand) 6%, transparent); border-left: 1px dashed color-mix(in srgb, var(--brand) 35%, transparent); border-right: 1px dashed color-mix(in srgb, var(--brand) 35%, transparent); }
 .hr-band span { position: absolute; top: 2px; left: 5px; font: 600 9px 'JetBrains Mono', monospace; color: color-mix(in srgb, var(--brand) 75%, var(--text-muted)); }
 .hr i { display: block; background: var(--brand); border-radius: 2px 2px 0 0; position: relative; z-index: 1; }
@@ -94,12 +111,12 @@
 .hr-x { display: grid; grid-template-columns: repeat({{ $hours }}, 1fr); gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-muted); margin-top: 5px; border-top: 1px solid var(--border-md); padding-top: 3px; }
 
 .dv-foot { display: grid; grid-template-columns: 1.15fr 1fr; }
-.dv-cell { padding: 12px 16px; display: flex; gap: 12px; align-items: center; min-width: 0; }
+.dv-cell { padding: 9px 14px; display: flex; gap: 12px; align-items: center; min-width: 0; }
 .dv-cell + .dv-cell { border-left: 1px solid var(--border); }
 .dv-cell .v { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dv-cell .s { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; }
 .dv-cell .sx-link { font-size: 11.5px; margin-top: 3px; }
-.gps { width: 84px; height: 60px; border-radius: 8px; border: 1px solid var(--border); position: relative; overflow: hidden; flex: none; background-color: var(--bg-subtle);
+.gps { width: 70px; height: 48px; border-radius: 8px; border: 1px solid var(--border); position: relative; overflow: hidden; flex: none; background-color: var(--bg-subtle);
     background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 12px 12px; }
 .gps .h { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--brand) 45%, transparent); }
 .gps .vv { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--brand) 45%, transparent); }
@@ -243,6 +260,20 @@
                             @if($nowAt > 0 && $nowAt < $hours)<div class="hr-now" style="left: {{ $pct($nowAt) }}"></div>@endif
                         </div>
                         <div class="hr-x">@foreach($axis as $label)<span>{{ $label }}</span>@endforeach</div>
+                    </section>
+
+                    <section class="dv-today">
+                        <div class="dv-row"><span class="dv-lbl">Scans today at this kiosk</span><span class="dv-val">{{ count($d['today']) }}</span></div>
+                        @if($d['today'])
+                            <ol>
+                                @foreach($d['today'] as $s)
+                                    <li><time>{{ $s['at']->format('g:i A') }}</time><b>{{ $s['name'] }}</b>
+                                        <span class="{{ $s['kind'] }}">{{ $s['kind'] === 'rej' ? mb_strtoupper($s['why']) : ($s['kind'] === 'in' ? 'TIME IN' : 'TIME OUT') . ($s['session'] ? ' · ' . $s['session'] : '') . ($s['auto'] ? ' · AUTO' : '') }}</span></li>
+                                @endforeach
+                            </ol>
+                        @else
+                            <div class="none">No scans at this kiosk yet today.</div>
+                        @endif
                     </section>
 
                     <footer class="dv-foot">

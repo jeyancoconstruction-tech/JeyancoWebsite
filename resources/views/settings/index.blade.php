@@ -1303,11 +1303,11 @@
 
 /* ── ps-card system (Payroll / Labor Settings) ──────────────────────────── */
 .ps-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
-.ps-card-header { display:flex; align-items:flex-start; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); background: transparent; }
+.ps-card-header { display:flex; align-items:flex-start; gap:10px; padding:11px 16px; border-bottom:1px solid var(--border); background: transparent; }
 .ps-card-header > i { color: var(--brand); margin-top:3px; flex-shrink:0; }
 .ps-card-header h6 { font-weight:700; color: var(--text-primary); margin:0 0 2px; font-size:.95rem; }
 .ps-card-header p { color: var(--text-muted); font-size:.8rem; margin:0; line-height:1.4; }
-.ps-card-body { padding:20px; }
+.ps-card-body { padding:14px 16px; }
 .ps-card-body.p-0 { padding:0; }
 .ps-label { font-weight:600; font-size:.875rem; color: var(--text-secondary); margin-bottom:6px; display:block; }
 .ps-input { border-color: var(--border) !important; }
@@ -1318,11 +1318,11 @@
    uses, so it reads in both themes without a second block of overrides. */
 .pr-head {
     display:flex; align-items:flex-start; justify-content:space-between; gap:14px;
-    padding:18px 20px; border-bottom:1px solid var(--border,#e3e6e9);
+    padding:12px 16px; border-bottom:1px solid var(--border,#e3e6e9);
 }
 .pr-head-left { display:flex; align-items:flex-start; gap:12px; min-width:0; }
 .pr-head-left > i { font-size:1.05rem; color:var(--text-secondary,#66707c); margin-top:2px; }
-.pr-head h6 { margin:0; font-size:1.05rem; font-weight:700; color:var(--text-primary,#1b2430); }
+.pr-head h6 { margin:0; font-size:.95rem; font-weight:700; color:var(--text-primary,#1b2430); }
 .pr-head p  { margin:2px 0 0; font-size:.8rem; color:var(--text-secondary,#66707c); }
 .pr-head-right { flex:none; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 /* The switch itself is the one from the old rest-day card, reused rather than
@@ -1353,15 +1353,16 @@
    the three of them feed. */
 .pr-block {
     border:1px solid var(--border); border-radius:var(--radius-sm);
-    background:var(--bg-subtle); padding:14px 16px; margin-bottom:14px;
+    background:var(--bg-subtle); padding:10px 14px; margin-bottom:10px;
 }
-.pr-block-head { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.pr-block-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.pr-block .form-control, .pr-block .form-select { height:32px !important; min-height:32px !important; padding-top:4px !important; padding-bottom:4px !important; font-size:.85rem !important; }
 .pr-block-head > i { color:var(--brand); font-size:.95rem; }
 .pr-block-head > span { font-weight:600; font-size:.92rem; color:var(--text-primary); }
 .pr-block-head > small {
     margin-left:auto; font-size:.72rem; color:var(--text-muted); white-space:nowrap;
 }
-.pr-block-hint { margin:10px 0 0; font-size:.75rem; line-height:1.6; color:var(--text-muted); }
+.pr-block-hint { margin:6px 0 0; font-size:.75rem; line-height:1.6; color:var(--text-muted); }
 .pr-block-hint i { margin-right:4px; }
 
 /* ── On statutory defaults ───────────────────────────────────────────────────
@@ -1386,7 +1387,7 @@
 
 .pr-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 .pr-grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
-@media (max-width:700px){ .pr-grid, .pr-grid-2 { grid-template-columns:1fr; } }
+@media (max-width:700px){ .pr-grid { gap:8px; } .pr-grid.pr-grid-2 { grid-template-columns:1fr; } }
 
 .pr-field-label { display:block; margin-bottom:4px; font-size:.78rem; color:var(--text-secondary); }
 /* The number is the point of the field, so it gets the weight. */
@@ -1395,7 +1396,7 @@
 /* A deduction is a name, what it is a percentage of, and the percentage. */
 .pr-ded-row {
     display:flex; align-items:center; justify-content:space-between; gap:12px;
-    padding:9px 0; border-bottom:1px solid var(--border);
+    padding:6px 0; border-bottom:1px solid var(--border);
 }
 .pr-ded-row:last-child { border-bottom:0; padding-bottom:0; }
 .pr-ded-name span { font-size:.85rem; font-weight:600; color:var(--text-primary); }

@@ -330,15 +330,33 @@
                 <div class="emp-field">
                     <label class="ep-label" for="lv_days">{{ __('Days') }}</label>
                     <input class="form-control" id="lv_days" type="number" step="0.5" min="0" name="days" placeholder="{{ __('Auto from dates') }}">
-                    <span class="ep-hint">{{ __('Leave blank to count calendar days.') }}</span>
+                    <span class="ep-hint" id="lv_days_hint">{{ __('Leave blank to count the days picked.') }}</span>
                 </div>
-                <div class="emp-field">
-                    <label class="ep-label" for="lv_from">{{ __('Start Date') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="lv_from" type="date" name="starts_on" required>
-                </div>
-                <div class="emp-field">
-                    <label class="ep-label" for="lv_to">{{ __('End Date') }} <span class="ep-req">*</span></label>
-                    <input class="form-control" id="lv_to" type="date" name="ends_on" required>
+                {{-- The days off, picked one by one on a calendar: a click
+                     marks a day or clears it, and a shift-click marks every
+                     day from the last one clicked. Days apart from each other
+                     are filed as separate leaves, one per unbroken run, so
+                     the days between them are not paid as leave. --}}
+                <div class="emp-field full">
+                    <span class="ep-label" id="lv_cal_label">{{ __('Leave Dates') }} <span class="ep-req">*</span></span>
+                    <div class="lvc" id="lvCal" role="group" aria-labelledby="lv_cal_label">
+                        <div class="lvc-head">
+                            <button type="button" class="lvc-nav" data-step="-1" aria-label="{{ __('Previous month') }}"><i class="fas fa-chevron-left"></i></button>
+                            <b class="lvc-month" aria-live="polite"></b>
+                            <button type="button" class="lvc-nav" data-step="1" aria-label="{{ __('Next month') }}"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <div class="lvc-grid lvc-dow" aria-hidden="true">
+                            <span>{{ __('Sun') }}</span><span>{{ __('Mon') }}</span><span>{{ __('Tue') }}</span><span>{{ __('Wed') }}</span><span>{{ __('Thu') }}</span><span>{{ __('Fri') }}</span><span>{{ __('Sat') }}</span>
+                        </div>
+                        <div class="lvc-grid lvc-days"></div>
+                        <div class="lvc-foot">
+                            <span class="lvc-count">{{ __('No days picked yet') }}</span>
+                            <button type="button" class="lvc-clear" hidden>{{ __('Clear') }}</button>
+                        </div>
+                        <div class="lvc-picked" aria-live="polite"></div>
+                    </div>
+                    <span class="ep-hint">{{ __('Click each day off. Shift-click to mark every day from the last one clicked.') }}</span>
+                    <div id="lvDates"></div>
                 </div>
                 <div class="emp-field full">
                     <label class="ep-label" for="lv_reason">{{ __('Reason') }}</label>
@@ -653,10 +671,197 @@
 @include('modules._fill_screen')
 @include('employees._profile_styles')
 @include('employees._modal_styles')
+
+@if($tab === 'leave')
+<style>
+/* ── The leave calendar (File Leave) ─────────────────────────────────────── */
+.lvc { border: 1px solid var(--border-md); border-radius: 10px; background: var(--surface); padding: 8px; }
+.lvc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.lvc-month { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.lvc-nav {
+    width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-secondary); display: grid; place-items: center; cursor: pointer; font-size: 11px;
+}
+.lvc-nav:hover { border-color: var(--brand); color: var(--brand); }
+.lvc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.lvc-dow span { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); padding: 2px 0 4px; }
+.lvc-day {
+    height: 32px; border: 1px solid transparent; border-radius: 7px; background: none; cursor: pointer;
+    font-size: 12.5px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums;
+}
+.lvc-day:hover { background: var(--bg-subtle); border-color: var(--border-md); }
+.lvc-day.is-out { color: var(--text-muted); opacity: .45; }
+.lvc-day.is-today { border-color: var(--brand); }
+.lvc-day.is-on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.lvc-day:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.lvc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.lvc-count { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.lvc-count.has { color: var(--brand); }
+.lvc-clear { border: 0; background: none; padding: 0; font-size: 12px; font-weight: 600; color: var(--danger); cursor: pointer; }
+.lvc-picked { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.lvc-picked:empty { display: none; }
+.lvc-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--brand-subtle); color: var(--brand); white-space: nowrap; }
+.lvc.is-invalid { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+</style>
+@endif
 @endsection
 
 @push('scripts')
 <script>
+
+// ── The leave calendar ───────────────────────────────────────────────────────
+// HR clicks each day the worker is off; a shift-click marks every day from the
+// last one clicked. Each picked day goes to the server as dates[], which files
+// one leave per unbroken run. The Days box is one figure, so it is offered
+// only while the days picked are a single run.
+(function () {
+    const cal = document.getElementById('lvCal');
+    if (!cal) return;
+
+    const form    = cal.closest('form');
+    const grid    = cal.querySelector('.lvc-days');
+    const label   = cal.querySelector('.lvc-month');
+    const count   = cal.querySelector('.lvc-count');
+    const clear   = cal.querySelector('.lvc-clear');
+    const chips   = cal.querySelector('.lvc-picked');
+    const holder  = document.getElementById('lvDates');
+    const days    = document.getElementById('lv_days');
+    const hint    = document.getElementById('lv_days_hint');
+    const hintTxt = hint ? hint.textContent : '';
+
+    const pad = n => String(n).padStart(2, '0');
+    const key = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    const parse = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+    const short = k => parse(k).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+    const picked = new Set();
+    const today  = key(new Date());
+    let view     = new Date(); view.setDate(1);
+    let anchor   = null;
+
+    // Picked days as unbroken runs, the way the server files them.
+    function runs() {
+        const out = [];
+        [...picked].sort().forEach(k => {
+            const last = out[out.length - 1];
+            if (last) {
+                const next = parse(last[1]); next.setDate(next.getDate() + 1);
+                if (key(next) === k) { last[1] = k; return; }
+            }
+            out.push([k, k]);
+        });
+        return out;
+    }
+
+    function render() {
+        label.textContent = view.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+        const start = new Date(view); start.setDate(1 - view.getDay());
+        grid.innerHTML = '';
+        for (let i = 0; i < 42; i++) {
+            const d = new Date(start); d.setDate(start.getDate() + i);
+            const k = key(d);
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'lvc-day'
+                + (d.getMonth() !== view.getMonth() ? ' is-out' : '')
+                + (k === today ? ' is-today' : '')
+                + (picked.has(k) ? ' is-on' : '');
+            b.textContent = d.getDate();
+            b.dataset.day = k;
+            b.setAttribute('aria-pressed', picked.has(k) ? 'true' : 'false');
+            b.setAttribute('aria-label', d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }));
+            grid.appendChild(b);
+        }
+        sync();
+    }
+
+    function sync() {
+        const r = runs();
+        const n = picked.size;
+
+        count.textContent = n === 0
+            ? @json(__('No days picked yet'))
+            : n + ' ' + (n === 1 ? @json(__('day')) : @json(__('days'))) + ' ' + @json(__('picked'))
+              + (r.length > 1 ? ' · ' + r.length + ' ' + @json(__('separate leaves')) : '');
+        count.classList.toggle('has', n > 0);
+        clear.hidden = n === 0;
+
+        chips.innerHTML = '';
+        r.forEach(([a, b]) => {
+            const c = document.createElement('span');
+            c.className = 'lvc-chip';
+            c.textContent = a === b ? short(a) : short(a) + ' – ' + short(b);
+            chips.appendChild(c);
+        });
+
+        holder.innerHTML = '';
+        [...picked].sort().forEach(k => {
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = 'dates[]'; input.value = k;
+            holder.appendChild(input);
+        });
+
+        if (days) {
+            const many = r.length > 1;
+            days.disabled = many;
+            if (many) days.value = '';
+            days.placeholder = n ? String(n) : @json(__('Auto from dates'));
+            if (hint) hint.textContent = many ? @json(__('Counted per leave — one day for each day picked.')) : hintTxt;
+        }
+        if (n) cal.classList.remove('is-invalid');
+    }
+
+    grid.addEventListener('click', e => {
+        const b = e.target.closest('.lvc-day');
+        if (!b) return;
+        const k = b.dataset.day;
+
+        if (e.shiftKey && anchor && anchor !== k) {
+            let [a, z] = [anchor, k].sort();
+            for (let d = parse(a); key(d) <= z; d.setDate(d.getDate() + 1)) picked.add(key(d));
+        } else if (picked.has(k)) {
+            picked.delete(k);
+        } else {
+            picked.add(k);
+        }
+        anchor = k;
+
+        // A day from the next or last month turns the page to it.
+        const d = parse(k);
+        if (d.getMonth() !== view.getMonth()) { view = new Date(d.getFullYear(), d.getMonth(), 1); }
+        render();
+        const again = grid.querySelector('[data-day="' + k + '"]');
+        if (again) again.focus();
+    });
+
+    cal.querySelectorAll('.lvc-nav').forEach(btn => btn.addEventListener('click', () => {
+        view.setMonth(view.getMonth() + Number(btn.dataset.step));
+        render();
+    }));
+
+    clear.addEventListener('click', () => { picked.clear(); anchor = null; render(); });
+
+    form.addEventListener('submit', e => {
+        if (picked.size) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        cal.classList.add('is-invalid');
+        const first = grid.querySelector('.lvc-day:not(.is-out)');
+        if (first) first.focus();
+    }, true);
+
+    // A fresh form each time it opens, on the month of today.
+    const modal = document.getElementById('leaveModal');
+    if (modal) modal.addEventListener('show.bs.modal', () => {
+        picked.clear(); anchor = null;
+        view = new Date(); view.setDate(1);
+        cal.classList.remove('is-invalid');
+        render();
+    });
+
+    render();
+})();
 
 // ── The cash advance limit, as the worker is picked ─────────────────────────
 // ₱30,000 a worker, on what they owe. Choosing somebody sets the Amount box's

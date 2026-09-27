@@ -15,7 +15,7 @@ Route::get('/kiosk/labor-types',       [KioskController::class, 'getLaborTypes']
 Route::get('/kiosk/settings',          [KioskController::class, 'getSettings']);
 Route::post('/kiosk/biometric',        [KioskController::class, 'getEmployeeByBiometric']);
 Route::post('/kiosk/register-employee',[KioskController::class, 'registerEmployee']);
-Route::post('/kiosk/attendance',       [KioskController::class, 'attendance']);
+Route::post('/kiosk/attendance',       [KioskController::class, 'attendance'])->middleware(\App\Http\Middleware\RecordKioskEvent::class);
 
 // ✅ NEW — idagdag ito
 Route::get('/kiosk/projects',          [KioskController::class, 'getProjects']);
@@ -25,8 +25,10 @@ Route::post('/kiosk/save-fingerprint', [KioskController::class, 'saveFingerprint
 // ✅ Primary fingerprint clock — find-or-create (pending) + record attendance.
 //   /clock           → caller supplies type (time_in|time_out)
 //   /scan-attendance → server auto-decides type (used by the Pi scan loop)
-Route::post('/kiosk/clock',            [KioskController::class, 'clock']);
-Route::post('/kiosk/scan-attendance',  [KioskController::class, 'scanAttendance']);
+Route::post('/kiosk/clock',            [KioskController::class, 'clock'])->middleware(\App\Http\Middleware\RecordKioskEvent::class);
+Route::post('/kiosk/scan-attendance',  [KioskController::class, 'scanAttendance'])->middleware(\App\Http\Middleware\RecordKioskEvent::class);
+// Each of the three above is also noted for the live kiosk monitor in System
+// Settings (RecordKioskEvent) — read only; the kiosk's answer is unchanged.
 
 // ✅ Realtime "who is on site today" board (AM/PM in-out + overtime).
 Route::get('/kiosk/today-attendance',  [KioskController::class, 'todayAttendance']);

@@ -25,29 +25,29 @@ html[data-bs-theme] .main-content .sm-page > .page-head { margin-bottom: -6px !i
 .sm-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--sm-r); min-width: 0; }
 .sm-ch {
     display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    padding: 11px 16px; border-bottom: 1px solid var(--border);
 }
 .sm-ch h2 { margin: 0; font-size: .95rem; font-weight: 700; display: flex; align-items: center; gap: 10px; color: var(--text-primary); min-width: 0; }
 .sm-ch h2 i { color: var(--brand); }
 .sm-ch h2 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sm-hint { font-size: 12px; color: var(--text-muted); }
-.sm-body { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+.sm-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
 
 /* ── Fields ─────────────────────────────────────────────────────────────── */
 .sm-field { display: flex; flex-direction: column; gap: 8px; }
 .sm-label { font-size: .88rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 5px; margin: 0; }
 .sm-req { color: var(--danger); }
 .sm-input {
-    height: 46px; width: 100%; padding: 0 15px; border-radius: var(--sm-r-sm);
+    height: 36px; width: 100%; padding: 0 15px; border-radius: var(--sm-r-sm);
     border: 1px solid var(--border-md); background: var(--bg-subtle); color: var(--text-primary);
-    font-size: .94rem; outline: none; transition: border-color .15s, box-shadow .15s;
+    font-size: .86rem; outline: none; transition: border-color .15s, box-shadow .15s;
 }
 .sm-input::placeholder { color: var(--text-muted); opacity: .8; }
 .sm-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent); }
 
 .sm-loc { position: relative; }
 .sm-loc .sm-lead { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; font-size: .9rem; }
-.sm-loc .sm-input { padding-left: 42px; padding-right: 44px; }
+.sm-loc .sm-input { padding-left: 38px; padding-right: 44px; }
 .sm-clear {
     position: absolute; right: 7px; top: 7px; width: 32px; height: 32px; border-radius: 8px;
     border: 0; background: transparent; color: var(--text-muted); cursor: pointer; display: grid; place-items: center;
@@ -92,15 +92,15 @@ html[data-bs-theme] .main-content .sm-page > .page-head { margin-bottom: -6px !i
 .sm-err { font-size: .82rem; color: var(--danger); }
 .sm-actions { display: flex; gap: 10px; }
 .sm-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 18px;
-    border-radius: var(--sm-r-sm); font-size: .9rem; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 18px;
+    border-radius: var(--sm-r-sm); font-size: .85rem; font-weight: 600; cursor: pointer;
     border: 1px solid var(--border-md); background: var(--surface); color: var(--text-primary);
 }
 .sm-btn:hover { background: var(--bg-subtle); }
 .sm-btn.is-primary { flex: 1; background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 700; }
 .sm-btn.is-primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); }
 .sm-btn:disabled { opacity: .6; cursor: not-allowed; }
-.sm-btn.is-small { height: 34px; padding: 0 12px; font-size: .82rem; }
+.sm-btn.is-small { height: 30px; padding: 0 12px; font-size: .82rem; }
 .sm-btn.is-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .sm-btn.is-danger:hover { filter: brightness(1.08); background: var(--danger); }
 
@@ -111,7 +111,7 @@ html[data-bs-theme] .main-content .sm-page > .page-head { margin-bottom: -6px !i
     padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted);
 }
 .sm-mapbar b { color: var(--text-primary); font-weight: 600; }
-.sm-mapbox { position: relative; flex: 1; min-height: clamp(420px, calc(100vh - 250px), 820px); }
+.sm-mapbox { position: relative; flex: 1; min-height: clamp(360px, calc(100vh - 300px), 700px); }
 .sm-map { position: absolute; inset: 0; cursor: crosshair; }
 /* The map fills its card edge to edge; the card already draws the frame.
    Stated at this weight because ui-fixes.css makes every .leaflet-container
@@ -138,11 +138,11 @@ html[data-bs-theme="light"] .sm-map .leaflet-tile-pane { filter: none; }
 .sm-veil-in b { color: var(--text-primary); font-size: 1rem; }
 
 /* ── Site cards ─────────────────────────────────────────────────────────── */
-.sm-sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 10px; padding: 16px; }
-.sm-site { padding: 14px 15px; border-radius: 14px; background: var(--bg-subtle); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.sm-sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; padding: 12px; }
+.sm-site { padding: 10px 12px; border-radius: 14px; background: var(--bg-subtle); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 7px; min-width: 0; }
 .sm-site.is-new, .sm-site.is-editing { border-color: var(--brand); background: var(--brand-subtle); }
 .sm-srow { display: flex; align-items: flex-start; gap: 12px; }
-.sm-smark { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; border: 0; }
+.sm-smark { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex-shrink: 0; border: 0; }
 .sm-smark.has { background: var(--danger-soft); color: var(--danger); cursor: pointer; }
 .sm-smark.has:hover { outline: 2px solid color-mix(in srgb, var(--danger) 40%, transparent); }
 .sm-smark.none { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
@@ -158,7 +158,7 @@ html[data-bs-theme="light"] .sm-map .leaflet-tile-pane { filter: none; }
 .sm-emps.some { background: var(--success-soft); color: var(--success); }
 .sm-emps.zero { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
 .sm-acts { display: flex; align-items: center; gap: 2px; }
-.sm-ic { width: 34px; height: 34px; border-radius: 9px; border: 1px solid transparent; background: transparent; display: grid; place-items: center; cursor: pointer; }
+.sm-ic { width: 30px; height: 30px; border-radius: 9px; border: 1px solid transparent; background: transparent; display: grid; place-items: center; cursor: pointer; }
 .sm-ic.edit { color: var(--warning); }
 .sm-ic.del  { color: var(--danger); }
 .sm-ic:hover { background: var(--surface); border-color: var(--border-md); }
@@ -176,13 +176,13 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 
 @media (max-width: 1050px) {
     .sm-grid { grid-template-columns: 1fr; }
-    .sm-mapbox { min-height: 420px; }
+    .sm-mapbox { min-height: 360px; }
 }
 @media (max-width: 640px) {
-    .sm-body { padding: 16px; }
-    .sm-ch { padding: 14px 16px; }
-    .sm-sites { grid-template-columns: 1fr; padding: 12px; }
-    .sm-mapbox { min-height: 340px; }
+    .sm-body { padding: 12px 14px; }
+    .sm-ch { padding: 10px 14px; }
+    .sm-sites { grid-template-columns: 1fr; padding: 10px; }
+    .sm-mapbox { min-height: 300px; }
 }
 </style>
 @endpush

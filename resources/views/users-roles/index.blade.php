@@ -50,14 +50,19 @@
 .ur { display: flex; flex-direction: column; gap: 16px; }
 html[data-bs-theme] .main-content .ur > .page-head { margin-bottom: -4px !important; }
 .ur-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-xs); }
-.ur-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+/* Both columns reach the bottom of the screen and end level with each other:
+   the account panel runs the height of the lists beside it, and the lists
+   take whatever the screen has spare, so nothing floats above empty space. */
+.ur-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: stretch;
+           min-height: calc(100dvh - var(--topbar-height, 60px) - 118px); }
+.ur-main > .ur-card:last-child { flex: 1 1 auto; }
 @media (max-width: 1280px) { .ur-grid { grid-template-columns: minmax(0, 1fr) 320px; } }
 @media (max-width: 1100px) { .ur-grid { grid-template-columns: minmax(0, 1fr); } }
 .ur-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
 /* Buttons: one height and one radius across the page. */
-.ur-btn { height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-primary);
-          font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; text-decoration: none; cursor: pointer; }
+.ur-btn { height: 32px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-primary);
+          font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; text-decoration: none; cursor: pointer; }
 .ur-btn svg { width: 16px; height: 16px; flex: none; }
 .ur-btn:hover { border-color: var(--brand); color: var(--text-primary); }
 .ur-btn.pri { background: var(--brand); border-color: var(--brand); color: #fff; }
@@ -66,47 +71,47 @@ html[data-bs-theme] .main-content .ur > .page-head { margin-bottom: -4px !import
 .ur-btn.ghost:hover { color: var(--text-primary); border-color: var(--border); }
 .ur-btn.danger { color: var(--danger); }
 .ur-btn.danger:hover { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
-.ur-btn.icon { width: 38px; padding: 0; justify-content: center; }
+.ur-btn.icon { width: 32px; padding: 0; justify-content: center; }
 .ur-btn.sm { height: 32px; padding: 0 11px; font-size: 12.5px; border-radius: 9px; }
 .ur-btn.sm.icon { width: 32px; }
 .ur-btn.sm svg { width: 14px; height: 14px; }
 
 /* ── Accounts card ────────────────────────────────────────────────────── */
-.ur-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px 0; flex-wrap: wrap; }
+.ur-head { display: flex; align-items: center; gap: 12px; padding: 10px 16px 0; flex-wrap: wrap; }
 .ur-head h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .ur-head .sub { font-size: 12.5px; color: var(--text-muted); }
-.ur-search { margin-left: auto; width: 280px; height: 38px; border: 1px solid var(--border-md); border-radius: 10px; background: var(--bg-subtle);
+.ur-search { margin-left: auto; width: 280px; height: 32px; border: 1px solid var(--border-md); border-radius: 10px; background: var(--bg-subtle);
              display: flex; align-items: center; gap: 8px; padding: 0 12px; }
 .ur-search svg { width: 16px; height: 16px; color: var(--text-muted); flex: none; }
-.ur-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13.5px; color: var(--text-primary); height: 100%; padding: 0; }
+.ur-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 12.5px; color: var(--text-primary); height: 100%; padding: 0; }
 .ur-search input::placeholder { color: var(--text-muted); }
 .ur-search:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-subtle); background: var(--surface); }
 
-.ur-bar { display: flex; align-items: flex-end; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--border); margin-top: 10px; flex-wrap: wrap; }
+.ur-bar { display: flex; align-items: flex-end; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--border); margin-top: 6px; flex-wrap: wrap; }
 .ur-tabs { display: flex; gap: 22px; }
-.ur-tabs a { display: inline-flex; align-items: center; gap: 7px; padding: 10px 0 11px; font-size: 13px; font-weight: 600; color: var(--text-secondary);
+.ur-tabs a { display: inline-flex; align-items: center; gap: 7px; padding: 8px 0 9px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary);
              border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
 .ur-tabs a:hover { color: var(--text-primary); }
 .ur-tabs a.on { color: var(--brand); border-bottom-color: var(--brand); }
 .ur-tabs .n { font-size: 11px; font-weight: 700; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 999px; display: inline-grid; place-items: center;
               background: var(--bg-subtle); color: var(--text-muted); }
 .ur-tabs a.on .n { background: var(--brand-subtle); color: var(--brand); }
-.ur-seg { margin: 0 0 8px auto; display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--bg-subtle); border: 1px solid var(--border); }
-.ur-seg a { height: 28px; padding: 0 11px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ur-seg { margin: 0 0 6px auto; display: inline-flex; padding: 3px; gap: 2px; border-radius: 10px; background: var(--bg-subtle); border: 1px solid var(--border); }
+.ur-seg a { height: 26px; padding: 0 11px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .ur-seg a:hover { color: var(--text-primary); }
 .ur-seg a.on { background: var(--surface); color: var(--text-primary); box-shadow: 0 1px 2px rgba(16, 24, 40, .12); }
 .ur-seg .n { font-size: 11px; color: var(--text-muted); font-weight: 600; }
 
 /* The list. The table keeps .sx-table: the phone layout turns its rows into cards. */
-#roleList .sx-table th { background: transparent; font-size: 11px; letter-spacing: .06em; padding: 10px 18px; }
-#roleList .sx-table td { padding: 12px 18px; font-size: 13.5px; }
+#roleList .sx-table th { background: transparent; font-size: 11px; letter-spacing: .06em; padding: 8px 16px; }
+#roleList .sx-table td { padding: 7px 16px; font-size: 12.5px; }
 #roleList .sx-table tr[data-href]:hover td { background: var(--bg-subtle); }
 #roleList .sx-table tr.sel td, #roleList .sx-table tr.sel:hover td { background: var(--brand-subtle); }
 #roleList .sx-table tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
 #roleList .person { gap: 12px; }
-#roleList .av { width: 36px; height: 36px; font-size: 12.5px; }
-#roleList .person .nm { font-size: 13.5px; }
-#roleList .person .sb { font-size: 12px; max-width: 320px; margin-top: 2px; }
+#roleList .av { width: 28px; height: 28px; font-size: 11px; }
+#roleList .person .nm { font-size: 13px; }
+#roleList .person .sb { font-size: 11.5px; max-width: 320px; margin-top: 2px; }
 .ur-pick { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px 0 10px; border: 1px solid var(--border); border-radius: 8px;
            background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; cursor: pointer; }
 .ur-pick:hover { border-color: var(--border-md); }
@@ -121,30 +126,30 @@ html[data-bs-theme] .main-content .ur > .page-head { margin-bottom: -4px !import
 .ur-st.off::before { background: var(--text-muted); }
 .ur-g { display: block; margin-top: 3px; font-size: 11.5px; font-weight: 600; }
 .ur-g.linked { color: var(--success); } .ur-g.pending { color: var(--warning); }
-.ur-foot { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted); flex-wrap: wrap; }
+.ur-foot { display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted); flex-wrap: wrap; }
 .ur-foot b { color: var(--text-primary); font-weight: 600; }
 .ur-foot svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
 
 /* ── Access matrix ────────────────────────────────────────────────────── */
-.mx-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.mx-head { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .mx-head h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .mx-head .sub { font-size: 12.5px; color: var(--text-muted); }
 .mx-legend { margin-left: auto; display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); }
 .mx-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.mx-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.mx-table th { padding: 12px 18px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.mx-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.mx-table th { padding: 8px 16px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
 .mx-table th.role, .mx-table td.c { text-align: center; width: 190px; }
 .mx-table th.role .sx-role { font-size: 12.5px; letter-spacing: 0; text-transform: none; }
 .mx-table th.role small { display: block; font-size: 11.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-muted); margin-top: 3px; }
-.mx-table td { padding: 10px 18px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+.mx-table td { padding: 6px 16px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
 .mx-table tr:last-child td { border-bottom: 0; }
-.mx-table tr.grp td { padding: 8px 18px 6px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
+.mx-table tr.grp td { padding: 6px 16px 5px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); }
 .mx-mod { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 .mx-mod svg { width: 16px; height: 16px; color: var(--text-muted); }
 .mx-table .hl { background: color-mix(in srgb, var(--rc) 7%, var(--surface)); }
 .mx-table th.hl { box-shadow: inset 0 2px 0 var(--rc); }
 .mx-table th .mine { display: block; font-size: 10.5px; font-weight: 700; color: var(--rc); margin-bottom: 4px; letter-spacing: .04em; }
-.mx { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; vertical-align: middle; }
+.mx { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; vertical-align: middle; }
 .mx.on { background: color-mix(in srgb, var(--rc) 15%, var(--surface)); color: var(--rc); }
 .mx.on svg { width: 14px; height: 14px; stroke-width: 2.8; }
 .mx.no::before { content: ""; width: 10px; height: 2px; border-radius: 1px; background: var(--border-md); }
@@ -154,7 +159,10 @@ html[data-bs-theme] .main-content .ur > .page-head { margin-bottom: -4px !import
 .mx-legend .mx.on svg, .mx-legend .mx.lock svg { width: 12px; height: 12px; }
 
 /* ── Selected account ─────────────────────────────────────────────────── */
-.ins { position: sticky; top: calc(var(--topbar-height, 60px) + 16px); overflow: hidden; }
+.ins { overflow: hidden; display: flex; flex-direction: column; }
+/* The last section open takes what is left of the panel. */
+.ins > .ins-fold:last-of-type[open] { flex: 1 1 auto; }
+.ins > .ins-empty { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 @media (max-width: 1100px) { .ins { position: static; } }
 .ins-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 0 18px; }
 .ins-bar span { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
@@ -472,7 +480,8 @@ html[data-bs-theme] .main-content .ur > .page-head { margin-bottom: -4px !import
                     @endif
                     <dt>Added</dt><dd>{{ $selected->created_at?->format('M j, Y') ?? '—' }}@if($selected->creator) · {{ $selected->creator->name }}@endif</dd>
                 </dl>
-                <details class="ins-fold" data-fold="access">
+                {{-- Open to begin with: the panel has the room. Either still folds. --}}
+                <details class="ins-fold" data-fold="access" open>
                     <summary>
                         <span class="fold-arrow"><i data-lucide="chevron-right"></i></span>
                         Can open · {{ $nOpen($selFp) }} of {{ $nAll }}
@@ -495,7 +504,7 @@ html[data-bs-theme] .main-content .ur > .page-head { margin-bottom: -4px !import
                         @endforeach
                     </div>
                 </details>
-                <details class="ins-fold" data-fold="history">
+                <details class="ins-fold" data-fold="history" open>
                     <summary>
                         <span class="fold-arrow"><i data-lucide="chevron-right"></i></span>
                         History · {{ $histN }} {{ Str::plural('entry', $histN) }}

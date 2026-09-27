@@ -91,7 +91,7 @@
     .settings-tabs::-webkit-scrollbar { display: none; }
     .mod-tab { flex: none; white-space: nowrap; }
     .settings-tabs .nav-item { flex: none !important; }
-    .settings-tabs .nav-link { padding: .8rem 1rem !important; white-space: nowrap; }
+    .settings-tabs .nav-link { padding: .6rem .85rem !important; white-space: nowrap; }
 }
 
 
@@ -113,7 +113,7 @@
 
     :is(.mod-table, .rmx-table) tr {
         display: flex; flex-direction: column; position: relative;
-        padding: 12px 14px; border-bottom: 1px solid var(--border);
+        padding: 9px 12px; border-bottom: 1px solid var(--border);
     }
     :is(.mod-table, .rmx-table) tr:last-child { border-bottom: 0; }
     :is(.mod-table, .rmx-table) tr[hidden] { display: none !important; }
@@ -121,7 +121,7 @@
 
     :is(.mod-table, .rmx-table) td {
         display: flex; align-items: center; justify-content: space-between; gap: 12px;
-        min-width: 0; padding: 7px 0 !important;
+        min-width: 0; padding: 5px 0 !important;
         border: 0 !important; border-top: 1px dashed var(--border) !important;
         background: transparent !important;
         text-align: right !important; white-space: normal;
@@ -137,7 +137,7 @@
     .mod-table td:first-child,
     .rmx-table td:nth-child(2) {
         justify-content: flex-start; text-align: left !important;
-        padding-top: 0 !important; padding-bottom: 8px !important; border-top: 0 !important;
+        padding-top: 0 !important; padding-bottom: 6px !important; border-top: 0 !important;
     }
     .mod-table td:first-child::before,
     .rmx-table td:nth-child(2)::before { display: none; }
@@ -156,7 +156,7 @@
        card it sits in the top corner. */
     .rm-pane:not(.selecting) .rmx-table .rmx-check-col { display: none !important; }
     .rmx-table td.rmx-check-col {
-        position: absolute; top: 12px; right: 14px;
+        position: absolute; top: 9px; right: 12px;
         padding: 0 !important; border: 0 !important;
     }
     .rmx-table td.rmx-check-col::before { display: none; }
@@ -170,12 +170,12 @@
     #roleList > .sx-table > thead { display: none; }
     #roleList > .sx-table tr {
         display: flex; flex-direction: column;
-        padding: 12px 14px; border-bottom: 1px solid var(--border);
+        padding: 9px 12px; border-bottom: 1px solid var(--border);
     }
     #roleList > .sx-table tr:last-child { border-bottom: 0; }
     #roleList > .sx-table td {
         display: flex; align-items: center; justify-content: space-between; gap: 12px;
-        min-width: 0; padding: 6px 0 !important;
+        min-width: 0; padding: 5px 0 !important;
         border: 0 !important; border-top: 1px dashed var(--border) !important;
         background: transparent !important; text-align: right;
     }
@@ -185,7 +185,7 @@
     }
     #roleList > .sx-table td:first-child {
         justify-content: flex-start; text-align: left;
-        padding-top: 0 !important; padding-bottom: 8px !important; border-top: 0 !important;
+        padding-top: 0 !important; padding-bottom: 6px !important; border-top: 0 !important;
     }
     #roleList > .sx-table td:first-child::before,
     #roleList > .sx-table td[colspan]::before { display: none; }
@@ -209,8 +209,8 @@
     .atm-table tr[hidden] { display: none !important; }
 
     .atm-table tr.atm-row {
-        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px;
-        padding: 14px; border-bottom: 1px solid var(--border);
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 8px;
+        padding: 10px 12px; border-bottom: 1px solid var(--border);
     }
     .atm-table tr.atm-row:hover,
     .atm-table tr.atm-row.is-open { background: var(--bg-subtle); }
@@ -244,7 +244,7 @@
     .atm-table tr.atm-dayhead > td { display: block; }
     .atm-table tr.atm-detail:not([hidden]),
     .atm-table tr.atm-detail > td { display: block; }
-    .atm-table tr.atm-detail > td { padding: 4px 12px 14px !important; }
+    .atm-table tr.atm-detail > td { padding: 4px 12px 10px !important; }
     .atm-scans li { grid-template-columns: 64px minmax(0, 1fr) auto; }
     .atm-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -319,15 +319,15 @@
 
     /* Payroll Settings: less padding inside its cards, so the fields get
        the width. */
-    .ps-card-header { padding: 12px 14px !important; }
-    .ps-card-body { padding: 14px !important; }
+    .ps-card-header { padding: 10px 12px !important; }
+    .ps-card-body { padding: 12px !important; }
     .ps-card-body.p-0 { padding: 0 !important; }
-    .pr-head { flex-direction: column; padding: 14px !important; gap: 10px !important; }
+    .pr-head { flex-direction: column; padding: 12px !important; gap: 8px !important; }
     .pr-head-right { flex-wrap: wrap; }
-    .pr-block { padding: 12px !important; }
+    .pr-block { padding: 10px !important; }
     .pr-block-head { flex-wrap: wrap; }
     .sh-pick { grid-template-columns: minmax(0, 1fr) !important; }
-    .sh-def { min-width: 0; padding: 12px !important; }
+    .sh-def { min-width: 0; padding: 10px !important; }
     .sh-def .form-control { min-width: 0; }
 }
 @media (max-width: 767.98px) {
@@ -384,7 +384,7 @@
 @media (max-width: 767.98px) {
     .prx-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
     .prx-legend { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-    .prx-hero .v { font-size: 28px !important; }
+    .prx-hero .v { font-size: 22px !important; }
     .prx-period .sp { display: none; }
     .prx-period .prx-sel { flex: 1 1 100%; }
     html[data-bs-theme] .prx .prx-period .prx-sel input { width: 100% !important; }

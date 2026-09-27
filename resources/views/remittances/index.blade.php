@@ -11,7 +11,7 @@
 
 @push('styles')
 <style>
-.rmt { --rmt-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace; display: flex; flex-direction: column; gap: 14px; }
+.rmt { --rmt-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace; display: flex; flex-direction: column; gap: 10px; }
 html[data-bs-theme] .main-content .rmt > .page-head { margin-bottom: -2px !important; }
 
 .rmt-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-xs); }
@@ -27,10 +27,10 @@ html[data-bs-theme] .main-content .rmt > .page-head { margin-bottom: -2px !impor
 .rmt-btn.danger { color: var(--danger); }
 .rmt-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
 .rmt-btn svg { width: 16px; height: 16px; flex: none; }
-.rmt-ib { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-secondary); display: grid; place-items: center; cursor: pointer; flex: none; }
+.rmt-ib { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-secondary); display: grid; place-items: center; cursor: pointer; flex: none; }
 .rmt-ib:hover { color: var(--text-primary); border-color: var(--brand); }
 .rmt-ib svg { width: 16px; height: 16px; }
-.rmt-sel { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; margin: 0; border: 1px solid var(--border-md); border-radius: 10px; background: var(--surface); }
+.rmt-sel { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; margin: 0; border: 1px solid var(--border-md); border-radius: 10px; background: var(--surface); }
 .rmt-sel:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-subtle); }
 .rmt-sel svg { width: 15px; height: 15px; color: var(--text-muted); flex: none; }
 html[data-bs-theme] .rmt-sel select {
@@ -40,16 +40,16 @@ html[data-bs-theme] .rmt-sel select {
 html[data-bs-theme] .rmt-sel select option { background: var(--surface); color: var(--text-primary); }
 
 /* ── Where the month stands ───────────────────────────────────────────── */
-.rmt-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-.rmt-stat { padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rmt-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.rmt-stat { padding: 9px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .rmt-stat span { display: flex; align-items: center; gap: 7px; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); }
 .rmt-stat span i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
-.rmt-stat b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-primary); }
-.rmt-stat small { font-size: 12px; color: var(--text-muted); }
+.rmt-stat b { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.rmt-stat small { font-size: 11px; color: var(--text-muted); }
 @media (max-width: 1100px) { .rmt-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ── Cards with a table ───────────────────────────────────────────────── */
-.rmt-thead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.rmt-thead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--border); }
 html[data-bs-theme] .rmt .rmt-h {
     margin: 0 !important; font-size: 15px !important; font-weight: 700 !important; line-height: 1.3 !important;
     letter-spacing: 0 !important; color: var(--text-primary); display: flex; gap: 8px; align-items: center;
@@ -62,23 +62,23 @@ html[data-bs-theme] .rmt .rmt-h {
 .rmt-table th, .rmt-table td { text-align: right; white-space: nowrap; }
 .rmt-table .l { text-align: left; }
 .rmt-table thead th {
-    padding: 10px 12px; background: var(--bg-subtle); border-bottom: 1px solid var(--border);
+    padding: 8px 12px; background: var(--bg-subtle); border-bottom: 1px solid var(--border);
     font-size: 10px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary);
 }
-.rmt-table tbody td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-primary); vertical-align: middle; }
-.rmt-table tr > :first-child { padding-left: 16px; }
-.rmt-table tr > :last-child { padding-right: 16px; }
+.rmt-table tbody td { padding: 7px 10px; border-bottom: 1px solid var(--border); font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--text-primary); vertical-align: middle; }
+.rmt-table tr > :first-child { padding-left: 14px; }
+.rmt-table tr > :last-child { padding-right: 14px; }
 .rmt-table .sepl { border-left: 1px dashed var(--border-md); }
 .rmt-table tbody tr[data-agency] { cursor: pointer; }
 .rmt-table tbody tr[data-agency]:hover td { background: var(--bg-subtle); }
 .rmt-table tbody tr[data-agency]:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .rmt-table td.amt { font-weight: 800; font-size: 13.5px; }
-.rmt-table tfoot td { padding: 12px; background: var(--bg-subtle); border-top: 1px solid var(--border-md); font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.rmt-table tfoot td { padding: 8px 10px; background: var(--bg-subtle); border-top: 1px solid var(--border-md); font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 .rmt-table tfoot td.l { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); }
 .rmt-ag { display: flex; gap: 10px; align-items: center; }
-.rmt-lg { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: none; font-weight: 800; font-size: 11px; letter-spacing: .02em; color: #fff; background: var(--c); }
-.rmt-ag b { display: block; font-size: 14px; }
-.rmt-ag small { display: block; color: var(--text-muted); font-size: 11.5px; }
+.rmt-lg { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; font-weight: 800; font-size: 10px; letter-spacing: .02em; color: #fff; background: var(--c); }
+.rmt-ag b { display: block; font-size: 13px; }
+.rmt-ag small { display: block; color: var(--text-muted); font-size: 11px; }
 .rmt-due { display: flex; flex-direction: column; gap: 1px; }
 .rmt-due small { font-size: 11px; color: var(--text-muted); font-weight: 700; }
 .rmt-due small.now { color: var(--warning); }
@@ -93,11 +93,11 @@ html[data-bs-theme] .rmt .rmt-h {
 .rmt-st.due  { background: var(--warning-soft); color: var(--warning); } .rmt-st.due i  { background: var(--warning); }
 
 /* ── The year at a glance ─────────────────────────────────────────────── */
-.rmt-year { display: grid; grid-template-columns: 150px repeat(12, minmax(44px, 1fr)); gap: 6px; padding: 14px 16px; min-width: 760px; }
+.rmt-year { display: grid; grid-template-columns: 150px repeat(12, minmax(44px, 1fr)); gap: 5px; padding: 10px 14px; min-width: 760px; }
 .rmt-year .h { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; text-align: center; }
 .rmt-year .n { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .rmt-year .n i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
-.rmt-yc { height: 30px; border-radius: 7px; display: grid; place-items: center; background: var(--bg-subtle); text-decoration: none; }
+.rmt-yc { height: 24px; border-radius: 7px; display: grid; place-items: center; background: var(--bg-subtle); text-decoration: none; }
 a.rmt-yc:hover, a.rmt-yc:focus-visible { outline: 2px solid var(--border-md); outline-offset: 1px; }
 .rmt-yc::after { content: ""; width: 8px; height: 8px; border-radius: 50%; grid-area: 1 / 1; }
 .rmt-yc.paid { background: var(--success-soft); } .rmt-yc.paid::after { background: var(--success); }
