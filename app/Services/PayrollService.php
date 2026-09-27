@@ -301,6 +301,23 @@ class PayrollService
         }
         $records = $query->get();
 
+        // A day waiting on the office is not paid until it is settled
+        // (Michael, 2026-09-27): a time out the system had to guess, a break
+        // nobody scanned, a day still open past its shift. The whole day waits
+        // — its other records too — and comes back into the pay once the
+        // office has confirmed, corrected, accepted or declined it on
+        // Attendance. Which days are waiting is handed back as 'held'.
+        $now  = Carbon::now('Asia/Manila');
+        $held = [];
+        foreach ($records as $r) {
+            if ($r->needs_review || ($r->time_in && ! $r->time_out && $r->signOutOverdue($now))) {
+                $held[$r->employee_id][$this->dateOf($r->date)] = true;
+            }
+        }
+        if ($held) {
+            $records = $records->reject(fn ($r) => isset($held[$r->employee_id][$this->dateOf($r->date)]))->values();
+        }
+
         // Lateness is measured once per session — on the first time in. A
         // worker back from a mistaken time-out is not late for the second one.
         $cfg['firstInSession'] = $records->filter(fn ($r) => $r->time_in)
@@ -431,6 +448,8 @@ class PayrollService
                 'weeks'     => $weeks,
                 'days'      => $this->groupByDay($records, $cfg),
                 'employees' => $this->pivotByEmployee($weeks),
+                // employee id => the dates held back for review, oldest first.
+                'held'      => array_map(fn ($dates) => array_values(array_unique(array_keys($dates))), $held),
             ];
         } finally {
             $this->priced = [];

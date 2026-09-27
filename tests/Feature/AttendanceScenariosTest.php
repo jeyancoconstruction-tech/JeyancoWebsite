@@ -137,7 +137,7 @@ class AttendanceScenariosTest extends TestCase
     }
 
     /** One report entry: the scans, the kiosk's answers, the row, the pay. */
-    private function report(string $title, array $said, ?AttendanceDayView $d, ?array $pay = null, ?bool $review = null): void
+    private function report(string $title, array $said, ?AttendanceDayView $d, ?array $pay = null, ?bool $review = null, ?string $then = null): void
     {
         $lines = [$title];
 
@@ -157,9 +157,14 @@ class AttendanceScenariosTest extends TestCase
 
             $lines[] = sprintf('   page: %s  |  1st in %s · 1st out %s · 2nd in %s · 2nd out %s',
                 strtoupper($d->status()['label']), $slot('in'), $slot('bo'), $slot('bi'), $slot('out'));
-            $lines[] = '   hours: ' . ($h ? WorkSchedule::duration($h['regular']) . ' regular + ' . WorkSchedule::duration($h['ot']) . ' OT = ' . WorkSchedule::duration($h['worked']) : '— (not priced yet)')
+            $lines[] = '   hours: ' . ($h ? WorkSchedule::duration($h['regular']) . ' regular + ' . WorkSchedule::duration($h['ot']) . ' OT = ' . WorkSchedule::duration($h['worked'])
+                    : ($review ? '— (held: not paid until the office settles it)' : '— (not priced yet)'))
                 . ($review !== null ? '  |  needs review: ' . ($review ? 'YES' : 'no') : '')
                 . ($pay !== null ? '  |  paid: ₱' . number_format($pay['gross'], 2) : '');
+        }
+
+        if ($then) {
+            $lines[] = '   then: ' . $then;
         }
 
         self::$report[] = implode("\n", $lines);
@@ -216,9 +221,16 @@ class AttendanceScenariosTest extends TestCase
         $this->assertSame('12:00 PM', WorkSchedule::label($d->slot('bo')['at']), 'at the end of the session he was in — a guess, never overtime');
         $this->assertSame('Not scanned', $d->tag('bo')['text']);
         $this->assertTrue($this->inReview($e, '2026-09-16 10:00:00'));
-        $this->assertEqualsWithDelta(400, $this->paid($e)['gross'], 0.01, 'the guessed morning only, until the office corrects it');
+        $waiting = $this->paid($e);
+        $this->assertEqualsWithDelta(0, $waiting['gross'], 0.01, 'not paid while it waits for review');
 
-        $this->report('03 · Timed in at 7:58 AM and never timed out (read the next morning)', $said, $d, $this->paid($e), true);
+        // The office enters the time he actually left: the day is paid.
+        $this->actingAs($this->admin())->patchJson(route('attendance.time-out', $row), ['time' => '17:00'])->assertOk();
+        $settled = $this->paid($e)['gross'];
+        $this->assertEqualsWithDelta(800, $settled, 0.01);
+
+        $this->report('03 · Timed in at 7:58 AM and never timed out (read the next morning)', $said, $d, $waiting, true,
+            'the office sets the time out to 5:00 PM under the row → paid ₱' . number_format($settled, 2));
     }
 
     public function test_04_night_crew_timed_in_and_never_timed_out(): void
@@ -230,8 +242,7 @@ class AttendanceScenariosTest extends TestCase
         $this->assertSame('No time out', $d->status()['label']);
         $this->assertSame('12:00 AM', WorkSchedule::label($d->slot('bo')['at']));
         $this->assertTrue($this->inReview($e, '2026-09-16 18:00:00'));
-        // The guessed first half: ₱400, and 10 PM to midnight at the night differential.
-        $this->assertEqualsWithDelta(400 + 2 * 100 * 0.10, $this->paid($e)['gross'], 0.01);
+        $this->assertEqualsWithDelta(0, $this->paid($e)['gross'], 0.01, 'not paid while it waits for review');
 
         $this->report('04 · Night crew timed in at 7:55 PM and never timed out', $said, $d, $this->paid($e), true);
     }
@@ -251,6 +262,7 @@ class AttendanceScenariosTest extends TestCase
         $this->assertSame('12:00 PM', WorkSchedule::label($d->slot('bo')['at']));
         $this->assertSame('1:00 PM', WorkSchedule::label($d->slot('bi')['at']));
         $this->assertTrue($this->inReview($e, '2026-09-16 10:00:00'));
+        $this->assertEqualsWithDelta(0, $this->paid($e)['gross'], 0.01, 'the whole day waits, the afternoon too');
 
         $this->report('05 · Forgot to time out for lunch — in 7:58, in again 1:00 PM, out 5:00 PM', $said, $d, $this->paid($e), true);
     }
@@ -265,8 +277,15 @@ class AttendanceScenariosTest extends TestCase
         $this->assertSame('Missing', $d->tag('bo')['text']);
         $this->assertSame('Missing', $d->tag('bi')['text']);
         $this->assertTrue($this->inReview($e, '2026-09-16 10:00:00'));
+        $waiting = $this->paid($e);
+        $this->assertEqualsWithDelta(0, $waiting['gross'], 0.01, 'not paid while it waits for review');
 
-        $this->report('06 · In at 7:58 AM and out at 5:00 PM, nothing at the break', $said, $d, $this->paid($e), true);
+        $this->actingAs($this->admin())->patchJson(route('attendance.break', Attendance::where('employee_id', $e->id)->sole()), ['decision' => 'accept'])->assertOk();
+        $settled = $this->paid($e)['gross'];
+        $this->assertEqualsWithDelta(800, $settled, 0.01);
+
+        $this->report('06 · In at 7:58 AM and out at 5:00 PM, nothing at the break', $said, $d, $waiting, true,
+            'the office presses Accept → paid ₱' . number_format($settled, 2) . ' (Decline would leave it at ₱0.00, Not recorded)');
     }
 
     public function test_07_half_day(): void
@@ -416,6 +435,7 @@ class AttendanceScenariosTest extends TestCase
         ]);
         $d = $this->row($forgot, '2026-09-16 10:00:00');
         $this->assertSame('No 1st session out', $d->status()['label']);
+        $this->assertEqualsWithDelta(0, $this->paid($forgot)['gross'], 0.01, 'not paid while it waits for review');
         $this->report('15b · Automatic kiosk — no scan at lunch; the 1:05 PM scan opens the afternoon', $said, $d, $this->paid($forgot), true);
     }
 }

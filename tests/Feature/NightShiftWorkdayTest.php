@@ -10,6 +10,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\AcceptsUnbrokenDays;
 use Tests\TestCase;
 
 /**
@@ -35,6 +36,7 @@ use Tests\TestCase;
 class NightShiftWorkdayTest extends TestCase
 {
     use RefreshDatabase;
+    use AcceptsUnbrokenDays;
 
     /** The evening the night shift starts, and the morning it ends. */
     private const EVENING = '2026-09-11 20:00:00';
@@ -81,6 +83,7 @@ class NightShiftWorkdayTest extends TestCase
         $this->postJson('/api/kiosk/attendance', ['employee_id' => $e->id, 'type' => $type])
              ->assertOk()
              ->assertJson(['success' => true]);
+        $this->acceptUnbrokenDays();
     }
 
     private function at(string $moment): void

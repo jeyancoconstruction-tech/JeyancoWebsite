@@ -143,8 +143,7 @@ class AttendanceBreakReviewTest extends TestCase
 
         $pay = fn () => collect(app(PayrollService::class)->computeForRange('2026-09-14', '2026-09-20')['employees'])
             ->firstWhere('employee_id', $e->id)['totals']['gross'] ?? 0;
-        $before = $pay();
-        $this->assertGreaterThan(0, $before);
+        $this->assertEqualsWithDelta(0, $pay(), 0.001, 'not paid while it waits for review');
 
         Carbon::setTestNow(Carbon::parse('2026-09-16 10:00:00', 'Asia/Manila'));
         $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['decision' => 'accept'])
@@ -155,7 +154,7 @@ class AttendanceBreakReviewTest extends TestCase
         $this->assertSame('Worked through the break', $row->close_reason);
         $this->assertSame($this->admin()->id, (int) $row->reviewed_by);
         $this->assertTrue(AuditLog::where('description', "Accepted Accepted's 09/15/2026 as worked straight through the break (8:00 AM – 5:00 PM)")->exists());
-        $this->assertEqualsWithDelta($before, $pay(), 0.001, 'the pay is as it was');
+        $this->assertEqualsWithDelta(800, $pay(), 0.001, 'accepted: paid as worked straight through, the break unpaid');
 
         $day = $this->historyRow($e, '2026-09-16 10:00:00');
         $this->assertSame('done', $day->key());
@@ -176,8 +175,7 @@ class AttendanceBreakReviewTest extends TestCase
 
         $pay = fn () => collect(app(PayrollService::class)->computeForRange('2026-09-14', '2026-09-20')['employees'])
             ->firstWhere('employee_id', $e->id)['totals']['gross'] ?? 0;
-        $before = $pay();
-        $this->assertGreaterThan(0, $before);
+        $this->assertEqualsWithDelta(0, $pay(), 0.001, 'not paid while it waits for review');
 
         Carbon::setTestNow(Carbon::parse('2026-09-16 12:00:00', 'Asia/Manila'));
         $this->actingAs($this->admin())->patchJson(route('attendance.break', $row), ['decision' => 'nonsense'])->assertStatus(422);
@@ -208,9 +206,13 @@ class AttendanceBreakReviewTest extends TestCase
         $this->assertTrue($row->breakUnscanned());
         $this->assertFalse($row->notRecorded());
         $this->assertNull($row->reviewed_by);
-        $this->assertEqualsWithDelta($before, $pay(), 0.001);
+        $this->assertEqualsWithDelta(0, $pay(), 0.001, 'back in review: still not paid');
         $this->assertSame('review', $this->historyRow($e, '2026-09-17 10:00:00', 'missed')->key());
         $this->assertTrue(AuditLog::where('description', "Undid the decision on Declined Night's 09/15/2026 (8:23 PM – 8:22 AM): back to Needs review")->exists());
+
+        // Accepted after all: paid.
+        $this->patchJson(route('attendance.break', $row), ['decision' => 'accept'])->assertOk();
+        $this->assertGreaterThan(0, $pay());
     }
 
     public function test_an_accepted_day_can_be_undone_too(): void
@@ -228,6 +230,31 @@ class AttendanceBreakReviewTest extends TestCase
         $this->assertTrue($row->fresh()->breakUnscanned());
         $this->assertNull($this->historyRow($e, '2026-09-16 10:00:00')->decision());
     }
+    /** Payroll Records says which days are held back, and why the figures leave them out. */
+    public function test_payroll_records_shows_the_days_waiting_for_review(): void
+    {
+        $waiting = $this->worker('Waiting Worker');
+        $this->clock($waiting, 'time_in', '2026-09-15 08:00:00');
+        $this->clock($waiting, 'time_out', '2026-09-15 17:00:00');
+
+        // A settled day the same week keeps the worker on the list.
+        $this->clock($waiting, 'time_in', '2026-09-16 08:00:00');
+        $this->clock($waiting, 'time_out', '2026-09-16 12:00:00');
+
+        Carbon::setTestNow(Carbon::parse('2026-09-17 10:00:00', 'Asia/Manila'));
+        $page = $this->actingAs($this->admin())->get(route('payroll-records', ['week' => '2026-W38']))->assertOk();
+
+        $page->assertSee('1 day is', false)
+             ->assertSee('waiting for review on Attendance and not paid yet.')
+             ->assertSee('In review · 1d')
+             ->assertSee(route('attendance', ['tab' => 'history', 'view' => 'missed']));
+        $this->assertSame([$waiting->id => ['2026-09-15']], $page->viewData('held'));
+
+        // Only the settled half day is in the figures.
+        $emp = collect($page->viewData('employees'))->firstWhere('employee_id', $waiting->id);
+        $this->assertEqualsWithDelta(400, $emp['totals']['gross'], 0.001);
+    }
+
     public function test_only_a_day_waiting_on_its_break_can_be_declined(): void
     {
         $e = $this->worker('Ordinary');

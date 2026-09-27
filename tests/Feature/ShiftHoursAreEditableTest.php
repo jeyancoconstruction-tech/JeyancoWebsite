@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\AcceptsUnbrokenDays;
 use Tests\TestCase;
 
 /**
@@ -28,6 +29,7 @@ use Tests\TestCase;
 class ShiftHoursAreEditableTest extends TestCase
 {
     use RefreshDatabase;
+    use AcceptsUnbrokenDays;
 
     protected function setUp(): void
     {
@@ -195,6 +197,7 @@ class ShiftHoursAreEditableTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-09-11 17:00:00', 'Asia/Manila'));
         $this->postJson('/api/kiosk/attendance', ['employee_id' => $emp->id, 'type' => 'time_out'])
              ->assertOk()->assertJson(['success' => true]);
+        $this->acceptUnbrokenDays();
 
         $paid = app(\App\Services\PayrollService::class)
             ->computeForRange('2026-09-11', '2026-09-11')['days'][0]['details'][0];

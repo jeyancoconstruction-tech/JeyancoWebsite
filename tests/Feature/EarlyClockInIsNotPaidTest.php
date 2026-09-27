@@ -9,6 +9,7 @@ use App\Models\SystemSetting;
 use App\Support\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\AcceptsUnbrokenDays;
 use Tests\TestCase;
 
 /**
@@ -28,6 +29,7 @@ use Tests\TestCase;
 class EarlyClockInIsNotPaidTest extends TestCase
 {
     use RefreshDatabase;
+    use AcceptsUnbrokenDays;
 
     protected function setUp(): void
     {
@@ -62,8 +64,11 @@ class EarlyClockInIsNotPaidTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse($at, 'Asia/Manila'));
 
-        return $this->postJson('/api/kiosk/attendance', ['employee_id' => $e->id, 'type' => $type])
+        $answer = $this->postJson('/api/kiosk/attendance', ['employee_id' => $e->id, 'type' => $type])
                     ->assertOk()->json();
+        $this->acceptUnbrokenDays();
+
+        return $answer;
     }
 
     private function paidOn(string $date): array

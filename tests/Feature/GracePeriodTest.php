@@ -10,6 +10,7 @@ use App\Models\SystemSetting;
 use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\AcceptsUnbrokenDays;
 use Tests\TestCase;
 
 /**
@@ -24,6 +25,7 @@ use Tests\TestCase;
 class GracePeriodTest extends TestCase
 {
     use RefreshDatabase;
+    use AcceptsUnbrokenDays;
 
     protected function setUp(): void
     {
@@ -148,9 +150,12 @@ class GracePeriodTest extends TestCase
         $clock = function (string $type, string $at) use ($e): array {
             Carbon::setTestNow(Carbon::parse($at, 'Asia/Manila'));
 
-            return $this->postJson('/api/kiosk/attendance', ['employee_id' => $e->id, 'type' => $type])
+            $answer = $this->postJson('/api/kiosk/attendance', ['employee_id' => $e->id, 'type' => $type])
                 ->assertOk()
                 ->json();
+            $this->acceptUnbrokenDays();
+
+            return $answer;
         };
 
         $clock('time_in', '2026-09-10 08:10:00');

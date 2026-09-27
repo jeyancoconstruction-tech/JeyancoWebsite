@@ -24,6 +24,8 @@ class PayrollRecordsController extends Controller
         $data      = $payroll->computeForRange($period['from'], $period['to']);
         $days      = $data['days'];
         $employees = $data['employees'];
+        // Days waiting for review on Attendance, not paid until settled.
+        $held      = $data['held'] ?? [];
 
         // Optional employee filter (name or DB id #).
         $search = trim((string) $request->input('employee', ''));
@@ -77,7 +79,12 @@ class PayrollRecordsController extends Controller
             }
         }
 
-        return view('payroll-records', compact('period', 'days', 'employees', 'summary', 'search', 'selectedEmployee', 'rates'));
+        // Waiting days of the workers on screen only, when a name is searched.
+        if ($search !== '') {
+            $held = array_intersect_key($held, array_flip(array_column($employees, 'employee_id')));
+        }
+
+        return view('payroll-records', compact('period', 'days', 'employees', 'summary', 'search', 'selectedEmployee', 'rates', 'held'));
     }
 
     /**

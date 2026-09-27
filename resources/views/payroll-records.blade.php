@@ -187,6 +187,13 @@ html[data-bs-theme] .prx .prx-h {
    what it is, in the money colour — a signed-off day off is not a problem. */
 .pr-leave { color: var(--brand); background: var(--brand-subtle); }
 .pr-leave.unpaid { color: var(--text-muted); background: var(--bg-subtle); }
+/* A day waiting for review on Attendance: not paid until it is settled. */
+.pr-review { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700; vertical-align: 1px;
+             color: var(--danger); background: var(--danger-soft); }
+.prx-held { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; font-size: 13px;
+            background: var(--warning-soft); color: var(--text-primary); border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent); }
+.prx-held i { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); flex: none; }
+.prx-held a { margin-left: auto; font-weight: 700; color: var(--brand); text-decoration: none; white-space: nowrap; }
 
 /* ── The payslip panel ────────────────────────────────────────────────── */
 .prx-drawer.offcanvas { --bs-offcanvas-width: min(540px, 100%); background: var(--surface); color: var(--text-primary); border-left: 1px solid var(--border); }
@@ -218,6 +225,8 @@ html[data-bs-theme] .prx .prx-h {
 .prx-days div.lv { background: var(--violet-soft); }
 .prx-days div em { font-style: normal; font-size: 10px; color: var(--success); }
 .prx-days div.lv em { color: var(--violet); }
+.prx-days div.rv { background: var(--danger-soft); }
+.prx-days div.rv b, .prx-days div.rv em { color: var(--danger); }
 .rc-basis {
     margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--border);
     font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums;
@@ -396,17 +405,20 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
             'deferred'  => round($defer, 2),
             'other'     => round($other, 2),
             'late'      => $late,
+            // Days held back for review on Attendance — not in any figure here.
+            'review'    => count($held[$id] ?? []),
             'ded'       => $t['totalDeductions'],
             'net'       => $t['net'],
             // The week at a glance, for the panel. A day is its hours, its
             // overtime, or the leave it was.
-            'days'      => array_map(function (\Carbon\Carbon $date) use ($grid, $id, $dur) {
+            'days'      => array_map(function (\Carbon\Carbon $date) use ($grid, $id, $dur, $held) {
                 $c = $grid[$id][$date->toDateString()] ?? null;
                 return [
-                    'label' => $date->format('D j'),
-                    'dur'   => $c && $c['min'] > 0 ? $dur($c['min']) : '',
-                    'ot'    => $c && $c['ot'] > 0 ? $dur($c['ot']) : '',
-                    'leave' => $c['leave'] ?? null,
+                    'label'  => $date->format('D j'),
+                    'dur'    => $c && $c['min'] > 0 ? $dur($c['min']) : '',
+                    'ot'     => $c && $c['ot'] > 0 ? $dur($c['ot']) : '',
+                    'leave'  => $c['leave'] ?? null,
+                    'review' => in_array($date->toDateString(), $held[$id] ?? [], true),
                 ];
             }, $weekDates),
         ];
@@ -573,6 +585,17 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         </div>
     </section>
 
+    {{-- Days waiting for review on Attendance are left out of every figure
+         above and below until the office settles them. --}}
+    @php $heldDays = array_sum(array_map('count', $held ?? [])); @endphp
+    @if($heldDays > 0)
+        <div class="prx-held" role="status"><i></i>
+            <span><b>{{ $heldDays }} {{ $heldDays === 1 ? __('day is') : __('days are') }}</b> {{ __('waiting for review on Attendance and not paid yet.') }}
+                {{ count($held) === 1 ? __('1 employee.') : count($held) . ' ' . __('employees.') }}</span>
+            <a href="{{ route('attendance', ['tab' => 'history', 'view' => 'missed']) }}">{{ __('Open Needs review') }} →</a>
+        </div>
+    @endif
+
     {{-- ── The breakdown ───────────────────────────────────────────────────
          A week is one row per worker; a day is one row per shift. The money
          columns add up to Gross, then Deductions come off and the Bonus goes
@@ -703,6 +726,9 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
                                             @endif
                                             @if($s['leaveDays'] > 0)
                                                 <span class="pr-leave" title="{{ __('Approved leave in this period') }}">{{ __('Leave') }} · {{ rtrim(rtrim(number_format($s['leaveDays'], 2), '0'), '.') }}d</span>
+                                            @endif
+                                            @if($s['review'] > 0)
+                                                <span class="pr-review" title="{{ __('Waiting for review on Attendance — not paid until it is settled') }}">{{ __('In review') }} · {{ $s['review'] }}d</span>
                                             @endif
                                         </small>
                                     </div>
@@ -1002,9 +1028,10 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         const days = $('rcDays');
         if (days) {
             days.innerHTML = (s.days || []).map(d => {
-                const cls  = d.leave ? 'lv' : (d.dur ? 'w' : '');
-                const main = d.leave ? 'Leave' : (d.dur || '–');
-                const note = d.leave ? '<em>' + esc(d.leave) + '</em>' : (d.ot ? '<em>+' + esc(d.ot) + ' OT</em>' : '');
+                const cls  = d.leave ? 'lv' : (d.review ? 'rv' : (d.dur ? 'w' : ''));
+                const main = d.leave ? 'Leave' : (d.review ? 'Review' : (d.dur || '–'));
+                const note = d.leave ? '<em>' + esc(d.leave) + '</em>'
+                           : (d.review ? '<em>Not paid yet</em>' : (d.ot ? '<em>+' + esc(d.ot) + ' OT</em>' : ''));
                 return '<div class="' + cls + '">' + esc(d.label) + '<b>' + esc(main) + '</b>' + note + '</div>';
             }).join('');
         }

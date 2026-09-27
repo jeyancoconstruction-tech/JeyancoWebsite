@@ -9,6 +9,7 @@ use App\Models\SystemSetting;
 use App\Support\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\AcceptsUnbrokenDays;
 use Tests\TestCase;
 
 /**
@@ -25,6 +26,7 @@ use Tests\TestCase;
 class NightDifferentialWindowTest extends TestCase
 {
     use RefreshDatabase;
+    use AcceptsUnbrokenDays;
 
     private function hours(string $in, string $out): float
     {
@@ -105,6 +107,7 @@ class NightDifferentialWindowTest extends TestCase
 
         Carbon::setTestNow(Carbon::parse('2026-09-11 23:00:00', 'Asia/Manila'));
         $this->postJson('/api/kiosk/attendance', ['employee_id' => $emp->id, 'type' => 'time_out'])->assertOk();
+        $this->acceptUnbrokenDays();
 
         $paid = app(\App\Services\PayrollService::class)
             ->computeForRange('2026-09-11', '2026-09-11')['days'][0]['details'][0];
