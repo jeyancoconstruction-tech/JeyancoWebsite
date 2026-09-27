@@ -156,6 +156,19 @@
                 <div class="atm-dbox">
                     <h4>{{ __('Fix missing scans') }}</h4>
                     @foreach($fixes as $f)
+                        @if($f['kind'] === 'break')
+                            {{-- In and out scanned, nothing at the break (2026-09-27). --}}
+                            <form class="atm-fix" data-fix-break="{{ route('attendance.break', $f['row']) }}">
+                                <b>{{ __('1st session time out and 2nd session time in are missing') }}@if($f['bo']) · {{ __('break :from – :to', ['from' => WorkSchedule::label($f['bo']), 'to' => WorkSchedule::label($f['bi'])]) }}@endif</b>
+                                <small>{{ __('Scanned in at :in and out at :out, with nothing at the break. Confirm it was worked straight through, or enter the break.', ['in' => WorkSchedule::label($f['in']), 'out' => WorkSchedule::label($f['out'])]) }}</small>
+                                <button type="submit" class="atm-btn pri" name="through" value="1">{{ __('Worked through the break') }}</button>
+                                <span class="atm-note">{{ __('or') }}</span>
+                                <label class="atm-fix-t">{{ __('Out') }} <input type="time" name="out" value="{{ $f['bo']?->format('H:i') }}" aria-label="{{ __('1st session time out for :name', ['name' => $name]) }}"></label>
+                                <label class="atm-fix-t">{{ __('Back in') }} <input type="time" name="in" value="{{ $f['bi']?->format('H:i') }}" aria-label="{{ __('2nd session time in for :name', ['name' => $name]) }}"></label>
+                                <button type="submit" class="atm-btn">{{ __('Save break') }}</button>
+                            </form>
+                            @continue
+                        @endif
                         @php $suggest = $f['guess'] ?? $f['scheduled']; @endphp
                         <form class="atm-fix" data-fix="{{ route('attendance.time-out', $f['row']) }}">
                             <b>

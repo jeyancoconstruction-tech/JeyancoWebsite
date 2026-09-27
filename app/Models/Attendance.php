@@ -472,6 +472,83 @@ class Attendance extends Model
             ->first();
     }
 
+    /** Why a stretch waits in "needs review" when its break was never scanned. */
+    public const NO_BREAK = 'No break scans';
+
+    /** A second session the office made by entering a break the worker never scanned. */
+    public const BREAK_ENTERED = 'Break entered by the office';
+
+    /** A time out the system filled in because nobody scanned one. */
+    public function guessedOut(): bool
+    {
+        return (bool) $this->needs_review && $this->close_type === 'auto';
+    }
+
+    /** A first session scanned in and out with the break inside it unscanned, still waiting on the office. */
+    public function breakUnscanned(): bool
+    {
+        return (bool) $this->needs_review && $this->close_reason === self::NO_BREAK;
+    }
+
+    /**
+     * Flag a first session that was timed out after the second one began,
+     * with no second session of its own: the worker scanned in and out and
+     * nothing at the break — no 1st session time out, no 2nd session time in
+     * (Michael, 2026-09-27). The office confirms it was worked straight
+     * through, or enters the break. Nothing changes in the pay until then.
+     *
+     * Only a time out a worker scanned: one the system guessed is flagged
+     * already, and one the office set is the office's word.
+     */
+    public function flagIfBreakUnscanned(): bool
+    {
+        if (empty($this->time_in) || empty($this->time_out) || $this->close_type !== null || $this->needs_review) {
+            return false;
+        }
+
+        $schedule = $this->shift?->schedule();
+        if (! \App\Support\WorkSchedule::has($schedule)) {
+            return false;
+        }
+
+        $day = Carbon::parse($this->date)->toDateString();
+        $in  = \App\Support\AttendanceDay::momentIn($this);
+        $out = \App\Support\AttendanceDay::momentOut($this);
+
+        if (\App\Support\WorkSchedule::sessionOf($schedule, $this->session, $in) !== 'AM'
+            || ! $out->greaterThan(\App\Support\WorkSchedule::windows($schedule, $day)['PM'][0])) {
+            return false;
+        }
+
+        $second = static::where('employee_id', $this->employee_id)
+            ->whereDate('date', $day)
+            ->whereKeyNot($this->id)
+            ->whereNotNull('time_in')
+            ->get()
+            ->contains(fn (self $r) => \App\Support\WorkSchedule::sessionOf(
+                $schedule, $r->session, \App\Support\AttendanceDay::momentIn($r)) === 'PM');
+
+        if ($second) {
+            return false;
+        }
+
+        // Quietly: the time out that led here is what the audit log records.
+        $this->forceFill(['needs_review' => true, 'close_reason' => self::NO_BREAK])->saveQuietly();
+
+        return true;
+    }
+
+    /** The second session has begun after all: the first one's break was not missing. */
+    public static function clearBreakFlag(int $employeeId, string $day): void
+    {
+        static::where('employee_id', $employeeId)
+            ->whereDate('date', $day)
+            ->where('needs_review', true)
+            ->where('close_reason', self::NO_BREAK)
+            ->get()
+            ->each(fn (self $r) => $r->forceFill(['needs_review' => false, 'close_reason' => null])->saveQuietly());
+    }
+
     /**
      * Close a stretch nobody closed, at the end of its session, and flag it.
      *

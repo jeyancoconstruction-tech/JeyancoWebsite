@@ -163,7 +163,7 @@ final class AttendanceDayView
         return [
             'at'      => $out ? AttendanceDay::momentOut($row) : AttendanceDay::momentIn($row),
             'row'     => $row,
-            'guessed' => $out && (bool) $row->needs_review,
+            'guessed' => $out && $row->guessedOut(),
             'edited'  => $out && $row->close_type === 'admin',
         ];
     }
@@ -230,6 +230,10 @@ final class AttendanceDayView
         }
 
         $problem = $this->problems()->first();
+
+        if ($problem && $problem->breakUnscanned()) {
+            return ['key' => 'review', 'label' => __('No break scans'), 'tone' => 'bad', 'live' => false];
+        }
 
         if ($problem) {
             $inFirst = $this->sessionOf($problem) === 'AM';
@@ -385,7 +389,9 @@ final class AttendanceDayView
         }
 
         if ($this->through && in_array($slot, ['bo', 'bi'], true)) {
-            return ['text' => __('No break scan'), 'tone' => 'mute'];
+            return $this->first->last()?->breakUnscanned()
+                ? ['text' => __('Missing'), 'tone' => 'bad']
+                : ['text' => __('No break scan'), 'tone' => 'mute'];
         }
 
         if (! $this->live || ! $this->w || ! in_array($this->status['key'], ['work', 'break'], true)) {
@@ -529,7 +535,7 @@ final class AttendanceDayView
             [$in, $out] = $this->day->partsOf($row);
 
             if ($out) {
-                $pieces[] = $bar($in, $out, $row->needs_review ? 'w miss' : 'w');
+                $pieces[] = $bar($in, $out, $row->guessedOut() ? 'w miss' : 'w');
             } elseif ($row->signOutOverdue($this->now)) {
                 $pieces[] = $bar($in, WorkSchedule::sessionEnd($this->sched, $this->sessionOf($row), $this->day->date()->toDateString()), 'w miss');
             } elseif ($this->live) {
@@ -594,14 +600,17 @@ final class AttendanceDayView
             [$in, $out] = $this->day->partsOf($row);
             $where = $row->kiosk ? $row->kiosk->name . ' · ' . __('Fingerprint') : __('Control Panel');
 
-            $list[] = ['at' => $in, 'what' => $this->scanLabel($row, 'in'), 'where' => $where, 'tag' => __('OK'), 'tone' => 'good'];
+            $list[] = $row->close_reason === Attendance::BREAK_ENTERED
+                ? ['at' => $in, 'what' => $this->scanLabel($row, 'in'),
+                   'where' => __('Set by :name', ['name' => $row->reviewer?->name ?? __('the office')]), 'tag' => __('Edited'), 'tone' => 'brk']
+                : ['at' => $in, 'what' => $this->scanLabel($row, 'in'), 'where' => $where, 'tag' => __('OK'), 'tone' => 'good'];
 
             if (! $out) {
                 continue;
             }
 
             $list[] = match (true) {
-                (bool) $row->needs_review => [
+                $row->guessedOut() => [
                     'at' => $out, 'what' => __('Closed by the system — no time out was scanned'),
                     'where' => __('System'), 'tag' => __('Guessed'), 'tone' => 'bad',
                 ],
@@ -636,9 +645,13 @@ final class AttendanceDayView
             return __('Time out');
         }
 
-        return $this->through && $inFirst
-            ? __('Time out · worked through the break')
-            : __(':n session time out', ['n' => $n]);
+        if ($this->through && $inFirst) {
+            return $row->breakUnscanned()
+                ? __('Time out · nothing scanned at the break')
+                : __('Time out · worked through the break');
+        }
+
+        return __(':n session time out', ['n' => $n]);
     }
 
     /**
@@ -646,21 +659,38 @@ final class AttendanceDayView
      * on one, with what the shift says it should have been and, when the
      * system already closed it, the time it guessed.
      *
-     * @return list<array{row: Attendance, label: string, scheduled: ?Carbon, guess: ?Carbon, in: Carbon}>
+     * A day with no break scans is settled here too (kind 'break'): confirmed
+     * as worked straight through, or given its break out and back in.
+     *
+     * @return list<array<string, mixed>>
      */
     public function fixes(): array
     {
         return $this->problems()->map(function (Attendance $row) {
             $inFirst = $this->sessionOf($row) === 'AM';
 
+            // No 1st session time out and no 2nd session time in: the office
+            // says it was worked straight through, or enters the break.
+            if ($row->breakUnscanned()) {
+                return [
+                    'kind'  => 'break',
+                    'row'   => $row,
+                    'in'    => AttendanceDay::momentIn($row),
+                    'out'   => AttendanceDay::momentOut($row),
+                    'bo'    => $this->w ? $this->w['AM'][1]->copy() : null,
+                    'bi'    => $this->w ? $this->w['PM'][0]->copy() : null,
+                ];
+            }
+
             return [
+                'kind'      => 'out',
                 'row'       => $row,
                 'label'     => ! $inFirst ? __('2nd session time out')
                              : ($this->second->isNotEmpty() ? __('1st session time out') : __('Time out')),
                 'scheduled' => $this->sched
                     ? WorkSchedule::sessionEnd($this->sched, $this->sessionOf($row), $this->day->date()->toDateString())
                     : null,
-                'guess'     => $row->needs_review ? AttendanceDay::momentOut($row) : null,
+                'guess'     => $row->guessedOut() ? AttendanceDay::momentOut($row) : null,
                 'in'        => AttendanceDay::momentIn($row),
             ];
         })->all();

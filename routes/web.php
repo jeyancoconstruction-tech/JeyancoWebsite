@@ -142,6 +142,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get   ('/attendance',                     [AttendanceController::class, 'index'])->name('attendance');
     Route::delete('/attendance/history/bulk-delete', [AttendanceController::class, 'bulkDeleteHistory'])->name('attendance.history.bulk-delete');
     Route::patch ('/attendance/{attendance}/time-out', [AttendanceController::class, 'setTimeOut'])->name('attendance.time-out');
+    // A day with no break scans: worked through, or the break entered (2026-09-27).
+    Route::patch ('/attendance/{attendance}/break',    [AttendanceController::class, 'setBreak'])->name('attendance.break');
 
     // --- INSIGHTS & AI ROUTES ---
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics');

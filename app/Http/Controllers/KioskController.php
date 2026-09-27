@@ -738,6 +738,10 @@ class KioskController extends Controller
             $open->time_out = $now;
             $open->save();
 
+            // In at the start and out at the end, nothing at the break: the
+            // office is asked whether it was worked straight through.
+            $open->flagIfBreakUnscanned();
+
             $payload = [
                 'success'       => true,
                 'type'          => 'time_out',
@@ -880,6 +884,11 @@ class KioskController extends Controller
             'session'     => $session,
             'time_in'     => $now,
         ]);
+
+        // Back for the second session: the morning's break was taken after all.
+        if ($session === 'PM') {
+            Attendance::clearBreakFlag($employee->id, $shiftDay);
+        }
 
         $payload = [
             'success'       => true,

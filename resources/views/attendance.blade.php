@@ -287,6 +287,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
 }
 .atm-fix b { flex:1 1 100%; font-size:13px; color:var(--text-primary); }
 .atm-fix small { flex:1 1 100%; font-size:12px; color:var(--text-secondary); }
+.atm-fix-t { display:inline-flex; align-items:center; gap:6px; margin:0; font-size:12px; font-weight:600; color:var(--text-secondary); }
 .atm-fix input[type=time] {
     padding:5px 8px; border:1px solid var(--border-md); border-radius:var(--radius-sm);
     background:var(--surface); color:var(--text-primary); color-scheme:inherit; font-variant-numeric:tabular-nums;
@@ -900,6 +901,39 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
                 await reload(location.href);
             } else {
                 Notify.error(data.message || @json(__('The time could not be saved.')));
+                f.querySelectorAll('button').forEach(b => b.disabled = false);
+            }
+        } catch (err) {
+            Notify.error(@json(__('Request failed:')) + ' ' + err.message);
+            f.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+    });
+
+    // ── Settling a day with no break scans ──────────────────────────────────
+    document.addEventListener('submit', async e => {
+        const f = e.target.closest('form[data-fix-break]');
+        if (!f) return;
+        e.preventDefault();
+
+        const through = e.submitter && e.submitter.name === 'through';
+        const out = f.querySelector('input[name="out"]').value;
+        const back = f.querySelector('input[name="in"]').value;
+        if (!through && (!out || !back)) { Notify.warning(@json(__('Enter both break times first.'))); return; }
+
+        f.querySelectorAll('button').forEach(b => b.disabled = true);
+        try {
+            const res  = await fetch(f.dataset.fixBreak, {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify(through ? { through: true } : { out, in: back }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
+                Notify.success(data.message);
+                await reload(location.href);
+            } else {
+                Notify.error(data.message || @json(__('The break could not be saved.')));
                 f.querySelectorAll('button').forEach(b => b.disabled = false);
             }
         } catch (err) {

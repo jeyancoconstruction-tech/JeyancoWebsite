@@ -176,12 +176,16 @@ class MissedSignOutTest extends TestCase
 
     public function test_an_ordinary_finished_day_is_on_nobody_queue(): void
     {
+        // Out and back at the break: a day in and out with nothing at the
+        // break waits for review since 2026-09-27 (AttendanceBreakReviewTest).
         $emp = $this->worker('Day Crew', false);
         $this->timeIn($emp, '2026-09-11 08:00:00');
 
-        Carbon::setTestNow(Carbon::parse('2026-09-11 17:00:00', 'Asia/Manila'));
-        $this->postJson('/api/kiosk/attendance', ['employee_id' => $emp->id, 'type' => 'time_out'])
-             ->assertOk()->assertJson(['success' => true]);
+        foreach (['12:00:00' => 'time_out', '13:00:00' => 'time_in', '17:00:00' => 'time_out'] as $at => $type) {
+            Carbon::setTestNow(Carbon::parse('2026-09-11 ' . $at, 'Asia/Manila'));
+            $this->postJson('/api/kiosk/attendance', ['employee_id' => $emp->id, 'type' => $type])
+                 ->assertOk()->assertJson(['success' => true]);
+        }
 
         $page = $this->page('2026-09-11 20:00:00');
 

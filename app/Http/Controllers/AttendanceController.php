@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use App\Models\Attendance;
 use App\Models\AuditLog;
 use App\Models\Employee;
@@ -465,7 +466,7 @@ class AttendanceController extends Controller
     {
         $data = $request->validate(['time' => ['required', 'date_format:H:i']]);
 
-        if (empty($attendance->time_in) || (! empty($attendance->time_out) && ! $attendance->needs_review)) {
+        if (empty($attendance->time_in) || (! empty($attendance->time_out) && ! $attendance->guessedOut())) {
             return response()->json(['success' => false, 'message' => __('This record already has a time out.')], 422);
         }
 
@@ -528,6 +529,100 @@ class AttendanceController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('Time out saved for :name: :time.', ['name' => $name, 'time' => WorkSchedule::label($out)]),
+        ]);
+    }
+
+    /**
+     * Settle a day with no break scans: the worker scanned in and out, and
+     * nothing at the break (Michael, 2026-09-27).
+     *
+     * Either the office confirms it was worked straight through — the day
+     * stays one stretch and is paid as before — or it enters the break, which
+     * splits the day into its 1st and 2nd session at the times given. The
+     * time in and time out the worker scanned are kept as they are.
+     */
+    public function setBreak(Request $request, Attendance $attendance)
+    {
+        $data = $request->validate([
+            'through' => ['sometimes', 'boolean'],
+            'out'     => ['required_without:through', 'nullable', 'date_format:H:i'],
+            'in'      => ['required_without:through', 'nullable', 'date_format:H:i'],
+        ]);
+
+        if (! $attendance->breakUnscanned()) {
+            return response()->json(['success' => false, 'message' => __('This day is not waiting on its break.')], 422);
+        }
+
+        $name = $attendance->employee?->name ?? __('Unknown');
+        $date = Carbon::parse($attendance->date)->format('m/d/Y');
+        $now  = Carbon::now();
+
+        if ($request->boolean('through')) {
+            $attendance->forceFill([
+                'needs_review' => false,
+                'close_reason' => __('Worked through the break'),
+                'reviewed_by'  => auth()->id(),
+                'reviewed_at'  => $now,
+            ])->save();
+
+            AuditLog::record('Attendance', 'updated', "Confirmed {$name} worked through the break on {$date}", $attendance);
+
+            return response()->json(['success' => true, 'message' => __(':name worked through the break — confirmed.', ['name' => $name])]);
+        }
+
+        // Each time is read against the one before it, rolling into the next
+        // morning when it reads earlier — a night crew's 1:00 AM follows 12:00 AM.
+        $in   = AttendanceDay::momentIn($attendance);
+        $end  = AttendanceDay::momentOut($attendance);
+        $next = function (Carbon $after, string $time) {
+            $t = $after->copy()->setTimeFromTimeString($time)->startOfMinute();
+
+            return $t->lessThanOrEqualTo($after) ? $t->addDay() : $t;
+        };
+        $out  = $next($in, $data['out']);
+        $back = $next($out, $data['in']);
+
+        if (! $out->lessThan($end) || ! $back->lessThan($end)) {
+            return response()->json(['success' => false, 'message' => __('The break has to fall between :in and :out.',
+                ['in' => WorkSchedule::label($in), 'out' => WorkSchedule::label($end)])], 422);
+        }
+
+        DB::transaction(function () use ($attendance, $out, $back, $end, $now) {
+            // The second session: from the time given to the time out the worker scanned.
+            (new Attendance)->forceFill([
+                'employee_id' => $attendance->employee_id,
+                'shift_id'    => $attendance->shift_id,
+                'site_id'     => $attendance->site_id,
+                'kiosk_id'    => $attendance->kiosk_id,
+                'date'        => Carbon::parse($attendance->date)->toDateString(),
+                'session'     => 'PM',
+                'time_in'     => $back->format('Y-m-d H:i:s'),
+                'time_out'    => $end->format('Y-m-d H:i:s'),
+                // Its time in was typed, not scanned; the page says so.
+                'close_reason' => Attendance::BREAK_ENTERED,
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => $now,
+            ])->save();
+
+            // The first session ends where the office says the break began.
+            $attendance->forceFill([
+                'time_out'     => $out->format('Y-m-d H:i:s'),
+                'close_type'   => 'admin',
+                'needs_review' => false,
+                'close_reason' => null,
+                'reviewed_by'  => auth()->id(),
+                'reviewed_at'  => $now,
+            ])->save();
+        });
+
+        AuditLog::record('Attendance', 'updated',
+            "Entered the break for {$name} on {$date}: 1st session out " . WorkSchedule::label($out) . ', 2nd session in ' . WorkSchedule::label($back),
+            $attendance
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Break saved for :name: :out – :in.', ['name' => $name, 'out' => WorkSchedule::label($out), 'in' => WorkSchedule::label($back)]),
         ]);
     }
 
