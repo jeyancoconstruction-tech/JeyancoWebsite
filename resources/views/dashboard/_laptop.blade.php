@@ -58,7 +58,7 @@
     /* The same sum as the full-size rule: the top bar, then the container's
        12px above and 28px below. Measured to fill the window exactly at
        1366x625, with no scroll. */
-    .dash { --dash-gap: 9px; height: calc(100vh - var(--topbar-height, 60px) - 40px); }
+    .dash { --dash-gap: 9px; height: calc(calc(100vh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 40px); }
     .main-content .container-fluid.py-4 { padding: 10px 16px 14px !important; }
     .panel-head { padding: 6px 10px; }
     .panel-head h2 { font-size: .74rem; }

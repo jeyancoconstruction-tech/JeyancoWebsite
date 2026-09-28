@@ -636,3 +636,16 @@ html[data-bs-theme="dark"] {
 /* Attendance: holiday-flagged row highlight */
 [data-bs-theme="dark"] .attendance-holiday { background: rgba(245,158,11,0.08) !important; }
 .attendance-holiday { background: #fffbeb; }
+
+/* Page zoom (− 100% +) in the top bar */
+.ui-zoom { align-items: center; height: 34px; border: 1px solid var(--border, #e2e8f0); border-radius: 10px; background: var(--card-bg, #fff); overflow: hidden; }
+.ui-zoom button { border: 0; background: none; height: 100%; min-width: 30px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; font: inherit; }
+.ui-zoom button svg { width: 15px; height: 15px; }
+.ui-zoom button:hover:not(:disabled) { background: rgba(37, 99, 235, .08); color: #2563eb; }
+.ui-zoom button:disabled { opacity: .35; cursor: default; }
+.ui-zoom .uz-val { min-width: 48px; font-size: 12px; font-weight: 700; color: #334155; font-variant-numeric: tabular-nums; border-left: 1px solid var(--border, #e2e8f0); border-right: 1px solid var(--border, #e2e8f0); }
+.ui-zoom.changed .uz-val { color: #2563eb; }
+[data-bs-theme="dark"] .ui-zoom { background: #151d2e; border-color: #26324a; }
+[data-bs-theme="dark"] .ui-zoom .uz-val { color: #cbd5e1; border-color: #26324a; }
+[data-bs-theme="dark"] .ui-zoom button { color: #94a3b8; }
+[data-bs-theme="dark"] .ui-zoom.changed .uz-val { color: #60a5fa; }

@@ -16,7 +16,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--dash-gap);
-    height: calc(100vh - var(--topbar-height, 60px) - 40px);
+    height: calc(calc(100vh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 40px);
     min-height: 0;
 }
 

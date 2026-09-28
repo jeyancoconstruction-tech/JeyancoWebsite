@@ -91,7 +91,7 @@
     --accent: var(--brand); --accent-soft: var(--brand-subtle); --accent-text: var(--brand-strong);
     --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
     display: flex; flex-direction: column; gap: 12px; color: var(--text);
-    min-height: calc(100dvh - var(--topbar-height, 60px) - 44px);
+    min-height: calc(calc(100dvh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 44px);
 }
 html[data-bs-theme="dark"] .ss { --panel-3: #1b2b46; }
 html[data-bs-theme] .main-content .ss > .page-head { margin-bottom: 0 !important; }
@@ -304,7 +304,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 .ss .ss-sel select option { background: var(--panel); }
 .ss-chip { display: inline-flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 600; background: var(--accent-soft); color: var(--accent-text); border-radius: 999px; padding: 0 12px; height: 34px; }
 .ss-chip a { color: inherit; text-decoration: none; font-weight: 800; }
-.ss-loglist { flex: 1; overflow-y: auto; min-height: 240px; max-height: calc(100dvh - var(--topbar-height, 60px) - 250px); }
+.ss-loglist { flex: 1; overflow-y: auto; min-height: 240px; max-height: calc(calc(100dvh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 250px); }
 .ss-log { display: grid; grid-template-columns: 124px minmax(0, 1fr) auto; gap: 12px; padding: 9px 18px; border-bottom: 1px solid var(--line-soft); font-size: 13px; align-items: center; color: var(--text); }
 .ss-log:nth-child(even) { background: color-mix(in srgb, var(--panel-2) 55%, transparent); }
 .ss-log time { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
