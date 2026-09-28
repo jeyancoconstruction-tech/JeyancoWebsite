@@ -430,7 +430,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
     $cols = 12 + ($isDaily ? 0 : 1) + ($showNight ? 1 : 0) + ($showLeave ? 1 : 0);
 
     // ── Where the period bar goes ────────────────────────────────────────
-    $keep = $search !== '' ? ['employee' => $search] : [];
+    $keep = array_filter(['employee' => $search !== '' ? $search : null, 'site' => $siteId]);
     if ($isDaily) {
         $prevUrl  = route('payroll-records', ['mode' => 'daily', 'date' => $start->copy()->subDay()->toDateString()] + $keep);
         $nextUrl  = route('payroll-records', ['mode' => 'daily', 'date' => $start->copy()->addDay()->toDateString()] + $keep);
@@ -450,6 +450,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         'mode' => $period['mode'],
         'week' => $isDaily ? null : $start->format('o-\WW'),
         'date' => $isDaily ? $start->toDateString() : null,
+        'site' => $siteId,
     ]));
 
     // ── The summary's bar: what the pay is made of ──────────────────────
@@ -534,6 +535,17 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         @endif
 
         <span class="sp"></span>
+
+        {{-- One site's crew, or every site as a whole. --}}
+        <label class="prx-sel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0112 2.5a7 7 0 017 7C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+            <select name="site" id="prSite" aria-label="{{ __('Site') }}">
+                <option value="">{{ __('All sites (as a whole)') }}</option>
+                @foreach($sites as $st)
+                    <option value="{{ $st->id }}" @selected($siteId === $st->id)>{{ $st->name }}</option>
+                @endforeach
+            </select>
+        </label>
 
         <label class="prx-sel">
             {!! $icon['find'] !!}
@@ -932,7 +944,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         'tagline' => $company?->company_tagline ?? 'Payroll Dept. · Panganiban, PH',
         'logo'    => $company?->logoUrl() ?? asset('images/JeyancoLogo.png'),
     ];
-    $jsPrint = route('payslip.batch', ['from' => $period['from'], 'to' => $period['to']]);
+    $jsPrint = route('payslip.batch', array_filter(['from' => $period['from'], 'to' => $period['to'], 'site' => $siteId]));
     $jsExcel = route('payroll-records.export.excel', request()->query());
 @endphp
 <script>
@@ -968,6 +980,8 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         catch (e) { pick.classList.add('is-shown'); pick.focus(); }
     });
     pick.addEventListener('change', () => { if (pick.value) form.submit(); });
+    // A site shows at once; "All sites" is every site as a whole.
+    $('prSite')?.addEventListener('change', () => form.submit());
 
     // ── What each line of a slip is, and what produced it ───────────────
     // Each line names its own multiplier or rate, because "why is this 250"

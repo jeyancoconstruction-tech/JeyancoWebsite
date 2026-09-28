@@ -70,6 +70,12 @@ class PayslipController extends Controller
 
         $employees = $payroll->computeForRange($from, $to)['employees'];
 
+        // One site's crew, from Payroll Records' site filter.
+        if ($request->filled('site')) {
+            $onSite    = \App\Models\Employee::withTrashed()->where('site_id', (int) $request->input('site'))->pluck('id')->all();
+            $employees = collect($employees)->filter(fn ($e) => in_array((int) $e['employee_id'], $onSite, true))->values()->all();
+        }
+
         // Optional single-employee slip (the per-row "Print Slip" button).
         if ($request->filled('employee')) {
             $employees = collect($employees)

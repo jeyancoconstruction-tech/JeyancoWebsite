@@ -109,6 +109,7 @@ const I18N = {
         'enr.note': 'New name? Add it in the web system first — position, rate and Arawan/Contractual are set there. It appears here on its own.',
         'enr.empty': 'No workers at this site yet.', 'enr.emptysub': 'Add them in the web system first.',
         'enr.failed': 'Could not load the list.', 'enr.new': 'NEW', 'enr.hasfp': 'HAS FINGERPRINT', 'enr.needsfp': 'NEEDS FINGERPRINT',
+        'enr.alldone': 'Everyone here has a fingerprint.', 'enr.alldonesub': 'To enrol a finger again, clear it on the web first (Employees → Edit).',
         'enr.ready': 'READY FOR', 'enr.replace': 'REPLACE FINGERPRINT OF', 'enr.presskey': 'Press START SCAN',
         'enr.already': 'already has fingerprint #', 'enr.willreplace': 'If you continue, it will be replaced.',
         'enr.picknamefirst': 'Choose a name first.', 'enr.preparing': 'PREPARING THE SENSOR…',
@@ -255,6 +256,7 @@ const I18N = {
         'enr.note': 'Bagong pangalan? Idagdag muna ito sa web system — doon inilalagay ang posisyon, rate, at kung Arawan o Contractual. Kusang lalabas dito.',
         'enr.empty': 'Wala pang manggagawa sa site na ito.', 'enr.emptysub': 'Idagdag muna sila sa web system.',
         'enr.failed': 'Hindi makuha ang listahan.', 'enr.new': 'BAGO', 'enr.hasfp': 'MAY DALIRI NA', 'enr.needsfp': 'WALA PANG DALIRI',
+        'enr.alldone': 'May daliri na ang lahat dito.', 'enr.alldonesub': 'Para kumuha ulit ng daliri, burahin muna ito sa web (Employees → Edit).',
         'enr.ready': 'HANDA NA PARA KAY', 'enr.replace': 'PALITAN ANG DALIRI NI', 'enr.presskey': 'Pindutin ang SIMULAN ANG SCAN',
         'enr.already': 'ay may daliri na #', 'enr.willreplace': 'Kung ituloy mo, mapapalitan ito.',
         'enr.picknamefirst': 'Pumili muna ng pangalan.', 'enr.preparing': 'INIHAHANDA ANG SENSOR…',
@@ -1210,9 +1212,13 @@ async function loadRoster() {
         if (knownIds !== null) incoming.forEach(e => { if (!knownIds.has(e.id)) e.just_arrived = true; });
         knownIds = new Set(incoming.map(e => e.id));
 
-        roster = incoming;
-        // The picked worker may have been removed on the web meanwhile.
-        if (pickedEmp && !ENROLLING && !roster.some(e => e.id === pickedEmp.id)) { pickedEmp = null; resetEnrollIdle(); }
+        // v11: only the workers still without a finger. One who has one is
+        // off the list — enrolled on this kiosk, or on the web. To take a
+        // finger again, the office clears it on the web and they come back.
+        roster = incoming.filter(e => !e.enrolled);
+        // The picked worker may have been removed on the web meanwhile. One
+        // who was just enrolled here keeps the COMPLETE screen until the next pick.
+        if (pickedEmp && !ENROLLING && enrolledSlot == null && !roster.some(e => e.id === pickedEmp.id)) { pickedEmp = null; resetEnrollIdle(); }
         renderRoster();
 
         const c = data.counts || {};
@@ -1230,8 +1236,10 @@ function renderRoster() {
     if (!list) return;
 
     if (!roster.length) {
-        list.innerHTML = `<div class="roster-empty"><i class="fas fa-user-slash"></i>
-            ${escapeHtml(t('enr.empty'))}<br>${escapeHtml(t('enr.emptysub'))}</div>`;
+        // Nobody at the site, or everybody at it already has a finger.
+        const done = (ROSTER_COUNTS.enrolled || 0) > 0;
+        list.innerHTML = `<div class="roster-empty"><i class="fas ${done ? 'fa-circle-check' : 'fa-user-slash'}"></i>
+            ${escapeHtml(t(done ? 'enr.alldone' : 'enr.empty'))}<br>${escapeHtml(t(done ? 'enr.alldonesub' : 'enr.emptysub'))}</div>`;
         return;
     }
 

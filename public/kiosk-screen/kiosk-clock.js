@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────
-//  JEYANCO KIOSK — ATTENDANCE TAB (v9)
+//  JEYANCO KIOSK — ATTENDANCE TAB (v11)
 //
 //  Two ways to record, chosen on the web (System Settings → Kiosk):
 //
@@ -79,10 +79,10 @@
         const h = Math.floor(min / 60), m = min % 60;
         return ((h % 12) || 12) + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
     }
-    /** "8", "12", "12:30" — a tick label. */
-    function short(hm) {
+    /** "8", "12", "12:30" — a tick label. With ap: "8 PM", "12:30 AM". */
+    function short(hm, ap) {
         const min = toMin(hm), h = Math.floor(min / 60) % 24, m = min % 60;
-        return ((h % 12) || 12) + (m ? ':' + String(m).padStart(2, '0') : '');
+        return ((h % 12) || 12) + (m ? ':' + String(m).padStart(2, '0') : '') + (ap ? (h >= 12 ? ' PM' : ' AM') : '');
     }
     /** "13:02:11" → "1:02 PM". */
     function clockLabel(hms) {
@@ -118,25 +118,27 @@
         const seg  = (cls, a, b, text) =>
             `<span class="ds-seg ${cls}" style="left:${pct(a).toFixed(3)}%;width:${Math.max(0, pct(b) - pct(a)).toFixed(3)}%">${esc(text)}</span>`;
         const [h1, h2] = halfNames(sh);
+        // v11: a night crew's times cross midnight, so each one says PM or AM.
+        const s = hm => short(hm, sh.night);
 
-        let track = seg('work', rel(sh, sh.am_start), rel(sh, sh.am_end), `${h1} ${short(sh.am_start)}–${short(sh.am_end)}`)
-                  + seg('lunch', rel(sh, sh.am_end), rel(sh, sh.pm_start), withCut ? '' : short(sh.am_end))
-                  + seg('work', rel(sh, sh.pm_start), rel(sh, sh.pm_end), `${h2} ${short(sh.pm_start)}–${short(sh.pm_end)}`)
+        let track = seg('work', rel(sh, sh.am_start), rel(sh, sh.am_end), `${h1} ${s(sh.am_start)}–${s(sh.am_end)}`)
+                  + seg('lunch', rel(sh, sh.am_end), rel(sh, sh.pm_start), withCut ? '' : s(sh.am_end))
+                  + seg('work', rel(sh, sh.pm_start), rel(sh, sh.pm_end), `${h2} ${s(sh.pm_start)}–${s(sh.pm_end)}`)
                   + seg('ot', rel(sh, sh.pm_end), span, 'OT');
         if (withCut) track += `<span class="ds-cut" style="left:${pct(rel(sh, sh.cut)).toFixed(3)}%"></span>`;
         const n = relNow(sh);
         if (n <= span) track += `<span class="ds-now" style="left:${pct(n).toFixed(3)}%"></span>`;
 
-        const ticks = [[0, short(sh.opens), 'first'], [rel(sh, sh.am_start), short(sh.am_start), ''],
-                       [rel(sh, sh.am_end), short(sh.am_end), ''], [rel(sh, sh.pm_start), short(sh.pm_start), ''],
-                       [rel(sh, sh.pm_end), short(sh.pm_end), '']]
+        const ticks = [[0, s(sh.opens), 'first'], [rel(sh, sh.am_start), s(sh.am_start), ''],
+                       [rel(sh, sh.am_end), s(sh.am_end), ''], [rel(sh, sh.pm_start), s(sh.pm_start), ''],
+                       [rel(sh, sh.pm_end), s(sh.pm_end), '']]
             .map(([v, text, cls]) => `<span class="${cls}" style="left:${pct(v).toFixed(3)}%">${esc(text)}</span>`).join('');
 
         // v8: past the day shift with no night crew set, say the day is over —
         // not "DAY SHIFT" as if it were still running.
         const title = !sh.night && offShift(sh) ? t('ds.dayover')
                     : (sh.night ? t('ds.night') : t('ds.day')) + ' · '
-                    + t(sh.night ? 'ds.break' : 'ds.lunch', { t: short(sh.am_end) });
+                    + t(sh.night ? 'ds.break' : 'ds.lunch', { t: s(sh.am_end) });
         const right = withCut ? `${esc(t('ds.cut'))} <b>${esc(fmt12(toMin(sh.cut)))}</b>`
                               : `${esc(t('ds.now'))} <b>${esc(fmt12(nowMin()))}</b>`;
 
@@ -151,6 +153,26 @@
     function sessionNow() {
         const sh = currentShift(), [h1, h2] = halfNames(sh);
         return relNow(sh) < rel(sh, sh.cut) ? h1 : h2;
+    }
+
+    /**
+     * v11: the session a press lands in, under TIME IN / TIME OUT. A day crew
+     * reads AM SESSION, then PM SESSION after the cut-off; a night crew reads
+     * its hours, PM into AM — "8 PM – 12 AM", then "1 AM – 5 AM".
+     */
+    function sessionLabel() {
+        const sh = currentShift(), first = relNow(sh) < rel(sh, sh.cut);
+        if (!sh.night) return t(first ? 'sess.AM' : 'sess.PM');
+        const [a, b] = first ? [sh.am_start, sh.am_end] : [sh.pm_start, sh.pm_end];
+        return short(a, true) + ' – ' + short(b, true);
+    }
+
+    function paintButtonLabels() {
+        const bin = $('btn-time-in'), bout = $('btn-time-out');
+        if (!bin || !bout) return;
+        const sub = esc(sessionLabel());
+        bin.innerHTML  = `<i class="fas fa-right-to-bracket"></i>${esc(t('btn.in'))}<small>${sub}</small>`;
+        bout.innerHTML = `<i class="fas fa-right-from-bracket"></i>${esc(t('btn.out'))}<small>${sub}</small>`;
     }
 
     function renderIdle() {
@@ -208,8 +230,7 @@
                               : `<i class="fas fa-hand-pointer"></i><span>${esc(t('mode.buttons'))}</span>`;
 
         $('att-btns').hidden = auto;
-        $('btn-time-in').innerHTML  = `<i class="fas fa-right-to-bracket"></i>${esc(t('btn.in'))}<small>${esc(t('btn.in.sub'))}</small>`;
-        $('btn-time-out').innerHTML = `<i class="fas fa-right-from-bracket"></i>${esc(t('btn.out'))}<small>${esc(t('btn.out.sub'))}</small>`;
+        paintButtonLabels();
         $('att-cap').hidden  = auto;
         $('att-cap').textContent = t('att.cap');
         if (auto && armed) disarm(true);
@@ -227,12 +248,26 @@
     function renderGroupHeads() {
         // v8: the shift running now — a night crew reads 1ST HALF / 2ND HALF.
         const d = currentShift();
-        const hm = m => fmt12(toMin(m)).replace(/ [AP]M$/, '');
+        // v11: a night crew runs PM into AM, so its times keep PM and AM —
+        // "8:00–12:00" read like a morning.
+        const hm = m => d.night ? fmt12(toMin(m)) : fmt12(toMin(m)).replace(/ [AP]M$/, '');
         const [h1, h2] = d.night ? [t('grp.first'), t('grp.second')] : ['AM', 'PM'];
-        $('grp-am').textContent = `${h1} · ${hm(d.am_start)}–${hm(d.am_end)}`;
-        $('grp-pm').textContent = `${h2} · ${hm(d.pm_start)}–${hm(d.pm_end)}`;
+        if ($('grp-am')) $('grp-am').textContent = `${h1} · ${hm(d.am_start)}–${hm(d.am_end)}`;
+        if ($('grp-pm')) $('grp-pm').textContent = `${h2} · ${hm(d.pm_start)}–${hm(d.pm_end)}`;
+
+        // v11: the board's own headings. A night crew's first half is PM and
+        // its second AM, so "AM In … PM Out" read backwards; it reads 1ST IN
+        // … 2ND OUT instead. The key is swapped too, so a change of language
+        // keeps the right words.
+        const heads = { 'mon.amin': 'n.in1', 'mon.amout': 'n.out1', 'mon.pmin': 'n.in2', 'mon.pmout': 'n.out2' };
+        Object.entries(heads).forEach(([dayKey, nightKey]) => {
+            const th = document.querySelector(`th[data-i18n="${dayKey}"], th[data-i18n="${nightKey}"]`);
+            if (!th) return;
+            th.dataset.i18n = d.night ? nightKey : dayKey;
+            th.textContent  = t(th.dataset.i18n);
+        });
         const gap = $('grp-gap');
-        if (gap) gap.textContent = short(d.am_end);        // the lunch column: "12", or whatever is set
+        if (gap) gap.textContent = short(d.am_end, d.night); // the lunch column: "12", or "12 AM" on a night crew
     }
 
     /**
@@ -887,11 +922,15 @@
         clockTimer = setInterval(() => {
             renderStrip();
             renderGroupHeads();
+            if (!armed) paintButtonLabels();       // AM → PM, or 8 PM – 12 AM → 1 AM – 5 AM
             if (window.jeyanco && typeof window.updateSessionPill === 'function') window.updateSessionPill();
             if (isAuto() && !resultShowing() && !busy) renderAutoNow();
         }, 30000);
 
         applyMode();
+        // v11: an older index.html without the attendance panel still gets
+        // the session under its buttons.
+        if (!panel()) paintButtonLabels();
     });
 
     // New hours or a new mode from the web: redraw at once, and re-read the

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Models\PayrollRate;
+use App\Models\Site;
 use App\Services\PayrollService;
 use App\Notifications\PayrollNotification;
 use Illuminate\Http\Request;
@@ -27,15 +29,15 @@ class PayrollRecordsController extends Controller
         // Days waiting for review on Attendance, not paid until settled.
         $held      = $data['held'] ?? [];
 
-        // Optional employee filter (name or DB id #).
+        // Optional employee filter (name or DB id #), and the site: one site's
+        // crew, or every site as a whole.
         $search = trim((string) $request->input('employee', ''));
+        $siteId = $this->siteId($request);
+        $sites  = Site::orderBy('name')->get(['id', 'name']);
         $selectedEmployee = null;
 
-        if ($search !== '') {
-            $needle = strtolower(ltrim($search, '#'));
-            $match  = fn ($e) => str_contains(strtolower($e['name']), $needle) || (string) $e['employee_id'] === $needle;
-
-            $employees = array_values(array_filter($employees, $match));
+        if ($search !== '' || $siteId) {
+            $employees = $this->filterEmployees($employees, $request);
             $ids = array_column($employees, 'employee_id');
 
             foreach ($days as &$day) {
@@ -44,7 +46,7 @@ class PayrollRecordsController extends Controller
             }
             unset($day);
             $days = array_values(array_filter($days, fn ($day) => count($day['details']) > 0));
-            $selectedEmployee = $employees[0] ?? null;
+            $selectedEmployee = $search !== '' ? ($employees[0] ?? null) : null;
         }
 
         // The numbers the period was computed at, for the receipt to show its
@@ -58,7 +60,7 @@ class PayrollRecordsController extends Controller
 
         // ── Notifications ──────────────────────────────────────────────────
         // System Settings → Notifications → Payroll ready.
-        if (! empty($employees) && $search === '' && \App\Models\SystemSetting::current()->enabled('notify_payroll')) {
+        if (! empty($employees) && $search === '' && ! $siteId && \App\Models\SystemSetting::current()->enabled('notify_payroll')) {
             $user      = auth()->user();
             $net       = number_format($summary['net'] ?? 0, 2);
             $empCount  = count($employees);
@@ -79,12 +81,12 @@ class PayrollRecordsController extends Controller
             }
         }
 
-        // Waiting days of the workers on screen only, when a name is searched.
-        if ($search !== '') {
+        // Waiting days of the workers on screen only, when a name or a site narrows them.
+        if ($search !== '' || $siteId) {
             $held = array_intersect_key($held, array_flip(array_column($employees, 'employee_id')));
         }
 
-        return view('payroll-records', compact('period', 'days', 'employees', 'summary', 'search', 'selectedEmployee', 'rates', 'held'));
+        return view('payroll-records', compact('period', 'days', 'employees', 'summary', 'search', 'selectedEmployee', 'rates', 'held', 'sites', 'siteId'));
     }
 
     /**
@@ -108,7 +110,8 @@ class PayrollRecordsController extends Controller
         );
 
         $totals   = $this->summarize($employees);
-        $filename = 'payroll-records_' . $period['from'] . '_to_' . $period['to'] . '.xls';
+        $site     = ($id = $this->siteId($request)) ? Site::find($id) : null;
+        $filename = 'payroll-records_' . ($site ? \Illuminate\Support\Str::slug($site->name) . '_' : '') . $period['from'] . '_to_' . $period['to'] . '.xls';
         $html     = view('exports.payroll-excel', compact('employees', 'period', 'totals'))->render();
 
         return response($html, 200, [
@@ -117,9 +120,17 @@ class PayrollRecordsController extends Controller
         ]);
     }
 
-    /** Narrow the computed rows by the page's "employee (name or ID)" box. */
+    /**
+     * Narrow the computed rows by the page's site (the worker's assigned site)
+     * and its "employee (name or ID)" box.
+     */
     private function filterEmployees(array $employees, Request $request): array
     {
+        if ($siteId = $this->siteId($request)) {
+            $onSite    = Employee::withTrashed()->where('site_id', $siteId)->pluck('id')->all();
+            $employees = array_values(array_filter($employees, fn ($e) => in_array((int) $e['employee_id'], $onSite, true)));
+        }
+
         $search = trim((string) $request->input('employee', ''));
         if ($search === '') {
             return $employees;
@@ -131,6 +142,14 @@ class PayrollRecordsController extends Controller
             return str_contains(strtolower($e['name']), $needle)
                 || (string) $e['employee_id'] === $needle;
         }));
+    }
+
+    /** The site asked for, or null for every site as a whole. */
+    private function siteId(Request $request): ?int
+    {
+        $id = (int) $request->input('site', 0);
+
+        return $id > 0 && Site::whereKey($id)->exists() ? $id : null;
     }
 
     /**
