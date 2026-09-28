@@ -33,16 +33,6 @@
 
             html.setAttribute('data-bs-theme', window.jeyancoTheme(preference()));
 
-            // Page zoom (the − 100% + in the top bar), per browser. Set before
-            // paint so the page does not open big and then shrink.
-            window.jeyancoZoom = function (z) {
-                z = Math.round(Math.min(1.25, Math.max(0.6, +z || 1)) * 100) / 100;
-                html.style.zoom = z === 1 ? '' : z;
-                html.style.setProperty('--ui-zoom', z);
-                return z;
-            };
-            try { window.jeyancoZoom(localStorage.getItem('jeyanco-zoom') || 1); } catch (e) {}
-
             if (dark && dark.addEventListener) {
                 dark.addEventListener('change', function () {
                     if (preference() === 'system') html.setAttribute('data-bs-theme', window.jeyancoTheme('system'));
@@ -530,13 +520,6 @@
                 <kbd>⌘ K</kbd>
             </div>
 
-            {{-- Page zoom: smaller shows the whole page on a small screen. --}}
-            <div class="ui-zoom d-none d-md-flex" role="group" aria-label="{{ __('Page zoom') }}">
-                <button type="button" data-zoom="-1" title="{{ __('Zoom out') }}" aria-label="{{ __('Zoom out') }}"><i data-lucide="minus"></i></button>
-                <button type="button" data-zoom="0" class="uz-val" title="{{ __('Reset to 100%') }}" id="uiZoomVal">100%</button>
-                <button type="button" data-zoom="1" title="{{ __('Zoom in') }}" aria-label="{{ __('Zoom in') }}"><i data-lucide="plus"></i></button>
-            </div>
-
             @include('partials.guide')
 
             <button class="theme-switch" id="themeToggle" type="button" role="switch" aria-label="{{ __('Toggle dark mode') }}" title="{{ __('Toggle dark / light mode') }}">
@@ -1008,37 +991,6 @@
     // without the API fades the colours instead; somebody who has asked for
     // less motion gets the switch at once. What is switched, and how it is
     // remembered, is exactly as before.
-    // ── Page zoom ────────────────────────────────────────────────────────────
-    // − and + step through fixed sizes; the number goes back to 100%. The
-    // choice stays in this browser, like the theme.
-    (function () {
-        const box = document.querySelector('.ui-zoom');
-        if (!box) return;
-        const STEPS = [0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25];
-        const val = document.getElementById('uiZoomVal');
-        let z = parseFloat(document.documentElement.style.getPropertyValue('--ui-zoom')) || 1;
-
-        function show() {
-            val.textContent = Math.round(z * 100) + '%';
-            box.querySelector('[data-zoom="-1"]').disabled = z <= STEPS[0];
-            box.querySelector('[data-zoom="1"]').disabled = z >= STEPS[STEPS.length - 1];
-            box.classList.toggle('changed', z !== 1);
-        }
-        box.addEventListener('click', e => {
-            const b = e.target.closest('[data-zoom]');
-            if (!b) return;
-            const dir = +b.dataset.zoom;
-            if (dir === 0) z = 1;
-            else if (dir > 0) z = STEPS.find(s => s > z + 0.001) ?? z;
-            else z = [...STEPS].reverse().find(s => s < z - 0.001) ?? z;
-            z = window.jeyancoZoom(z);
-            try { localStorage.setItem('jeyanco-zoom', z); } catch (e) {}
-            show();
-            window.dispatchEvent(new Event('resize'));   // maps and charts re-measure
-        });
-        show();
-    })();
-
     (function() {
         const html   = document.documentElement;
         const toggle = document.getElementById('themeToggle');

@@ -1,7 +1,7 @@
 .chat-container {
     display: flex;
     flex-direction: column;
-    height: calc(calc(100vh / var(--ui-zoom, 1)) - 200px);
+    height: calc(100vh - 200px);
     background: #f8fafc;
     border-radius: 12px;
     overflow: hidden;

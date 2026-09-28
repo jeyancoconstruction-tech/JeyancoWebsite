@@ -114,7 +114,7 @@ body { overflow-anchor: auto; }
    in layout or the row beneath them reflows as they appear. */
 .notif-dropdown,
 .search-suggestions-dropdown { position: absolute; }
-.notif-dropdown { max-width: calc(calc(100vw / var(--ui-zoom, 1)) - 24px); }
+.notif-dropdown { max-width: calc(100vw - 24px); }
 .search-suggestions-dropdown > div { max-height: min(400px, 60vh); }
 
 /* Bootstrap animates the dropdown by toggling display, which repaints the whole
@@ -126,7 +126,7 @@ body { overflow-anchor: auto; }
    which scrolls the .modal around it — capping the dialog's height here would
    clip a tall form instead. Containing the overscroll stops a flick at the end
    of a modal's list from carrying on into the page behind it. */
-.modal-dialog-scrollable .modal-content { max-height: calc(calc(100vh / var(--ui-zoom, 1)) - 2rem); }
+.modal-dialog-scrollable .modal-content { max-height: calc(100vh - 2rem); }
 .modal-body, .notif-dd-list, .table-responsive { overscroll-behavior: contain; }
 
 /* An active tab carried an underline (2px on Settings, 3px on Attendance) that
@@ -145,7 +145,7 @@ body { overflow-anchor: auto; }
 
 /* Toasts are fixed and must never widen the page. */
 [style*="position:fixed"][style*="right:20px"],
-[style*="position: fixed"][style*="right: 20px"] { max-width: calc(calc(100vw / var(--ui-zoom, 1)) - 40px); }
+[style*="position: fixed"][style*="right: 20px"] { max-width: calc(100vw - 40px); }
 
 
 /* ── 4 · DATE INPUTS & FLATPICKR ────────────────────────────────────────────
@@ -364,7 +364,7 @@ input.flatpickr-input[readonly] {
 }
 @media (max-width: 575px) {
     .site-tracker.is-max {
-        width: calc(100vw / var(--ui-zoom, 1)) !important; height: calc(100vh / var(--ui-zoom, 1)) !important;
+        width: 100vw !important; height: 100vh !important;
         border-radius: 0 !important;
     }
 }
@@ -495,7 +495,7 @@ thead th[style*="sticky"] { z-index: 2; }
     .welcome-banner { flex-direction: column; align-items: flex-start; }
     .welcome-banner .clock-shell { width: 100%; }
     .welcome-banner .clock-widget { width: 100%; }
-    .mini-cal { left: 0; right: auto; width: min(260px, calc(calc(100vw / var(--ui-zoom, 1)) - 40px)); }
+    .mini-cal { left: 0; right: auto; width: min(260px, calc(100vw - 40px)); }
     /* Header actions wrap onto their own line rather than overlapping. */
     .table-card-header { flex-wrap: wrap; row-gap: 8px; }
     .site-tracker .table-card-header { flex-wrap: nowrap; }
