@@ -64,7 +64,7 @@
 .dvc-cap b { color: var(--text-secondary); font-weight: 600; }
 
 .dvc-side { display: flex; flex-direction: column; min-width: 0; height: 0; min-height: 100%; overflow: hidden; }
-.dvc-map { position: relative; flex: 1 1 200px; min-height: 130px; border-bottom: 1px solid var(--border); }
+.dvc-map { position: relative; flex: 0 1 190px; min-height: 140px; border-bottom: 1px solid var(--border); }
 .dvc-map #dvMap { position: absolute; inset: 0; z-index: 0; }
 .dvc-map .leaflet-control-attribution { font-size: 9px; }
 .dvc-mapnote { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 3px; }
@@ -72,14 +72,15 @@
 .dvc-mapnote .ok { color: var(--success); } .dvc-mapnote .bad { color: var(--danger); } .dvc-mapnote .warn { color: var(--warning); }
 .dvc-mapnote small { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: var(--text-muted); }
 .dvc-mapnote a { font-size: 11.5px; font-weight: 600; }
-.dvc-facts { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); flex: none; }
-.dvc-facts > div { padding: 6px 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 0; }
-.dvc-facts > div:nth-child(2n) { border-right: 0; }
-.dvc-facts > div:nth-last-child(-n+2) { border-bottom: 0; }
+/* The four facts sit under the kiosk screen, where there is width to spare,
+   so the side column keeps its height for the scans. */
+.dvc-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; flex: none; }
+.dvc-facts > div { padding: 8px 14px; border-right: 1px solid var(--border); min-width: 0; }
+.dvc-facts > div:last-child { border-right: 0; }
 .dvc-facts span { display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
 .dvc-facts b { display: block; font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dvc-facts b.ok { color: var(--success); } .dvc-facts b.off { color: var(--danger); } .dvc-facts b.late { color: var(--warning); }
-.dvc-log { flex: 1 1 150px; display: flex; flex-direction: column; min-height: 100px; }
+.dvc-log { flex: 1 1 260px; display: flex; flex-direction: column; min-height: 200px; }
 .dvc-log > header { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
 .dvc-log ol { list-style: none; margin: 0; padding: 0; flex: 1 1 0; min-height: 0; overflow-y: auto; }
 .dvc-log li { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
@@ -117,8 +118,10 @@
     .dvc-side { height: auto; min-height: 0; }
     .dvc-map { flex: none; height: 260px; }
     .dvc-log ol { max-height: 320px; }
+    .dvc-log { flex: none; min-height: 0; }
 }
-.dvc-side .dvc-mapnote, .dvc-side .dvc-facts { flex: none; }
+.dvc-side .dvc-mapnote { flex: none; }
+@media (max-width: 700px) { .dvc-facts { grid-template-columns: 1fr 1fr; } .dvc-facts > div:nth-child(2) { border-right: 0; } .dvc-facts > div:nth-child(-n+2) { border-bottom: 1px solid var(--border); } }
 html[data-bs-theme="dark"] #dvMap .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.88) saturate(.55); }
 html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--text-muted); }
 .dv-watch { margin-left: 6px; }
@@ -315,11 +318,11 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
                     <div class="km-off" data-off hidden></div>
                 </div></div>
                 <div class="dvc-cap" data-cap></div>
+                <div class="dvc-facts" data-facts></div>
             </div>
             <aside class="dvc-side">
                 <div class="dvc-map"><div id="dvMap" aria-label="Where the kiosk is"></div></div>
                 <div class="dvc-mapnote" data-mapnote>Reading the kiosk's position…</div>
-                <div class="dvc-facts" data-facts></div>
                 <div class="dvc-log"><header><span>Today at this kiosk</span><span data-count></span></header>
                     <div class="dvc-chips" data-chips></div><ol data-log></ol></div>
             </aside>

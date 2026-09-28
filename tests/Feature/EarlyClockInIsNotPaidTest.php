@@ -291,6 +291,35 @@ class EarlyClockInIsNotPaidTest extends TestCase
         $this->assertEqualsWithDelta(11.0, $row['total_hours'], 0.01);
     }
 
+    /**
+     * On a Monday this week's cutoff holds only today. The assistant also sees
+     * last week, so "the days I worked" is not answered with one day.
+     */
+    public function test_the_kiosk_assistant_sees_last_week_on_a_monday(): void
+    {
+        $this->shape(false, '08:00', '17:00', '12:00', '13:00', 8);
+        $emp = $this->worker(false);
+
+        $thisMonday = Carbon::today()->startOfWeek(Carbon::MONDAY)->addWeek();
+        foreach ([7, 6, 5] as $back) {                        // last Mon, Tue, Wed
+            $day = $thisMonday->copy()->subDays($back)->format('Y-m-d');
+            $this->clock($emp, 'time_in', $day . ' 08:00:00');
+            $this->clock($emp, 'time_out', $day . ' 12:00:00');
+        }
+        $this->clock($emp, 'time_in', $thisMonday->format('Y-m-d') . ' 08:00:00');
+
+        Carbon::setTestNow($thisMonday->copy()->setTime(9, 0));
+
+        $build = new \ReflectionMethod(\App\Http\Controllers\KioskAiController::class, 'buildContext');
+        $build->setAccessible(true);
+        $context = $build->invoke(app(\App\Http\Controllers\KioskAiController::class), $emp->fresh(), app(\App\Services\PayrollService::class));
+
+        $this->assertCount(1, $context['current_cutoff']['attendance'], 'this week: only today');
+        $this->assertCount(3, $context['previous_cutoff']['attendance'], 'last week: Monday to Wednesday');
+        $this->assertSame($thisMonday->copy()->subWeek()->toDateString(), $context['previous_cutoff']['period_start']);
+        $this->assertSame('Monday', $context['previous_cutoff']['attendance'][0]['day']);
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();

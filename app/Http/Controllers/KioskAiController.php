@@ -287,47 +287,12 @@ class KioskAiController extends Controller
         $cutoffStart = Carbon::now()->startOfWeek(Carbon::MONDAY);
         $cutoffEnd   = Carbon::now()->endOfWeek(Carbon::SUNDAY);
 
-        // Hours and overtime as payroll counts them, indexed by the row they
-        // came from.
-        //
-        // This used to measure them here: clock-in to clock-out, less a flat
-        // eight. That answered a worker asking about their own overtime with
-        // a number their payslip would not show — it counted the wait before
-        // the shift, ignored the unpaid break, and knew nothing of how many
-        // hours their shift's rate actually buys.
-        $paidByRow = [];
-        foreach ($payroll->computeForRange($cutoffStart->toDateString(), $cutoffEnd->toDateString())['days'] as $d) {
-            foreach ($d['details'] ?? [] as $r) {
-                if ((int) $r['employee_id'] === (int) $employee->id) {
-                    $paidByRow[$r['id']] = $r;
-                }
-            }
-        }
-
-        // Attendance is stored one row per session (AM/PM), not as am_in/pm_in
-        // columns, so a single workday can produce two rows.
-        $attendance = Attendance::where('employee_id', $employee->id)
-            ->whereBetween('date', [$cutoffStart->toDateString(), $cutoffEnd->toDateString()])
-            ->orderBy('date')
-            ->orderBy('session')
-            ->get()
-            ->map(function (Attendance $rec) use ($paidByRow): array {
-                // A day still open is not on a payslip yet, so the plain
-                // stretch is all there is to say about it.
-                $paid = $paidByRow[$rec->id] ?? null;
-
-                return [
-                    'date'        => Carbon::parse($rec->date)->toDateString(),
-                    'session'     => $rec->session,
-                    'time_in'     => $rec->time_in  ? Carbon::parse($rec->time_in)->format('H:i')  : null,
-                    'time_out'    => $rec->time_out ? Carbon::parse($rec->time_out)->format('H:i') : null,
-                    'total_hours' => $paid ? round((float) $paid['hours'], 2)
-                                           : $this->hoursWorked($rec->time_in, $rec->time_out),
-                    'ot_hours'    => $paid ? round((float) $paid['ot_hours'], 2) : 0.0,
-                ];
-            })
-            ->values()
-            ->all();
+        // Last week too. The cutoff starts over every Monday, so early in the
+        // week "this cutoff" holds a day or two — on a Monday, only today. A
+        // worker asking about "the days I worked" means the week they just
+        // worked, and the assistant could not see it.
+        $prevStart = $cutoffStart->copy()->subWeek();
+        $prevEnd   = $cutoffEnd->copy()->subWeek();
 
         return [
             'employee' => [
@@ -338,13 +303,69 @@ class KioskAiController extends Controller
                 'ot_rate'      => round((float) $employee->getOTRate(), 2),
                 'vale_balance' => round((float) ($employee->vale ?? 0), 2),
             ],
+            'today' => Carbon::now()->toDateString(),
             'current_cutoff' => [
                 'period_start' => $cutoffStart->toDateString(),
                 'period_end'   => $cutoffEnd->toDateString(),
-                'attendance'   => $attendance,
+                'attendance'   => $this->attendanceFor($employee, $payroll, $cutoffStart, $cutoffEnd),
+            ],
+            'previous_cutoff' => [
+                'period_start' => $prevStart->toDateString(),
+                'period_end'   => $prevEnd->toDateString(),
+                'attendance'   => $this->attendanceFor($employee, $payroll, $prevStart, $prevEnd),
             ],
             'last_payslips' => $this->lastPayslips($employee, $payroll),
         ];
+    }
+
+    /**
+     * One employee's attendance rows for a Monday–Sunday week, with hours and
+     * overtime as payroll counts them.
+     */
+    private function attendanceFor(Employee $employee, PayrollService $payroll, Carbon $start, Carbon $end): array
+    {
+        // Hours and overtime as payroll counts them, indexed by the row they
+        // came from.
+        //
+        // This used to measure them here: clock-in to clock-out, less a flat
+        // eight. That answered a worker asking about their own overtime with
+        // a number their payslip would not show — it counted the wait before
+        // the shift, ignored the unpaid break, and knew nothing of how many
+        // hours their shift's rate actually buys.
+        $paidByRow = [];
+        foreach ($payroll->computeForRange($start->toDateString(), $end->toDateString())['days'] as $d) {
+            foreach ($d['details'] ?? [] as $r) {
+                if ((int) $r['employee_id'] === (int) $employee->id) {
+                    $paidByRow[$r['id']] = $r;
+                }
+            }
+        }
+
+        // Attendance is stored one row per session (AM/PM), not as am_in/pm_in
+        // columns, so a single workday can produce two rows.
+        return Attendance::where('employee_id', $employee->id)
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->orderBy('date')
+            ->orderBy('session')
+            ->get()
+            ->map(function (Attendance $rec) use ($paidByRow): array {
+                // A day still open is not on a payslip yet, so the plain
+                // stretch is all there is to say about it.
+                $paid = $paidByRow[$rec->id] ?? null;
+
+                return [
+                    'date'        => Carbon::parse($rec->date)->toDateString(),
+                    'day'         => Carbon::parse($rec->date)->format('l'),
+                    'session'     => $rec->session,
+                    'time_in'     => $rec->time_in  ? Carbon::parse($rec->time_in)->format('H:i')  : null,
+                    'time_out'    => $rec->time_out ? Carbon::parse($rec->time_out)->format('H:i') : null,
+                    'total_hours' => $paid ? round((float) $paid['hours'], 2)
+                                           : $this->hoursWorked($rec->time_in, $rec->time_out),
+                    'ot_hours'    => $paid ? round((float) $paid['ot_hours'], 2) : 0.0,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -446,6 +467,11 @@ class KioskAiController extends Controller
         - Use ONLY the data in the JSON below. DO NOT INVENT any number.
         - If there is no data for what was asked, say nothing has been recorded yet and refer them to the admin.
         - Attendance is recorded per session (AM or PM), so one day can have two records.
+        - Cutoffs run Monday to Sunday. "current_cutoff" is this week (it starts over every
+          Monday, so early in the week it has only a day or two). "previous_cutoff" is last week.
+        - When they ask about the days or hours they worked, "this week", or their attendance,
+          and this week has little in it, also give last week — and say which week each day is in
+          (name the dates). Never add last week's days into this week's pay.
         - "last_payslips" is weekly (Monday to Sunday).
 
         EMPLOYEE PAYROLL CONTEXT (JSON):
