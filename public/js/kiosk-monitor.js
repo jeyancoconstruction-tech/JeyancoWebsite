@@ -77,7 +77,7 @@
         already_in: 'att.already.t', no_open: 'att.noopen.t', just_timed_in: 'att.justin.t', just_timed_out: 'att.repeat.t',
         session_done: 'att.repeat.t', wrong_shift: 'att.wrongshift.t', not_registered: 'att.notreg.t',
         mode_buttons: 'att.modebtn.t', no_gps: 'att.gps.t', outside_location: 'att.gps.t',
-        wrong_site: 'att.site.t', no_site: 'att.nosite.t',
+        wrong_site: 'att.site.t', no_site: 'att.nosite.t', no_site_location: 'att.gps.t',
     };
     const ICON = { in: 'right-to-bracket', out: 'right-from-bracket', warn: 'triangle-exclamation', rej: 'circle-xmark' };
     const SHOW_MS = 4500;

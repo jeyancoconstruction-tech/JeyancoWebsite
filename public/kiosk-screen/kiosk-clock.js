@@ -613,7 +613,7 @@
             repeat: ['none', 'att.repeat.t'], wrong_shift: ['rej', 'att.wrongshift.t'], not_registered: ['rej', 'att.notreg.t'],
             mode_buttons: ['none', 'att.modebtn.t'], no_gps: ['rej', 'att.gps.t'], outside_location: ['rej', 'att.gps.t'],
             // v10: the worker is assigned to another site, or the kiosk has none.
-            wrong_site: ['rej', 'att.site.t'], no_site: ['rej', 'att.nosite.t'],
+            wrong_site: ['rej', 'att.site.t'], no_site: ['rej', 'att.nosite.t'], no_site_location: ['rej', 'att.gps.t'],
         };
         const [kind, key] = map[r.code] || ['rej', 'bdg.rejected'];
 

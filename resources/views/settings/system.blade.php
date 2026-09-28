@@ -370,6 +370,14 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 .ks-site.on small { color: rgba(255, 255, 255, .8); }
 .ks-site.on::after { content: ""; position: absolute; top: 9px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
 .ks-site:disabled { cursor: progress; opacity: .7; }
+.ks-site.pick { border-color: var(--accent); border-style: dashed; background: color-mix(in srgb, var(--accent) 10%, var(--panel-2)); }
+.ks-site.on.was { background: var(--panel-2); border-color: var(--line); color: var(--text); }
+.ks-site.on.was small { color: var(--faint); }
+.ks-site.on.was::after { background: var(--faint); }
+.ks-save { display: none; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding: 9px 11px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.ks-save.show { display: flex; }
+.ks-save span { flex: 1 1 180px; } .ks-save span b { color: var(--text); }
+.ks-save .ss-btn { height: 30px; padding: 0 14px; font-size: 12.5px; }
 .ks-note { margin-top: 8px; font-size: 12px; color: var(--muted); min-height: 1em; }
 .ks-note.ok { color: var(--success); } .ks-note.bad { color: var(--danger); }
 .ks-del { border: 0; background: none; padding: 3px 6px; font: inherit; font-size: 11.5px; font-weight: 600; color: var(--faint); cursor: pointer; border-radius: 6px; }
@@ -608,17 +616,18 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                             {{-- Where each kiosk stands. Set here, not on the kiosk: it
                                  records only for this site's workers, and only inside
                                  the site's radius. Takes effect at once. --}}
-                            <div class="ss-row"><div class="lb"><b>{{ __('Kiosk site') }}</b><small>{{ __("Where each kiosk is standing. It records attendance only for this site's workers, and only inside the site's radius. Changes right away — the kiosk follows within a few seconds.") }}</small></div>
-                                <div class="ks-list" data-ks-url="{{ url('system-settings/kiosk') }}">
+                            <div class="ss-row"><div class="lb"><b>{{ __('Kiosk site') }}</b><small>{{ __("Where each kiosk is standing. It records attendance only for this site's workers, and only inside the site's radius. Pick a site, then press Save — the kiosk follows within a few seconds.") }}</small></div>
+                                <div class="ks-list" data-ks-url="{{ url('system-settings/kiosk') }}" @if(config('kiosk.enforce_location')) data-ks-check="1" @endif>
                                     @foreach($kiosks as $k)
                                         @php
                                             $m = $k['map'];
                                             [$geoCls, $geoText] = match (true) {
                                                 ! $k['site_id']        => ['warn', __('No site yet')],
-                                                ! $m['site']           => ['warn', __('No location on Sites')],
+                                                ! config('kiosk.enforce_location') => ['warn', __('Location check is off')],
+                                                ! $m['site']           => ['out', __('No location on Sites — refusing scans')],
                                                 $m['lat'] === null     => ['warn', __('No GPS yet')],
                                                 (bool) $m['inside']    => ['in', __('Inside') . ' · ' . $m['distance'] . ' m'],
-                                                default                => ['out', __('Outside') . ' · ' . $m['distance'] . ' m'],
+                                                default                => ['out', __('Outside') . ' · ' . $m['distance'] . ' m — refusing scans'],
                                             };
                                         @endphp
                                         <div class="ks-card" data-ks="{{ $k['id'] }}">
@@ -632,6 +641,11 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                                     <button type="button" class="ks-site @if($k['site_id'] === $st->id) on @endif" role="radio" aria-checked="{{ $k['site_id'] === $st->id ? 'true' : 'false' }}" data-site="{{ $st->id }}">
                                                         <b>{{ $st->name }}</b>@if($st->location)<small>{{ $st->location }}</small>@endif</button>
                                                 @endforeach
+                                            </div>
+                                            <div class="ks-save" data-ks-save>
+                                                <span data-ks-ask></span>
+                                                <button type="button" class="ss-btn" data-ks-cancel>{{ __('Cancel') }}</button>
+                                                <button type="button" class="ss-btn pri" data-ks-go>{{ __('Save') }}</button>
                                             </div>
                                             <div class="ks-note" data-ks-note></div>
                                         </div>
@@ -1074,8 +1088,8 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 })();
 
 // ── Kiosk site ───────────────────────────────────────────────────────────────
-// A tap moves the kiosk to that site at once (not through the save bar). The
-// kiosk reads it on its next settings question, a few seconds later.
+// A tap only picks the site; Save moves the kiosk (not through the page's
+// save bar). The kiosk reads it on its next settings question, seconds later.
 (function () {
     const list = document.querySelector('.ks-list');
     if (!list) return;
@@ -1084,42 +1098,72 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
     function geo(k) {
         const m = k.map || {};
         if (!k.site_id) return ['warn', 'No site yet'];
-        if (!m.site) return ['warn', 'No location on Sites'];
+        if (!list.dataset.ksCheck) return ['warn', 'Location check is off'];
+        if (!m.site) return ['out', 'No location on Sites — refusing scans'];
         if (m.lat === null) return ['warn', 'No GPS yet'];
-        return m.inside ? ['in', 'Inside · ' + m.distance + ' m'] : ['out', 'Outside · ' + m.distance + ' m'];
+        return m.inside ? ['in', 'Inside · ' + m.distance + ' m'] : ['out', 'Outside · ' + m.distance + ' m — refusing scans'];
+    }
+
+    function reset(card) {
+        card.querySelectorAll('.ks-site').forEach(b => b.classList.remove('pick', 'was'));
+        card.querySelector('[data-ks-save]').classList.remove('show');
+        delete card.dataset.pick;
     }
 
     list.addEventListener('click', async e => {
-        const btn = e.target.closest('.ks-site');
-        if (!btn || btn.classList.contains('on')) return;
-        const card = btn.closest('[data-ks]');
+        const card = e.target.closest('[data-ks]');
+        if (!card) return;
         const note = card.querySelector('[data-ks-note]');
-        const buttons = card.querySelectorAll('.ks-site');
+
+        // Pick: nothing is sent yet.
+        const btn = e.target.closest('.ks-site');
+        if (btn) {
+            reset(card);
+            if (btn.classList.contains('on')) return;          // back to where it is
+            btn.classList.add('pick');
+            card.querySelector('.ks-site.on')?.classList.add('was');
+            card.dataset.pick = btn.dataset.site;
+            const from = card.querySelector('.ks-site.on b');
+            card.querySelector('[data-ks-ask]').innerHTML = 'Move to <b></b>' + (from ? ' from <b></b>' : '') + '?';
+            const bs = card.querySelectorAll('[data-ks-ask] b');
+            bs[0].textContent = btn.querySelector('b').textContent;
+            if (from) bs[1].textContent = from.textContent;
+            card.querySelector('[data-ks-save]').classList.add('show');
+            note.className = 'ks-note'; note.textContent = '';
+            return;
+        }
+
+        if (e.target.closest('[data-ks-cancel]')) { reset(card); return; }
+        const go = e.target.closest('[data-ks-go]');
+        if (!go || !card.dataset.pick) return;
+
+        const buttons = card.querySelectorAll('.ks-site, [data-ks-save] button');
         buttons.forEach(b => b.disabled = true);
         card.classList.add('moving');
-        note.className = 'ks-note';
-        note.textContent = 'Moving to ' + btn.querySelector('b').textContent + '…';
+        go.textContent = 'Saving…';
         try {
             const res = await fetch(list.dataset.ksUrl + '/' + card.dataset.ks + '/site', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token },
                 credentials: 'same-origin',
-                body: JSON.stringify({ site_id: Number(btn.dataset.site) }),
+                body: JSON.stringify({ site_id: Number(card.dataset.pick) }),
             });
             if (!res.ok) throw new Error(res.status);
             const k = (await res.json()).kiosk;
-            buttons.forEach(b => { const on = Number(b.dataset.site) === k.site_id; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); });
+            reset(card);
+            card.querySelectorAll('.ks-site').forEach(b => { const on = Number(b.dataset.site) === k.site_id; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); });
             const [cls, text] = geo(k);
             const g = card.querySelector('[data-ks-geo]');
             g.className = 'ks-geo ' + cls; g.textContent = text;
             note.className = 'ks-note ok';
-            note.textContent = k.name + ' is now at ' + k.site + '. The kiosk switches within a few seconds.'
+            note.textContent = 'Saved. ' + k.name + ' is now at ' + k.site + '. The kiosk switches within a few seconds.'
                 + (cls === 'out' ? ' Until its GPS is inside ' + k.site + "'s radius, it will refuse scans." : '');
         } catch (err) {
             note.className = 'ks-note bad';
-            note.textContent = 'Could not change the site — check the connection and try again.';
+            note.textContent = 'Could not save the site — check the connection and try again.';
         } finally {
             buttons.forEach(b => b.disabled = false);
+            go.textContent = 'Save';
             card.classList.remove('moving');
         }
     });

@@ -182,6 +182,31 @@ class KioskSiteFromWebTest extends TestCase
         $this->assertSame('no_gps', $this->timeIn($this->worker($a))['code']);
     }
 
+    public function test_outside_the_radius_is_refused_at_the_scan_too(): void
+    {
+        config(['kiosk.enforce_location' => true]);
+        $a = $this->pinned('Site Alpha');
+        $this->kioskAt($a, ['lat' => 13.6300, 'lng' => 123.1850]);
+        $this->worker($a);
+
+        $this->postJson('/api/kiosk/scan-attendance', ['fingerprint_id' => '7', 'kiosk_code' => 'SITE_A'])
+            ->assertJsonPath('code', 'outside_location')->assertJsonPath('employee.name', 'Ana Villanueva');
+        $this->assertSame(0, Attendance::count());
+    }
+
+    /** A site with no location on the Sites page is no longer a way around the radius. */
+    public function test_a_site_with_no_location_is_refused(): void
+    {
+        config(['kiosk.enforce_location' => true]);
+        $a = Site::create(['name' => 'Site Gamma']);
+        $this->kioskAt($a, ['lat' => 14.5, 'lng' => 121.0]);
+
+        $answer = $this->timeIn($this->worker($a));
+        $this->assertSame('no_site_location', $answer['code']);
+        $this->assertStringContainsString('Site Gamma has no location', $answer['message']);
+        $this->assertSame(0, Attendance::count());
+    }
+
     public function test_the_office_can_add_a_kiosk(): void
     {
         $b = $this->pinned('Site Beta');

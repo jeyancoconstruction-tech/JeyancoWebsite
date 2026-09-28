@@ -457,7 +457,7 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
                    just_timed_out: 'JUST TIMED OUT', session_done: 'SESSION DONE', wrong_shift: 'REJECTED',
                    not_registered: 'NOT REGISTERED YET', mode_buttons: 'PRESS A BUTTON FIRST',
                    no_gps: 'LOCATION NOT CONFIRMED', outside_location: 'LOCATION NOT CONFIRMED',
-                   wrong_site: 'NOT ASSIGNED TO THIS SITE', no_site: 'NO SITE SET' };
+                   wrong_site: 'NOT ASSIGNED TO THIS SITE', no_site: 'NO SITE SET', no_site_location: 'LOCATION NOT CONFIRMED' };
     const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
     let current = Number(box.dataset.first) || null, data = null, seq = null, recent = [], loaded = null, timer = null;

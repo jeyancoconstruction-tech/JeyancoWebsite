@@ -189,10 +189,22 @@ class KioskController extends Controller
         }
 
         $site = $kiosk->site;
-        $destLat = $site?->latitude;
-        $destLng = $site?->longitude;
+        if (! $site) {
+            return null; // no site at all: siteGate() refuses it, by name
+        }
+
+        // A site with no location on the Sites page used to be let through
+        // unchecked — so a kiosk anywhere could record for it. Now the kiosk
+        // refuses until the office sets the location: "outside the radius"
+        // cannot be told apart from "nobody said where the site is".
+        $destLat = $site->latitude;
+        $destLng = $site->longitude;
         if ($destLat === null || $destLng === null) {
-            return null; // no designated location assigned yet → ungated
+            return [
+                'success' => false,
+                'code'    => 'no_site_location',
+                'message' => "{$site->name} has no location on the Sites page yet, so the kiosk cannot check that it is on site. Set the location there first.",
+            ];
         }
 
         // Current position: the coordinates sent with the scan, else the
@@ -1339,6 +1351,12 @@ class KioskController extends Controller
         // before the kiosk offers TIME IN at all.
         if ($refused = $this->siteGate($employee, $site)) {
             return response()->json($refused);
+        }
+
+        // Outside the site's radius (or the site has no location): refused at
+        // the scan, with the worker named, so TIME IN is never offered.
+        if ($gate = $this->locationGate($kiosk, $request)) {
+            return response()->json($gate + ['employee' => ['id' => $employee->id, 'name' => $employee->name]]);
         }
 
         if (!$employee->kiosk_id && $kiosk) {
