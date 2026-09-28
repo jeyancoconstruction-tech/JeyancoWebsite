@@ -10,7 +10,7 @@
     flex-direction: column;
     /* One screen: less the top bar and the page container's padding above
        and below, so the chat reaches the bottom without the page scrolling. */
-    height: calc(calc(100vh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 40px);
+    height: calc(100vh - var(--topbar-height, 60px) - 40px);
     overflow: hidden;
     padding: 0;
 }
@@ -411,7 +411,7 @@
    RESPONSIVE
    ================================ */
 @media (max-width: 768px) {
-    .ai-page-wrapper { height: calc(calc(100vh / var(--ui-zoom, 1)) - 68px); }
+    .ai-page-wrapper { height: calc(100vh - 68px); }
 
     .ai-main {
         flex-direction: column;

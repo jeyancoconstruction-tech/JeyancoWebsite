@@ -186,7 +186,7 @@ input.sx-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--b
     body:has(.st-side) { overflow-x: clip; overflow-y: visible; }
     .st-wrap:has(> .st-side) { align-items: stretch; }
     .st-side { contain: size; }
-    .st-side-in { position: sticky; top: calc(var(--topbar-height, 60px) + 16px); height: 100%; max-height: calc(calc(100vh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 32px); }
+    .st-side-in { position: sticky; top: calc(var(--topbar-height, 60px) + 16px); height: 100%; max-height: calc(100vh - var(--topbar-height, 60px) - 32px); }
     .st-side .st-nav { position: static; flex: none; }
 }
 .st-glance { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-xs); }

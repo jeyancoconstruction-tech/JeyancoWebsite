@@ -111,7 +111,7 @@ html[data-bs-theme] .main-content .sm-page > .page-head { margin-bottom: -6px !i
     padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted);
 }
 .sm-mapbar b { color: var(--text-primary); font-weight: 600; }
-.sm-mapbox { position: relative; flex: 1; min-height: clamp(360px, calc(calc(100vh / var(--ui-zoom, 1)) - 300px), 700px); }
+.sm-mapbox { position: relative; flex: 1; min-height: clamp(360px, calc(100vh - 300px), 700px); }
 .sm-map { position: absolute; inset: 0; cursor: crosshair; }
 /* The map fills its card edge to edge; the card already draws the frame.
    Stated at this weight because ui-fixes.css makes every .leaflet-container
