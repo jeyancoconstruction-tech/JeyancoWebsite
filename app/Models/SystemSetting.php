@@ -134,7 +134,8 @@ class SystemSetting extends Model
         'orange' => ['Orange', '#EA580C', ['#EA580C', '#C2410C', '#FFF1E8'], ['#F7924A', '#FDBA74', '#2E1D12']],
     ];
 
-    public const DENSITIES = ['comfortable' => 'Comfortable', 'compact' => 'Compact'];
+    /** Display size: how large every page is drawn (calm.css). */
+    public const DENSITIES = ['large' => 'Large', 'comfortable' => 'Comfortable', 'compact' => 'Compact'];
 
     /** The saved accent's token rules, or nothing for the design's own blue. */
     public function accentCss(): string

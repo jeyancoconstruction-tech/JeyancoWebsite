@@ -54,7 +54,7 @@ html[data-bs-theme] .main-content .ur > .page-head { margin-bottom: -4px !import
    the account panel runs the height of the lists beside it, and the lists
    take whatever the screen has spare, so nothing floats above empty space. */
 .ur-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: stretch;
-           min-height: calc(100dvh - var(--topbar-height, 60px) - 118px); }
+           min-height: calc(calc(100dvh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 118px); }
 .ur-main > .ur-card:last-child { flex: 1 1 auto; }
 @media (max-width: 1280px) { .ur-grid { grid-template-columns: minmax(0, 1fr) 320px; } }
 @media (max-width: 1100px) { .ur-grid { grid-template-columns: minmax(0, 1fr); } }

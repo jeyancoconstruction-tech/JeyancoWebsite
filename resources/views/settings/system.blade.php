@@ -91,7 +91,7 @@
     --accent: var(--brand); --accent-soft: var(--brand-subtle); --accent-text: var(--brand-strong);
     --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
     display: flex; flex-direction: column; gap: 12px; color: var(--text);
-    min-height: calc(100dvh - var(--topbar-height, 60px) - 44px);
+    min-height: calc(calc(100dvh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 44px);
 }
 html[data-bs-theme="dark"] .ss { --panel-3: #1b2b46; }
 html[data-bs-theme] .main-content .ss > .page-head { margin-bottom: 0 !important; }
@@ -304,7 +304,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 .ss .ss-sel select option { background: var(--panel); }
 .ss-chip { display: inline-flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 600; background: var(--accent-soft); color: var(--accent-text); border-radius: 999px; padding: 0 12px; height: 34px; }
 .ss-chip a { color: inherit; text-decoration: none; font-weight: 800; }
-.ss-loglist { flex: 1; overflow-y: auto; min-height: 240px; max-height: calc(100dvh - var(--topbar-height, 60px) - 250px); }
+.ss-loglist { flex: 1; overflow-y: auto; min-height: 240px; max-height: calc(calc(100dvh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 250px); }
 .ss-log { display: grid; grid-template-columns: 124px minmax(0, 1fr) auto; gap: 12px; padding: 9px 18px; border-bottom: 1px solid var(--line-soft); font-size: 13px; align-items: center; color: var(--text); }
 .ss-log:nth-child(even) { background: color-mix(in srgb, var(--panel-2) 55%, transparent); }
 .ss-log time { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
@@ -538,10 +538,10 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                         <label title="{{ __($label) }}"><input type="radio" name="accent_color" value="{{ $val }}" aria-label="{{ __($label) }}" @checked($accent === $val) data-track data-saved="{{ $s->accent_color ?: 'blue' }}" data-label="{{ __('Accent color') }}"><span style="--c:{{ $swatch }}"></span></label>
                                     @endforeach
                                 </div></div>
-                            <div class="ss-row"><div class="lb"><b>{{ __('Table density') }}</b><small>{{ __('Compact fits more rows on smaller screens.') }}</small></div>
+                            <div class="ss-row"><div class="lb"><b>{{ __('Display size') }}</b><small>{{ __('How large every page is drawn. Comfortable is a little smaller than Large; Compact fits the most on a laptop.') }}</small></div>
                                 <div class="ss-inp"><div class="ss-seg" role="radiogroup" aria-label="{{ __('Density') }}">
                                     @foreach(SystemSetting::DENSITIES as $val => $label)
-                                        <label><input type="radio" name="table_density" value="{{ $val }}" @checked($density === $val) data-track data-saved="{{ $s->table_density ?: 'comfortable' }}" data-label="{{ __('Table density') }}"><span>{{ __($label) }}</span></label>
+                                        <label><input type="radio" name="table_density" value="{{ $val }}" @checked($density === $val) data-track data-saved="{{ $s->table_density ?: 'comfortable' }}" data-label="{{ __('Display size') }}"><span>{{ __($label) }}</span></label>
                                     @endforeach
                                 </div></div></div>
                             <div class="ss-row"><div class="lb"><b>{{ __('Intro animation') }}</b><small>{{ __('Play the site animation when the sign-in page opens fresh.') }}</small></div>
@@ -563,7 +563,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                             <dl class="ss-kv">
                                 <dt>{{ __('Theme') }}</dt><dd data-look="theme"></dd>
                                 <dt>{{ __('Accent') }}</dt><dd data-look="accent"></dd>
-                                <dt>{{ __('Rows') }}</dt><dd data-look="density"></dd>
+                                <dt>{{ __('Size') }}</dt><dd data-look="density"></dd>
                             </dl>
                             <p class="note">{{ __('The preview follows your picks before you save. A user who chose a theme in the top bar keeps it.') }}</p>
                         </aside>
@@ -880,6 +880,12 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
         } else if (tag) tag.remove();
         const d = form.querySelector('[name="table_density"]:checked');
         document.body.classList.toggle('density-compact', !!d && d.value === 'compact');
+        // Display size: the whole page follows the pick before it is saved.
+        if (d) {
+            document.documentElement.classList.remove('ui-size-large', 'ui-size-comfortable', 'ui-size-compact');
+            document.documentElement.classList.add('ui-size-' + d.value);
+            window.dispatchEvent(new Event('resize'));
+        }
     }
 
     // ── Unsaved changes ──────────────────────────────────────────────────

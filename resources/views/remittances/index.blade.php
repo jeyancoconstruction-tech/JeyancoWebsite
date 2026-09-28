@@ -76,7 +76,8 @@ html[data-bs-theme] .rmt .rmt-h {
 .rmt-table tfoot td { padding: 8px 10px; background: var(--bg-subtle); border-top: 1px solid var(--border-md); font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 .rmt-table tfoot td.l { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); }
 .rmt-ag { display: flex; gap: 10px; align-items: center; }
-.rmt-lg { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; font-weight: 800; font-size: 10px; letter-spacing: .02em; color: #fff; background: var(--c); }
+.rmt-lg { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px var(--border); }
+.rmt-lg img { width: 100%; height: 100%; object-fit: contain; padding: 2px; }
 .rmt-ag b { display: block; font-size: 13px; }
 .rmt-ag small { display: block; color: var(--text-muted); font-size: 11px; }
 .rmt-due { display: flex; flex-direction: column; gap: 1px; }
@@ -96,7 +97,7 @@ html[data-bs-theme] .rmt .rmt-h {
 .rmt-year { display: grid; grid-template-columns: 150px repeat(12, minmax(44px, 1fr)); gap: 5px; padding: 10px 14px; min-width: 760px; }
 .rmt-year .h { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; text-align: center; }
 .rmt-year .n { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.rmt-year .n i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.rmt-year .n img { width: 18px; height: 18px; border-radius: 4px; object-fit: contain; background: #fff; box-shadow: inset 0 0 0 1px var(--border); }
 .rmt-yc { height: 24px; border-radius: 7px; display: grid; place-items: center; background: var(--bg-subtle); text-decoration: none; }
 a.rmt-yc:hover, a.rmt-yc:focus-visible { outline: 2px solid var(--border-md); outline-offset: 1px; }
 .rmt-yc::after { content: ""; width: 8px; height: 8px; border-radius: 50%; grid-area: 1 / 1; }
@@ -276,7 +277,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
                         <tr data-agency="{{ $r['agency'] }}" tabindex="0">
                             <td class="l">
                                 <div class="rmt-ag">
-                                    <span class="rmt-lg" style="--c:{{ $r['a']['color'] }}">{{ strtoupper(substr($r['a']['name'], 0, 3)) }}</span>
+                                    <span class="rmt-lg"><img src="{{ asset('images/agencies/' . $r['agency'] . '.png') }}" alt="{{ $r['a']['name'] }}"></span>
                                     <div><b>{{ $r['a']['name'] }}</b><small>{{ $r['a']['form'] }}</small></div>
                                 </div>
                             </td>
@@ -338,7 +339,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
                     <div class="h">{{ \Carbon\Carbon::create($year, $m, 1)->format('M') }}</div>
                 @endfor
                 @foreach($rows as $agency => $r)
-                    <div class="n"><i style="--c:{{ $r['a']['color'] }}"></i>{{ $r['a']['name'] }}</div>
+                    <div class="n"><img src="{{ asset('images/agencies/' . $agency . '.png') }}" alt="">{{ $r['a']['name'] }}</div>
                     @foreach($grid[$agency] as $m => $cell)
                         @php
                             $cellLabel = $r['a']['name'] . ' ' . \Carbon\Carbon::create($year, $m, 1)->format('M') . ': ' . __($label[$cell['status']]);
@@ -362,7 +363,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
     @foreach($rows as $r)
         <aside class="offcanvas offcanvas-end rmt-drawer" tabindex="-1" id="rmtAg-{{ $r['agency'] }}" aria-labelledby="rmtAgTitle-{{ $r['agency'] }}">
             <div class="rmt-dh">
-                <span class="rmt-lg" style="--c:{{ $r['a']['color'] }}">{{ strtoupper(substr($r['a']['name'], 0, 3)) }}</span>
+                <span class="rmt-lg"><img src="{{ asset('images/agencies/' . $r['agency'] . '.png') }}" alt="{{ $r['a']['name'] }}"></span>
                 <div>
                     <b id="rmtAgTitle-{{ $r['agency'] }}">{{ $r['a']['name'] }} · {{ $mon }}</b>
                     <small>{{ $r['a']['full'] }} · {{ $r['a']['form'] }}</small>

@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+{{-- System Settings → Appearance → Display size, on <html> so every page
+     takes it before it is drawn (calm.css). --}}
+<html lang="en" class="ui-size-{{ \App\Models\SystemSetting::current()->table_density ?: 'comfortable' }}">
 <head>
     <meta charset="UTF-8">
     <title>@yield('page_title') | Jeyanco Payroll</title>
@@ -134,6 +136,10 @@
          1024px or less, so a desktop or laptop never matches one; last, so it
          wins its ties with everything above. See mobile.css. --}}
     <link rel="stylesheet" href="{{ $cssv('mobile.css') }}">
+
+    {{-- One quiet palette and one size for every page: ink and grey, the
+         accent below for what is chosen, red for what is wrong. See calm.css. --}}
+    <link rel="stylesheet" href="{{ $cssv('calm.css') }}">
 
     {{-- System Settings → Appearance → Accent color: the brand tokens, redefined
          when the office picked something other than the design's own blue. --}}

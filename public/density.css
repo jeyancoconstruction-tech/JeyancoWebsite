@@ -233,7 +233,7 @@ html[data-bs-theme="light"], html[data-bs-theme="dark"] {
 
 /* A dialog taller than the screen scrolls its own body rather than the page,
    and never exceeds the viewport it opened in. */
-.emp-dialog.modal-dialog-scrollable .modal-content { max-height: calc(100vh - 3rem) !important; }
+.emp-dialog.modal-dialog-scrollable .modal-content { max-height: calc(calc(100vh / var(--ui-zoom, 1)) - 3rem) !important; }
 @media (max-height: 700px) {
     .emp-modal .form-control, .emp-modal .form-select { height: 34px !important; }
     .emp-modal .emp-body { padding: 11px 14px 12px !important; }

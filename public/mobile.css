@@ -61,7 +61,7 @@
         top: calc(var(--topbar-height, 60px) + 6px) !important;
         left: 8px !important; right: 8px !important;
         width: auto !important;
-        max-height: calc(100dvh - var(--topbar-height, 60px) - 20px) !important;
+        max-height: calc(calc(100dvh / var(--ui-zoom, 1)) - var(--topbar-height, 60px) - 20px) !important;
     }
 }
 

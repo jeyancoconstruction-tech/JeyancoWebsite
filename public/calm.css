@@ -1,0 +1,149 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   calm.css — one quiet palette and one size for every page.
+
+   The pages grew their own colours: a green tile here, a violet one there,
+   orange buttons, pink columns. Read together they were loud, and nothing
+   stood out because everything did. This layer brings them to one rule:
+
+     ink and grey for everything,
+     the accent from System Settings → Appearance for what is chosen or
+       can be clicked,
+     red for what is wrong.
+
+   Colour and size only — no markup, no behaviour. Loaded after the pages'
+   own styles so it wins its ties; the accent tokens still come after it.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Size ────────────────────────────────────────────────────────────────
+   System Settings → Appearance → Display size. The pages were drawn in
+   fixed pixels, so the one way to make all of them a little smaller at
+   once is to scale the page. Heights measured against the screen divide by
+   the same number (--ui-zoom), so a panel sized to the window still fits. */
+html.ui-size-comfortable { zoom: .9;  --ui-zoom: .9; }
+html.ui-size-compact     { zoom: .82; --ui-zoom: .82; }
+html.ui-size-large       { --ui-zoom: 1; }
+
+/* ── Tokens ──────────────────────────────────────────────────────────────
+   The soft tints behind icons and chips go grey; the violet the break
+   borrowed goes to the secondary ink. Text colours keep their meaning —
+   a green "+2 this week" is still green, a red "Absent" still red. */
+:root[data-bs-theme="light"] {
+    --violet: #475467;
+    --violet-soft: #F2F4F7;
+    --success-soft: #F2F4F7;
+    --warning-soft: #F8F5EE;
+    --success: #067647;
+    --warning: #A15C07;
+}
+:root[data-bs-theme="dark"] {
+    --violet: #9AA9BF;
+    --violet-soft: #172131;
+    --success-soft: #172131;
+    --warning-soft: #1F1B14;
+}
+
+/* ── Icon tiles ──────────────────────────────────────────────────────────
+   Every card had its own coloured square. One grey square each now; the
+   number beside it is what is read. */
+.kpi-ic, .kpi-ic.blue, .kpi-ic.green, .kpi-ic.amber, .kpi-ic.red,
+.ana .ana-ico, .ana .ana-i-blue, .ana .ana-i-green, .ana .ana-i-red, .ana .ana-i-amber, .ana .ana-i-violet {
+    background: var(--bg-subtle) !important;
+    color: var(--text-secondary) !important;
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* Analytics charts: the accent for the main series, grey for the second,
+   red for what is wrong. The charts read these tokens when they draw. */
+.ana {
+    --ana-accent: var(--brand) !important;
+    --ana-accent-soft: color-mix(in srgb, var(--brand) 14%, transparent) !important;
+    --ana-violet: #94A3B8 !important;
+    --ana-violet-soft: rgba(148, 163, 184, .16) !important;
+    --ana-amber: #64748B !important;
+    --ana-amber-soft: rgba(100, 116, 139, .14) !important;
+    --ana-green: var(--brand) !important;
+    --ana-green-soft: color-mix(in srgb, var(--brand) 12%, transparent) !important;
+}
+
+/* ── Employees ───────────────────────────────────────────────────────────
+   Initials were each in a colour of their own, the cards had coloured
+   edges, and every row ended in orange, blue and red buttons. */
+.rmx-avatar {
+    background: var(--bg-subtle) !important;
+    color: var(--text-secondary) !important;
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+.rmx-stat, .rmx-stat-active, .rmx-stat-pending { border-left-color: var(--border-md) !important; }
+.rmx-stat-active .rmx-stat-lbl i, .rmx-stat-pending .rmx-stat-lbl i { color: var(--text-muted) !important; }
+.rmx-icon-btn, .rmx-gift, .rmx-edit, .rmx-del, .rmx-restore {
+    background: var(--surface) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border) !important;
+    filter: none !important;
+}
+.rmx-icon-btn:hover { background: var(--bg-subtle) !important; color: var(--text-primary) !important; }
+.rmx-del:hover { color: var(--danger) !important; border-color: color-mix(in srgb, var(--danger) 40%, transparent) !important; }
+.rmx-gift-n { background: var(--text-primary) !important; color: var(--surface) !important; }
+
+/* ── Remittances ─────────────────────────────────────────────────────────
+   Each card had a coloured dot. (The agencies show their own logos.) */
+.rmt-stat { --c: var(--text-muted) !important; }
+
+/* ── Chips everywhere ────────────────────────────────────────────────────
+   The good and "info" chips go quiet; warnings and errors keep their colour,
+   because those are the ones somebody has to act on. */
+.sx-badge.ok, .sx-badge.info, .mod-badge.ok, .mod-badge.info, .ins-chip.ok, .ca-pill.ok, .acct-pill.ok {
+    background: var(--bg-subtle) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* ── One accent, one weight ──────────────────────────────────────────────
+   Buttons that were each a shade of their own take the accent; a light
+   shadow instead of a heavy one reads as one system. */
+.btn-primary, .btn-primary:hover, .btn-primary:focus {
+    background: var(--brand) !important;
+    border-color: var(--brand) !important;
+}
+.btn-primary:hover { filter: brightness(.94); }
+.card, .ana-card, .kpi, .rmt-card { box-shadow: var(--shadow-xs) !important; }
+
+/* ── Users & Roles ───────────────────────────────────────────────────────
+   Each role had a colour of its own, drawn from a --rc on the element; the
+   selected column went pink with it. The administrator takes the accent,
+   every other role the secondary ink. */
+.r-admin { --rc: var(--brand) !important; }
+.r-staff, .r-payroll, .r-hr, .r-sup, .r-emp { --rc: var(--text-secondary) !important; }
+
+/* ── Payroll Records ─────────────────────────────────────────────────────
+   Four coloured dots under the net pay. Grey, and red for the deductions. */
+.prx-legend span { --c: var(--text-muted) !important; }
+.prx-legend span:last-child { --c: var(--danger) !important; }
+
+
+/* ── Cash advances: amounts are read, not coloured ──────────────────── */
+.mod-stat-value.is-ok, .mod-stat-value.is-warn { color: var(--text-primary) !important; }
+
+/* ── Holidays: counts and bulk buttons in one quiet style ───────────── */
+.hc-stat, .hc-stat-on, .hc-stat-off {
+    background: var(--bg-subtle) !important;
+    color: var(--text-secondary) !important;
+    border-color: var(--border) !important;
+}
+.hc-pill-green, .hc-pill-red {
+    background: var(--surface) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border) !important;
+}
+.hc-pill-red:hover { color: var(--danger) !important; }
+
+/* ── Notifications ───────────────────────────────────────────────────────
+   Each kind had a colour of its own (set inline from the notification).
+   One grey square; the unread dot and the words carry the news. */
+.notif-icon-wrap {
+    background: var(--bg-subtle) !important;
+    color: var(--text-secondary) !important;
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* The chat button: the accent, without the glow. */
+.chatbot-fab { box-shadow: var(--shadow-md) !important; }

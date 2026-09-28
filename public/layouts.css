@@ -61,7 +61,7 @@ body {
    ================================ */
 .sidebar {
     width: var(--sidebar-width);
-    height: 100vh;
+    height: calc(100vh / var(--ui-zoom, 1));
     position: fixed;
     left: 0;
     top: 0;
@@ -191,7 +191,7 @@ body {
    ================================ */
 .main-content {
     margin-left: var(--sidebar-width);
-    min-height: 100vh;
+    min-height: calc(100vh / var(--ui-zoom, 1));
     display: flex;
     flex-direction: column;
 }
@@ -810,7 +810,7 @@ body {
 
 @media (max-width: 640px) {
     .chatbot-window {
-        width: calc(100vw - 20px);
+        width: calc(calc(100vw / var(--ui-zoom, 1)) - 20px);
         right: 10px;
         bottom: 76px;
         max-height: 460px;

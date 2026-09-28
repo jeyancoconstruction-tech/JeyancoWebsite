@@ -59,7 +59,7 @@ class SystemSettingsMockupTest extends TestCase
             // Company
             'Company name', 'Line under the name', 'Address', 'TIN', 'Company logo', 'Live preview', 'Payslip', 'Sidebar', 'Sign-in',
             // Appearance
-            'Default theme', 'Accent color', 'Table density', 'Comfortable', 'Compact', 'Intro animation',
+            'Default theme', 'Accent color', 'Display size', 'Large', 'Comfortable', 'Compact', 'Intro animation',
             // Security
             'Session length', 'Failed sign-in limit', 'Google sign-in', 'Sign out all sessions',
             // Kiosks
