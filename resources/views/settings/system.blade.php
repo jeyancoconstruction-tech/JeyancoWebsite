@@ -314,52 +314,32 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 .ss-empty { padding: 32px; text-align: center; color: var(--muted); margin: 0; }
 .ss-more { display: flex; justify-content: center; padding: 8px; border-top: 1px solid var(--line-soft); }
 
-/* ── Kiosk monitor ─────────────────────────────────────────────────────── */
-.km { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.km-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.km-pick { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font-size: 12.5px; font-weight: 600; cursor: pointer; }
-.km-pick i { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); flex: none; }
-.km-pick i.ok { background: var(--success); }
-.km-pick i.late { background: var(--warning); }
-.km-pick small { color: var(--faint); font-weight: 600; font-size: 11px; }
-.km-pick.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-.km-bar .sp { flex: 1; }
-.km-bar .chk { font-size: 11.5px; color: var(--faint); font-family: var(--mono); }
-.km-bar .ss-btn { height: 32px; }
-/* The screen is drawn at the kiosk's own 1280 × 800 and scaled to fit, so
-   it reads exactly as the one on site does. */
-.km-frame { position: relative; width: 100%; aspect-ratio: 1024 / 600; border-radius: 12px; background: #05080d; padding: 10px; box-shadow: 0 0 0 1px #1b2433 inset; }
-.km-glass { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 4px; background: #0b111a; }
-/* Full screen: the kiosk at the size of the office's screen. */
-.km-frame:fullscreen { border-radius: 0; padding: 0; display: grid; place-items: center; background: #000; }
-.km-frame:fullscreen .km-glass { width: min(100vw, 170.67vh); height: auto; aspect-ratio: 1024 / 600; border-radius: 0; }
-.km-screen, .km-off { position: absolute; left: 0; top: 0; width: 1024px; height: 600px; transform-origin: 0 0; border: 0; background: #0a0e14; }
-.km-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line-soft); border-radius: 10px; background: var(--panel); overflow: hidden; }
-.km-facts > div { padding: 9px 12px; border-right: 1px solid var(--line-soft); min-width: 0; }
-.km-facts > div:last-child { border-right: 0; }
-.km-facts span { display: block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Today's scans at the kiosk shown, newest first: the rest of the column. */
-.km-log { flex: 1; min-height: 120px; display: flex; flex-direction: column; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--panel); overflow: hidden; }
-.km-log > header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
-.km-log ol { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
-.km-log li { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 12px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; }
-.km-log li:last-child { border-bottom: 0; }
-.km-log time { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
-.km-log li b { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.km-log li span { font-size: 10.5px; font-weight: 800; letter-spacing: .05em; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
-.km-log li span.in { color: var(--success); background: var(--success-soft); }
-.km-log li span.out { color: var(--danger); background: var(--danger-soft); }
-.km-log li.none { display: block; padding: 18px 12px; text-align: center; color: var(--muted); font-size: 12.5px; }
-.km-facts b { display: block; font-size: 13.5px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-.km-facts b.ok { color: var(--success); } .km-facts b.off { color: var(--danger); } .km-facts b.late { color: var(--warning); }
-.km-none { padding: 40px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; }
-
-/* Off: the screen is dark, and says so. */
-.kx-off { width: 1024px; height: 600px; background: #030507; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: #5d6a7d; font-family: Inter, system-ui, sans-serif; text-align: center; }
-.kx-off svg { width: 96px; height: 96px; color: #3a4658; }
-.kx-off b { font-size: 38px; letter-spacing: .2em; color: #c9d3e2; }
-.kx-off p { margin: 0; font-size: 19px; max-width: 760px; line-height: 1.5; }
-.kx-off p strong { color: #c9d3e2; }
+/* ── Kiosks now: whether each kiosk is on and has what was saved here ── */
+.kn { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.kn-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--panel); overflow: hidden; flex: 1; display: flex; flex-direction: column; }
+.kn-list li { flex: 1 1 auto; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; grid-auto-rows: min-content; align-content: center; gap: 6px 12px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
+.kn-list li:last-child { border-bottom: 0; }
+.kn-list li > i { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); grid-row: 1; }
+.kn-list li > i.ok { background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent); }
+.kn-list li > i.late { background: var(--warning); }
+.kn-list b { font-size: 13.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kn-list b small { font-weight: 600; color: var(--faint); font-size: 11.5px; margin-left: 6px; }
+.kn-list em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .04em; padding: 2px 8px; border-radius: 5px; color: var(--danger); background: var(--danger-soft); justify-self: end; }
+.kn-list em.ok { color: var(--success); background: var(--success-soft); }
+.kn-list em.late { color: var(--warning); background: var(--warning-soft); }
+.kn-list span { grid-column: 2 / 4; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.kn-list dl { grid-column: 2 / 4; display: grid; grid-template-columns: minmax(0, 1fr); margin: 4px 0 0; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--panel-2); }
+.kn-list dl div { padding: 7px 10px; min-width: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.kn-list dl div + div { border-top: 1px solid var(--line-soft); }
+.kn-list dt { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.kn-list dd { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kn-list dd.ok { color: var(--success); } .kn-list dd.bad { color: var(--danger); } .kn-list dd.warn { color: var(--warning); }
+.kn-go { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 10px; background: var(--panel-3); color: var(--text); text-decoration: none; }
+.kn-go:hover { color: var(--text); box-shadow: 0 0 0 1px var(--accent) inset; }
+.kn-go svg { width: 20px; height: 20px; color: var(--accent); flex: none; }
+.kn-go b { display: block; font-size: 13px; }
+.kn-go small { display: block; font-size: 12px; color: var(--muted); }
+.kn-none { padding: 28px 14px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; margin: 0; }
 
 /* Unsaved bar */
 .ss-bar { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 160%); display: flex; gap: 10px; align-items: center; background: var(--text-primary); color: var(--bg-body); border-radius: 12px; padding: 8px 8px 8px 16px; box-shadow: 0 20px 50px rgba(0,0,0,.35); z-index: 1050; transition: transform .35s cubic-bezier(.2, .8, .2, 1); max-width: calc(100% - 32px); visibility: hidden; }
@@ -374,9 +354,6 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 @media (max-width: 1200px) {
     .ss-split, .ss-split.wide-side { grid-template-columns: minmax(0, 1fr); }
     .ss-side { border-left: 0; border-top: 1px solid var(--line-soft); }
-    .km-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .km-facts > div:nth-child(2) { border-right: 0; }
-    .km-facts > div:nth-child(-n+2) { border-bottom: 1px solid var(--line-soft); }
 }
 @media (max-width: 900px) {
     .ss-set { grid-template-columns: minmax(0, 1fr); }
@@ -585,7 +562,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                 <section class="ss-sec" data-sec="kiosk" @if($section !== 'kiosk') hidden @endif>
                     <header class="ss-sec-h"><div><h3>{{ __('Kiosks') }} <small>{{ __('System') }}</small></h3><p>{{ __('How fingerprint scans are recorded at the sites — and what each kiosk is showing right now.') }}</p></div>
                         <a class="ss-btn" href="{{ route('devices.index') }}">{!! $svg('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>') !!}{{ __('Device Monitoring') }}</a></header>
-                    <div class="ss-split wide-side">
+                    <div class="ss-split">
                         <div class="ss-grp stack">
                             <div class="ss-row"><div class="lb"><b>{{ __('Scan mode') }}</b><small>{{ __('Automatic fills the next slot: 1st in, 1st out, 2nd in, 2nd out.') }}</small></div>
                                 <div class="ss-inp"><div class="ss-seg" role="radiogroup" aria-label="{{ __('Scan mode') }}">
@@ -609,32 +586,30 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                     @foreach($choices([30, 60, 120], $savedIdle) as $x)<option value="{{ $x }}" @selected((int) old('kiosk_idle_return_seconds', $savedIdle) === $x)>{{ $span($x) }}</option>@endforeach
                                 </select>@error('kiosk_idle_return_seconds')<span class="ss-err">{{ $message }}</span>@enderror</div></div>
                         </div>
-                        {{-- The kiosk monitor: what each kiosk's screen is
-                             showing, drawn from what the kiosk reads from us.
-                             Filled and refreshed by the script below. --}}
-                        <aside class="ss-side km" id="kioskMonitor" data-url="{{ route('system-settings.kiosk.monitor') }}" aria-label="{{ __('Kiosk monitor') }}">
-                            <div class="km-bar">
-                                <h4>{!! $svg($ico['scan'], '2') !!}{{ __('Kiosk monitor') }}</h4>
-                                <span class="sp"></span>
-                                <span class="chk" data-km-checked></span>
-                                <button type="button" class="ss-btn" data-km-full>{!! $svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', '2') !!}{{ __('Full screen') }}</button>
-                                <button type="button" class="ss-btn" data-km-refresh>{!! $svg('<path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7"/>', '2') !!}{{ __('Refresh') }}</button>
-                            </div>
-                            <div class="km-bar" data-km-picks>
-                                @foreach($kiosks as $k)
-                                    <button type="button" class="km-pick" data-km-kiosk="{{ $k['id'] }}"><i class="{{ $k['state'] }}"></i>{{ $k['name'] }} <small>{{ $k['site'] }}</small></button>
-                                @endforeach
-                            </div>
+                        {{-- Whether each kiosk is on, and whether what was saved
+                             here has reached it. Its screen, map and scans are on
+                             Device Monitoring. --}}
+                        <aside class="ss-side kn" aria-label="{{ __('Kiosks now') }}">
+                            <h4>{!! $svg($ico['scan'], '2') !!}{{ __('Kiosks now') }}</h4>
                             @if($kiosks->isEmpty())
-                                <p class="km-none">{{ __('No kiosk is registered yet. A kiosk appears here once it has been added.') }}</p>
+                                <p class="kn-none">{{ __('No kiosk is registered yet. A kiosk appears here once it has been added.') }}</p>
                             @else
-                                <div class="km-frame"><div class="km-glass">
-                                    <iframe class="km-screen" data-km-frame title="{{ __('Kiosk screen') }}" allow="fullscreen" loading="lazy"></iframe>
-                                    <div class="km-off" data-km-off hidden></div>
-                                </div></div>
-                                <div class="km-facts" data-km-facts></div>
-                                <div class="km-log"><header><span>{{ __('Scans today at this kiosk') }}</span><span data-km-count></span></header><ol data-km-log></ol></div>
+                                <ul class="kn-list">
+                                    @foreach($kiosks as $k)
+                                        <li><i class="{{ $k['state'] }}"></i><b>{{ $k['name'] }}<small>{{ $k['site'] ?? __('Unassigned') }}</small></b>
+                                            <em class="{{ $k['state'] }}">{{ ['ok' => __('ON'), 'late' => __('LATE'), 'off' => __('OFF')][$k['state']] }}</em>
+                                            <span>{{ $k['code'] }} · {{ $k['seen_at'] ? __('last heard') . ' ' . $k['seen_at'] : __('never reported') }}</span>
+                                            @php $m = $k['map']; @endphp
+                                            <dl>
+                                                <div><dt>{{ __('Heartbeat') }}</dt><dd class="{{ $k['state'] === 'ok' ? 'ok' : ($k['state'] === 'late' ? 'warn' : 'bad') }}">{{ $k['seen'] ?? __('never') }}</dd></div>
+                                                <div><dt>{{ __('Settings reached it') }}</dt><dd>{{ $k['read'] ?? '—' }}</dd></div>
+                                                <div><dt>{{ __('Geofence') }}</dt><dd class="{{ $m['inside'] === null ? 'warn' : ($m['inside'] ? 'ok' : 'bad') }}">{{ $m['inside'] === null ? ($m['site'] ? __('No GPS yet') : __('Site not pinned')) : ($m['inside'] ? __('Inside') : __('Outside')) . ' · ' . $m['distance'] . ' m' }}</dd></div>
+                                            </dl></li>
+                                    @endforeach
+                                </ul>
                             @endif
+                            <a class="kn-go" href="{{ route('devices.index') }}#dvConsole">{!! $svg('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>', '2') !!}
+                                <span><b>{{ __('Watch the kiosks live') }}</b><small>{{ __('Their screens, where they are on the map, and every scan — on Device Monitoring.') }}</small></span></a>
                         </aside>
                     </div>
                 </section>
@@ -997,177 +972,6 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
     form.addEventListener('change', all);
     form.addEventListener('reset', () => setTimeout(all, 0));
     all();
-})();
-
-// ── The kiosk monitor ────────────────────────────────────────────────────────
-// The kiosk's own screen — its v8 files, run in a frame at its own 1024 × 600
-// and fed from this system (kiosk-monitor.js) — scaled to the column. While
-// it is on, every scan the kiosk sends is handed to the screen as it happens
-// (a quick poll every two seconds) and drawn in its own result card. A kiosk
-// that has stopped its heartbeat shows as switched off.
-(function () {
-    const box = document.getElementById('kioskMonitor');
-    const frame = box && box.querySelector('[data-km-frame]');
-    if (!frame) return;
-
-    const glass   = frame.parentElement;
-    const offBox  = box.querySelector('[data-km-off]');
-    const facts   = box.querySelector('[data-km-facts]');
-    const checked = box.querySelector('[data-km-checked]');
-    const logBox  = box.querySelector('[data-km-log]'), logCount = box.querySelector('[data-km-count]');
-    const W = 1024, H = 600;
-    const screenUrl = id => @json(url('system-settings/kiosk')) + '/' + id + '/screen';
-    const WARN = { already_in: 'ALREADY TIMED IN', no_open: 'NO OPEN TIME IN', just_timed_in: 'JUST TIMED IN',
-                   just_timed_out: 'JUST TIMED OUT', session_done: 'SESSION DONE', wrong_shift: 'REJECTED',
-                   not_registered: 'NOT REGISTERED YET', mode_buttons: 'PRESS A BUTTON FIRST',
-                   no_gps: 'LOCATION NOT CONFIRMED', outside_location: 'LOCATION NOT CONFIRMED' };
-
-    let current = null, data = null, seq = null, recent = [], timer = null, loaded = null;
-    const seen = new Set();   // each scan once, though both polls may bring it
-    const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-    function fit() {
-        const s = glass.clientWidth / W;
-        frame.style.transform = offBox.style.transform = 'scale(' + s + ')';
-    }
-    new ResizeObserver(fit).observe(glass);
-    document.addEventListener('fullscreenchange', () => setTimeout(fit, 50));
-
-    // The screen: the kiosk's own page when it is on, a dark screen when not.
-    function showScreen() {
-        const s = data && data.screen;
-        if (!s) return;
-        if (!s.on) {
-            const k = s.kiosk;
-            offBox.innerHTML = `<div class="kx-off">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 3v8M6.3 6.3a8 8 0 1011.4 0"/></svg>
-                <b>{{ __('KIOSK IS OFF') }}</b>
-                <p><strong>${esc(k.name)}</strong> ${k.seen_at ? 'has sent no heartbeat since <strong>' + esc(k.seen_at) + '</strong> (' + esc(k.seen) + ').' : 'has never reported to the web.'}</p>
-                <p>Its screen shows here again on its own once it is switched on and online.</p></div>`;
-            offBox.hidden = false;
-            frame.hidden = true;
-            if (loaded !== null) { frame.src = 'about:blank'; loaded = null; }
-            return;
-        }
-        offBox.hidden = true;
-        frame.hidden = false;
-        if (loaded !== s.kiosk.id) { loaded = s.kiosk.id; frame.src = screenUrl(s.kiosk.id); }
-    }
-
-    function renderFacts() {
-        const s = data && data.screen, k = s && s.kiosk;
-        if (!k) { facts.innerHTML = ''; return; }
-        const b = s.board || {};
-        const cell = (label, value, cls) => `<div><span>${label}</span><b class="${cls || ''}">${value}</b></div>`;
-        facts.innerHTML =
-            cell(@json(__('Status')), k.state === 'ok' ? @json(__('Online')) : k.state === 'late' ? @json(__('Online · late')) : @json(__('Off')), k.state) +
-            cell(@json(__('Last heartbeat')), k.seen ? esc(k.seen) : @json(__('Never'))) +
-            cell(@json(__('Settings reached it')), k.read ? esc(k.read) : '—') +
-            cell(@json(__('Scanned today')), s.on ? (b.total ?? 0) + ' ' + @json(__('workers')) : '—');
-    }
-
-    // Every time in and time out on today's board, and the scans turned away
-    // since the monitor opened, newest first.
-    const minutes = v => { const m = String(v || '').match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)$/i); if (!m) return -1; let h = +m[1] % 12; if (m[3].toUpperCase() === 'PM') h += 12; return h * 60 + +m[2]; };
-    function renderLog() {
-        if (!logBox) return;
-        const s = data && data.screen;
-        if (!s || !s.on) { logBox.innerHTML = '<li class="none">' + @json(__('Nothing to show while the kiosk is off.')) + '</li>'; logCount.textContent = ''; return; }
-        const ev = [];
-        ((s.board || {}).records || []).forEach(r => (r.entries || []).forEach(e => {
-            if (e.in) ev.push({ t: e.in, who: r.name, type: 'in', ses: e.session });
-            if (e.out) ev.push({ t: e.out, who: r.name, type: 'out', ses: e.session, auto: e.auto });
-        }));
-        recent.forEach(e => ev.push({ t: String(e.time || '').replace(/:\d{2}(\s*[AP]M)$/i, '$1'), who: e.name || @json(__('Unknown finger')), type: 'rej',
-                                      label: e.kind === 'unknown' ? 'NOT RECOGNISED' : (WARN[e.code] || 'REJECTED'), fresh: true }));
-        ev.sort((a, b) => minutes(b.t) - minutes(a.t));
-        logCount.textContent = ev.length;
-        logBox.innerHTML = ev.length ? ev.map(e => `<li class="${e.fresh ? 'fresh' : ''}"><time>${esc(e.t)}</time><b>${esc(e.who)}</b><span class="${e.type}">${e.label ? esc(e.label) : (e.type === 'in' ? 'TIME IN' : 'TIME OUT') + ' · ' + esc(e.ses) + (e.auto ? ' · AUTO' : '')}</span></li>`).join('')
-                                     : '<li class="none">' + @json(__('No scans yet today.')) + '</li>';
-    }
-
-    function renderPicks() {
-        (data.kiosks || []).forEach(k => {
-            const b = box.querySelector('[data-km-kiosk="' + k.id + '"]');
-            if (!b) return;
-            b.classList.toggle('on', !!(data.screen && data.screen.kiosk && data.screen.kiosk.id === k.id));
-            b.querySelector('i').className = k.state;
-        });
-    }
-
-    async function ask(light) {
-        const url = new URL(box.dataset.url, location.href);
-        if (current) url.searchParams.set('kiosk', current);
-        url.searchParams.set('since', seq === null ? -1 : seq);
-        if (light) url.searchParams.set('light', 1);
-        const res = await fetch(url, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
-        if (!res.ok) throw new Error(res.status);
-        return res.json();
-    }
-
-    // New scans: each goes to the kiosk screen, turned-away ones to the list.
-    function take(r) {
-        const events = r.events || [];
-        if (r.seq !== undefined) seq = r.seq;
-        events.forEach(e => {
-            if (seen.has(e.seq)) return;
-            seen.add(e.seq);
-            if (!['in', 'out', 'scan'].includes(e.kind)) recent.push(e);
-            if (frame.contentWindow && !frame.hidden) frame.contentWindow.postMessage({ type: 'kiosk-event', event: e }, location.origin);
-        });
-        recent = recent.slice(-20);
-        return events.some(e => e.kind === 'in' || e.kind === 'out');
-    }
-
-    async function load() {
-        if (!data) checked.textContent = @json(__('Connecting…'));
-        try {
-            const next = await ask(false);
-            data = next;
-            current = data.screen && data.screen.kiosk ? data.screen.kiosk.id : current;
-            checked.textContent = '● ' + @json(__('Live')) + ' · ' + data.checked;
-            take(next);
-            showScreen(); renderFacts(); renderLog(); renderPicks(); fit();
-        } catch (e) {
-            checked.textContent = @json(__('Could not reach the server — retrying'));
-        }
-    }
-
-    const visible = () => !box.closest('.ss-sec').hidden && !document.hidden;
-
-    // Every two seconds: on or off, and anybody scanning. The rest every ten,
-    // or at once when a scan was recorded or the kiosk went on or off.
-    async function tick() {
-        if (visible() && data) {
-            try {
-                const r = await ask(true);
-                const wasOn = !!(data.screen && data.screen.on);
-                data.kiosks = r.kiosks;
-                checked.textContent = '● ' + @json(__('Live')) + ' · ' + r.checked;
-                const recorded = take(r);
-                if (recorded || !!(r.screen && r.screen.on) !== wasOn) await load();
-                else { renderLog(); renderPicks(); }
-            } catch (e) { /* the slow poll says so */ }
-        }
-        setTimeout(tick, 2000);
-    }
-    function schedule() { clearTimeout(timer); timer = setTimeout(async () => { if (visible()) await load(); schedule(); }, 10000); }
-
-    box.addEventListener('click', e => {
-        const k = e.target.closest('[data-km-kiosk]');
-        if (k) { current = Number(k.dataset.kmKiosk); seq = null; recent = []; seen.clear(); load(); return; }
-        if (e.target.closest('[data-km-refresh]')) { if (frame.contentWindow && !frame.hidden) frame.contentWindow.location.reload(); load(); }
-        if (e.target.closest('[data-km-full]')) {
-            const f = box.querySelector('.km-frame');
-            if (document.fullscreenElement) document.exitFullscreen();
-            else if (f && f.requestFullscreen) f.requestFullscreen().then(() => setTimeout(fit, 50)).catch(() => {});
-        }
-    });
-    document.querySelectorAll('.ss-si[data-s="kiosk"]').forEach(b => b.addEventListener('click', () => setTimeout(() => { fit(); load(); }, 0)));
-
-    if (visible()) load();
-    schedule();
-    tick();
 })();
 </script>
 @endpush

@@ -190,12 +190,6 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::put('/system-settings/appearance', [SystemSettingsController::class, 'updateAppearance'])->name('system-settings.appearance.update');
     Route::get('/system-settings/kiosk',      [SystemSettingsController::class, 'kiosk'])->name('system-settings.kiosk');
     Route::put('/system-settings/kiosk',      [SystemSettingsController::class, 'updateKiosk'])->name('system-settings.kiosk.update');
-    // What each kiosk's screen shows, read only, for the monitor under Kiosks.
-    Route::get('/system-settings/kiosk/monitor', [SystemSettingsController::class, 'kioskMonitor'])->name('system-settings.kiosk.monitor');
-    // The kiosk's own screen (its v8 files) for the monitor, and what it reads.
-    Route::get('/system-settings/kiosk/{kiosk}/screen', [SystemSettingsController::class, 'kioskScreen'])->name('system-settings.kiosk.screen');
-    Route::get('/system-settings/kiosk/{kiosk}/screen-api/{what}', [SystemSettingsController::class, 'kioskScreenApi'])
-        ->where('what', 'sites|settings|today-attendance|roster')->name('system-settings.kiosk.screen-api');
     // The page's one save bar: every edited section at once (2026-09-26).
     Route::put('/system-settings/all',        [SystemSettingsController::class, 'updateAll'])->name('system-settings.update-all');
     Route::get('/system-settings/notifications', [SystemSettingsController::class, 'notifications'])->name('system-settings.notifications');
@@ -295,6 +289,12 @@ Route::middleware(['auth', 'active'])->group(function () {
     // ── SYSTEM · Device Monitoring (read-only over the kiosk's own data) ───
     Route::middleware('module:devices')->group(function () {
         Route::get('/device-monitoring', [\App\Http\Controllers\DeviceMonitoringController::class, 'index'])->name('devices.index');
+        // The kiosk console: each kiosk's status, map and scans as they happen,
+        // and the kiosk's own screen (its v8 files) with what it reads.
+        Route::get('/device-monitoring/live', [\App\Http\Controllers\DeviceMonitoringController::class, 'live'])->name('devices.live');
+        Route::get('/device-monitoring/{kiosk}/screen', [\App\Http\Controllers\DeviceMonitoringController::class, 'screen'])->name('devices.screen');
+        Route::get('/device-monitoring/{kiosk}/screen-api/{what}', [\App\Http\Controllers\DeviceMonitoringController::class, 'screenApi'])
+            ->where('what', 'sites|settings|today-attendance|roster')->name('devices.screen-api');
     });
 });
 

@@ -28,7 +28,94 @@
 
 @push('styles')
 @include('system._kit')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
+
+/* ── Kiosk console ─────────────────────────────────────────────────────────
+   One kiosk at a time, as the site sees it: its own screen on the left, and
+   on the right where it is (the map), whether it is talking to us, and what
+   it recorded today. It stands outside the part of the page that refreshes,
+   so the screen and the map are never reloaded under the reader. */
+.dvc { display: flex; flex-direction: column; margin-bottom: 14px; }
+.dvc-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.dvc-picks { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.dvc-pick { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 11px; border-radius: 8px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-primary); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.dvc-pick i { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); flex: none; }
+.dvc-pick i.ok { background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent); }
+.dvc-pick i.late { background: var(--warning); }
+.dvc-pick small { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.dvc-pick.on { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand) inset; background: var(--brand-subtle); }
+.dvc-head .sp { flex: 1; }
+.dvc-live { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+.dvc-live::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--success); margin-right: 6px; vertical-align: 1px; animation: dvc-blink 1.6s ease-in-out infinite; }
+.dvc-live.bad::before { background: var(--danger); animation: none; }
+@keyframes dvc-blink { 50% { opacity: .35; } }
+
+.dvc-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 380px; min-height: 0; }
+.dvc-screen { padding: 14px; display: flex; flex-direction: column; justify-content: flex-start; background: var(--bg-subtle); border-right: 1px solid var(--border); min-width: 0; }
+.km-frame { position: relative; width: 100%; aspect-ratio: 1024 / 600; border-radius: 14px; background: #05080d; padding: 10px; box-shadow: 0 0 0 1px #1b2433 inset, 0 10px 30px rgba(8, 15, 28, .18); }
+.km-frame::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 44px; height: 3px; margin-left: -22px; border-radius: 2px; background: #1c2635; }
+.km-glass { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 4px; background: #0a0e14; }
+.km-screen, .km-off { position: absolute; left: 0; top: 0; width: 1024px; height: 600px; transform-origin: 0 0; border: 0; background: #0a0e14; }
+.km-frame:fullscreen { border-radius: 0; padding: 0; display: grid; place-items: center; background: #000; }
+.km-frame:fullscreen .km-glass { width: min(100vw, 170.67vh); height: auto; aspect-ratio: 1024 / 600; border-radius: 0; }
+.kx-off { width: 1024px; height: 600px; background: #030507; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: #5d6a7d; font-family: Inter, system-ui, sans-serif; text-align: center; }
+.kx-off svg { width: 96px; height: 96px; color: #3a4658; }
+.kx-off b { font-size: 38px; letter-spacing: .2em; color: #c9d3e2; }
+.kx-off p { margin: 0; font-size: 19px; max-width: 760px; line-height: 1.5; }
+.kx-off p strong { color: #c9d3e2; }
+.dvc-cap { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 11.5px; color: var(--text-muted); }
+.dvc-cap b { color: var(--text-secondary); font-weight: 600; }
+
+.dvc-side { display: flex; flex-direction: column; min-width: 0; height: 0; min-height: 100%; overflow: hidden; }
+.dvc-map { position: relative; flex: 1 1 200px; min-height: 130px; border-bottom: 1px solid var(--border); }
+.dvc-map #dvMap { position: absolute; inset: 0; z-index: 0; }
+.dvc-map .leaflet-control-attribution { font-size: 9px; }
+.dvc-mapnote { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 3px; }
+.dvc-mapnote b { color: var(--text-primary); }
+.dvc-mapnote .ok { color: var(--success); } .dvc-mapnote .bad { color: var(--danger); } .dvc-mapnote .warn { color: var(--warning); }
+.dvc-mapnote small { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; color: var(--text-muted); }
+.dvc-mapnote a { font-size: 11.5px; font-weight: 600; }
+.dvc-facts { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); flex: none; }
+.dvc-facts > div { padding: 6px 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 0; }
+.dvc-facts > div:nth-child(2n) { border-right: 0; }
+.dvc-facts > div:nth-last-child(-n+2) { border-bottom: 0; }
+.dvc-facts span { display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+.dvc-facts b { display: block; font-size: 13.5px; font-weight: 700; color: var(--text-primary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dvc-facts b.ok { color: var(--success); } .dvc-facts b.off { color: var(--danger); } .dvc-facts b.late { color: var(--warning); }
+.dvc-log { flex: 1 1 150px; display: flex; flex-direction: column; min-height: 100px; }
+.dvc-log > header { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.dvc-log ol { list-style: none; margin: 0; padding: 0; flex: 1 1 0; min-height: 0; overflow-y: auto; }
+.dvc-log li { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.dvc-log li:nth-child(even) { background: color-mix(in srgb, var(--bg-subtle) 60%, transparent); }
+.dvc-log time { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-muted); }
+.dvc-log li b { font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dvc-log li span { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
+.dvc-log li span.in { color: var(--success); background: var(--success-soft); }
+.dvc-log li span.out { color: var(--danger); background: var(--danger-soft); }
+.dvc-log li span.rej { color: var(--warning); background: var(--warning-soft); }
+.dvc-log li.none { display: block; padding: 22px 14px; text-align: center; color: var(--text-muted); }
+
+/* The pins on the map. */
+.dvc-pin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); background: #16a34a; }
+.dvc-pin.stale { background: #8a97ab; }
+.dvc-pin.off { background: #dc2626; }
+.dvc-pin.live::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid #16a34a; animation: dvc-ring 1.8s ease-out infinite; }
+@keyframes dvc-ring { from { transform: scale(.4); opacity: .9; } to { transform: scale(1.4); opacity: 0; } }
+.dvc-site { width: 26px; height: 26px; border-radius: 7px; background: var(--brand, #1668dc); color: #fff; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.35); border: 2px solid #fff; font: 800 11px Inter, sans-serif; }
+@media (prefers-reduced-motion: reduce) { .dvc-live::before, .dvc-pin.live::after { animation: none; } }
+
+@media (max-width: 1200px) {
+    .dvc-body { grid-template-columns: minmax(0, 1fr); }
+    .dvc-screen { border-right: 0; border-bottom: 1px solid var(--border); }
+    .dvc-side { height: auto; min-height: 0; }
+    .dvc-map { flex: none; height: 260px; }
+    .dvc-log ol { max-height: 320px; }
+}
+.dvc-side .dvc-mapnote, .dvc-side .dvc-facts { flex: none; }
+html[data-bs-theme="dark"] #dvMap .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.88) saturate(.55); }
+html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--text-muted); }
+.dv-watch { margin-left: 6px; }
 .dv-fleet { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.55fr; margin-bottom: 14px; }
 @media (max-width: 1100px) { .dv-fleet { grid-template-columns: 1fr 1fr; } }
 .dv-fleet > div { padding: 10px 16px 11px; border-right: 1px solid var(--border); }
@@ -138,6 +225,41 @@
 
     <x-page-header title="Device Monitoring" />
 
+    {{-- ── A · Kiosk console ─────────────────────────────────────────────
+         Outside #dv-live, so the refresh below never reloads the screen or
+         the map. It keeps itself current from devices.live. --}}
+    @if($devices->isNotEmpty())
+    <section class="sx-card dvc" id="dvConsole" data-url="{{ route('devices.live') }}" data-screen="{{ url('device-monitoring') }}" aria-label="Kiosk console">
+        <header class="dvc-head">
+            <span class="sx-idx">A</span><h2 class="sx-card-title">Kiosk console</h2>
+            <div class="dvc-picks">
+                @foreach($devices as $d)
+                    <button type="button" class="dvc-pick" data-kiosk="{{ $d['kiosk']->id }}"><i class="{{ $d['state'] }}"></i>{{ $d['kiosk']->name }} <small>{{ $d['kiosk']->site->name ?? 'Unassigned' }}</small></button>
+                @endforeach
+            </div>
+            <span class="sp"></span>
+            <span class="dvc-live" data-checked>Connecting…</span>
+            <button type="button" class="sx-btn sm" data-full><i data-lucide="maximize"></i> Full screen</button>
+            <a class="sx-btn sm" href="#" target="_blank" rel="noopener" data-open><i data-lucide="external-link"></i> Open screen</a>
+        </header>
+        <div class="dvc-body">
+            <div class="dvc-screen">
+                <div class="km-frame"><div class="km-glass">
+                    <iframe class="km-screen" data-frame title="Kiosk screen" allow="fullscreen"></iframe>
+                    <div class="km-off" data-off hidden></div>
+                </div></div>
+                <div class="dvc-cap" data-cap></div>
+            </div>
+            <aside class="dvc-side">
+                <div class="dvc-map"><div id="dvMap" aria-label="Where the kiosk is"></div></div>
+                <div class="dvc-mapnote" data-mapnote>Reading the kiosk's position…</div>
+                <div class="dvc-facts" data-facts></div>
+                <div class="dvc-log"><header><span>Scans today at this kiosk</span><span data-count></span></header><ol data-log></ol></div>
+            </aside>
+        </div>
+    </section>
+    @endif
+
     <div id="dv-live" class="dv-live">
         {{-- ── Status line ─────────────────────────────────────────────── --}}
         @if($summary['total'] === 0)
@@ -217,6 +339,7 @@
                             <div class="dv-meta"><span class="mono">{{ $k->code }}</span>·<i data-lucide="map-pin"></i>{{ $k->site->name ?? 'Unassigned' }}</div>
                         </div>
                         <span class="sx-badge {{ $t }}">{{ $badge[$d['state']] }}</span>
+                        <a class="sx-btn sm dv-watch" href="#dvConsole" data-console-kiosk="{{ $k->id }}"><i data-lucide="monitor-play"></i> Watch</a>
                     </header>
 
                     <section class="dv-sec">
@@ -344,7 +467,230 @@
 @endsection
 
 @push('scripts')
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// ── Kiosk console ────────────────────────────────────────────────────────────
+// The chosen kiosk's own screen (its v8 files, at its 1024 × 600), where it is
+// on the map against its site's pin and geofence, and what it recorded today.
+// Asks every two seconds whether anybody scanned (each scan is handed to the
+// screen as it happens), and every ten for the rest.
+(function () {
+    const box = document.getElementById('dvConsole');
+    if (!box) return;
+
+    const frame   = box.querySelector('[data-frame]');
+    const glass   = frame.parentElement;
+    const offBox  = box.querySelector('[data-off]');
+    const facts   = box.querySelector('[data-facts]');
+    const checked = box.querySelector('[data-checked]');
+    const note    = box.querySelector('[data-mapnote]');
+    const logBox  = box.querySelector('[data-log]'), logCount = box.querySelector('[data-count]');
+    const opener  = box.querySelector('[data-open]');
+    const cap     = box.querySelector('[data-cap]');
+    const W = 1024, H = 600;
+    const WARN = { already_in: 'ALREADY TIMED IN', no_open: 'NO OPEN TIME IN', just_timed_in: 'JUST TIMED IN',
+                   just_timed_out: 'JUST TIMED OUT', session_done: 'SESSION DONE', wrong_shift: 'REJECTED',
+                   not_registered: 'NOT REGISTERED YET', mode_buttons: 'PRESS A BUTTON FIRST',
+                   no_gps: 'LOCATION NOT CONFIRMED', outside_location: 'LOCATION NOT CONFIRMED' };
+    const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    let current = Number(box.dataset.first) || null, data = null, seq = null, recent = [], loaded = null, timer = null;
+    const seen = new Set();
+
+    function fit() {
+        const s = glass.clientWidth / W;
+        frame.style.transform = offBox.style.transform = 'scale(' + s + ')';
+    }
+    new ResizeObserver(fit).observe(glass);
+    document.addEventListener('fullscreenchange', () => setTimeout(fit, 50));
+
+    // ── The map ─────────────────────────────────────────────────────────────
+    let map = null, kioskPin = null, sitePin = null, fence = null, line = null, framedFor = null;
+    const NAGA = [13.6218, 123.1948];
+    function ensureMap() {
+        if (map || typeof L === 'undefined') return;
+        map = L.map('dvMap', { zoomControl: true, attributionControl: true }).setView(NAGA, 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors', maxZoom: 19 }).addTo(map);
+    }
+    function drawMap(k) {
+        ensureMap();
+        if (!map) return;
+        const m = k.map || {};
+        [kioskPin, sitePin, fence, line].forEach(l => l && map.removeLayer(l));
+        kioskPin = sitePin = fence = line = null;
+        const pts = [];
+
+        if (m.site) {
+            const at = [m.site.lat, m.site.lng];
+            fence = L.circle(at, { radius: m.site.radius, color: '#1668dc', weight: 1.5, fillColor: '#1668dc', fillOpacity: .08, dashArray: '4 4' }).addTo(map);
+            sitePin = L.marker(at, { icon: L.divIcon({ className: '', html: '<div class="dvc-site">S</div>', iconSize: [26, 26], iconAnchor: [13, 13] }),
+                                     title: m.site.name }).addTo(map).bindTooltip(esc(m.site.name) + ' · pin', { direction: 'top', offset: [0, -12] });
+            pts.push(at);
+        }
+        if (m.lat !== null && m.lng !== null) {
+            const at = [m.lat, m.lng];
+            const cls = k.state === 'off' ? 'off' : m.gps === 'fix' ? 'live' : 'stale';
+            kioskPin = L.marker(at, { icon: L.divIcon({ className: '', html: '<div class="dvc-pin ' + cls + '"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+                                      zIndexOffset: 500 }).addTo(map).bindTooltip(esc(k.name), { direction: 'top', offset: [0, -10] });
+            pts.push(at);
+            if (m.site) line = L.polyline([[m.site.lat, m.site.lng], at], { color: m.inside ? '#16a34a' : '#dc2626', weight: 2, dashArray: '5 6' }).addTo(map);
+        }
+
+        // Framed once per kiosk, so a poll never yanks the map from the reader.
+        if (framedFor !== k.id) {
+            framedFor = k.id;
+            if (fence && kioskPin) map.fitBounds(L.latLngBounds(pts).extend(fence.getBounds()), { padding: [24, 24], maxZoom: 18 });
+            else if (fence) map.fitBounds(fence.getBounds(), { padding: [24, 24] });
+            else if (pts.length) map.setView(pts[0], 16);
+            else map.setView(NAGA, 13);
+        }
+        setTimeout(() => map.invalidateSize(), 0);
+
+        // What the map says, in words.
+        const where = m.site
+            ? (m.lat === null ? '<span class="warn">No GPS fix yet</span> — the kiosk has not sent its position.'
+              : m.inside ? `<span class="ok">Inside the geofence</span> · <b>${m.distance} m</b> from ${esc(m.site.name)}'s pin (radius ${m.site.radius} m)`
+                         : `<span class="bad">Outside the geofence</span> · <b>${m.distance} m</b> from ${esc(m.site.name)}'s pin — ${m.distance - m.site.radius} m past its ${m.site.radius} m radius`)
+            : (k.site ? `<span class="warn">${esc(k.site)} has no pin</span> — set it on the Sites page to measure the distance.` : '<span class="warn">No site set for this kiosk.</span>');
+        const gps = m.lat === null ? '' : `<small>${m.gps === 'fix' ? 'GPS fix' : 'Last known position'} · ${esc(m.fix_at || '')} · ${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}</small>
+            <a href="https://www.google.com/maps?q=${m.lat},${m.lng}" target="_blank" rel="noopener">Open in Google Maps ↗</a>`;
+        note.innerHTML = `<div>${where}</div>${gps}`;
+    }
+
+    // ── The screen ──────────────────────────────────────────────────────────
+    function showScreen() {
+        const s = data && data.screen;
+        if (!s) return;
+        opener.href = box.dataset.screen + '/' + s.kiosk.id + '/screen';
+        if (!s.on) {
+            const k = s.kiosk;
+            offBox.innerHTML = `<div class="kx-off">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 3v8M6.3 6.3a8 8 0 1011.4 0"/></svg>
+                <b>KIOSK IS OFF</b>
+                <p><strong>${esc(k.name)}</strong> ${k.seen_at ? 'has sent no heartbeat since <strong>' + esc(k.seen_at) + '</strong> (' + esc(k.seen) + ').' : 'has never reported to the web.'}</p>
+                <p>Its screen shows here again on its own once it is switched on and online.</p></div>`;
+            offBox.hidden = false; frame.hidden = true;
+            if (loaded !== null) { frame.src = 'about:blank'; loaded = null; }
+            cap.innerHTML = '<span>' + esc(k.name) + ' · off</span><span>View only</span>';
+            return;
+        }
+        offBox.hidden = true; frame.hidden = false;
+        if (loaded !== s.kiosk.id) { loaded = s.kiosk.id; frame.src = box.dataset.screen + '/' + s.kiosk.id + '/screen'; }
+        cap.innerHTML = '<span><b>' + esc(s.kiosk.name) + '</b> · ' + esc(s.site || '') + ' · the kiosk\'s own screen, 1024 × 600</span><span>View only — nothing is recorded from here</span>';
+    }
+
+    function renderFacts() {
+        const s = data && data.screen, k = s && s.kiosk;
+        if (!k) return;
+        const b = s.board || {};
+        const cell = (label, value, cls) => `<div><span>${label}</span><b class="${cls || ''}">${value}</b></div>`;
+        facts.innerHTML =
+            cell('Status', k.state === 'ok' ? 'Online' : k.state === 'late' ? 'Online · late' : 'Off', k.state) +
+            cell('Last heartbeat', k.seen ? esc(k.seen) : 'Never') +
+            cell('Settings reached it', k.read ? esc(k.read) : '—') +
+            cell('Scanned today', s.on ? (b.total ?? 0) + ' ' + ((b.total ?? 0) === 1 ? 'worker' : 'workers') : '—');
+    }
+
+    const minutes = v => { const m = String(v || '').match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)$/i); if (!m) return -1; let h = +m[1] % 12; if (m[3].toUpperCase() === 'PM') h += 12; return h * 60 + +m[2]; };
+    function renderLog() {
+        const s = data && data.screen;
+        if (!s || !s.on) { logBox.innerHTML = '<li class="none">Nothing to show while the kiosk is off.</li>'; logCount.textContent = ''; return; }
+        const ev = [];
+        ((s.board || {}).records || []).forEach(r => (r.entries || []).forEach(e => {
+            if (e.in) ev.push({ t: e.in, who: r.name, type: 'in', ses: e.session });
+            if (e.out) ev.push({ t: e.out, who: r.name, type: 'out', ses: e.session, auto: e.auto });
+        }));
+        recent.forEach(e => ev.push({ t: String(e.time || '').replace(/:\d{2}(\s*[AP]M)$/i, '$1'), who: e.name || 'Unknown finger', type: 'rej',
+                                      label: e.kind === 'unknown' ? 'NOT RECOGNISED' : (WARN[e.code] || 'REJECTED') }));
+        ev.sort((a, b) => minutes(b.t) - minutes(a.t));
+        logCount.textContent = ev.length;
+        logBox.innerHTML = ev.length ? ev.map(e => `<li><time>${esc(e.t)}</time><b>${esc(e.who)}</b><span class="${e.type}">${e.label ? esc(e.label) : (e.type === 'in' ? 'TIME IN' : 'TIME OUT') + ' · ' + esc(e.ses) + (e.auto ? ' · AUTO' : '')}</span></li>`).join('')
+                                     : '<li class="none">No scans at this kiosk yet today.</li>';
+    }
+
+    function renderPicks() {
+        (data.kiosks || []).forEach(k => {
+            const b = box.querySelector('[data-kiosk="' + k.id + '"]');
+            if (!b) return;
+            b.classList.toggle('on', !!(data.screen && data.screen.kiosk && data.screen.kiosk.id === k.id));
+            b.querySelector('i').className = k.state;
+        });
+    }
+
+    async function ask(light) {
+        const url = new URL(box.dataset.url, location.href);
+        if (current) url.searchParams.set('kiosk', current);
+        url.searchParams.set('since', seq === null ? -1 : seq);
+        if (light) url.searchParams.set('light', 1);
+        const res = await fetch(url, { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+        if (!res.ok) throw new Error(res.status);
+        return res.json();
+    }
+
+    function take(r) {
+        const events = r.events || [];
+        if (r.seq !== undefined) seq = r.seq;
+        events.forEach(e => {
+            if (seen.has(e.seq)) return;
+            seen.add(e.seq);
+            if (!['in', 'out', 'scan'].includes(e.kind)) recent.push(e);
+            if (frame.contentWindow && !frame.hidden) frame.contentWindow.postMessage({ type: 'kiosk-event', event: e }, location.origin);
+        });
+        recent = recent.slice(-20);
+        return events.some(e => e.kind === 'in' || e.kind === 'out');
+    }
+
+    function mark(text, bad) { checked.textContent = text; checked.classList.toggle('bad', !!bad); }
+
+    async function load() {
+        try {
+            data = await ask(false);
+            current = data.screen && data.screen.kiosk ? data.screen.kiosk.id : current;
+            mark('Live · ' + data.checked);
+            take(data);
+            showScreen(); renderFacts(); renderLog(); renderPicks(); fit();
+            if (data.screen) drawMap(data.screen.kiosk);
+        } catch (e) { mark('Could not reach the server — retrying', true); }
+    }
+
+    async function tick() {
+        if (data && document.visibilityState === 'visible') {
+            try {
+                const r = await ask(true);
+                const wasOn = !!(data.screen && data.screen.on);
+                data.kiosks = r.kiosks;
+                mark('Live · ' + r.checked);
+                if (take(r) || !!(r.screen && r.screen.on) !== wasOn) await load();
+                else { renderLog(); renderPicks(); }
+            } catch (e) { /* the slow poll says so */ }
+        }
+        setTimeout(tick, 2000);
+    }
+    function schedule() { clearTimeout(timer); timer = setTimeout(async () => { if (document.visibilityState === 'visible') await load(); schedule(); }, 10000); }
+
+    box.addEventListener('click', e => {
+        const k = e.target.closest('[data-kiosk]');
+        if (k) { current = Number(k.dataset.kiosk); seq = null; recent = []; seen.clear(); load(); return; }
+        if (e.target.closest('[data-full]')) {
+            const f = box.querySelector('.km-frame');
+            if (document.fullscreenElement) document.exitFullscreen();
+            else if (f && f.requestFullscreen) f.requestFullscreen().then(() => setTimeout(fit, 50)).catch(() => {});
+        }
+    });
+    // A kiosk in the list below opens here.
+    document.addEventListener('click', e => {
+        const row = e.target.closest('[data-console-kiosk]');
+        if (!row) return;
+        e.preventDefault();
+        current = Number(row.dataset.consoleKiosk); seq = null; recent = []; seen.clear(); load();
+        box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    load();
+    schedule();
+    tick();
+})();
+
 (function () {
     const KEY = 'jeyanco-devices-view';
     const live = () => document.getElementById('dv-live');

@@ -52,4 +52,52 @@ class KioskStatus
 
         return ['state' => $state, 'seconds' => $seconds, 'last_seen' => $lastSeen, 'fix' => $fix];
     }
+
+    /**
+     * One kiosk as the monitors list it: whether it is on, when it was last
+     * heard, when its settings last reached it, and where it is against the
+     * pin of the site it is set to — for the map, measured here so the page
+     * and the numbers under it cannot disagree.
+     */
+    public static function line(Kiosk $kiosk, ?Carbon $now = null): array
+    {
+        $now    ??= now();
+        $status = self::of($kiosk, $now);
+        $fix    = $status['fix'] ?? [];
+        $read   = $kiosk->settingsReadAt();
+        $ago    = fn (?\Carbon\Carbon $at) => $at?->diffForHumans($now, ['short' => true, 'syntax' => Carbon::DIFF_RELATIVE_TO_NOW]);
+
+        $lat = isset($fix['lat']) ? (float) $fix['lat'] : null;
+        $lng = isset($fix['lng']) ? (float) $fix['lng'] : null;
+        $gps = match (true) {
+            $lat === null || $lng === null                               => 'none',
+            ($fix['status'] ?? null) === 'fix' && $status['state'] !== 'off' => 'fix',
+            default                                                      => 'stale',
+        };
+
+        $site     = $kiosk->site;
+        $pinned   = $site && $site->isPinned();
+        $distance = $pinned && $lat !== null ? round($site->metresFrom($lat, $lng)) : null;
+        $radius   = $site ? $site->geofenceRadius() : null;
+
+        return [
+            'id'      => $kiosk->id,
+            'name'    => $kiosk->name,
+            'code'    => $kiosk->code,
+            'site'    => $site?->name,
+            'state'   => $status['state'],
+            'seen'    => $ago($status['last_seen']),
+            'seen_at' => $status['last_seen']?->format('M j · g:i A'),
+            'read'    => $ago($read),
+            'map'     => [
+                'gps'      => $gps,
+                'lat'      => $lat,
+                'lng'      => $lng,
+                'fix_at'   => $status['last_seen']?->format('g:i:s A'),
+                'site'     => $pinned ? ['name' => $site->name, 'lat' => (float) $site->latitude, 'lng' => (float) $site->longitude, 'radius' => $radius] : null,
+                'distance' => $distance,
+                'inside'   => $distance === null ? null : $distance <= $radius,
+            ],
+        ];
+    }
 }
