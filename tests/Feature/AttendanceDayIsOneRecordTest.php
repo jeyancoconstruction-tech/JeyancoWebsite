@@ -162,11 +162,16 @@ class AttendanceDayIsOneRecordTest extends TestCase
         $this->assertSame(1, substr_count($html, '<b>Juan Dela Cruz</b>'),
             'one row, not one per clock');
 
-        // …laid out as the shift is: in, out for lunch, back, and home.
-        preg_match('#<tr class="atm-row".*?</tr>#s', $html, $row);
+        // The list shows the day's time in and its time out…
+        preg_match('#<tr class="atm-row[^"]*".*?</tr>\s*<tr class="atm-detail".*?</tr>#s', $html, $row);
         $this->assertNotEmpty($row);
 
-        $times = array_map('trim', preg_match_all('#<span class="atm-t">\s*([^<]+?)\s*</span>#', $row[0], $m) ? $m[1] : []);
+        $list  = strstr($row[0], '<tr class="atm-detail"', true);
+        $times = array_map('trim', preg_match_all('#<span class="atm-t">\s*([^<]+?)\s*</span>#', $list, $m) ? $m[1] : []);
+        $this->assertSame(['8:00 AM', '5:00 PM'], $times, 'the first time in and the last time out');
+
+        // …and its detail lays it out as the shift is: in, out for lunch, back, and home.
+        $times = array_map('trim', preg_match_all('#<span class="atm-ses-v">\s*<b[^>]*>\s*([^<]+?)\s*<#', $row[0], $m) ? $m[1] : []);
         $this->assertSame(['8:00 AM', '12:00 PM', '1:00 PM', '5:00 PM'], $times,
             'the morning ends where it ended and the afternoon starts where it started');
     }
@@ -180,10 +185,11 @@ class AttendanceDayIsOneRecordTest extends TestCase
         $emp = $this->worker('Straight Through');
         $this->stretch($emp, '2026-09-10', 'AM', '08:00:00', '17:00:00');
 
-        preg_match('#<tr class="atm-row".*?</tr>#s', $this->history()->getContent(), $row);
+        preg_match('#<tr class="atm-row[^"]*".*?</tr>\s*<tr class="atm-detail".*?</tr>#s', $this->history()->getContent(), $row);
         $this->assertNotEmpty($row);
 
-        $times = array_map('trim', preg_match_all('#<span class="atm-t">\s*([^<]+?)\s*</span>#', $row[0], $m) ? $m[1] : []);
+        $list  = strstr($row[0], '<tr class="atm-detail"', true);
+        $times = array_map('trim', preg_match_all('#<span class="atm-t">\s*([^<]+?)\s*</span>#', $list, $m) ? $m[1] : []);
         $this->assertSame(['8:00 AM', '5:00 PM'], $times, 'the first time in and the last time out');
         $this->assertSame(2, substr_count($row[0], 'No break scan'), 'both break scans are marked absent');
     }

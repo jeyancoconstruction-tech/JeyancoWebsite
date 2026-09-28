@@ -158,7 +158,7 @@ class AttendanceCardDrilldownTest extends TestCase
         $html = $this->page(['view' => 'missed'])->getContent();
 
         $this->assertMatchesRegularExpression(
-            '#<a class="atm-stat is-bad is-active"\s+href="[^"]*view=all"[^>]*aria-current="true"#', $html);
+            '#<a class="atm-stat is-bad(?: has-some)? is-active"\s+href="[^"]*view=all"[^>]*aria-current="true"#', $html);
         $this->assertStringContainsString('name="view" value="missed" checked', $html);
     }
 

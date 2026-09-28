@@ -5,19 +5,11 @@
 @push('styles')
 <style>
 /* ── Attendance Monitoring ────────────────────────────────────────────────
-   Built on the design tokens alone, so one block serves both themes. The
-   break has no token of its own; it borrows the palette's violet, which is
-   defined for light and dark alike. */
+   Built on the design tokens alone, so one block serves both themes. */
 /* The full width the layout gives, as every other page takes it — no padding
    of its own on top of the layout's. */
 .attendance-container.atm { max-width:none; width:100%; margin:0; padding:0; }
 
-.atm {
-    --atm-brk:      var(--violet);
-    --atm-brk-soft: var(--violet-soft);
-    --atm-hatch:    color-mix(in srgb, var(--violet) 26%, transparent);
-    --atm-track:    var(--border);
-}
 
 /* ── Heading ─────────────────────────────────────────────────────────────── */
 /* The shared page header, with the date and the shift schedule on its right.
@@ -50,73 +42,77 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
 }
 .atm-sched-go i { font-size:10px; }
 
-/* ── Cards ───────────────────────────────────────────────────────────────
-   Each card asks a question, so each card is a link — to the same status the
-   control under the tabs sets. Anchors, not buttons: the answer is a URL the
-   office can bookmark or send to somebody. */
-.atm-stats { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; margin-bottom:10px; }
-.atm-stat {
-    display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:baseline; column-gap:10px; row-gap:2px; padding:8px 14px;
-    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
-    box-shadow:var(--shadow-xs); color:inherit; text-decoration:none;
-    transition:border-color .15s, box-shadow .15s;
+/* ── Colour ───────────────────────────────────────────────────────────────
+   Ink, grey, one blue, and red for what is wrong — nothing else. A page where
+   everything has a colour has nothing that stands out; here a problem does. */
+/* The panel sits on <body>, outside .atm, so it is given the same colours. */
+.atm, .atm-panel {
+    --atm-ink:  var(--text-primary);
+    --atm-mute: var(--text-muted);
+    --atm-bad:  var(--danger);
 }
-.atm-stat:hover { border-color:var(--border-md); color:inherit; text-decoration:none; }
-.atm-stat.is-active { border-color:var(--atm-dot); box-shadow:inset 0 0 0 1px var(--atm-dot); }
-.atm-stat-lbl {
-    display:flex; align-items:center; gap:8px;
-    font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-    color:var(--text-secondary);
-}
-.atm-dot { width:8px; height:8px; border-radius:50%; background:var(--atm-dot); flex:none; }
-.atm-stat-lbl { grid-column:1 / -1; }
-.atm-stat-num { font-size:21px; font-weight:800; line-height:1.1; color:var(--text-primary); font-variant-numeric:tabular-nums; }
-.atm-stat-sub { font-size:11.5px; color:var(--text-muted); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.atm .is-brand { --atm-dot:var(--brand); }
-.atm .is-good  { --atm-dot:var(--success); }
-.atm .is-brk   { --atm-dot:var(--atm-brk); }
-.atm .is-bad   { --atm-dot:var(--danger); }
 
-/* ── The records card: tabs, filters, the list and its key ──────────────── */
+/* ── Cards ───────────────────────────────────────────────────────────────
+   One strip of four numbers. Each is a question, so each is a link — to the
+   same status the control under the tabs sets. Anchors, not buttons: the
+   answer is a URL the office can bookmark or send to somebody. */
+.atm-stats {
+    display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); margin-bottom:12px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-xs); overflow:hidden;
+}
+.atm-stat {
+    display:flex; flex-direction:column; gap:2px; padding:12px 18px; position:relative;
+    border-left:1px solid var(--border); color:inherit; text-decoration:none;
+    transition:background .15s;
+}
+.atm-stat:first-child { border-left:0; }
+.atm-stat:hover { background:var(--bg-subtle); color:inherit; text-decoration:none; }
+.atm-stat.is-active { background:var(--bg-subtle); }
+.atm-stat.is-active::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px; background:var(--atm-ink); }
+.atm-stat-lbl { font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-secondary); }
+.atm-stat-num { font-size:28px; font-weight:800; letter-spacing:-.02em; line-height:1.15; color:var(--atm-ink); font-variant-numeric:tabular-nums; }
+.atm-stat-sub { font-size:11.5px; color:var(--atm-mute); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Red only when there is something to review. */
+.atm-stat.is-bad.has-some .atm-stat-lbl,
+.atm-stat.is-bad.has-some .atm-stat-num { color:var(--atm-bad); }
+.atm-stat.is-bad.is-active::after { background:var(--atm-bad); }
+
+/* ── The records card: tabs, filters, the list ─────────────────────────── */
 .atm-card {
     display:flex; flex-direction:column; min-width:0;
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
     box-shadow:var(--shadow-xs);
-    /* The list sizes itself to the card, not the screen — see the
-       container queries at the end. */
-    container:atm / inline-size;
 }
-.atm-tabs { display:flex; gap:4px; margin:0; padding:2px 14px 0; border-bottom:1px solid var(--border); }
+.atm-tabs { display:flex; gap:18px; margin:0; padding:0 18px; border-bottom:1px solid var(--border); }
 .atm-tab {
-    display:flex; align-items:center; gap:8px; margin-bottom:-1px; padding:8px 12px;
+    display:flex; align-items:center; gap:8px; margin-bottom:-1px; padding:11px 0 10px;
     border:0; border-bottom:2px solid transparent; border-radius:0; background:none;
-    font-size:13px; font-weight:600; color:var(--text-muted);
+    font-size:13px; font-weight:600; color:var(--atm-mute);
 }
-.atm-tab:hover { color:var(--text-primary); }
-.atm-tab.active { color:var(--brand); border-bottom-color:var(--brand); }
-.atm-count { font-size:11px; font-weight:700; border-radius:999px; padding:1px 7px; background:var(--danger-soft); color:var(--danger); }
+.atm-tab:hover { color:var(--atm-ink); }
+.atm-tab.active { color:var(--atm-ink); border-bottom-color:var(--atm-ink); }
+.atm-count { font-size:11px; font-weight:700; color:var(--atm-bad); }
 .atm-count[hidden] { display:none; }
 
-.atm-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0; padding:9px 14px; }
+.atm-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0; padding:10px 18px; border-bottom:1px solid var(--border); }
 .atm-field {
     display:flex; align-items:center; gap:8px; height:32px; padding:0 10px;
     border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface);
 }
 .atm-field[hidden] { display:none; }
-.atm-field > i { font-size:13px; color:var(--text-muted); }
+.atm-field > i { font-size:12px; color:var(--atm-mute); }
 .atm-field input, .atm-field select {
     height:30px; min-width:0; border:0; outline:none; box-shadow:none; background:transparent;
-    font-size:12.5px; font-weight:500; color:var(--text-primary);
+    font-size:12.5px; font-weight:500; color:var(--atm-ink);
 }
 .atm-field input { width:170px; }
-.atm-field input::placeholder { color:var(--text-muted); }
+.atm-field input::placeholder { color:var(--atm-mute); }
 /* The open list is drawn by the browser, and a background on the select is
    enough for Chrome to stop theming it — the popup came back white under
    near-white text in dark mode. Both colours are stated so it follows. */
 .atm-field select option { background-color:var(--bg-elevated); color:var(--text-primary); }
-.atm-field:focus-within { border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-subtle); }
-/* The ring is the field's, drawn above. The theme's own focus ring on the
-   input inside it read as a second box within the first. */
+.atm-field:focus-within { border-color:var(--atm-ink); }
 html[data-bs-theme] .atm-field input:focus-visible,
 html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important; outline:none !important; border-radius:0; }
 
@@ -124,25 +120,30 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
    submits them like any other field and the keyboard moves between them. */
 .atm-seg { display:flex; overflow:hidden; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--surface); }
 .atm-seg label { margin:0; }
+.atm-seg label + label span { border-left:1px solid var(--border); }
 .atm-seg label[hidden] { display:none; }
 .atm-seg input { position:absolute; opacity:0; pointer-events:none; }
 .atm-seg span {
-    display:flex; align-items:center; gap:6px; height:30px; padding:0 10px; cursor:pointer;
-    font-size:12px; font-weight:600; color:var(--text-muted); white-space:nowrap;
+    display:flex; align-items:center; gap:6px; height:30px; padding:0 11px; cursor:pointer;
+    font-size:12px; font-weight:600; color:var(--atm-mute); white-space:nowrap;
 }
-.atm-seg span:hover { color:var(--text-primary); }
-.atm-seg input:checked + span { background:var(--brand-subtle); color:var(--brand); }
+.atm-seg span i { font-size:10.5px; }
+.atm-seg span:hover { color:var(--atm-ink); }
+.atm-seg input:checked + span { background:var(--atm-ink); color:var(--surface); }
 .atm-seg input:focus-visible + span { outline:2px solid var(--brand); outline-offset:-2px; }
+.atm-seg .atm-count { margin-left:2px; }
+.atm-seg input:checked + span .atm-count { color:inherit; }
+.atm-toolbar .atm-push { margin-left:auto; }
 
 .atm-btn {
     display:inline-flex; align-items:center; gap:6px; padding:6px 12px; cursor:pointer;
     border:1px solid var(--border-md); border-radius:var(--radius-sm); background:var(--surface);
-    font-size:12.5px; font-weight:600; color:var(--text-primary);
+    font-size:12.5px; font-weight:600; color:var(--atm-ink);
 }
 .atm-btn:hover { background:var(--bg-subtle); }
-.atm-btn.pri { background:var(--brand); border-color:var(--brand); color:#fff; }
-.atm-btn.pri:hover { background:var(--brand-strong); border-color:var(--brand-strong); }
-.atm-btn.danger { background:var(--danger-soft); border-color:color-mix(in srgb, var(--danger) 35%, transparent); color:var(--danger); }
+.atm-btn.pri { background:var(--atm-ink); border-color:var(--atm-ink); color:var(--surface); }
+.atm-btn.pri:hover { opacity:.9; background:var(--atm-ink); }
+.atm-btn.danger { background:var(--surface); border-color:color-mix(in srgb, var(--danger) 45%, transparent); color:var(--danger); }
 .atm-btn:disabled { opacity:.5; cursor:not-allowed; }
 .atm-toolbar .atm-btn { height:32px; }
 
@@ -151,166 +152,177 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
 .atm-card.is-loading .tab-content { opacity:.55; transition:opacity .15s; }
 
 /* ── The list ────────────────────────────────────────────────────────────
-   In the page, not boxed: the whole section scrolls with it, cards and
-   filters included, and the list is as long as the crew. Wide enough for
-   its columns; narrower than that, it scrolls sideways inside the card. */
+   Five columns: who, in, out, hours, status. Wide enough for them; narrower
+   than that, it scrolls sideways inside the card. */
 .atm-scroll { overflow-x:auto; }
-.atm-table { width:100%; min-width:1060px; border-collapse:separate; border-spacing:0; }
+.atm-table { width:100%; min-width:680px; border-collapse:separate; border-spacing:0; }
 .atm-table thead th {
-    padding:7px 10px; text-align:left; white-space:nowrap;
-    font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-    color:var(--text-muted); background:var(--bg-subtle); border-bottom:1px solid var(--border);
+    padding:9px 18px; text-align:left; white-space:nowrap;
+    font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--atm-mute); border-bottom:1px solid var(--border);
 }
-.atm-table thead tr.atm-grp th { padding:6px 10px 0; border-bottom:0; font-size:10px; }
-.atm-grp th.s { text-align:center; }
-.atm-grp th.s span { display:block; padding-bottom:5px; border-bottom:1px solid var(--border); }
 .atm-table tbody td {
-    padding:5px 9px; vertical-align:middle; font-size:12.5px; color:var(--text-primary);
+    padding:11px 18px; vertical-align:middle; font-size:13px; color:var(--atm-ink);
     background:var(--surface); border-bottom:1px solid var(--border);
 }
-.atm-table td.atm-sep, .atm-table th.atm-sep { border-left:1px dashed var(--border); }
+.atm-table th.atm-col-chev, .atm-table td.atm-col-chev { width:36px; padding-left:0; text-align:right; }
 tr.atm-row { cursor:pointer; }
 tr.atm-row:hover td, tr.atm-row.is-open td { background:var(--bg-subtle); }
 tr.atm-row:focus-visible { outline:2px solid var(--brand); outline-offset:-2px; }
+/* A day that is wrong is marked down its edge, so it is found in a long list. */
+tr.atm-row.is-flag td:first-child { box-shadow:inset 3px 0 0 var(--atm-bad); }
 tr.atm-dayhead td {
-    padding:8px 12px; font-size:12px; font-weight:700; letter-spacing:.03em;
+    padding:8px 18px; font-size:12px; font-weight:700; letter-spacing:.03em;
     color:var(--text-secondary); background:var(--bg);
 }
 /* The card reaches the bottom of the screen however little is in it, and
    grows past it with the page when the list is long — a minimum height set
-   by the script below, never a box the rows scroll inside. The list takes
-   whatever the card has spare, and a list with nothing in it says so in the
-   middle of that space rather than at the top of it. */
+   by the script below, never a box the rows scroll inside. */
 .atm-card > .tab-content { flex:1; display:flex; flex-direction:column; }
 .atm-card > .tab-content > .tab-pane.active { flex:1; display:flex; flex-direction:column; }
 .atm-card .atm-scroll { flex:1; display:flex; flex-direction:column; }
 .atm-empty-state {
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
-    padding:40px 16px; text-align:center; font-size:13px; color:var(--text-muted);
+    padding:40px 16px; text-align:center; font-size:13px; color:var(--atm-mute);
 }
 .atm-empty-state i { font-size:1.6rem; opacity:.35; }
 
-.atm-emp { display:flex; align-items:center; gap:8px; min-width:190px; }
-.atm-ini {
-    display:grid; place-items:center; flex:none; width:28px; height:28px; border-radius:50%;
-    font-size:11px; font-weight:700; color:var(--text-secondary);
-    background:var(--bg-subtle); border:1px solid var(--border);
-}
-.atm-emp b { display:block; font-size:13px; color:var(--text-primary); white-space:nowrap; }
-.atm-emp small { font-size:11.5px; color:var(--text-muted); white-space:nowrap; }
-.atm-site {
-    display:inline-flex; align-items:center; gap:4px; margin-left:6px; padding:1px 6px; white-space:nowrap;
-    font-size:11px; font-weight:600; color:var(--text-secondary);
-    border:1px solid var(--border); border-radius:6px;
-}
-.atm-site i { font-size:9px; color:var(--text-muted); }
+.atm-emp { min-width:200px; }
+.atm-emp b { display:block; font-size:13.5px; font-weight:700; color:var(--atm-ink); white-space:nowrap; }
+.atm-emp small { display:block; font-size:11.5px; color:var(--atm-mute); white-space:nowrap; margin-top:1px; }
 
-.atm-shift { display:inline-flex; align-items:center; gap:6px; padding:2px 7px; border-radius:6px; font-size:11.5px; font-weight:700; white-space:nowrap; }
-.atm-shift i { font-size:11px; }
-.atm-shift.day   { background:var(--warning-soft); color:var(--warning); }
-.atm-shift.night { background:var(--brand-subtle); color:var(--brand); }
-.atm-shift-hrs { display:block; margin-top:2px; font-size:11px; color:var(--text-muted); white-space:nowrap; }
-
-.atm-punch { display:flex; flex-direction:column; gap:2px; min-width:84px; }
-.atm-t { display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.atm-t.is-mute { color:var(--text-muted); font-weight:500; }
+.atm-punch { display:flex; flex-direction:column; gap:2px; min-width:90px; }
+.atm-t { display:flex; align-items:center; gap:5px; font-size:13.5px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--atm-ink); }
+.atm-t.is-mute { color:var(--atm-mute); font-weight:500; }
 .atm-edited { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--brand); }
-.atm-tag { display:inline-block; width:max-content; padding:1px 6px; border-radius:5px; font-size:10.5px; font-weight:700; white-space:nowrap; }
-/* Under a scan, a long note — "Overbreak 5h 37m" — may take two lines
-   rather than widen its column past the edge of the card. */
-.atm-punch .atm-tag { width:auto; white-space:normal; }
-.atm-tag.warn { background:var(--warning-soft); color:var(--warning); }
-.atm-tag.bad  { background:var(--danger-soft);  color:var(--danger); }
-.atm-tag.good { background:var(--success-soft); color:var(--success); }
-.atm-tag.brk  { background:var(--atm-brk-soft); color:var(--atm-brk); }
-.atm-tag.mute { padding-left:0; font-weight:600; color:var(--text-muted); }
+/* What stands beside a time: late, expected, due — grey. Red only when a
+   scan is missing. */
+.atm-note-t { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:500; color:var(--atm-mute); white-space:nowrap; }
+.atm-note-t.bad { color:var(--atm-bad); font-weight:600; }
+.atm-note-t.bad::before { content:""; width:5px; height:5px; border-radius:50%; background:var(--atm-bad); flex:none; }
+
+.atm-hrs { font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--atm-ink); }
+.atm-hrs small { display:block; font-size:11px; font-weight:500; color:var(--atm-mute); }
+
+.atm-status { display:flex; flex-direction:column; align-items:flex-start; gap:3px; }
+.atm-st { display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--atm-ink); white-space:nowrap; }
+.atm-st .atm-dot { width:7px; height:7px; border-radius:50%; background:var(--atm-mute); flex:none; }
+.atm-st.good .atm-dot { background:var(--atm-ink); }
+.atm-st.bad { color:var(--atm-bad); }
+.atm-st.bad .atm-dot { background:var(--atm-bad); }
+.atm-st.live .atm-dot { animation:atm-pulse 1.6s ease-in-out infinite; }
+@keyframes atm-pulse { 50% { opacity:.3; } }
+@media (prefers-reduced-motion: reduce) { .atm-st.live .atm-dot { animation:none; } }
+.atm-chev { font-size:11px; color:var(--atm-mute); }
+
+/* ── The detail: a side panel ─────────────────────────────────────────────
+   The row under each day holds everything the list leaves out. It stays
+   hidden in the table; the script shows a copy of it in this panel. */
+.atm-table tr.atm-detail { display:none !important; }
+.atm-shade {
+    position:fixed; inset:0; z-index:1190; background:rgba(15, 23, 42, .32);
+    opacity:0; pointer-events:none; transition:opacity .18s;
+}
+.atm-shade.on { opacity:1; pointer-events:auto; }
+.atm-panel {
+    position:fixed; top:0; right:0; bottom:0; z-index:1200; width:min(560px, 100vw);
+    display:flex; flex-direction:column; gap:16px; padding:22px 24px 26px; overflow-y:auto;
+    background:var(--surface); border-left:1px solid var(--border);
+    box-shadow:-18px 0 40px rgba(15, 23, 42, .16);
+    transform:translateX(100%); transition:transform .22s ease; color:var(--atm-ink);
+}
+.atm-panel.on { transform:none; }
+@media (prefers-reduced-motion: reduce) { .atm-panel, .atm-shade { transition:none; } }
+.atm-panel > td, .atm-panel .atm-pbody { display:flex; flex-direction:column; gap:16px; }
+
+.atm-dhead { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.atm-dhead h3 { margin:0; font-size:19px; font-weight:800; letter-spacing:-.02em; color:var(--atm-ink); }
+.atm-dhead p { margin:3px 0 0; font-size:12px; color:var(--atm-mute); }
+.atm-close {
+    flex:none; width:32px; height:32px; display:grid; place-items:center; cursor:pointer;
+    border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); color:var(--atm-mute);
+}
+.atm-close:hover { color:var(--atm-ink); background:var(--bg-subtle); }
+
+.atm-dstate { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-md); }
+.atm-dstate.bad { border-color:color-mix(in srgb, var(--danger) 40%, transparent); background:var(--danger-soft); }
+
+.atm-ses { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.atm-ses > div { border:1px solid var(--border); border-radius:var(--radius-md); padding:10px 12px; }
+.atm-ses h5 { margin:0 0 6px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-secondary); }
+.atm-ses h5 span { font-weight:600; color:var(--atm-mute); letter-spacing:0; text-transform:none; }
+.atm-ses-r { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:3px 0; font-size:12.5px; color:var(--atm-mute); }
+.atm-ses-v { display:flex; flex-direction:column; align-items:flex-end; }
+.atm-ses-v b { display:flex; align-items:center; gap:5px; font-weight:700; color:var(--atm-ink); font-variant-numeric:tabular-nums; }
+.atm-ses-v b.is-mute { color:var(--atm-mute); font-weight:500; }
+.atm-ses-v small { font-size:11px; color:var(--atm-mute); }
+.atm-ses-v small.bad { color:var(--atm-bad); font-weight:600; }
+
+.atm-dsec h4, .atm-dbox h4 { margin:0 0 8px; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--atm-mute); }
 
 /* The day against its shift, an hour either side. Positions come from the
-   server as percentages, so the bar is drawn by CSS alone. */
-.atm-tl { position:relative; width:190px; height:22px; }
+   server as percentages, so the bar is drawn by CSS alone. One ink for the
+   time worked, grey for the break, red for what is missing or late. */
+.atm-tl { position:relative; width:100%; height:22px; }
 .atm-tl > span { position:absolute; display:block; }
-.atm-tl .base { top:8px; height:6px; border-radius:3px; background:var(--atm-track); }
-.atm-tl .bw   { top:5px; height:12px; border-radius:3px; background:repeating-linear-gradient(135deg, var(--atm-hatch) 0 4px, transparent 4px 8px); }
-.atm-tl .w    { top:7px; height:8px; border-radius:4px; background:var(--brand); }
-.atm-tl .w.live { background:linear-gradient(90deg, var(--brand), var(--brand) 70%, color-mix(in srgb, var(--brand) 35%, transparent)); }
-.atm-tl .w.miss { top:6px; height:10px; background:transparent; border:1.5px dashed var(--danger); }
-.atm-tl .w.br { background:var(--atm-brk); }
-.atm-tl .w.ob { background:var(--warning); }
-.atm-tl .late { top:10px; height:2px; background:var(--danger); }
-.atm-tl .now  { top:0; bottom:0; width:2px; border-radius:1px; background:var(--text-primary); }
-.atm-tl .now::after { content:""; position:absolute; top:-3px; left:-3px; width:8px; height:8px; border-radius:50%; background:var(--text-primary); }
-/* The shift's own times under the bar, each at the point it marks: the start
-   reads from its tick, the end up to its tick, the break centred on it. */
-.atm-tlax { position:relative; width:190px; height:13px; margin-top:2px; font-size:10px; color:var(--text-muted); font-variant-numeric:tabular-nums; }
+.atm-tl .base { top:9px; height:4px; border-radius:2px; background:var(--border); }
+.atm-tl .bw   { top:7px; height:8px; border-radius:2px; background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--atm-mute) 30%, transparent) 0 3px, transparent 3px 6px); }
+.atm-tl .w    { top:6px; height:10px; border-radius:5px; background:var(--atm-ink); }
+.atm-tl .w.live { background:linear-gradient(90deg, var(--atm-ink), var(--atm-ink) 70%, color-mix(in srgb, var(--atm-ink) 30%, transparent)); }
+.atm-tl .w.miss { top:5px; height:12px; background:transparent; border:1.5px dashed var(--atm-bad); }
+.atm-tl .w.br { background:color-mix(in srgb, var(--atm-mute) 55%, transparent); }
+.atm-tl .w.ob { background:var(--atm-bad); }
+.atm-tl .late { top:10px; height:2px; background:var(--atm-bad); }
+.atm-tl .now  { top:0; bottom:0; width:2px; border-radius:1px; background:var(--brand); }
+.atm-tlax { position:relative; width:100%; height:14px; margin-top:3px; font-size:10.5px; color:var(--atm-mute); font-variant-numeric:tabular-nums; }
 .atm-tlax span { position:absolute; top:0; white-space:nowrap; }
 .atm-tlax .is-mid { transform:translateX(-50%); }
 .atm-tlax .is-end { transform:translateX(-100%); }
+.atm-key { display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:11px; color:var(--atm-mute); }
+.atm-key span { display:flex; align-items:center; gap:6px; }
+.atm-key i { display:inline-block; width:14px; height:6px; border-radius:3px; }
+.atm-key .k-w { background:var(--atm-ink); }
+.atm-key .k-b { background:color-mix(in srgb, var(--atm-mute) 55%, transparent); }
+.atm-key .k-m { border:1.5px dashed var(--atm-bad); height:8px; }
+.atm-key .k-n { width:2px; height:12px; background:var(--brand); }
 
-.atm-hrs { font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.atm-hrs small { display:block; font-size:11px; font-weight:500; color:var(--text-muted); }
-.atm-hrs small.d-inline { display:inline; }
-.atm-hrs .atm-tag { display:block; margin-top:2px; }
-
-.atm-status { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.atm-status-tags { display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
-.atm-pill { display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:999px; font-size:11.5px; font-weight:700; white-space:nowrap; }
-.atm-pill .atm-dot { width:7px; height:7px; }
-.atm-pill.good    { background:var(--success-soft); color:var(--success); --atm-dot:var(--success); }
-.atm-pill.warn    { background:var(--warning-soft); color:var(--warning); --atm-dot:var(--warning); }
-.atm-pill.bad     { background:var(--danger-soft);  color:var(--danger);  --atm-dot:var(--danger); }
-.atm-pill.brk     { background:var(--atm-brk-soft); color:var(--atm-brk); --atm-dot:var(--atm-brk); }
-.atm-pill.neutral { background:var(--bg-subtle);    color:var(--text-muted); --atm-dot:var(--text-muted); }
-.atm-pill.live .atm-dot { animation:atm-pulse 1.6s ease-in-out infinite; }
-@keyframes atm-pulse { 50% { opacity:.35; } }
-@media (prefers-reduced-motion: reduce) { .atm-pill.live .atm-dot { animation:none; } }
-.atm-chev { font-size:11px; color:var(--text-muted); transition:transform .15s; }
-tr.is-open .atm-chev { transform:rotate(90deg); }
-
-/* ── Under a row: its scans, and its hours or its fixes ─────────────────── */
-.atm-table tr.atm-detail td { padding:4px 12px 16px; background:var(--bg-subtle); cursor:default; }
-.atm-dgrid { display:grid; grid-template-columns:minmax(0, 1.1fr) minmax(0, 1fr); gap:16px; }
-.atm-dbox {
-    display:flex; flex-direction:column; gap:10px; padding:14px 16px;
-    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
-}
-.atm-dbox h4 { margin:0; font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); }
+.atm-dgrid { display:flex; flex-direction:column; gap:12px; }
+.atm-dbox { display:flex; flex-direction:column; gap:10px; padding:14px 16px; border:1px solid var(--border); border-radius:var(--radius-lg); }
+.atm-dbox h4 { margin:0; }
 .atm-scans { display:flex; flex-direction:column; margin:0; padding:0; list-style:none; }
 .atm-scans li {
-    display:grid; grid-template-columns:80px minmax(0, 1fr) auto; align-items:center; gap:10px;
-    padding:7px 0; font-size:13px; border-bottom:1px dashed var(--border);
+    display:grid; grid-template-columns:78px minmax(0, 1fr) auto; align-items:center; gap:10px;
+    padding:7px 0; font-size:12.5px; border-bottom:1px solid var(--border);
 }
 .atm-scans li:last-child { border-bottom:0; }
-.atm-scans .k { display:block; font-size:12px; color:var(--text-muted); }
+.atm-scans .k { display:block; font-size:11.5px; color:var(--atm-mute); }
 .atm-fix {
-    display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0; padding:10px 12px;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0; padding:12px;
     background:var(--danger-soft); border:1px solid color-mix(in srgb, var(--danger) 30%, transparent);
     border-radius:var(--radius-md);
 }
-.atm-fix b { flex:1 1 100%; font-size:13px; color:var(--text-primary); }
+.atm-fix b { flex:1 1 100%; font-size:13px; color:var(--atm-ink); }
 .atm-fix small { flex:1 1 100%; font-size:12px; color:var(--text-secondary); }
 .atm-fix input[type=time] {
     padding:5px 8px; border:1px solid var(--border-md); border-radius:var(--radius-sm);
-    background:var(--surface); color:var(--text-primary); color-scheme:inherit; font-variant-numeric:tabular-nums;
+    background:var(--surface); color:var(--atm-ink); color-scheme:inherit; font-variant-numeric:tabular-nums;
 }
 .atm-decided {
-    display:flex; align-items:center; gap:10px; margin:0 0 12px; padding:10px 12px;
-    background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); font-size:13px; color:var(--text-primary);
+    display:flex; align-items:center; gap:10px; margin:0 0 4px; padding:10px 12px;
+    background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); font-size:13px; color:var(--atm-ink);
 }
 .atm-decided > span { flex:1; min-width:0; }
-.atm-decided small { display:block; font-size:12px; color:var(--text-muted); margin-top:2px; }
-.atm-sum { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+.atm-decided small { display:block; font-size:12px; color:var(--atm-mute); margin-top:2px; }
+.atm-sum { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }
 .atm-sum > div { display:flex; flex-direction:column; gap:2px; }
-.atm-sum span { font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--text-muted); }
-.atm-sum b { font-size:15px; font-variant-numeric:tabular-nums; color:var(--text-primary); }
-.atm-sum b.is-good { color:var(--success); }
-.atm-note { margin:0; font-size:12px; color:var(--text-muted); }
+.atm-sum span { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--atm-mute); }
+.atm-sum b { font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--atm-ink); }
+.atm-note { margin:0; font-size:12px; color:var(--atm-mute); }
 
-.atm-legend {
-    display:flex; flex-wrap:wrap; gap:8px 16px; padding:12px 16px;
-    border-top:1px solid var(--border); font-size:12px; color:var(--text-muted);
+.atm-foot {
+    display:flex; flex-wrap:wrap; gap:8px 16px; padding:11px 18px;
+    border-top:1px solid var(--border); font-size:12px; color:var(--atm-mute);
 }
-.atm-legend span { display:flex; align-items:center; gap:6px; }
-.atm-sw { display:inline-block; width:18px; height:7px; border-radius:3px; }
 
 /* The card ends at the bottom of the screen, so its pager lands under the
    floating chat button (50px across, 28px in from the right). Kept clear of
@@ -319,22 +331,11 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
 .att-pager nav { padding-top:10px; }
 .att-pager .pagination { margin-bottom:0; }
 
-/* A narrower card — a laptop, or a screen zoomed to 125% — closes the cells
-   up first; only on a narrower card still does the timeline give way, since
-   the times, the hours and the status are what a row is for. Measured on
-   the card rather than the screen, so a zoomed browser is treated as the
-   smaller screen it is, and History fits exactly as Today's list does. */
-@container atm (max-width:1450px) {
-    .atm-table thead th, .atm-table tbody td { padding-left:8px; padding-right:8px; }
-    .atm-punch { min-width:74px; }
-    .atm-emp { min-width:175px; }
-}
-@container atm (max-width:1100px) {
-    .atm-col-tl { display:none; }
-    .atm-table { min-width:940px; }
-}
 @media (max-width:1100px) {
     .atm-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .atm-stat:nth-child(3) { border-left:0; }
+    .atm-stat:nth-child(n+3) { border-top:1px solid var(--border); }
+    .atm-toolbar .atm-push { margin-left:0; }
 }
 @media (max-width:700px) {
     .atm .page-head { flex-wrap:wrap; }
@@ -342,14 +343,18 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     .atm-sched { height:auto; min-height:36px; padding:6px 10px; width:100%; }
     .atm-sched-txt { flex-direction:column; align-items:flex-start; gap:1px; white-space:normal; }
     .atm-sched-go { display:none; }
-    .atm-toolbar { padding:9px 12px; }
+    .atm-toolbar { padding:10px 12px; }
     .atm-field, .atm-field input { width:100%; }
     .atm-field input { flex:1; }
     .atm-seg { max-width:100%; overflow-x:auto; }
-    .atm-dgrid { grid-template-columns:minmax(0, 1fr); }
+    .atm-panel { padding:18px 16px 22px; }
+    .atm-ses { grid-template-columns:minmax(0, 1fr); }
+    .atm-sum { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width:420px) {
     .atm-stats { grid-template-columns:minmax(0, 1fr); }
+    .atm-stat { border-left:0; border-top:1px solid var(--border); }
+    .atm-stat:first-child { border-top:0; }
 }
 </style>
 @endpush
@@ -387,7 +392,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
         'clocked-in' => __('Working'),
         'break'      => __('On break'),
         'missed'     => __('Needs review'),
-        'done'       => __('Completed'),
+        'done'       => __('Done'),
     ];
 @endphp
 
@@ -422,7 +427,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     <div class="atm-stats" id="attStats" data-live="attendance employees">
         <a class="atm-stat is-brand {{ $cardOn('present') ? 'is-active' : '' }}" href="{{ $cardUrl('present') }}" data-view="present"
            @if($cardOn('present')) aria-current="true" @endif>
-            <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('Present today') }}</span>
+            <span class="atm-stat-lbl">{{ __('Present today') }}</span>
             <span class="atm-stat-num">{{ $presentToday }}</span>
             <span class="atm-stat-sub">
                 {{ __('Scanned in') }}@if($presentToday) · {{ max(0, $presentToday - $nightCrew) }} {{ __('day') }}, {{ $nightCrew }} {{ __('night') }}@endif
@@ -431,7 +436,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
         <a class="atm-stat is-good {{ $cardOn('clocked-in') ? 'is-active' : '' }}"
            href="{{ $cardUrl('clocked-in') }}" data-view="clocked-in"
            @if($cardOn('clocked-in')) aria-current="true" @endif>
-            <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('Working now') }}</span>
+            <span class="atm-stat-lbl">{{ __('Working now') }}</span>
             <span class="atm-stat-num">{{ $clockedIn }}</span>
             <span class="atm-stat-sub">
                 @if($clockedIn)
@@ -444,16 +449,16 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
         <a class="atm-stat is-brk {{ $cardOn('break') ? 'is-active' : '' }}"
            href="{{ $cardUrl('break') }}" data-view="break"
            @if($cardOn('break')) aria-current="true" @endif>
-            <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('On break') }}</span>
+            <span class="atm-stat-lbl">{{ __('On break') }}</span>
             <span class="atm-stat-num">{{ $onBreak }}</span>
             <span class="atm-stat-sub">
                 {{ $overBreak ? $overBreak . ' ' . __('past the break') : __('Between sessions') }}
             </span>
         </a>
-        <a class="atm-stat is-bad {{ $cardOn('missed') ? 'is-active' : '' }}"
+        <a @class(['atm-stat', 'is-bad', 'has-some' => $invalidCount > 0, 'is-active' => $cardOn('missed')])
            href="{{ $cardUrl('missed') }}" data-view="missed"
            @if($cardOn('missed')) aria-current="true" @endif>
-            <span class="atm-stat-lbl"><span class="atm-dot"></span>{{ __('Needs review') }}</span>
+            <span class="atm-stat-lbl">{{ __('Needs review') }}</span>
             <span class="atm-stat-num">{{ $invalidCount }}</span>
             <span class="atm-stat-sub">{{ $reviewToday }} {{ __('today') }} · {{ $reviewEarlier }} {{ __('earlier this week') }}</span>
         </a>
@@ -465,12 +470,12 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
             <button class="atm-tab {{ $openTab === 'today' ? 'active' : '' }}" type="button" role="tab"
                     data-bs-toggle="tab" data-bs-target="#att-today" data-tab="today"
                     aria-selected="{{ $openTab === 'today' ? 'true' : 'false' }}">
-                <i class="fas fa-calendar-day"></i>{{ __('Today\'s Attendance') }}
+                {{ __('Today') }}
             </button>
             <button class="atm-tab {{ $openTab === 'history' ? 'active' : '' }}" type="button" role="tab"
                     data-bs-toggle="tab" data-bs-target="#att-history" data-tab="history"
                     aria-selected="{{ $openTab === 'history' ? 'true' : 'false' }}">
-                <i class="fas fa-clock-rotate-left"></i>{{ __('History') }}
+                {{ __('History') }}
                 <span class="atm-count" id="attHistCount" data-live="attendance employees"
                       title="{{ __('Earlier days this week still waiting on a review') }}"
                       @if(! $reviewEarlier) hidden @endif>{{ $reviewEarlier }}</span>
@@ -501,7 +506,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
                 </select>
             </label>
 
-            <div class="atm-seg" role="radiogroup" aria-label="{{ __('Filter by shift') }}">
+            <div class="atm-seg atm-push" style="order:10" role="radiogroup" aria-label="{{ __('Filter by shift') }}">
                 <label><input type="radio" name="shift" value="" @checked($shiftId === null)><span>{{ __('All shifts') }}</span></label>
                 @foreach($shifts as $sh)
                     <label>
@@ -521,7 +526,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
                     @endphp
                     <label{!! $labelAttr !!}>
                         <input type="radio" name="view" value="{{ $value }}" @checked($shownView === $value)>
-                        <span>{{ $label }}</span>
+                        <span>{{ $label }}@if($value === 'missed' && $invalidCount)<em class="atm-count">{{ $invalidCount }}</em>@endif</span>
                     </label>
                 @endforeach
             </div>
@@ -560,17 +565,10 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
         </form>
 
         @php
-            $groupHead = function () {
-                return '<tr class="atm-grp">'
-                    . '<th colspan="2"></th>'
-                    . '<th colspan="2" class="s"><span>' . e(__('1st session')) . '</span></th>'
-                    . '<th colspan="2" class="s atm-sep"><span>' . e(__('2nd session')) . '</span></th>'
-                    . '<th colspan="3"></th></tr>';
-            };
-            $heads = '<th>' . e(__('Employee')) . '</th><th>' . e(__('Shift')) . '</th>'
+            $heads = '<th>' . e(__('Employee')) . '</th>'
                    . '<th>' . e(__('Time in')) . '</th><th>' . e(__('Time out')) . '</th>'
-                   . '<th class="atm-sep">' . e(__('Time in')) . '</th><th>' . e(__('Time out')) . '</th>'
-                   . '<th class="atm-col-tl">' . e(__('Timeline')) . '</th><th>' . e(__('Hours')) . '</th><th>' . e(__('Status')) . '</th>';
+                   . '<th>' . e(__('Hours')) . '</th><th>' . e(__('Status')) . '</th>'
+                   . '<th class="atm-col-chev"><span class="visually-hidden">' . e(__('Open')) . '</span></th>';
         @endphp
 
         <div class="tab-content">
@@ -580,7 +578,6 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
                 <div class="atm-scroll" id="attTodayList" data-live="attendance employees sites">
                     <table class="atm-table" id="todayTable">
                         <thead>
-                            {!! $groupHead() !!}
                             <tr>{!! $heads !!}</tr>
                         </thead>
                         <tbody>
@@ -610,13 +607,12 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
                 <div class="atm-scroll" id="attHistoryList" data-live="attendance employees sites">
                         <table class="atm-table" id="historyTable">
                             <thead>
-                                {!! $groupHead() !!}
                                 <tr>{!! $heads !!}</tr>
                             </thead>
                             <tbody>
                                 @foreach($historyBoard->groupBy(fn ($d) => $d->day->date()->toDateString()) as $date => $group)
                                     <tr class="atm-dayhead" data-live-key="date-{{ $date }}">
-                                        <td colspan="9">{{ \Carbon\Carbon::parse($date)->format('l, m/d/Y') }}</td>
+                                        <td colspan="6">{{ \Carbon\Carbon::parse($date)->format('l, m/d/Y') }}</td>
                                     </tr>
                                     @foreach($group as $d)
                                         @include('attendance._day', ['d' => $d, 'tab' => 'history'])
@@ -644,14 +640,8 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
             </div>
         </div>
 
-        <div class="atm-legend">
-            <span><i class="atm-sw" style="background:var(--brand)"></i>{{ __('Worked') }}</span>
-            <span><i class="atm-sw" style="background:repeating-linear-gradient(135deg, var(--atm-hatch) 0 4px, transparent 4px 8px); border:1px solid var(--atm-brk)"></i>{{ __('Break window') }}</span>
-            <span><i class="atm-sw" style="background:var(--atm-brk)"></i>{{ __('On break') }}</span>
-            <span><i class="atm-sw" style="background:var(--warning)"></i>{{ __('Overbreak') }}</span>
-            <span><i class="atm-sw" style="border:1.5px dashed var(--danger)"></i>{{ __('Missing or guessed scan') }}</span>
-            <span><i class="atm-sw" style="height:2px; background:var(--danger)"></i>{{ __('Late') }}</span>
-            <span>{{ __('Click a row to see its scans and fix missing ones.') }}</span>
+        <div class="atm-foot">
+            <span>{{ __('Click a row to see both sessions, the timeline, every scan, and to fix missing ones.') }}</span>
         </div>
     </section>
 </div>
@@ -667,37 +657,88 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     const csrf     = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
     if (!form || !card) return;
 
-    // ── Rows that are open ──────────────────────────────────────────────────
-    // Kept here rather than in the markup, because the markup is replaced —
-    // by a filter, a fix, or the live feed — and a row somebody opened should
-    // still be open afterwards.
-    const open = new Set();
+    // ── The open day, in a side panel ───────────────────────────────────────
+    // Each row carries its detail in the (hidden) row under it. A click shows
+    // a copy of that detail in a panel at the side. The table's markup is
+    // replaced — by a filter, a fix, or the live feed — so which day is open
+    // is kept here, and the panel is refreshed from the new markup.
+    const shade = document.createElement('div');
+    shade.className = 'atm-shade';
+    const panel = document.createElement('aside');
+    panel.className = 'atm-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-label', @json(__('Attendance detail')));
+    panel.hidden = true;
+    document.body.append(shade, panel);
 
-    function applyOpen() {
-        document.querySelectorAll('tr.atm-row').forEach(tr => {
-            const on  = open.has(tr.dataset.day);
-            const det = tr.nextElementSibling;
-            tr.classList.toggle('is-open', on);
-            tr.setAttribute('aria-expanded', on ? 'true' : 'false');
-            if (det && det.matches('tr.atm-detail')) det.hidden = !on;
-        });
+    let openKey = null;
+    let shownHtml = null;
+
+    function rowOf(key) {
+        return document.querySelector('.tab-pane.active tr.atm-row[data-day="' + CSS.escape(key) + '"]')
+            || document.querySelector('tr.atm-row[data-day="' + CSS.escape(key) + '"]');
     }
 
-    function toggle(tr) {
-        open.has(tr.dataset.day) ? open.delete(tr.dataset.day) : open.add(tr.dataset.day);
+    function applyOpen() {
+        const row = openKey ? rowOf(openKey) : null;
+        const det = row && row.nextElementSibling && row.nextElementSibling.matches('tr.atm-detail') ? row.nextElementSibling : null;
+        if (!det) openKey = null;
+
+        document.querySelectorAll('tr.atm-row').forEach(tr => {
+            const on = tr === row && !!det;
+            tr.classList.toggle('is-open', on);
+            tr.setAttribute('aria-expanded', on ? 'true' : 'false');
+        });
+
+        if (!det) {
+            panel.classList.remove('on');
+            shade.classList.remove('on');
+            setTimeout(() => { if (!openKey) { panel.hidden = true; panel.innerHTML = ''; shownHtml = null; } }, 230);
+            return;
+        }
+
+        // Copied again only when it changed, so a time being typed into a fix
+        // is not wiped by a refresh that brought nothing new.
+        const html = det.firstElementChild.innerHTML;
+        if (html !== shownHtml) {
+            const top = panel.scrollTop;
+            panel.innerHTML = '<div class="atm-pbody">' + html + '</div>';
+            panel.scrollTop = top;
+            shownHtml = html;
+        }
+        panel.hidden = false;
+        requestAnimationFrame(() => { panel.classList.add('on'); shade.classList.add('on'); respace(); });
+    }
+
+    function openDay(tr) {
+        const was = openKey;
+        openKey = was === tr.dataset.day ? null : tr.dataset.day;
+        shownHtml = null;
         applyOpen();
+        if (openKey) panel.querySelector('[data-atm-close]')?.focus({ preventScroll: true });
+    }
+
+    function closeDay() {
+        if (!openKey) return;
+        const row = rowOf(openKey);
+        openKey = null;
+        applyOpen();
+        row?.focus({ preventScroll: true });
     }
 
     document.addEventListener('click', e => {
+        if (e.target.closest('[data-atm-close]') || e.target === shade) { closeDay(); return; }
         const tr = e.target.closest('tr.atm-row');
         if (!tr) return;
         if (e.target.closest('input, button, a, label, select')) return;
-        toggle(tr);
+        openDay(tr);
     });
     document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && openKey) { closeDay(); return; }
         if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('tr.atm-row')) {
             e.preventDefault();
-            toggle(e.target);
+            openDay(e.target);
         }
     });
     document.addEventListener('live:updated', applyOpen);
@@ -710,7 +751,7 @@ tr.is-open .atm-chev { transform:rotate(90deg); }
     // tooltip still say when it is. Measured, because only the browser knows
     // how wide the words came out.
     function spaceLabels() {
-        document.querySelectorAll('.atm-tlax').forEach(ax => {
+        panel.querySelectorAll('.atm-tlax').forEach(ax => {
             if (!ax.offsetParent) return;
             const [start, mid, end] = ax.querySelectorAll('span');
             if (!start || !mid || !end) return;

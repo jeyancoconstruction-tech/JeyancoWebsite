@@ -124,16 +124,10 @@ class AttendanceListLayoutTest extends TestCase
             return array_map('trim', $m[1]);
         }, $heads[2]);
 
-        $this->assertSame(
-            ['Employee', 'Shift', 'Time in', 'Time out', 'Time in', 'Time out', 'Timeline', 'Hours', 'Status'],
-            $labels[0]
-        );
+        // The list answers who came in, when, and whether anything is wrong;
+        // both sessions and the timeline are in the day's detail.
+        $this->assertSame(['Employee', 'Time in', 'Time out', 'Hours', 'Status'], $labels[0]);
         $this->assertSame($labels[0], $labels[1], 'the tabs must not shuffle the columns between them');
-
-        foreach ($heads[2] as $head) {
-            $this->assertStringContainsString('<span>1st session</span>', $head);
-            $this->assertStringContainsString('<span>2nd session</span>', $head);
-        }
     }
 
     /**
@@ -199,19 +193,20 @@ class AttendanceListLayoutTest extends TestCase
         preg_match('#<table class="atm-table" id="historyTable">.*?</table>#s', $html, $history);
         $this->assertNotEmpty($history, 'the History table should be on the page');
 
+        // Under the name: what they do · where · the shift the day was worked under.
         $this->assertMatchesRegularExpression(
-            '#<span class="atm-shift day">\s*<i class="fas fa-sun"></i>' . preg_quote(e($day->name), '#') . '\s*</span>#',
+            '#<div class="atm-emp">\s*<b>[^<]+</b>\s*<small>[^<]*· ' . preg_quote(e($day->name), '#') . '\s*</small>#',
             $history[0], 'each day names the shift it was worked under');
         $this->assertStringNotContainsString('Night Crew', $history[0],
             "the worker's shift today is not the shift those days were worked");
     }
 
-    /** What the timeline's marks mean is said once, under the list. */
+    /** What the timeline's marks mean is said with the timeline, in the day's detail. */
     public function test_the_list_carries_its_key(): void
     {
         $html = $this->page();
 
-        foreach (['Worked', 'Break window', 'On break', 'Overbreak', 'Missing or guessed scan', 'Late'] as $label) {
+        foreach (['Worked', 'Break', 'Missing or late'] as $label) {
             $this->assertStringContainsString($label . '</span>', $html);
         }
     }

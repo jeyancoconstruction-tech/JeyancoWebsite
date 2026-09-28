@@ -101,13 +101,16 @@ class AttendanceBoardTest extends TestCase
         return $this->actingAs($this->admin())->get(route('attendance', $query + ['view' => 'all']))->assertOk();
     }
 
-    /** The one row a worker's name is on, from the table asked for. */
+    /**
+     * The day a worker's name is on, from the table asked for: its row and
+     * the detail under it, which the page opens in a side panel.
+     */
     private function row(string $html, string $name, string $table = 'todayTable'): string
     {
         preg_match('#<table class="atm-table" id="' . $table . '">.*?</table>#s', $html, $t);
         $this->assertNotEmpty($t, "#{$table} should be on the page");
 
-        preg_match('#<tr class="atm-row"(?:(?!</tr>).)*<b>' . preg_quote($name, '#') . '</b>.*?</tr>#s', $t[0], $row);
+        preg_match('#<tr class="atm-row[^"]*"(?:(?!</tr>).)*<b>' . preg_quote($name, '#') . '</b>.*?</tr>\s*<tr class="atm-detail".*?</tr>#s', $t[0], $row);
         $this->assertNotEmpty($row, "{$name} should have a row in #{$table}");
 
         return $row[0];
@@ -203,7 +206,8 @@ class AttendanceBoardTest extends TestCase
         foreach (['Early Full', 'Early Bare'] as $name) {
             $row = $this->row($html, $name, 'historyTable');
 
-            preg_match_all('#<span class="atm-t">\s*([^<]+?)\s*</span>#', $row, $m);
+            // The four scans, as the day's detail lists them session by session.
+            preg_match_all('#<span class="atm-ses-v">\s*<b[^>]*>\s*([^<]+?)\s*<#', $row, $m);
             $this->assertSame(['7:00 AM', '12:00 PM', '1:00 PM', '5:00 PM'], array_map('trim', $m[1]), $name);
             $this->assertStringNotContainsString('No break scan', $row, $name);
         }
@@ -391,7 +395,7 @@ class AttendanceBoardTest extends TestCase
         $html = $this->page(['tab' => 'history'])->getContent();
         $row  = $this->row($html, 'Eve Overtime', 'historyTable');
 
-        $this->assertMatchesRegularExpression('#8h 00m <small class="d-inline">reg</small>#', $row);
+        $this->assertMatchesRegularExpression('#<td class="atm-hrs">\s*8h 00m\s*<small>#', $row);
         $this->assertStringContainsString('+1h 00m OT', $row);
         $this->assertStringContainsString('9h 00m worked', $row);
         $this->assertStringNotContainsString('9.00', $row, 'never decimal hours');
