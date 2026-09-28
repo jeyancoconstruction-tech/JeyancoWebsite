@@ -490,6 +490,14 @@ class KioskController extends Controller
      * the kiosk monitor in System Settings, which reads the same settings
      * without being counted as the kiosk checking in.
      */
+    /** Changes whenever a site the kiosk shows is added, removed or edited. */
+    private function sitesVersion(): string
+    {
+        $sites = Site::orderBy('id')->get(['id', 'name', 'location', 'latitude', 'longitude', 'geofence_radius']);
+
+        return substr(sha1($sites->map(fn (Site $s) => [$s->id, $s->name, $s->location, $s->latitude, $s->longitude, $s->geofenceRadius()])->toJson()), 0, 12);
+    }
+
     public function settingsAnswer(string $v = ''): array
     {
         $system = SystemSetting::current();
@@ -520,7 +528,11 @@ class KioskController extends Controller
         // that boots without signal can be hours off, and the kiosk decides
         // AM / PM and whether TIME IN is open from the time. It sets its own
         // clock by this one instead.
-        $clock = ['server_time' => now()->getTimestampMs(), 'tz_offset' => now()->utcOffset()];
+        $clock = ['server_time' => now()->getTimestampMs(), 'tz_offset' => now()->utcOffset(),
+                  // A fingerprint of the site list. A site added, renamed or
+                  // moved on the web changes it, and the kiosk re-reads its
+                  // sites at once instead of on its five-minute refresh.
+                  'sites_v' => $this->sitesVersion()];
 
         if ($v === $version) {
             return ['success' => true, 'same' => true, 'v' => $version] + $clock;

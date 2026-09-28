@@ -407,15 +407,19 @@ function showSiteWarning(msg) {
     el.style.display = 'flex';
 }
 
-async function loadSites() {
+async function loadSites(fresh) {
     let sites = [];
     let activeFromPi = null;
+    let activeIdFromPi = null;
 
     try {
-        const data = await safeParseJSON(await flaskFetch('/sites', {}, 8000));
+        // v9: `fresh` — the web says the list changed, so the Pi must not
+        // answer from its five-minute copy.
+        const data = await safeParseJSON(await flaskFetch(fresh ? '/sites?refresh=1' : '/sites', {}, 8000));
         if (data.success && Array.isArray(data.sites)) {
             sites        = data.sites;
             activeFromPi = data.active && data.active.slug ? data.active.slug : null;
+            activeIdFromPi = data.active && data.active.id != null ? String(data.active.id) : null;
             KIOSK_CODE   = data.kiosk_code || null;
         }
     } catch (e) { console.warn('Flask /sites unreachable:', e.message); }
@@ -451,7 +455,11 @@ async function loadSites() {
 
     let remembered = null;
     try { remembered = localStorage.getItem('jeyanco_active_site'); } catch (e) { /* ignore */ }
-    const wanted = [activeFromPi, remembered].find(slug => slug && siteBySlug(slug));
+    // v9: a site renamed on the web gets a new slug. Found by its id, the
+    // kiosk stays on it instead of jumping to the first site in the list.
+    const byId   = activeIdFromPi ? SITES.find(s => String(s.id) === activeIdFromPi) : null;
+    const wanted = [activeFromPi, remembered].find(slug => slug && siteBySlug(slug))
+                || (byId ? byId.slug : null);
 
     // Only push the site again when it is not already what the kiosk holds;
     // a five-minute refresh should not re-announce the same site.
@@ -592,8 +600,8 @@ function applySiteLabels(site) {
     document.title = `Jeyanco Construction — ${site.name} Kiosk`;
 }
 
-function refreshSites() {
-    loadSites()
+function refreshSites(fresh) {
+    loadSites(fresh)
         .catch(e => {
             console.warn('loadSites failed:', e && e.message);
             showSiteWarning(t('site.loadfail'));
@@ -639,6 +647,7 @@ try { SETTINGS_V = localStorage.getItem(SETTINGS_V_KEY); } catch (e) { /* ignore
 // difference and reads the time through kioskNow(). Until the first answer
 // arrives, the Pi's clock is all there is.
 let CLOCK_SHIFT_MS = 0;
+let SITES_V = null;          // v9: the web's fingerprint of the site list
 
 function kioskNow() { return new Date(Date.now() + CLOCK_SHIFT_MS); }
 
@@ -669,6 +678,13 @@ async function loadKioskSettings() {
         const data = await safeParseJSON(await apiFetch('/settings' + (qs ? '?' + qs : ''),
             { headers: { 'Accept': 'application/json' } }, 8000));
         learnServerClock(data, sentAt, Date.now());
+
+        // v9: a site added, renamed or removed on the web shows here within
+        // seconds — not on the next five-minute refresh.
+        if (data && data.sites_v) {
+            if (SITES_V !== null && data.sites_v !== SITES_V) refreshSites(true);
+            SITES_V = data.sites_v;
+        }
 
         if (data && data.success && data.same) return;      // nothing changed
 

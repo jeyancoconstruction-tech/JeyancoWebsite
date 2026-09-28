@@ -273,4 +273,17 @@ class KioskMonitorTest extends TestCase
         $this->assertEqualsWithDelta(now()->getTimestampMs(), $json['server_time'], 5000);
         $this->assertSame(480, $json['tz_offset']);
     }
+
+    /** A site added on the web changes the answer the kiosk checks every few seconds. */
+    public function test_a_new_site_changes_the_site_version_the_kiosk_watches(): void
+    {
+        $this->kiosk('SITE_A', 5);
+        $before = $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A')->json('sites_v');
+        $this->assertNotEmpty($before);
+        $this->assertSame($before, $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A')->json('sites_v'));
+
+        Site::create(['name' => 'Site Z']);
+
+        $this->assertNotSame($before, $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A')->json('sites_v'));
+    }
 }
