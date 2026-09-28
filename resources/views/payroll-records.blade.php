@@ -808,7 +808,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         </div>
         <div class="prx-df">
             <button type="button" class="prx-btn" id="rcPreview">{{ __('Preview payslip') }}</button>
-            <a href="#" target="_blank" rel="noopener" id="rcPrint" class="prx-btn pri">{!! $icon['print'] !!} {{ __('Print / Save as PDF') }}</a>
+            <a href="#" id="rcPrint" class="prx-btn pri" data-print-here>{!! $icon['print'] !!} {{ __('Print / Save as PDF') }}</a>
         </div>
     </aside>
 
@@ -904,7 +904,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
                 <div class="prx-mf">
                     <span class="note" id="pvNote"></span>
                     <button type="button" class="prx-btn" data-bs-dismiss="modal">{{ __('Close') }}</button>
-                    <a href="#" class="prx-btn pri" id="pvGo" target="_blank" rel="noopener">{{ __('Download') }}</a>
+                    <a href="#" class="prx-btn pri" id="pvGo">{{ __('Download') }}</a>
                 </div>
             </div>
         </div>
@@ -1141,9 +1141,46 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
             set('pvNote', 'This is exactly what the Excel file will contain.');
         }
         go.setAttribute('aria-disabled', off ? 'true' : 'false');
-        // The Excel file downloads in place; a payslip opens its own page.
-        if (pane === 'register') { go.removeAttribute('target'); } else { go.target = '_blank'; }
+        // The Excel file downloads in place; a payslip prints from this page.
+        go.toggleAttribute('data-print-here', pane !== 'register');
     }
+
+    // ── Print without leaving the page ──────────────────────────────────
+    // The payslip page is loaded out of sight and its print dialog opened
+    // here — no new tab. Ctrl/middle-click still opens it in a tab.
+    let printFrame = null;
+    function printHere(url, btn) {
+        if (!url || url === '#') return;
+        if (printFrame) printFrame.remove();
+        printFrame = document.createElement('iframe');
+        printFrame.setAttribute('aria-hidden', 'true');
+        printFrame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+        const label = btn.innerHTML;
+        btn.setAttribute('aria-busy', 'true');
+        btn.style.pointerEvents = 'none';
+        btn.style.opacity = '.7';
+        const done = () => { btn.innerHTML = label; btn.removeAttribute('aria-busy'); btn.style.pointerEvents = ''; btn.style.opacity = ''; };
+        btn.textContent = 'Preparing…';
+        printFrame.addEventListener('load', () => {
+            done();
+            try {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+            } catch (e) {
+                window.open(url, '_blank', 'noopener');      // the browser refused: fall back to a tab
+            }
+        }, { once: true });
+        // print=0: the page must not open a second dialog of its own.
+        printFrame.src = url + (url.includes('?') ? '&' : '?') + 'print=0';
+        document.body.appendChild(printFrame);
+    }
+    document.addEventListener('click', e => {
+        const a = e.target.closest('a[data-print-here]');
+        if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+        if (a.getAttribute('aria-disabled') === 'true') return;
+        e.preventDefault();
+        printHere(a.getAttribute('href'), a);
+    });
 
     function openPv(kind, id) {
         pane = kind;

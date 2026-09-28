@@ -25,12 +25,13 @@
    onto <body> — so every modal, on every page, shoved the whole layout ~15px to
    the left and let it snap back on close.
 
-   `scrollbar-gutter: stable` reserves the strip permanently instead, which
-   survives the overflow being switched to hidden. The gutter is then the single
-   source of truth and Bootstrap's compensation padding is neutralised. */
+   The page scrolls on <html>, which Bootstrap never touches (it only hides
+   overflow on <body>), so a modal leaves the scrollbar where it is, and its
+   compensation padding is zeroed below. No gutter is reserved: a page that
+   fits the screen uses the whole width, with no empty strip at the right
+   edge (it used to keep one permanently, `scrollbar-gutter: stable`). */
 html {
     overflow-y: auto !important;
-    scrollbar-gutter: stable;
 }
 body {
     /* Bootstrap writes this inline on every modal open — always zero. */

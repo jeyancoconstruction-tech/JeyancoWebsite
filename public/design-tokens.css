@@ -63,9 +63,12 @@ html[data-bs-theme="light"], html[data-bs-theme="dark"] {
     --transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Always keep a vertical scrollbar so the layout (incl. the top nav bar) never
-   shifts horizontally when a scrollbar appears/disappears — e.g. on theme toggle. */
-html { overflow-y: scroll !important; scrollbar-gutter: stable; }
+/* The page scrolls only when it is longer than the screen. It used to keep a
+   scrollbar track at all times, so the nav bar would not shift on a theme
+   toggle — which left an empty strip down the right edge of every page that
+   fits. The theme toggle no longer changes any height (see below), so the
+   track is not needed. */
+html { overflow-y: auto !important; }
 body { overflow-x: hidden; background: var(--bg-body) !important; }
 
 /* THE fix for the nav bar growing/shrinking on theme toggle: dark-mode.css set
