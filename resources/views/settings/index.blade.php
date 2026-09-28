@@ -496,14 +496,14 @@
         <div class="tab-pane fade {{ $tab === 'labor' ? 'show active' : '' }}" id="labor" role="tabpanel">
             <div class="row g-4">
 
-                {{-- Add New Labor Type --}}
+                {{-- Add New Labor Type, and the spread of the rates under it --}}
                 <div class="col-lg-4 lt-add-sticky">
                     <div class="ps-card">
                         <div class="ps-card-header">
                             <i class="fas fa-plus-circle"></i>
                             <div>
-                                <h6>{{ __('Add Labor Type') }}</h6>
-                                <p>{{ __('Hourly and OT rates are derived from the daily rate automatically.') }}</p>
+                                <h6>{{ __('New labor type') }}</h6>
+                                <p>{{ __('Hourly and OT are worked out from the daily rate.') }}</p>
                             </div>
                         </div>
                         <div class="ps-card-body">
@@ -516,7 +516,7 @@
                                            value="{{ old('name') }}" required>
                                     @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
-                                <div class="mb-4">
+                                <div class="mb-3">
                                     <label class="ps-label">{{ __('Daily Rate (₱)') }}</label>
                                     <div class="input-group">
                                         <span class="input-group-text ps-ig-text">₱</span>
@@ -525,28 +525,50 @@
                                                name="daily_rate" placeholder="1000.00" required>
                                     </div>
                                 </div>
+                                {{-- Worked out as the rate is typed, the way the list and payroll do. --}}
+                                <div class="lt-calc" id="lt-calc" aria-live="polite">
+                                    <div><span>{{ __('Hourly') }}</span><b id="lt-calc-hourly">—</b></div>
+                                    <div><span>{{ __('OT / hr') }}</span><b id="lt-calc-ot">—</b></div>
+                                    <div><span>{{ __('Rank') }}</span><b id="lt-calc-rank">—</b></div>
+                                </div>
                                 <button type="submit" class="btn ps-add-btn w-100">
                                     <i class="fas fa-plus me-2"></i>{{ __('Add Labor Type') }}
                                 </button>
                             </form>
                         </div>
                     </div>
+
+                    <div class="ps-card lt-range" id="lt-range">
+                        <span class="lt-range-lbl">{{ __('Rate range') }}</span>
+                        <div class="lt-range-row"><span>{{ __('Lowest') }}</span><span><b id="lt-min">—</b><em id="lt-min-name"></em></span></div>
+                        <div class="lt-range-row"><span>{{ __('Highest') }}</span><span><b id="lt-max">—</b><em id="lt-max-name"></em></span></div>
+                        <div class="lt-spread" id="lt-spread" aria-hidden="true"></div>
+                        <div class="lt-range-row"><span>{{ __('Middle rate') }}</span><span><b id="lt-mid">—</b></span></div>
+                    </div>
                 </div>
 
-                {{-- Existing Labor Types --}}
+                {{-- The rate ladder --}}
                 <div class="col-lg-8">
-                    <div class="ps-card">
-                        <div class="ps-card-header">
-                            <i class="fas fa-list-ul"></i>
-                            <div>
-                                <h6>{{ __('Labor Types') }}<span class="lt-count" id="lt-count">{{ $laborTypes->count() }}</span></h6>
-                                <p>{{ __('Hourly = Daily ÷ 8  ·  OT uses the multiplier from Payroll Settings.') }}</p>
+                    <div class="ps-card lt-ladder">
+                        <div class="lt-bar">
+                            <h6>{{ __('Rate ladder') }}<span class="lt-count" id="lt-count">{{ $laborTypes->count() }}</span></h6>
+                            <span class="lt-bar-sp"></span>
+                            <label class="lt-find">
+                                <i class="fas fa-magnifying-glass"></i>
+                                <input type="search" id="lt-find" placeholder="{{ __('Find a type') }}" aria-label="{{ __('Find a labor type') }}" autocomplete="off">
+                            </label>
+                            <div class="lt-sort" role="group" aria-label="{{ __('Sort') }}">
+                                <button type="button" class="on" data-lt-sort="rate">{{ __('Rate') }} <i class="fas fa-arrow-down"></i></button>
+                                <button type="button" data-lt-sort="name">{{ __('A–Z') }}</button>
                             </div>
+                        </div>
+                        <div class="lt-head" aria-hidden="true">
+                            <span>{{ __('Labor type') }}</span><span>{{ __('Daily') }}</span><span>{{ __('Hourly') }}</span><span>{{ __('OT / hr') }}</span><span>{{ __('vs top rate') }}</span><span></span>
                         </div>
                         {{-- The one list on this page another desk can change. The
                              forms are left alone: they hold what somebody is typing. --}}
                         <div class="ps-card-body p-0" id="lt-list-container" data-live="settings">
-                            @forelse($laborTypes as $type)
+                            @forelse($laborTypes->sortByDesc('daily_rate') as $type)
                             @include('settings._labor_type_row', ['type' => $type])
                             @empty
                             <div class="lt-empty">
@@ -554,6 +576,14 @@
                                 <p>{{ __('No labor types yet. Add your first one using the form on the left.') }}</p>
                             </div>
                             @endforelse
+                            <div class="lt-nomatch" id="lt-nomatch" hidden>
+                                <i class="fas fa-magnifying-glass"></i>
+                                <p>{{ __('No labor type matches that search.') }}</p>
+                            </div>
+                        </div>
+                        <div class="lt-foot">
+                            <span>{{ __('Hourly = Daily ÷ 8 · OT = Hourly × 1.25') }}</span>
+                            <span>{{ __('A rate change applies from the next payroll computed.') }}</span>
                         </div>
                     </div>
                 </div>
@@ -564,315 +594,297 @@
         <!-- HOLIDAYS TAB -->
         <div class="tab-pane fade {{ $tab === 'holiday' ? 'show active' : '' }}" id="holiday" role="tabpanel">
 
-            {{-- Info banner --}}
-            <div class="hc-info-banner mb-4">
-                <i class="fas fa-magic" style="margin-top:1px;flex-shrink:0;"></i>
-                @if($holidaySync['configured'])
-                    <span>{{ __('Holidays come from') }} <strong>{{ __('Google Calendar') }}</strong> {{ __('and refresh every day. Click a holiday to toggle it on/off. Holidays Google adds for past dates, and the extra day it lists beside some (like "Eid al-Adha Holiday"), come in switched off.') }} <span id="hc-sync-status"></span></span>
-                @else
-                    <span>{{ __('Official Philippine holidays are loaded automatically. Click a holiday to toggle it on/off. Use') }} <strong>{{ __('Enable All / Disable All') }}</strong> {{ __('for bulk year-wide changes.') }} <span id="hc-sync-status"></span></span>
-                @endif
+            {{-- One line on where the holidays come from, and the three actions. --}}
+            <div class="hx-head">
+                <p class="hx-sub">
+                    @if($holidaySync['configured'])
+                        {{ __('From') }} <b>{{ __('Google Calendar') }}</b>, {{ __('refreshed every day.') }}
+                    @else
+                        {{ __('Official Philippine holidays, loaded automatically.') }}
+                    @endif
+                    {{ __('Click a holiday to switch it on or off.') }}
+                </p>
+                <div class="hc-btn-group">
+                    <button id="hcal-sync" class="hc-pill hc-pill-blue" title="{{ __('Pull the holidays from Google Calendar now') }}">
+                        <i class="fab fa-google"></i> {{ __('Sync Google') }}
+                    </button>
+                    <button id="hcal-enable-all" class="hc-pill">
+                        <i class="fas fa-check-double"></i> {{ __('Enable All') }}
+                    </button>
+                    <button id="hcal-disable-all" class="hc-pill hc-pill-quiet-danger">
+                        <i class="fas fa-ban"></i> {{ __('Disable All') }}
+                    </button>
+                </div>
             </div>
 
-            {{-- Calendar card --}}
-            <div class="hc-card mb-3">
+            <div class="hx-grid">
 
-                {{-- Nav bar: arrows + month heading + quick jump --}}
-                <div class="hc-nav-bar">
-                    <button id="hcal-prev" class="hc-arrow-btn" aria-label="{{ __('Previous month') }}">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
+                {{-- Calendar card --}}
+                <div class="hc-card">
 
-                    <div class="hc-center-block">
+                    {{-- The year at a glance: a dot for each holiday in the month. --}}
+                    <div class="hx-months" id="hc-months" role="tablist" aria-label="{{ __('Months') }}"></div>
+
+                    {{-- Month heading, arrows, year and the key --}}
+                    <div class="hc-nav-bar">
                         <h2 class="hc-month-heading" id="hc-month-heading">{{ __('Loading…') }}</h2>
-                        <div class="hc-quick-nav">
-                            <select id="hc-month-sel" class="hc-sel" aria-label="{{ __('Jump to month') }}">
-                                <option value="0">{{ __('January') }}</option><option value="1">{{ __('February') }}</option>
-                                <option value="2">{{ __('March') }}</option><option value="3">{{ __('April') }}</option>
-                                <option value="4">{{ __('May') }}</option><option value="5">{{ __('June') }}</option>
-                                <option value="6">{{ __('July') }}</option><option value="7">{{ __('August') }}</option>
-                                <option value="8">{{ __('September') }}</option><option value="9">{{ __('October') }}</option>
-                                <option value="10">{{ __('November') }}</option><option value="11">{{ __('December') }}</option>
-                            </select>
-                            <div class="hc-yr-ctrl">
-                                <button id="hc-yr-dec" class="hc-yr-btn" aria-label="{{ __('Previous year') }}">−</button>
-                                <span id="hc-yr-val">{{ $holidayYear }}</span>
-                                <button id="hc-yr-inc" class="hc-yr-btn" aria-label="{{ __('Next year') }}">+</button>
-                            </div>
+                        <div class="hc-navs">
+                            <button id="hcal-prev" class="hc-arrow-btn" aria-label="{{ __('Previous month') }}"><i class="fas fa-chevron-left"></i></button>
+                            <button id="hcal-next" class="hc-arrow-btn" aria-label="{{ __('Next month') }}"><i class="fas fa-chevron-right"></i></button>
+                            <button id="hc-today-btn" class="hc-arrow-btn hc-today-btn" type="button">{{ __('Today') }}</button>
+                        </div>
+                        <div class="hc-yr-ctrl" aria-label="{{ __('Year') }}">
+                            <button id="hc-yr-dec" class="hc-yr-btn" aria-label="{{ __('Previous year') }}">−</button>
+                            <span id="hc-yr-val">{{ $holidayYear }}</span>
+                            <button id="hc-yr-inc" class="hc-yr-btn" aria-label="{{ __('Next year') }}">+</button>
+                        </div>
+                        <select id="hc-month-sel" class="hc-sel" aria-label="{{ __('Jump to month') }}" hidden>
+                            <option value="0">{{ __('January') }}</option><option value="1">{{ __('February') }}</option>
+                            <option value="2">{{ __('March') }}</option><option value="3">{{ __('April') }}</option>
+                            <option value="4">{{ __('May') }}</option><option value="5">{{ __('June') }}</option>
+                            <option value="6">{{ __('July') }}</option><option value="7">{{ __('August') }}</option>
+                            <option value="8">{{ __('September') }}</option><option value="9">{{ __('October') }}</option>
+                            <option value="10">{{ __('November') }}</option><option value="11">{{ __('December') }}</option>
+                        </select>
+                        <span class="hc-nav-sp"></span>
+                        {{-- The key; each one lists its holidays. --}}
+                        <div class="hc-legend">
+                            <button type="button" class="hc-leg-item hc-leg-regular"><span class="hc-leg-dot"></span>{{ __('Regular') }} · 200%</button>
+                            <button type="button" class="hc-leg-item hc-leg-special"><span class="hc-leg-dot"></span>{{ __('Special') }} · 130%</button>
+                            <button type="button" class="hc-leg-item hc-leg-off"><span class="hc-leg-dot"></span>{{ __('Off') }}</button>
                         </div>
                     </div>
 
-                    <button id="hcal-next" class="hc-arrow-btn" aria-label="{{ __('Next month') }}">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-
-                {{-- Action bar: stats + bulk buttons --}}
-                <div class="hc-action-bar">
-                    <div class="hc-stat-group">
-                        <span class="hc-stat hc-stat-on">
-                            <i class="fas fa-check-circle" style="font-size:10px;"></i>
-                            Active: <strong id="hstat-active">–</strong>
-                        </span>
-                        <span class="hc-stat hc-stat-off">
-                            <i class="fas fa-ban" style="font-size:10px;"></i>
-                            Disabled: <strong id="hstat-disabled">–</strong>
-                        </span>
+                    {{-- Day-of-week header --}}
+                    <div class="hc-dow">
+                        <span class="we">{{ __('Sun') }}</span><span>{{ __('Mon') }}</span><span>{{ __('Tue') }}</span>
+                        <span>{{ __('Wed') }}</span><span>{{ __('Thu') }}</span><span>{{ __('Fri') }}</span><span class="we">{{ __('Sat') }}</span>
                     </div>
-                    <div class="hc-btn-group">
-                        <button id="hcal-sync" class="hc-pill hc-pill-blue" title="{{ __('Pull the holidays from Google Calendar now') }}">
-                            <i class="fab fa-google"></i> {{ __('Sync Google') }}
-                        </button>
-                        <button id="hcal-enable-all" class="hc-pill hc-pill-green">
-                            <i class="fas fa-check-double"></i> {{ __('Enable All') }}
-                        </button>
-                        <button id="hcal-disable-all" class="hc-pill hc-pill-red">
-                            <i class="fas fa-ban"></i> {{ __('Disable All') }}
-                        </button>
+
+                    {{-- Sliding calendar viewport --}}
+                    <div class="hc-viewport" id="hc-viewport">
+                        <div id="hcal-view" class="hc-view"></div>
+                    </div>
+
+                    {{-- Holiday list panel (a count or a key item opens it) --}}
+                    <div id="hc-list-panel" class="hc-list-panel" style="display:none;">
+                        <div class="hc-list-header">
+                            <span id="hc-list-title" class="hc-list-title"></span>
+                            <button id="hc-list-close" class="hc-list-close" aria-label="{{ __('Close') }}">✕</button>
+                        </div>
+                        <div id="hc-list-body"></div>
                     </div>
                 </div>
 
-                {{-- Day-of-week header --}}
-                <div class="hc-dow">
-                    <span>{{ __('Sun') }}</span><span>{{ __('Mon') }}</span><span>{{ __('Tue') }}</span>
-                    <span>{{ __('Wed') }}</span><span>{{ __('Thu') }}</span><span>{{ __('Fri') }}</span><span>{{ __('Sat') }}</span>
-                </div>
-
-                {{-- Sliding calendar viewport --}}
-                <div class="hc-viewport" id="hc-viewport">
-                    <div id="hcal-view" class="hc-view"></div>
-                </div>
-
-                {{-- Holiday list panel (shown when Active / Disabled badge is clicked) --}}
-                <div id="hc-list-panel" class="hc-list-panel" style="display:none;">
-                    <div class="hc-list-header">
-                        <span id="hc-list-title" class="hc-list-title"></span>
-                        <button id="hc-list-close" class="hc-list-close" aria-label="{{ __('Close') }}">✕</button>
+                <aside class="hx-side">
+                    {{-- The year's counts. Each one lists its holidays. --}}
+                    <div class="hx-stats">
+                        <button type="button" class="hc-stat hc-stat-on"><span>{{ __('Active') }}</span><strong id="hstat-active">–</strong></button>
+                        <button type="button" class="hc-stat hc-stat-off"><span>{{ __('Off') }}</span><strong id="hstat-disabled">–</strong></button>
+                        <button type="button" class="hc-stat hx-stat-reg" data-hc-list="regular"><span>{{ __('Regular') }}</span><strong id="hstat-regular">–</strong></button>
+                        <button type="button" class="hc-stat hx-stat-spc" data-hc-list="special"><span>{{ __('Special') }}</span><strong id="hstat-special">–</strong></button>
                     </div>
-                    <div id="hc-list-body"></div>
-                </div>
-            </div>
 
-            {{-- Legend + pay rates --}}
-            <div class="hc-footer-row mb-4">
-                <div class="hc-legend">
-                    <span class="hc-leg-item hc-leg-regular"><span class="hc-leg-dot"></span>{{ __('Regular Holiday') }}</span>
-                    <span class="hc-leg-item hc-leg-special"><span class="hc-leg-dot"></span>{{ __('Special (Non-Working)') }}</span>
-                    <span class="hc-leg-item hc-leg-off"><i class="fas fa-ban" style="font-size:9px;margin-right:4px;"></i>{{ __('Disabled') }}</span>
-                </div>
-                <div class="hc-rates">
-                    <span class="hc-rate hc-rate-regular">{{ __('Regular —') }} <strong>200%</strong></span>
-                    <span class="hc-rate hc-rate-special">{{ __('Special —') }} <strong>130%</strong></span>
-                </div>
+                    {{-- What is next, from today, with its switch. --}}
+                    <div class="hx-next">
+                        <div class="hx-next-h"><b>{{ __('Coming up') }}</b><small id="hc-next-from"></small></div>
+                        <div id="hc-next"></div>
+                    </div>
+
+                    <div class="hx-sync"><i></i><span id="hc-sync-status"></span></div>
+                </aside>
             </div>
 
             {{-- Floating tooltip (follows cursor over holiday cells) --}}
-            <div id="hcal-tip" style="position:fixed;display:none;z-index:9999;background:#1e293b;color:#e8edf5;padding:9px 13px;border-radius:9px;font-size:12px;pointer-events:none;max-width:230px;box-shadow:0 6px 20px rgba(0,0,0,0.28);line-height:1.5;">
-                <div id="hcal-tip-name" style="font-weight:700;font-size:13px;"></div>
-                <div id="hcal-tip-type" style="opacity:0.65;font-size:11px;"></div>
-                <div id="hcal-tip-action" style="margin-top:3px;font-size:11px;color:#93c5fd;"></div>
+            <div id="hcal-tip" class="hx-tip" style="position:fixed;display:none;z-index:9999;pointer-events:none;">
+                <div id="hcal-tip-name" class="hx-tip-name"></div>
+                <div id="hcal-tip-type" class="hx-tip-type"></div>
+                <div id="hcal-tip-action" class="hx-tip-act"></div>
             </div>
 
 @push('styles')
             {{-- Calendar CSS --}}
             <style>
-            /* The holiday calendar, in the app's own tokens. Every colour below
-               follows the theme on its own, so there is no dark twin to keep in
-               step: brand blue for a regular holiday, the warning hue for a
-               special one, muted for one switched off. */
+            /* The holiday calendar, in the app's own tokens so it follows the
+               theme by itself: brand blue for a regular holiday, the warning
+               hue for a special one, muted and struck through for one off. */
 
-            /* ── Info banner ────────────────────────────────────────────── */
-            .hc-info-banner {
-                display: flex; align-items: flex-start; gap: 10px;
-                background: var(--brand-subtle); border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
-                border-radius: var(--radius-md); padding: 12px 16px; font-size: 13px; color: var(--brand);
+            .hx-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+            .hx-sub { margin: 0; font-size: 13px; color: var(--text-muted); }
+            .hx-sub b { color: var(--text-secondary); }
+            .hc-btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+            .hc-pill {
+                display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px;
+                border-radius: 8px; border: 1px solid var(--border-md); background: var(--surface);
+                font-size: 12.5px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
+                transition: background .15s, border-color .15s, color .15s;
             }
+            .hc-pill:hover { background: var(--bg-subtle); color: var(--text-primary); }
+            .hc-pill:disabled { opacity: .55; cursor: progress; }
+            .hc-pill-blue { background: var(--brand); border-color: var(--brand); color: #fff; }
+            .hc-pill-blue:hover { background: var(--brand-strong); border-color: var(--brand-strong); color: #fff; }
+            .hc-pill-quiet-danger:hover { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+
+            .hx-grid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 14px; align-items: start; margin-bottom: 20px; }
 
             /* ── Calendar card ───────────────────────────────────────────── */
-            .hc-card {
-                background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
-                overflow: hidden;
-            }
+            .hc-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
 
-            /* ── Navigation bar ──────────────────────────────────────────── */
-            .hc-nav-bar {
-                display: flex; align-items: center; gap: 0;
-                padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+            .hx-months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); border-bottom: 1px solid var(--border); }
+            .hx-month {
+                display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 0 7px;
+                background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+                font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer;
             }
+            .hx-month:hover { color: var(--text-primary); background: var(--bg-subtle); }
+            .hx-month.past { color: color-mix(in srgb, var(--text-muted) 70%, transparent); }
+            .hx-month.on { color: var(--text-primary); border-bottom-color: var(--text-primary); }
+            .hx-month i { display: flex; gap: 2px; height: 5px; }
+            .hx-month i b { width: 5px; height: 5px; border-radius: 50%; background: var(--brand); }
+            .hx-month i b.s { background: var(--warning); }
+            .hx-month i b.o { background: var(--border-md); }
 
+            .hc-nav-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; }
+            .hc-month-heading { margin: 0; min-width: 190px; font-size: 1.3rem; font-weight: 800; letter-spacing: -.02em; color: var(--text-primary); }
+            .hc-navs { display: flex; gap: 4px; }
             .hc-arrow-btn {
-                flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-sm);
-                border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-secondary);
-                cursor: pointer; display: flex; align-items: center; justify-content: center;
-                font-size: 13px; transition: all .15s;
+                height: 32px; min-width: 32px; padding: 0 9px; display: inline-flex; align-items: center; justify-content: center;
+                border-radius: 8px; border: 1px solid var(--border-md); background: var(--surface);
+                color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer;
             }
-            .hc-arrow-btn:hover { background: var(--brand-subtle); border-color: var(--brand); color: var(--brand); }
-
-            .hc-center-block { flex: 1; text-align: center; padding: 0 16px; }
-            .hc-month-heading {
-                font-size: 1.4rem; font-weight: 700; color: var(--text-primary);
-                margin: 0 0 8px; letter-spacing: -.3px;
-            }
-
-            .hc-quick-nav {
-                display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
-            }
-            .hc-sel {
-                font-size: 12px; font-weight: 600; color: var(--text-secondary);
-                border: 1px solid var(--border); border-radius: 7px; padding: 4px 8px;
-                background: var(--bg-subtle); cursor: pointer; outline: none; transition: border-color .15s;
-            }
-            .hc-sel:focus { border-color: var(--brand); }
-
-            .hc-yr-ctrl { display: flex; align-items: center; gap: 4px; }
-            .hc-yr-btn {
-                width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;
-                border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-secondary);
-                cursor: pointer; font-size: 15px; font-weight: 700; line-height: 1;
-                display: flex; align-items: center; justify-content: center; transition: all .15s;
-            }
-            .hc-yr-btn:hover { background: var(--brand-subtle); border-color: var(--brand); color: var(--brand); }
-            #hc-yr-val {
-                font-size: 13px; font-weight: 700; color: var(--text-primary); min-width: 40px; text-align: center;
-            }
-
-            /* ── Action bar ──────────────────────────────────────────────── */
-            .hc-action-bar {
-                display: flex; align-items: center; justify-content: space-between;
-                padding: 10px 20px; gap: 12px; flex-wrap: wrap;
-                background: var(--bg-subtle); border-bottom: 1px solid var(--border);
-            }
-
-            .hc-stat-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-            .hc-stat {
-                display: inline-flex; align-items: center; gap: 5px;
-                padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
-            }
-            .hc-stat-on  { background: var(--success-soft); border: 1px solid color-mix(in srgb, var(--success) 35%, transparent); color: var(--success); cursor:pointer; user-select:none; transition:filter .15s; }
-            .hc-stat-off { background: var(--danger-soft);  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);  color: var(--danger);  cursor:pointer; user-select:none; transition:filter .15s; }
-            .hc-stat-on:hover, .hc-stat-off:hover { filter:brightness(.93); }
-
-            /* ── Holiday list panel ──────────────────────────────────────────── */
-            .hc-list-panel { border-top:1px solid var(--border); padding:14px 20px 18px; max-height:300px; overflow-y:auto; }
-            .hc-list-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-            .hc-list-title  { font-size:13px; font-weight:700; color:var(--text-primary); }
-            .hc-list-close  { background:none; border:none; font-size:17px; line-height:1; cursor:pointer; color:var(--text-muted); padding:0; }
-            .hc-list-close:hover { color:var(--text-primary); }
-            .hc-list-row    { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:8px; border-bottom:1px solid var(--border); font-size:13px; }
-            .hc-list-row:last-child { border-bottom:none; }
-            .hc-list-date   { font-size:11.5px; font-weight:600; color:var(--text-muted); min-width:75px; }
-            .hc-list-name   { flex:1; font-weight:600; color:var(--text-primary); }
-            .hc-list-typetag { font-size:10px; padding:2px 8px; border-radius:99px; font-weight:700; white-space:nowrap; }
-            .hlt-regular { background:var(--brand-subtle);  color:var(--brand); }
-            .hlt-special { background:var(--warning-soft); color:var(--warning); }
-            .hc-list-tgl { height:26px; padding:0 11px; font-size:11px; font-weight:700; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; transition:filter .15s; }
-            .hlt-btn-enable  { background:var(--success-soft); color:var(--success); }
-            .hlt-btn-disable { background:var(--danger-soft);  color:var(--danger); }
-            .hlt-btn-enable:hover, .hlt-btn-disable:hover { filter:brightness(.93); }
-
-            /* The calendar's actions: the brand blue every primary action in
-               the app uses, and the success and danger hues for switching every
-               holiday on or off, drawn soft as the rest of the app draws them. */
-            .hc-btn-group { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-            .hc-pill {
-                display: inline-flex; align-items: center; gap: 5px;
-                border: 1px solid transparent; font-size: 12px; font-weight: 600;
-                padding: 6px 14px; border-radius: var(--radius-sm); cursor: pointer;
-                transition: filter .15s, background .15s; line-height: 1.4; white-space: nowrap;
-            }
-            .hc-pill:hover { filter: brightness(1.08); }
-            .hc-pill:disabled { opacity: .5; cursor: not-allowed; }
-            .hc-pill-blue   { background: var(--brand); color: #fff; }
-            .hc-pill-blue:hover { background: var(--brand-strong); filter: none; }
-            .hc-pill-green  { background: var(--success-soft); color: var(--success); border-color: color-mix(in srgb, var(--success) 35%, transparent); }
-            .hc-pill-red    { background: var(--danger-soft);  color: var(--danger);  border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
-
-            /* ── Day-of-week header ──────────────────────────────────────── */
-            .hc-dow {
-                display: grid; grid-template-columns: repeat(7, 1fr);
-                padding: 10px 16px 2px; gap: 3px;
-            }
-            .hc-dow span {
-                text-align: center; font-size: 0.68rem; font-weight: 700;
-                color: var(--text-muted); padding: 4px 0; text-transform: uppercase; letter-spacing: .5px;
-            }
-
-            /* ── Viewport + slide animation ──────────────────────────────── */
-            .hc-viewport { padding: 4px 16px 18px; overflow: hidden; }
-            .hc-view { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
-            @keyframes hcSlideRight { from { transform:translateX(52px); opacity:0; } to { transform:none; opacity:1; } }
-            @keyframes hcSlideLeft  { from { transform:translateX(-52px); opacity:0; } to { transform:none; opacity:1; } }
-            .hc-anim-right { animation: hcSlideRight .26s cubic-bezier(.25,.1,.25,1) both; }
-            .hc-anim-left  { animation: hcSlideLeft  .26s cubic-bezier(.25,.1,.25,1) both; }
-
-            /* ── Day cells ───────────────────────────────────────────────── */
-            .hc-cell {
-                display: flex; flex-direction: column; align-items: center;
-                justify-content: flex-start; padding: 7px 2px 5px; border-radius: 9px;
-                min-height: 54px; cursor: default; position: relative;
-                transition: transform .12s, box-shadow .12s;
-            }
-            .hc-cell-num { font-size: 0.9rem; font-weight: 600; line-height: 1; color: var(--text-primary); }
-            .hc-cell.hc-muted .hc-cell-num { color: var(--text-muted); opacity: .45; }
-
-            .hc-cell-name {
-                font-size: 0.5rem; line-height: 1.2; text-align: center;
-                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-                width: 100%; padding: 0 2px; margin-top: 3px; opacity: 0.85;
-            }
-            @media (max-width: 500px) { .hc-cell-name { display: none; } }
-
-            .hc-dot { position: absolute; bottom: 5px; width: 5px; height: 5px; border-radius: 50%; }
-
-            .hc-cell.hday { cursor: pointer; }
-            .hc-cell.hday:hover { transform: scale(1.13); box-shadow: var(--shadow-md); z-index: 3; }
-            .hc-cell.hday:active { transform: scale(1.05); }
-
-            .hc-cell.ht-regular { background: var(--brand-subtle); }
-            .hc-cell.ht-regular .hc-cell-num,
-            .hc-cell.ht-regular .hc-cell-name { color: var(--brand); }
-            .hc-cell.ht-regular .hc-dot       { background: var(--brand); }
-
-            .hc-cell.ht-special { background: var(--warning-soft); }
-            .hc-cell.ht-special .hc-cell-num,
-            .hc-cell.ht-special .hc-cell-name { color: var(--warning); }
-            .hc-cell.ht-special .hc-dot       { background: var(--warning); }
-
-            .hc-cell.ht-disabled { background: var(--bg-subtle); }
-            .hc-cell.ht-disabled .hc-cell-num,
-            .hc-cell.ht-disabled .hc-cell-name { color: var(--text-muted); text-decoration: line-through; }
-            .hc-cell.ht-disabled .hc-dot       { background: var(--border-md); }
-
-            .hc-cell.hc-today { outline: 2px solid var(--brand); outline-offset: -2px; }
-            .hc-cell.hc-today:not(.hday) .hc-cell-num { color: var(--brand); font-weight: 800; }
-
-            /* ── Footer row ──────────────────────────────────────────────── */
-            .hc-footer-row {
-                display: flex; flex-wrap: wrap; align-items: center;
-                justify-content: space-between; gap: 12px;
-            }
-            .hc-legend { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+            .hc-arrow-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
+            .hc-yr-ctrl { display: inline-flex; align-items: center; height: 32px; border: 1px solid var(--border-md); border-radius: 8px; overflow: hidden; }
+            .hc-yr-ctrl span { padding: 0 10px; font-size: 13px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+            .hc-yr-btn { width: 28px; height: 100%; border: 0; background: var(--bg-subtle); color: var(--text-secondary); font-weight: 700; cursor: pointer; }
+            .hc-yr-btn:hover { color: var(--text-primary); }
+            .hc-nav-sp { flex: 1; }
+            .hc-legend { display: flex; gap: 4px; flex-wrap: wrap; }
             .hc-leg-item {
-                display: inline-flex; align-items: center; gap: 6px;
-                padding: 4px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 600;
-                cursor: pointer; user-select: none;
-                transition: filter .12s, transform .08s;
+                display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 0; border-radius: 6px;
+                background: none; font-size: 11.5px; font-weight: 600; color: var(--text-muted); cursor: pointer;
             }
-            .hc-leg-item:hover  { filter: brightness(0.95); }
-            .hc-leg-item:active { transform: translateY(1px); }
-            .hc-leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-            .hc-leg-regular { background:var(--brand-subtle);  color:var(--brand);      border-left:3px solid var(--brand); }
-            .hc-leg-regular .hc-leg-dot { background:var(--brand); }
-            .hc-leg-special { background:var(--warning-soft); color:var(--warning);    border-left:3px solid var(--warning); }
-            .hc-leg-special .hc-leg-dot { background:var(--warning); }
-            .hc-leg-off     { background:var(--bg-subtle);    color:var(--text-muted); border-left:3px solid var(--border-md); }
+            .hc-leg-item:hover { background: var(--bg-subtle); color: var(--text-primary); }
+            .hc-leg-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+            .hc-leg-regular .hc-leg-dot { background: var(--brand); }
+            .hc-leg-special .hc-leg-dot { background: var(--warning-soft); box-shadow: inset 2px 0 0 var(--warning); }
+            .hc-leg-off .hc-leg-dot { background: var(--bg-subtle); box-shadow: inset 2px 0 0 var(--border-md); }
 
-            .hc-rates { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-            .hc-rate { font-size: 12px; display: inline-flex; align-items: center; gap: 5px; }
-            .hc-rate::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-            .hc-rate-regular { color:var(--brand); }   .hc-rate-regular::before { background:var(--brand); }
-            .hc-rate-special { color:var(--warning); } .hc-rate-special::before { background:var(--warning); }
+            .hc-dow { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--bg-subtle); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+            .hc-dow span { padding: 6px 9px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+            .hc-dow span.we { color: color-mix(in srgb, var(--text-muted) 70%, transparent); }
 
+            .hc-viewport { overflow: hidden; }
+            .hc-view { display: grid; grid-template-columns: repeat(7, 1fr); }
+            @keyframes hcSlideRight { from { transform:translateX(40px); opacity:0; } to { transform:none; opacity:1; } }
+            @keyframes hcSlideLeft  { from { transform:translateX(-40px); opacity:0; } to { transform:none; opacity:1; } }
+            .hc-anim-right { animation: hcSlideRight .24s cubic-bezier(.25,.1,.25,1) both; }
+            .hc-anim-left  { animation: hcSlideLeft  .24s cubic-bezier(.25,.1,.25,1) both; }
+
+            /* A day: its number, and the holiday written on it. */
+            .hc-cell {
+                min-height: 86px; padding: 6px 7px; display: flex; flex-direction: column; gap: 4px;
+                border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 0;
+            }
+            .hc-cell:nth-child(7n) { border-right: 0; }
+            .hc-cell:nth-child(7n+1), .hc-cell:nth-child(7n) { background: color-mix(in srgb, var(--bg-subtle) 55%, transparent); }
+            .hc-cell.hc-empty { background: var(--bg-subtle); }
+            .hc-cell-num { font-size: 12px; font-weight: 600; line-height: 20px; color: var(--text-secondary); }
+            .hc-cell.hc-today .hc-cell-num {
+                align-self: flex-start; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+                background: var(--text-primary); color: var(--surface);
+            }
+            .hc-cell.hday { cursor: pointer; }
+            .hc-ev {
+                border-radius: 6px; padding: 4px 7px; font-size: 11.5px; font-weight: 600; line-height: 1.25;
+                overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+                transition: filter .15s, transform .15s;
+            }
+            .hc-ev small { display: block; font-size: 10px; font-weight: 700; opacity: .85; }
+            .hc-cell.hday:hover .hc-ev { filter: brightness(.96); transform: translateY(-1px); }
+            .hc-cell.ht-regular .hc-ev { background: var(--brand); color: #fff; }
+            .hc-cell.ht-special .hc-ev { background: var(--warning-soft); color: var(--warning); box-shadow: inset 3px 0 0 var(--warning); }
+            .hc-cell.ht-disabled .hc-ev { background: var(--bg-subtle); color: var(--text-muted); box-shadow: inset 3px 0 0 var(--border-md); }
+            .hc-cell.ht-disabled .hc-ev b { text-decoration: line-through; }
+            .hc-ev b { font-weight: 700; }
+            @media (max-width: 600px) {
+                .hc-cell { min-height: 54px; padding: 4px; }
+                .hc-ev { font-size: 0; padding: 0; height: 6px; border-radius: 3px; }
+            }
+
+            /* ── The side panel ──────────────────────────────────────────── */
+            .hx-side { display: flex; flex-direction: column; gap: 14px; }
+            .hx-stats { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+            .hc-stat {
+                display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 11px 14px;
+                border: 0; background: none; text-align: left; cursor: pointer; transition: background .15s;
+            }
+            .hc-stat:hover { background: var(--bg-subtle); }
+            .hx-stats .hc-stat:nth-child(odd) { border-right: 1px solid var(--border); }
+            .hx-stats .hc-stat:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+            .hc-stat span { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+            .hc-stat strong { font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; color: var(--text-primary); }
+            .hx-stat-reg strong { color: var(--brand); }
+            .hx-stat-spc strong { color: var(--warning); }
+
+            .hx-next { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+            .hx-next-h { display: flex; justify-content: space-between; align-items: baseline; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+            .hx-next-h b { font-size: 13.5px; color: var(--text-primary); }
+            .hx-next-h small { font-size: 11px; color: var(--text-muted); }
+            .hx-it { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
+            .hx-it:last-child { border-bottom: 0; }
+            .hx-it:hover { background: var(--bg-subtle); }
+            .hx-dt { text-align: center; border: 1px solid var(--border); border-radius: 8px; padding: 3px 0; line-height: 1.1; background: var(--surface); }
+            .hx-dt small { display: block; font-size: 9px; font-weight: 800; letter-spacing: .08em; color: var(--text-muted); }
+            .hx-dt b { font-size: 15px; font-weight: 800; color: var(--text-primary); }
+            .hx-dt.reg { border-color: var(--brand); } .hx-dt.reg small { color: var(--brand); }
+            .hx-dt.spc { border-color: color-mix(in srgb, var(--warning) 45%, transparent); } .hx-dt.spc small { color: var(--warning); }
+            .hx-t { min-width: 0; }
+            .hx-t b { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .hx-t small { font-size: 11px; color: var(--text-muted); }
+            .hx-tg { width: 34px; height: 19px; border-radius: 999px; border: 0; background: var(--text-primary); position: relative; cursor: pointer; flex: none; padding: 0; }
+            .hx-tg::after { content: ""; position: absolute; top: 2px; right: 2px; width: 15px; height: 15px; border-radius: 50%; background: var(--surface); transition: right .15s, left .15s; }
+            .hx-tg.off { background: var(--border-md); }
+            .hx-tg.off::after { right: auto; left: 2px; }
+            .hx-tg:disabled { opacity: .5; cursor: progress; }
+            .hx-none { padding: 18px 14px; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+
+            .hx-sync { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 11.5px; color: var(--text-muted); line-height: 1.45; }
+            .hx-sync i { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex: none; margin-top: 5px; }
+            .hx-sync.is-off i { background: var(--border-md); }
+
+            /* The card that follows the pointer over a holiday. */
+            .hx-tip { min-width: 190px; max-width: 250px; padding: 10px 12px; border-radius: 10px; background: var(--surface); color: var(--text-primary); border: 1px solid var(--border-md); box-shadow: 0 10px 28px rgba(16, 24, 40, .18); font-size: 12px; line-height: 1.45; }
+            .hx-tip-name { font-weight: 800; font-size: 13px; }
+            .hx-tip-type { color: var(--text-muted); font-size: 11.5px; }
+            .hx-tip-act { margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--brand); }
+
+            /* ── Holiday list panel ─────────────────────────────────────── */
+            .hc-list-panel { border-top: 1px solid var(--border); background: var(--bg-subtle); }
+            .hc-list-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+            .hc-list-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+            .hc-list-close { border: 0; background: none; color: var(--text-muted); cursor: pointer; font-size: 13px; }
+            #hc-list-body { max-height: 300px; overflow-y: auto; }
+            .hc-list-row { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+            .hc-list-row:last-child { border-bottom: 0; }
+            .hc-list-date { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+            .hc-list-name { font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .hc-list-typetag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 5px; }
+            .hlt-regular { background: var(--brand-subtle); color: var(--brand); }
+            .hlt-special { background: var(--warning-soft); color: var(--warning); }
+            .hc-list-tgl { border: 1px solid var(--border-md); background: var(--surface); border-radius: 7px; padding: 3px 9px; font-size: 11.5px; font-weight: 600; cursor: pointer; color: var(--text-secondary); }
+            .hlt-btn-disable:hover { color: var(--danger); }
+            .hlt-btn-enable:hover { color: var(--brand); }
+
+            @media (max-width: 1100px) {
+                .hx-grid { grid-template-columns: minmax(0, 1fr); }
+                .hx-side { display: grid; grid-template-columns: 1fr 1fr; }
+                .hx-sync { grid-column: 1 / -1; }
+            }
+            @media (max-width: 700px) {
+                .hx-side { display: flex; }
+                .hx-months span, .hx-month { font-size: 10.5px; }
+                .hc-month-heading { min-width: 0; font-size: 1.1rem; }
+            }
             </style>
 @endpush
 
@@ -912,6 +924,8 @@
                     }
                     updateHeader();
                     updateStats();
+                    renderMonths();
+                    renderNext();
                     attachCellListeners(view);
                 }
 
@@ -927,18 +941,97 @@
                         const h    = holidayMap[date];
                         const tc   = date === TODAY ? ' hc-today' : '';
                         if (h) {
+                            // The holiday written on its day, with what it pays.
                             const cls  = 'ht-' + (h.is_active ? h.type : 'disabled');
-                            const name = h.title.length > 13 ? h.title.slice(0, 12) + '…' : h.title;
                             html += `<div class="hc-cell hday ${cls}${tc}" data-date="${date}">` +
                                     `<span class="hc-cell-num">${d}</span>` +
-                                    `<span class="hc-cell-name">${name}</span>` +
-                                    `<span class="hc-dot"></span></div>`;
+                                    `<span class="hc-ev"><b>${esc(h.title)}</b><small>${evLine(h)}</small></span></div>`;
                         } else {
                             html += `<div class="hc-cell hc-blank${tc}" data-date="${date}">` +
                                     `<span class="hc-cell-num">${d}</span></div>`;
                         }
                     }
                     return html;
+                }
+
+                const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+                const RATE = { regular: '200%', special: '130%' };
+                const TYPE = { regular: 'Regular', special: 'Special' };
+                function evLine(h) { return h.is_active ? `${TYPE[h.type] || 'Holiday'} · ${RATE[h.type] || ''}` : `${TYPE[h.type] || 'Holiday'} · off`; }
+
+                // ── The year at a glance ─────────────────────────────────────────
+                function renderMonths() {
+                    const el = document.getElementById('hc-months');
+                    if (!el) return;
+                    const now = new Date();
+                    const SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    const per = SHORT.map(() => []);
+                    Object.values(holidayMap).forEach(h => {
+                        const [y, m] = h.date.split('-').map(Number);
+                        if (y === calYear) per[m - 1].push(h);
+                    });
+                    el.innerHTML = SHORT.map((name, i) => {
+                        const past = calYear < now.getFullYear() || (calYear === now.getFullYear() && i < now.getMonth());
+                        const dots = per[i].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6)
+                            .map(h => `<b class="${!h.is_active ? 'o' : h.type === 'special' ? 's' : ''}"></b>`).join('');
+                        return `<button type="button" class="hx-month${i === calMonth ? ' on' : ''}${past ? ' past' : ''}" data-m="${i}" role="tab" aria-selected="${i === calMonth}"
+                                    title="${per[i].length} holiday${per[i].length === 1 ? '' : 's'}">${name}<i>${dots}</i></button>`;
+                    }).join('');
+                    el.querySelectorAll('.hx-month').forEach(b => b.addEventListener('click', () => {
+                        const m = +b.dataset.m;
+                        if (m === calMonth) return;
+                        const dir = m > calMonth ? 'next' : 'prev';
+                        calMonth = m;
+                        renderCalendar(dir);
+                    }));
+                }
+
+                // ── Coming up, from today ────────────────────────────────────────
+                function renderNext() {
+                    const el = document.getElementById('hc-next');
+                    if (!el) return;
+                    const from = document.getElementById('hc-next-from');
+                    const upcoming = Object.values(holidayMap).filter(h => h.date >= TODAY)
+                        .sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6);
+                    const t0 = new Date(TODAY + 'T00:00:00');
+                    if (from) from.textContent = calYear === t0.getFullYear() ? 'from today' : calYear + '';
+                    if (!upcoming.length) {
+                        el.innerHTML = `<div class="hx-none">${calYear < t0.getFullYear() ? 'This year is over.' : 'No more holidays this year.'}</div>`;
+                        return;
+                    }
+                    const MON = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+                    el.innerHTML = upcoming.map(h => {
+                        const [y, m, d] = h.date.split('-').map(Number);
+                        const days = Math.round((new Date(h.date + 'T00:00:00') - t0) / 864e5);
+                        const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+                        const tone = !h.is_active ? '' : h.type === 'special' ? 'spc' : 'reg';
+                        return `<div class="hx-it" data-date="${h.date}">
+                            <div class="hx-dt ${tone}"><small>${MON[m - 1]}</small><b>${d}</b></div>
+                            <div class="hx-t"><b>${esc(h.title)}</b><small>${TYPE[h.type] || 'Holiday'} · ${h.is_active ? when : 'switched off'}</small></div>
+                            <button type="button" class="hx-tg${h.is_active ? '' : ' off'}" data-date="${h.date}"
+                                    aria-label="${h.is_active ? 'Switch off' : 'Switch on'} ${esc(h.title)}" aria-pressed="${h.is_active}"></button>
+                        </div>`;
+                    }).join('');
+                    el.querySelectorAll('.hx-tg').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); toggleDate(b.dataset.date, b); }));
+                    // A click on the rest of the line opens its month.
+                    el.querySelectorAll('.hx-it').forEach(it => it.addEventListener('click', () => {
+                        const m = Number(it.dataset.date.split('-')[1]) - 1;
+                        if (m !== calMonth) { const dir = m > calMonth ? 'next' : 'prev'; calMonth = m; renderCalendar(dir); }
+                    }));
+                }
+
+                // The same toggle as a click on the day, from the Coming up list.
+                async function toggleDate(date, btn) {
+                    if (btn) btn.disabled = true;
+                    try {
+                        const r = await post(toggleUrl, { date });
+                        if (r.success) {
+                            if (holidayMap[date]) holidayMap[date].is_active = r.is_active;
+                            renderCalendar();
+                            if (listFilter) renderListPanel();
+                            flash(r.is_active ? 'Holiday enabled.' : 'Holiday disabled.', r.is_active ? 'success' : 'warn');
+                        } else { flash('Update failed.', 'error'); if (btn) btn.disabled = false; }
+                    } catch { flash('Network error.', 'error'); if (btn) btn.disabled = false; }
                 }
 
                 function attachCellListeners(view) {
@@ -1002,6 +1095,9 @@
                     const act = all.filter(h => h.is_active).length;
                     document.getElementById('hstat-active').textContent   = act;
                     document.getElementById('hstat-disabled').textContent = all.length - act;
+                    const reg = document.getElementById('hstat-regular'), spc = document.getElementById('hstat-special');
+                    if (reg) reg.textContent = all.filter(h => h.is_active && h.type === 'regular').length;
+                    if (spc) spc.textContent = all.filter(h => h.is_active && h.type === 'special').length;
                 }
 
                 // ── Holiday list panel ────────────────────────────────────────────
@@ -1018,6 +1114,16 @@
                 document.querySelector('.hc-leg-regular')?.addEventListener('click', () => toggleListPanel('regular'));
                 document.querySelector('.hc-leg-special')?.addEventListener('click', () => toggleListPanel('special'));
                 document.querySelector('.hc-leg-off')    .addEventListener('click', () => toggleListPanel('disabled'));
+                document.querySelectorAll('[data-hc-list]').forEach(b => b.addEventListener('click', () => toggleListPanel(b.dataset.hcList)));
+
+                // Today: back to this month, loading this year if another is open.
+                document.getElementById('hc-today-btn')?.addEventListener('click', async () => {
+                    const now = new Date();
+                    if (calYear !== now.getFullYear()) await loadYear(now.getFullYear());
+                    const dir = calMonth < now.getMonth() ? 'next' : 'prev';
+                    calMonth = now.getMonth();
+                    renderCalendar(dir);
+                });
 
                 function toggleListPanel(filter) {
                     if (listFilter === filter) { closeListPanel(); return; }
@@ -1128,7 +1234,11 @@
                             holiday.is_active = r.is_active;
                             if (holidayMap[date]) holidayMap[date].is_active = r.is_active;
                             cell.className = `hc-cell hday ht-${r.is_active ? holiday.type : 'disabled'}${date===TODAY?' hc-today':''}`;
+                            const small = cell.querySelector('.hc-ev small');
+                            if (small) small.textContent = evLine(holiday);
                             updateStats();
+                            renderMonths();
+                            renderNext();
                             flash(r.is_active ? 'Holiday enabled.' : 'Holiday disabled.', r.is_active ? 'success' : 'warn');
                         } else { flash('Update failed.', 'error'); }
                     } catch { flash('Network error.', 'error'); }
@@ -1166,9 +1276,10 @@
                 function showSyncStatus() {
                     const el = document.getElementById('hc-sync-status');
                     if (!el) return;
-                    el.textContent = !syncInfo.configured ? 'Google Calendar is not connected yet.'
+                    el.parentElement?.classList.toggle('is-off', !syncInfo.configured);
+                    el.textContent = !syncInfo.configured ? 'Google Calendar is not connected yet — the official holidays are used.'
                         : syncInfo.synced_at
-                            ? 'Last synced ' + new Date(syncInfo.synced_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }) + '.'
+                            ? 'Synced with Google · ' + new Date(syncInfo.synced_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
                             : 'The first sync runs in the background — this calendar updates by itself when it lands.';
                 }
 
@@ -1511,34 +1622,53 @@
    and OT are arithmetic on it — so it carries the brand fill and the other
    two sit back as derived. Colours come from the theme tokens, which is why
    there is no [data-bs-theme="dark"] twin of this block to keep in step. */
-.lt-row {
-    display:flex; align-items:center; gap:16px;
-    padding:13px 20px;
-    border-bottom:1px solid var(--border);
-    transition: background .13s;
+.lt-ladder { overflow: hidden; }
+.lt-bar { display:flex; align-items:center; gap:10px; padding:12px 18px; border-bottom:1px solid var(--border); }
+.lt-bar h6 { margin:0; font-size:.95rem; font-weight:700; color: var(--text-primary); display:flex; align-items:center; }
+.lt-bar-sp { flex:1; }
+.lt-find {
+    display:flex; align-items:center; gap:7px; height:32px; width:190px; margin:0; padding:0 10px;
+    border:1px solid var(--border-md); border-radius:8px; background: var(--surface);
 }
-.lt-row:last-child { border-bottom:none; }
-.lt-row:hover      { background: var(--bg-subtle); }
-.lt-info { flex:1; min-width:0; }
-.lt-name {
-    display:block; font-weight:600; font-size:.95rem;
-    color: var(--text-primary); margin-bottom:7px;
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+.lt-find i { font-size:12px; color: var(--text-muted); }
+.lt-find input { border:0; outline:none; background:transparent; width:100%; font-size:12.5px; color: var(--text-primary); }
+.lt-find:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-subtle); }
+html[data-bs-theme] .lt-find input:focus-visible { box-shadow:none !important; outline:none !important; }
+.lt-sort { display:flex; border:1px solid var(--border-md); border-radius:8px; overflow:hidden; height:32px; }
+.lt-sort button { border:0; background: var(--surface); padding:0 11px; font-size:12px; font-weight:600; color: var(--text-muted); display:flex; align-items:center; gap:5px; }
+.lt-sort button + button { border-left:1px solid var(--border-md); }
+.lt-sort button i { font-size:10px; }
+.lt-sort button.on { background: var(--text-primary); color: var(--surface); }
+
+/* One grid for the heading and every row, so the numbers stand in columns. */
+.lt-head, .lt-row {
+    display:grid; grid-template-columns: minmax(170px, 1.6fr) 1fr .9fr .9fr minmax(110px, 1.3fr) 74px;
+    align-items:center; column-gap:14px; padding:0 18px;
 }
-.lt-rates { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-.lt-rate {
-    display:inline-flex; align-items:baseline; gap:5px;
-    padding:3px 9px; border-radius:7px;
-    font-size:.72rem; letter-spacing:.02em; text-transform:uppercase;
-    color: var(--text-muted);
+.lt-head {
+    padding-top:8px; padding-bottom:8px; background: var(--bg-subtle); border-bottom:1px solid var(--border);
+    font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color: var(--text-muted);
+}
+.lt-head span:nth-child(2), .lt-head span:nth-child(3), .lt-head span:nth-child(4) { text-align:right; }
+.lt-row { min-height:58px; border-bottom:1px solid var(--border); transition: background .13s; }
+.lt-row:last-of-type { border-bottom:none; }
+.lt-row:hover { background: var(--bg-subtle); }
+.lt-row[hidden] { display:none; }
+.lt-who { display:flex; align-items:center; gap:11px; min-width:0; }
+.lt-mark {
+    flex:none; width:30px; height:30px; border-radius:8px; display:grid; place-items:center;
+    font-size:11px; font-weight:800; letter-spacing:.02em; color: var(--text-secondary);
     background: var(--bg-subtle); border:1px solid var(--border);
 }
-.lt-rate b {
-    font-size:.84rem; font-weight:600; letter-spacing:0; text-transform:none;
-    color: var(--text-secondary); font-variant-numeric:tabular-nums;
-}
-.lt-rate-primary   { background: var(--brand-subtle); border-color:transparent; color: var(--brand); }
-.lt-rate-primary b { color: var(--brand); font-size:.9rem; }
+.lt-info { min-width:0; }
+.lt-name { display:block; font-weight:700; font-size:.92rem; color: var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lt-note { display:block; font-size:11px; color: var(--text-muted); }
+.lt-note:empty { display:none; }
+.lt-num { text-align:right; font-variant-numeric: tabular-nums; font-size:13px; color: var(--text-secondary); white-space:nowrap; }
+.lt-daily { font-size:14.5px; font-weight:700; color: var(--text-primary); }
+.lt-scale { position:relative; height:7px; border-radius:4px; background: var(--bg-subtle); border:1px solid var(--border); overflow:hidden; }
+.lt-scale i { position:absolute; left:0; top:0; bottom:0; width:0; border-radius:4px; background: var(--brand); transition: width .35s ease; }
+.lt-row.is-top .lt-scale i { background: var(--text-primary); }
 
 .lt-count {
     display:inline-block; margin-left:8px; vertical-align:middle;
@@ -1548,10 +1678,18 @@
     background: var(--bg-subtle); border:1px solid var(--border);
 }
 
-.lt-actions { flex-shrink:0; }
+/* Edit and the menu come forward on the row being pointed at; the list stays calm. */
+.lt-actions { display:flex; align-items:center; justify-content:flex-end; gap:4px; opacity:0; transition: opacity .15s; }
+.lt-row:hover .lt-actions, .lt-row:focus-within .lt-actions { opacity:1; }
+@media (hover: none) { .lt-actions { opacity:1; } }
+.lt-icon-btn {
+    width:30px; height:30px; border-radius:7px; border:1px solid var(--border); background: var(--surface);
+    display:grid; place-items:center; color: var(--text-muted); font-size:12px; padding:0;
+}
+.lt-icon-btn:hover { color: var(--brand); border-color: var(--border-md); }
 .lt-menu-btn {
     background:none; border:1px solid transparent; color: var(--text-muted);
-    font-size:.9rem; line-height:1; width:32px; height:32px;
+    font-size:.9rem; line-height:1; width:30px; height:30px;
     display:flex; align-items:center; justify-content:center;
     border-radius:7px; cursor:pointer; padding:0;
     transition: background .15s, color .15s, border-color .15s;
@@ -1579,9 +1717,35 @@
 .lt-empty { padding:52px 24px; text-align:center; color: var(--text-muted); }
 .lt-empty i { font-size:1.9rem; opacity:.35; display:block; margin-bottom:10px; }
 .lt-empty p { margin:0; font-size:.9rem; }
+.lt-nomatch { padding:40px 24px; text-align:center; color: var(--text-muted); }
+.lt-nomatch i { font-size:1.5rem; opacity:.35; display:block; margin-bottom:8px; }
+.lt-nomatch p { margin:0; font-size:.9rem; }
+.lt-nomatch[hidden] { display:none; }
 
-/* A row added without a reload arrives at the top of a list the eye is not
-   watching, so it says where it went before settling. */
+.lt-foot {
+    display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:10px 18px;
+    border-top:1px solid var(--border); background: var(--bg-subtle); font-size:11.5px; color: var(--text-muted);
+}
+
+/* The add form's live sums. */
+.lt-calc {
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; margin-bottom:16px; padding:10px 12px;
+    border:1px dashed var(--border-md); border-radius:9px; background: var(--bg-subtle);
+}
+.lt-calc div { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.lt-calc span { font-size:10px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color: var(--text-muted); }
+.lt-calc b { font-size:13.5px; font-weight:700; color: var(--text-primary); font-variant-numeric: tabular-nums; white-space:nowrap; }
+
+/* The spread of the rates, under the form. */
+.lt-range { margin-top:16px; padding:14px 18px; display:flex; flex-direction:column; gap:9px; }
+.lt-range-lbl { font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color: var(--text-muted); }
+.lt-range-row { display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:12.5px; color: var(--text-muted); }
+.lt-range-row b { font-size:14.5px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.lt-range-row em { font-style:normal; font-size:11.5px; color: var(--text-muted); margin-left:6px; }
+.lt-spread { position:relative; height:10px; border-radius:5px; background: var(--bg-subtle); border:1px solid var(--border); }
+.lt-spread i { position:absolute; top:-3px; width:2px; height:14px; margin-left:-1px; border-radius:1px; background: var(--text-primary); }
+
+/* A row added without a reload says where it went before settling. */
 @keyframes ltJustAdded { from { background: var(--brand-subtle); } to { background: transparent; } }
 .lt-row.lt-just-added { animation: ltJustAdded 1.6s ease-out; }
 
@@ -1601,6 +1765,13 @@
 #lt-list-container::-webkit-scrollbar-thumb {
     background: var(--border-md); border-radius:99px;
     border:3px solid var(--surface);
+}
+@media (max-width: 767px) {
+    .lt-head { display:none; }
+    .lt-row { grid-template-columns: 1fr auto; row-gap:6px; padding:10px 14px; }
+    .lt-row .lt-num:not(.lt-daily), .lt-row .lt-scale { display:none; }
+    .lt-bar { flex-wrap:wrap; }
+    .lt-find { width:100%; order:5; }
 }
 
 /* ── Edit Labor Type modal ─────────────────────────────────────────────────
@@ -1742,6 +1913,106 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ltList) initLtDropdowns(ltList);
 });
 
+// ── The rate ladder ─────────────────────────────────────────────────────────
+// Everything here is read from the rows themselves (data-rate, data-name), so
+// it holds for a row added without a reload and for the list the live feed
+// re-renders: the order, the bars against the top rate, the Top / Lowest
+// notes, the search, the spread of the rates and the add form's sums.
+(function () {
+    const list = document.getElementById('lt-list-container');
+    if (!list) return;
+    const peso = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const pesoShort = n => '₱' + Number(n).toLocaleString('en-PH', { maximumFractionDigits: 2 });
+    const find = document.getElementById('lt-find');
+    let sortBy = 'rate';
+    let busy = false;
+
+    const rows = () => [...list.querySelectorAll('.lt-row')];
+    const rate = r => parseFloat(r.dataset.rate) || 0;
+
+    function refresh() {
+        busy = true;
+        const all = rows();
+
+        // Order: highest rate first, or A–Z. Each row keeps its modal beside it.
+        const sorted = [...all].sort((a, b) => sortBy === 'name'
+            ? a.dataset.name.localeCompare(b.dataset.name)
+            : rate(b) - rate(a) || a.dataset.name.localeCompare(b.dataset.name));
+        if (sorted.some((r, i) => r !== all[i])) {
+            const tail = document.getElementById('lt-nomatch');
+            sorted.forEach(r => {
+                const modal = document.getElementById('editModal' + r.dataset.id);
+                list.insertBefore(r, tail);
+                if (modal && modal.parentElement === list) list.insertBefore(modal, tail);
+            });
+        }
+
+        // Bars against the top rate, and which rows are the top and the lowest.
+        const rates = all.map(rate);
+        const max = Math.max(0, ...rates), min = rates.length ? Math.min(...rates) : 0;
+        all.forEach(r => {
+            const v = rate(r);
+            r.querySelector('[data-lt-bar]').style.width = max ? (v / max * 100).toFixed(2) + '%' : '0';
+            r.classList.toggle('is-top', v === max && max > 0);
+            const note = r.querySelector('[data-lt-note]');
+            note.textContent = all.length > 1 && v === max ? @json(__('Top rate')) : all.length > 1 && v === min ? @json(__('Lowest rate')) : '';
+        });
+
+        // Search.
+        const q = (find?.value || '').trim().toLowerCase();
+        let shown = 0;
+        all.forEach(r => { const on = !q || r.dataset.name.includes(q); r.hidden = !on; if (on) shown++; });
+        const nm = document.getElementById('lt-nomatch'); if (nm) nm.hidden = !(q && all.length && !shown);
+
+        const count = document.getElementById('lt-count');
+        if (count) count.textContent = all.length;
+
+        // The spread, under the form.
+        const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+        if (all.length) {
+            const byRate = [...all].sort((a, b) => rate(a) - rate(b));
+            const nameOf = r => r.querySelector('.lt-name').textContent;
+            const vals = byRate.map(rate), n = vals.length;
+            const mid = n % 2 ? vals[(n - 1) / 2] : (vals[n / 2 - 1] + vals[n / 2]) / 2;
+            set('lt-min', pesoShort(vals[0])); set('lt-min-name', nameOf(byRate[0]));
+            set('lt-max', pesoShort(vals[n - 1])); set('lt-max-name', nameOf(byRate[n - 1]));
+            set('lt-mid', peso(mid));
+            const span = vals[n - 1] - vals[0];
+            document.getElementById('lt-spread').innerHTML = [...new Set(vals)]
+                .map(v => `<i style="left:${span ? ((v - vals[0]) / span * 100).toFixed(2) : 50}%"></i>`).join('');
+        }
+        calc();
+        busy = false;
+    }
+
+    // The add form's sums, as the rate is typed.
+    const rateInput = document.querySelector('form[action="{{ route('labor-types.store') }}"] [name="daily_rate"]');
+    function calc() {
+        const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+        const v = parseFloat(rateInput?.value);
+        if (!v || v <= 0) { set('lt-calc-hourly', '—'); set('lt-calc-ot', '—'); set('lt-calc-rank', '—'); return; }
+        const hourly = v / 8;
+        set('lt-calc-hourly', peso(hourly));
+        set('lt-calc-ot', peso(hourly * 1.25));
+        const rank = rows().filter(r => rate(r) > v).length + 1;
+        const nth = k => k + (['th', 'st', 'nd', 'rd'][(k % 100 > 10 && k % 100 < 14) ? 0 : (k % 10 < 4 ? k % 10 : 0)] || 'th');
+        set('lt-calc-rank', nth(rank) + ' ' + @json(__('of')) + ' ' + (rows().length + 1));
+    }
+    rateInput?.addEventListener('input', calc);
+    rateInput?.form?.addEventListener('reset', () => setTimeout(calc));
+
+    find?.addEventListener('input', refresh);
+    document.querySelectorAll('[data-lt-sort]').forEach(b => b.addEventListener('click', () => {
+        sortBy = b.dataset.ltSort;
+        document.querySelectorAll('[data-lt-sort]').forEach(x => x.classList.toggle('on', x === b));
+        refresh();
+    }));
+
+    // A row added, removed or re-rendered by the live feed.
+    new MutationObserver(() => { if (!busy) refresh(); }).observe(list, { childList: true });
+    refresh();
+})();
+
 // ── Add Labor Type — AJAX (no page scroll) ──────────────────────────────────
 (function () {
     const form      = document.querySelector('form[action="{{ route('labor-types.store') }}"]');
@@ -1797,6 +2068,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Reset form
                 nameInput.value = '';
                 rateInput.value = '';
+                rateInput.dispatchEvent(new Event('input'));
                 nameInput.focus();
             } else if (r.status === 422 && data.errors) {
                 if (data.errors.name) {

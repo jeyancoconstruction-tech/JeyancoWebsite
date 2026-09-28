@@ -1,18 +1,32 @@
 {{-- One labor type. Rendered both by the Labor Types list and, on its own, by
      the AJAX add — which is why the list @includes this file rather than
-     repeating the markup and letting the two drift apart. --}}
-<div class="lt-row" data-id="{{ $type->id }}">
-    <div class="lt-info">
-        <span class="lt-name">{{ $type->name }}</span>
-        <div class="lt-rates">
-            {{-- The daily rate is the one that is set; the other two are it,
-                 divided and multiplied. The fill says which is which. --}}
-            <span class="lt-rate lt-rate-primary">{{ __('Daily') }} <b>{{ $type->getFormattedDailyRate() }}</b></span>
-            <span class="lt-rate">{{ __('Hourly') }} <b>{{ $type->getFormattedHourlyRate() }}</b></span>
-            <span class="lt-rate">{{ __('OT') }} <b>{{ $type->getFormattedOTRate() }}</b></span>
+     repeating the markup and letting the two drift apart.
+
+     A row of the rate ladder: the daily rate (the one that is set), the
+     hourly and OT rates worked out from it, and a bar against the top rate.
+     The bar, the order and the "Top rate / Lowest rate" note are drawn by the
+     page's script from data-rate, so a row added without a reload fits in. --}}
+@php
+    $words    = preg_split('/\s+/', trim(preg_replace('/[^\pL\s]/u', ' ', $type->name)));
+    $initials = mb_strtoupper(count($words) > 1 ? mb_substr($words[0], 0, 1) . mb_substr($words[1], 0, 1) : mb_substr($words[0] ?? '', 0, 2));
+@endphp
+<div class="lt-row" data-id="{{ $type->id }}" data-name="{{ mb_strtolower($type->name) }}" data-rate="{{ (float) $type->daily_rate }}">
+    <div class="lt-who">
+        <span class="lt-mark" aria-hidden="true">{{ $initials }}</span>
+        <div class="lt-info">
+            <span class="lt-name">{{ $type->name }}</span>
+            <small class="lt-note" data-lt-note></small>
         </div>
     </div>
+    <span class="lt-num lt-daily">{{ $type->getFormattedDailyRate() }}</span>
+    <span class="lt-num">{{ $type->getFormattedHourlyRate() }}</span>
+    <span class="lt-num">{{ $type->getFormattedOTRate() }}</span>
+    <span class="lt-scale" aria-hidden="true"><i data-lt-bar></i></span>
     <div class="lt-actions">
+        <button class="lt-icon-btn" type="button" data-bs-toggle="modal" data-bs-target="#editModal{{ $type->id }}"
+                aria-label="{{ __('Edit :name', ['name' => $type->name]) }}" title="{{ __('Edit') }}">
+            <i class="fas fa-pen"></i>
+        </button>
         <div class="dropdown">
             <button class="lt-menu-btn" type="button" data-bs-toggle="dropdown"
                     aria-expanded="false" aria-label="{{ __('Options for :name', ['name' => $type->name]) }}">
