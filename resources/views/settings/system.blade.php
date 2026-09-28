@@ -316,8 +316,8 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 
 /* ── Kiosks now: whether each kiosk is on and has what was saved here ── */
 .kn { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.kn-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--panel); overflow: hidden; flex: 1; display: flex; flex-direction: column; }
-.kn-list li { flex: 1 1 auto; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; grid-auto-rows: min-content; align-content: center; gap: 6px 12px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
+.kn-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--panel); overflow: hidden; flex: none; display: flex; flex-direction: column; }
+.kn-list li { flex: none; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; grid-auto-rows: min-content; align-content: center; gap: 6px 12px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
 .kn-list li:last-child { border-bottom: 0; }
 .kn-list li > i { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); grid-row: 1; }
 .kn-list li > i.ok { background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent); }
@@ -339,7 +339,48 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 .kn-go svg { width: 20px; height: 20px; color: var(--accent); flex: none; }
 .kn-go b { display: block; font-size: 13px; }
 .kn-go small { display: block; font-size: 12px; color: var(--muted); }
+.kn-rules { flex: 1; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.kn-rules h5 { margin: 0; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+.kn-rules ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; counter-reset: kn; }
+.kn-rules li { counter-increment: kn; display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.kn-rules li::before { content: counter(kn); width: 22px; height: 22px; border-radius: 50%; background: var(--panel-3); color: var(--accent); font-weight: 800; font-size: 11.5px; display: grid; place-items: center; }
+.kn-rules li b { color: var(--text); display: block; font-size: 12.5px; }
 .kn-none { padding: 28px 14px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; margin: 0; }
+
+/* ── Kiosk site: where each kiosk stands, set here, not on the kiosk ─── */
+.ks-list { display: flex; flex-direction: column; gap: 10px; }
+.ks-card { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px 14px; }
+.ks-card.moving { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+.ks-top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.ks-top b { font-size: 13.5px; color: var(--text); }
+.ks-code { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+.ks-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); flex: none; }
+.ks-dot.ok { background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent); }
+.ks-dot.late { background: var(--warning); }
+.ks-geo { margin-left: auto; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--panel-3); color: var(--muted); white-space: nowrap; }
+.ks-geo.in { background: var(--success-soft); color: var(--success); }
+.ks-geo.out { background: var(--danger-soft); color: var(--danger); }
+.ks-geo.warn { background: var(--warning-soft); color: var(--warning); }
+.ks-sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; margin-top: 10px; }
+.ks-site { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+.ks-site b { font-size: 13px; font-weight: 700; }
+.ks-site small { font-size: 10.5px; color: var(--faint); font-weight: 600; letter-spacing: .02em; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks-site:hover { border-color: var(--accent); }
+.ks-site.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ks-site.on small { color: rgba(255, 255, 255, .8); }
+.ks-site.on::after { content: ""; position: absolute; top: 9px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+.ks-site:disabled { cursor: progress; opacity: .7; }
+.ks-note { margin-top: 8px; font-size: 12px; color: var(--muted); min-height: 1em; }
+.ks-note.ok { color: var(--success); } .ks-note.bad { color: var(--danger); }
+.ks-del { border: 0; background: none; padding: 3px 6px; font: inherit; font-size: 11.5px; font-weight: 600; color: var(--faint); cursor: pointer; border-radius: 6px; }
+.ks-del:hover { color: var(--danger); background: var(--danger-soft); }
+.ks-add { border: 1px dashed var(--line); border-radius: 12px; padding: 0 14px; }
+.ks-add > summary { list-style: none; cursor: pointer; padding: 11px 0; font-size: 12.5px; font-weight: 700; color: var(--accent); }
+.ks-add > summary::-webkit-details-marker { display: none; }
+.ks-add-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 8px; padding-bottom: 12px; align-items: start; }
+.ks-add-grid input, .ks-add-grid select { width: 100%; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); padding: 0 10px; font: inherit; font-size: 13px; }
+.ks-add-hint { font-size: 11.5px; color: var(--faint); padding-bottom: 12px; margin-top: -4px; }
+@media (max-width: 700px) { .ks-add-grid { grid-template-columns: 1fr 1fr; } }
 
 /* Unsaved bar */
 .ss-bar { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 160%); display: flex; gap: 10px; align-items: center; background: var(--text-primary); color: var(--bg-body); border-radius: 12px; padding: 8px 8px 8px 16px; box-shadow: 0 20px 50px rgba(0,0,0,.35); z-index: 1050; transition: transform .35s cubic-bezier(.2, .8, .2, 1); max-width: calc(100% - 32px); visibility: hidden; }
@@ -564,6 +605,50 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                         <a class="ss-btn" href="{{ route('devices.index') }}">{!! $svg('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>') !!}{{ __('Device Monitoring') }}</a></header>
                     <div class="ss-split">
                         <div class="ss-grp stack">
+                            {{-- Where each kiosk stands. Set here, not on the kiosk: it
+                                 records only for this site's workers, and only inside
+                                 the site's radius. Takes effect at once. --}}
+                            <div class="ss-row"><div class="lb"><b>{{ __('Kiosk site') }}</b><small>{{ __("Where each kiosk is standing. It records attendance only for this site's workers, and only inside the site's radius. Changes right away — the kiosk follows within a few seconds.") }}</small></div>
+                                <div class="ks-list" data-ks-url="{{ url('system-settings/kiosk') }}">
+                                    @foreach($kiosks as $k)
+                                        @php
+                                            $m = $k['map'];
+                                            [$geoCls, $geoText] = match (true) {
+                                                ! $k['site_id']        => ['warn', __('No site yet')],
+                                                ! $m['site']           => ['warn', __('No location on Sites')],
+                                                $m['lat'] === null     => ['warn', __('No GPS yet')],
+                                                (bool) $m['inside']    => ['in', __('Inside') . ' · ' . $m['distance'] . ' m'],
+                                                default                => ['out', __('Outside') . ' · ' . $m['distance'] . ' m'],
+                                            };
+                                        @endphp
+                                        <div class="ks-card" data-ks="{{ $k['id'] }}">
+                                            <div class="ks-top"><i class="ks-dot {{ $k['state'] }}"></i><b>{{ $k['name'] }}</b><span class="ks-code">{{ $k['code'] }}</span>
+                                                <span class="ks-geo {{ $geoCls }}" data-ks-geo>{{ $geoText }}</span>
+                                                @if($kiosks->count() > 1)
+                                                    <button type="submit" form="ksDel{{ $k['id'] }}" class="ks-del" title="{{ __('Remove this kiosk') }}">{{ __('Remove') }}</button>
+                                                @endif</div>
+                                            <div class="ks-sites" role="radiogroup" aria-label="{{ __('Site of') }} {{ $k['name'] }}">
+                                                @foreach($kioskSites as $st)
+                                                    <button type="button" class="ks-site @if($k['site_id'] === $st->id) on @endif" role="radio" aria-checked="{{ $k['site_id'] === $st->id ? 'true' : 'false' }}" data-site="{{ $st->id }}">
+                                                        <b>{{ $st->name }}</b>@if($st->location)<small>{{ $st->location }}</small>@endif</button>
+                                                @endforeach
+                                            </div>
+                                            <div class="ks-note" data-ks-note></div>
+                                        </div>
+                                    @endforeach
+                                    <details class="ks-add" @if($errors->has('code') || $errors->has('name')) open @endif>
+                                        <summary>+ {{ __('Add kiosk') }}</summary>
+                                        <div class="ks-add-grid">
+                                            <input form="ksAddForm" name="name" value="{{ old('name') }}" placeholder="{{ __('Name, e.g. Kiosk 2') }}" aria-label="{{ __('Kiosk name') }}" required>
+                                            <input form="ksAddForm" name="code" value="{{ old('code') }}" placeholder="{{ __('Code, e.g. KIOSK_2') }}" aria-label="{{ __('Kiosk code') }}" required>
+                                            <select form="ksAddForm" name="site_id" aria-label="{{ __('Site') }}">
+                                                @foreach($kioskSites as $st)<option value="{{ $st->id }}">{{ $st->name }}</option>@endforeach
+                                            </select>
+                                            <button form="ksAddForm" type="submit" class="ss-btn pri">{{ __('Add') }}</button>
+                                        </div>
+                                        <div class="ks-add-hint">@error('name'){{ $message }} @enderror @error('code'){{ $message }}@else{{ __('The code must match KIOSK_CODE in testing.py on that kiosk\'s Pi.') }}@enderror</div>
+                                    </details>
+                                </div></div>
                             <div class="ss-row"><div class="lb"><b>{{ __('Scan mode') }}</b><small>{{ __('Automatic fills the next slot: 1st in, 1st out, 2nd in, 2nd out.') }}</small></div>
                                 <div class="ss-inp"><div class="ss-seg" role="radiogroup" aria-label="{{ __('Scan mode') }}">
                                     @foreach([SystemSetting::KIOSK_AUTO => 'Automatic', SystemSetting::KIOSK_BUTTONS => 'Worker picks'] as $val => $label)
@@ -610,6 +695,14 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                             @endif
                             <a class="kn-go" href="{{ route('devices.index') }}#dvConsole">{!! $svg('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>', '2') !!}
                                 <span><b>{{ __('Watch the kiosks live') }}</b><small>{{ __('Their screens, where they are on the map, and every scan — on Device Monitoring.') }}</small></span></a>
+                            <div class="kn-rules">
+                                <h5>{{ __('How a kiosk decides') }}</h5>
+                                <ol>
+                                    <li><span><b>{{ __('The site is set here') }}</b>{{ __('The kiosk shows the site chosen under Kiosk site. It has no site buttons of its own.') }}</span></li>
+                                    <li><span><b>{{ __("Only that site's workers") }}</b>{{ __('A worker assigned to another site, or to none, is refused by name.') }}</span></li>
+                                    <li><span><b>{{ __("Only inside the site's radius") }}</b>{{ __('Its current GPS position counts. With no signal, its last known position does — a kiosk carried away without a fix is refused until the GPS finds it at the new site.') }}</span></li>
+                                </ol>
+                            </div>
                         </aside>
                     </div>
                 </section>
@@ -649,6 +742,12 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
             </form>
 
             <form method="POST" action="{{ route('system-settings.sign-out-all') }}" id="ssSignOut" hidden>@csrf</form>
+            <form method="POST" action="{{ route('system-settings.kiosk.store') }}" id="ksAddForm" hidden>@csrf</form>
+            @foreach($kiosks as $k)
+                <form method="POST" action="{{ route('system-settings.kiosk.destroy', $k['id']) }}" id="ksDel{{ $k['id'] }}" hidden
+                      data-confirm="{{ __('This removes :name. Its attendance records are kept.', ['name' => $k['name']]) }}"
+                      data-confirm-title="{{ __('Remove kiosk?') }}" data-confirm-label="{{ __('Remove') }}" data-confirm-tone="danger">@csrf @method('DELETE')</form>
+            @endforeach
 
             {{-- ── AUDIT LOGS ──────────────────────────────────────────────── --}}
             <section class="ss-sec" data-sec="audit" @if($section !== 'audit') hidden @endif>
@@ -972,6 +1071,58 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
     form.addEventListener('change', all);
     form.addEventListener('reset', () => setTimeout(all, 0));
     all();
+})();
+
+// ── Kiosk site ───────────────────────────────────────────────────────────────
+// A tap moves the kiosk to that site at once (not through the save bar). The
+// kiosk reads it on its next settings question, a few seconds later.
+(function () {
+    const list = document.querySelector('.ks-list');
+    if (!list) return;
+    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    function geo(k) {
+        const m = k.map || {};
+        if (!k.site_id) return ['warn', 'No site yet'];
+        if (!m.site) return ['warn', 'No location on Sites'];
+        if (m.lat === null) return ['warn', 'No GPS yet'];
+        return m.inside ? ['in', 'Inside · ' + m.distance + ' m'] : ['out', 'Outside · ' + m.distance + ' m'];
+    }
+
+    list.addEventListener('click', async e => {
+        const btn = e.target.closest('.ks-site');
+        if (!btn || btn.classList.contains('on')) return;
+        const card = btn.closest('[data-ks]');
+        const note = card.querySelector('[data-ks-note]');
+        const buttons = card.querySelectorAll('.ks-site');
+        buttons.forEach(b => b.disabled = true);
+        card.classList.add('moving');
+        note.className = 'ks-note';
+        note.textContent = 'Moving to ' + btn.querySelector('b').textContent + '…';
+        try {
+            const res = await fetch(list.dataset.ksUrl + '/' + card.dataset.ks + '/site', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token },
+                credentials: 'same-origin',
+                body: JSON.stringify({ site_id: Number(btn.dataset.site) }),
+            });
+            if (!res.ok) throw new Error(res.status);
+            const k = (await res.json()).kiosk;
+            buttons.forEach(b => { const on = Number(b.dataset.site) === k.site_id; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); });
+            const [cls, text] = geo(k);
+            const g = card.querySelector('[data-ks-geo]');
+            g.className = 'ks-geo ' + cls; g.textContent = text;
+            note.className = 'ks-note ok';
+            note.textContent = k.name + ' is now at ' + k.site + '. The kiosk switches within a few seconds.'
+                + (cls === 'out' ? ' Until its GPS is inside ' + k.site + "'s radius, it will refuse scans." : '');
+        } catch (err) {
+            note.className = 'ks-note bad';
+            note.textContent = 'Could not change the site — check the connection and try again.';
+        } finally {
+            buttons.forEach(b => b.disabled = false);
+            card.classList.remove('moving');
+        }
+    });
 })();
 </script>
 @endpush

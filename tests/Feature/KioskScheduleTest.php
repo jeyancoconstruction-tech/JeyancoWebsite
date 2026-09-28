@@ -426,14 +426,16 @@ class KioskScheduleTest extends TestCase
         $this->assertSame(1, Site::where('name', 'Site B')->count());
     }
 
-    public function test_the_kiosk_reports_the_site_it_was_set_to(): void
+    /** 2026-09-28: the office sets the site; a pick sent from the kiosk changes nothing. */
+    public function test_a_site_picked_on_the_kiosk_no_longer_moves_it(): void
     {
-        $site = Site::create(['name' => 'Site Zeta']);
+        $before = Kiosk::where('code', 'SITE_A')->value('site_id');
+        Site::create(['name' => 'Site Zeta']);
 
         $this->postJson('/api/kiosk/active-site', ['kiosk_code' => 'SITE_A', 'site' => 'site-zeta'])
              ->assertOk()
-             ->assertJson(['success' => true, 'site' => ['id' => $site->id, 'slug' => 'site-zeta']]);
+             ->assertJson(['success' => true, 'managed' => 'web', 'site' => ['id' => $before]]);
 
-        $this->assertSame($site->id, Kiosk::where('code', 'SITE_A')->value('site_id'));
+        $this->assertSame($before, Kiosk::where('code', 'SITE_A')->value('site_id'));
     }
 }

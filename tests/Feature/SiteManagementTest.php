@@ -190,6 +190,7 @@ class SiteManagementTest extends TestCase
 
         Kiosk::create(['name' => 'Test Kiosk', 'code' => 'TEST_GEO', 'site_id' => $site->id]);
         $emp = Employee::create([
+            'site_id'         => $site->id,
             'name'            => 'Juan Dela Cruz',
             'status'          => Employee::STATUS_ACTIVE,
             'employment_type' => Employee::EMPLOYMENT_DAILY,
@@ -219,7 +220,7 @@ class SiteManagementTest extends TestCase
         $answer = $this->clockInFromTheNorth($this->site(['geofence_radius' => 100]));
 
         $this->assertSame('outside_location', $answer['code'] ?? null);
-        $this->assertStringContainsString('limit 100m', $answer['message']);
+        $this->assertStringContainsString('limit 100 m', $answer['message']);
     }
 
     public function test_the_kiosk_site_list_carries_each_sites_radius(): void

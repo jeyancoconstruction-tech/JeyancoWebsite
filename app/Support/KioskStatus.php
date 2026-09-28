@@ -95,6 +95,7 @@ class KioskStatus
             'name'    => $kiosk->name,
             'code'    => $kiosk->code,
             'site'    => $site?->name,
+            'site_id' => $site?->id,
             'state'   => $status['state'],
             'seen'    => $ago($status['last_seen']),
             'seen_at' => $status['last_seen']?->format('M j · g:i A'),

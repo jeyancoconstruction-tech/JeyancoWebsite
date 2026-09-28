@@ -630,3 +630,7 @@ body { display: flex; flex-direction: column; }
    no lunch ("12") column between AM and PM on the who-is-on-site board. */
 .scan-panel > .day-strip { display: none; }
 .monitor-table th.c-gap, .monitor-table td.c-gap { display: none; }
+
+/* v10: the site is set by the office; the kiosk shows it, locked. */
+.site-opt.site-fixed { cursor: default; pointer-events: none; }
+.site-bar-current .site-sync i.fa-lock { font-size: .72rem; }

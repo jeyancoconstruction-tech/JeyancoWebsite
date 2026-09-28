@@ -96,6 +96,7 @@ class NightDifferentialWindowTest extends TestCase
         ])->save();
 
         $emp = Employee::create([
+            'site_id' => \App\Models\Kiosk::resolve()?->site_id,   // the kiosk records only its own site's workers
             'name' => 'Late Finisher', 'status' => Employee::STATUS_ACTIVE,
             'employment_type' => Employee::EMPLOYMENT_DAILY,
             'labor_type_id' => LaborType::create(['name' => 'Mason', 'daily_rate' => 800, 'ot_rate' => 125])->id,

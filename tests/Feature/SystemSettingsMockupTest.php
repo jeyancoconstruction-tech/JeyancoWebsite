@@ -285,7 +285,7 @@ class SystemSettingsMockupTest extends TestCase
     public function test_missing_scan_alerts_follow_their_switch(): void
     {
         $admin  = $this->admin();
-        $worker = \App\Models\Employee::create(['name' => 'No Time Out', 'status' => 'active', 'fingerprint_id' => '7', 'rate_per_hour' => 100]);
+        $worker = \App\Models\Employee::create(['site_id' => \App\Models\Kiosk::resolve()?->site_id, 'name' => 'No Time Out', 'status' => 'active', 'fingerprint_id' => '7', 'rate_per_hour' => 100]);
         $day    = now()->subDay()->toDateString();
         \App\Models\Attendance::create(['employee_id' => $worker->id, 'date' => $day, 'time_in' => $day . ' 08:00:00']);
         $alerts = fn () => $admin->notifications()->where('type', AttendanceAlert::class)->where('data->subtype', 'invalid_clock_in')->count();

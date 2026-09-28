@@ -48,6 +48,7 @@ class AttendanceBreakReviewTest extends TestCase
     private function worker(string $name, bool $night = false): Employee
     {
         return Employee::create([
+            'site_id' => \App\Models\Kiosk::resolve()?->site_id,   // the kiosk records only its own site's workers
             'name'            => $name,
             'status'          => Employee::STATUS_ACTIVE,
             'employment_type' => Employee::EMPLOYMENT_DAILY,

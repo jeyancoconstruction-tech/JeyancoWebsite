@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Employee;
 use App\Models\Kiosk;
 use App\Models\Shift;
+use App\Models\Site;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Support\KioskFeed;
@@ -117,7 +118,76 @@ class SystemSettingsController extends Controller
             'audit'   => app(AuditLogController::class)->feed($request),
             // Each kiosk and whether it is on, for the rail and the monitor.
             'kiosks'  => Kiosk::with('site')->orderBy('name')->get()->map(fn (Kiosk $k) => KioskStatus::line($k))->values(),
+            // Where a kiosk can be set: the sites on the Sites page, as named there.
+            'kioskSites' => Site::orderBy('name')->get(['id', 'name', 'location']),
         ]);
+    }
+
+    /**
+     * Kiosks → Kiosk site: where a kiosk stands. The office sets it here —
+     * the kiosk has no site buttons of its own since 2026-09-28 — and the
+     * kiosk follows within one settings question (a few seconds). Takes
+     * effect at once, outside the page's save bar: a kiosk being carried to
+     * the next site should not wait on anything else being saved.
+     */
+    public function kioskSite(Request $request, Kiosk $kiosk)
+    {
+        $data = $request->validate(['site_id' => 'required|exists:sites,id']);
+        $site = Site::findOrFail($data['site_id']);
+        $was  = $kiosk->site;
+
+        if (! $was || $was->id !== $site->id) {
+            $kiosk->forceFill(['site_id' => $site->id])->save();
+            AuditLog::record('kiosk', 'updated',
+                "Kiosk {$kiosk->code} set to {$site->name}" . ($was ? " (was {$was->name})" : ''), $kiosk);
+            \App\Support\Live::bump('kiosk', 'devices');
+        }
+
+        $line = KioskStatus::line($kiosk->fresh('site'));
+
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'kiosk' => $line])
+            : redirect()->route('system-settings.kiosk')->with('success', "{$kiosk->name} is now at {$site->name}.");
+    }
+
+    /**
+     * Kiosks → Remove: a device the company no longer has. Its attendance
+     * stays — the records keep their site and only lose the kiosk they came
+     * from. The last kiosk cannot be removed: the scans need one to land on.
+     */
+    public function destroyKiosk(Kiosk $kiosk)
+    {
+        if (Kiosk::count() <= 1) {
+            return redirect()->route('system-settings.kiosk')->with('error', 'This is the only kiosk, so it stays.');
+        }
+
+        $name = $kiosk->name;
+        AuditLog::record('kiosk', 'deleted', "Kiosk {$kiosk->code} ({$name}) removed", $kiosk);
+        Cache::forget('kiosk_location_' . $kiosk->id);
+        Cache::forget('kiosk_location_' . $kiosk->code);
+        $kiosk->delete();
+        \App\Support\Live::bump('kiosk', 'devices');
+
+        return redirect()->route('system-settings.kiosk')->with('success', "{$name} removed.");
+    }
+
+    /** Kiosks → Add kiosk: a second device, set to a site from the start. */
+    public function storeKiosk(Request $request)
+    {
+        $data = $request->validate([
+            'name'    => ['required', 'string', 'max:60'],
+            'code'    => ['required', 'string', 'max:40', 'alpha_dash', 'unique:kiosks,code'],
+            'site_id' => ['required', 'exists:sites,id'],
+        ], [
+            'code.unique'     => 'Another kiosk already uses this code.',
+            'code.alpha_dash' => 'Use letters, numbers, dashes and underscores only — the same code as KIOSK_CODE on the Pi.',
+        ]);
+
+        $kiosk = Kiosk::create($data + ['is_active' => true]);
+        AuditLog::record('kiosk', 'created', "Kiosk {$kiosk->code} added at {$kiosk->site?->name}", $kiosk);
+        \App\Support\Live::bump('kiosk', 'devices');
+
+        return redirect()->route('system-settings.kiosk')->with('success', "{$kiosk->name} added. Set KIOSK_CODE = \"{$kiosk->code}\" on its Pi.");
     }
 
     /**

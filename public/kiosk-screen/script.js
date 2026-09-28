@@ -30,6 +30,8 @@ const I18N = {
         'site.pick': 'Tap the site where you are working',
         'site.saved': 'Saved to web', 'site.saving': 'Saving…', 'site.notsaved': 'Not saved to web',
         'site.retry': 'The web does not know about "{site}" yet. Saved on the kiosk — retrying every 30 s.',
+        'site.office': 'Set by the office', 'site.waiting': 'Waiting for the office to set this kiosk\'s site',
+        'att.site.t': 'NOT ASSIGNED TO THIS SITE', 'att.nosite.t': 'NO SITE SET FOR THIS KIOSK',
         'tab.attendance': 'ATTENDANCE', 'tab.enroll': 'ENROLL FINGERPRINT', 'tab.payroll': 'MY PAYROLL', 'tab.summary': 'SUMMARY',
 
         'win.fullscreen': 'Full screen', 'win.minimize': 'Hold to minimize',
@@ -174,6 +176,8 @@ const I18N = {
         'site.pick': 'Pindutin ang site na pinagtatrabahuhan mo',
         'site.saved': 'Naka-save sa web', 'site.saving': 'Sine-save…', 'site.notsaved': 'Hindi na-save sa web',
         'site.retry': 'Hindi pa alam ng web ang "{site}". Naka-save sa kiosk — susubukan ulit kada 30 seg.',
+        'site.office': 'Itinakda ng opisina', 'site.waiting': 'Hinihintay ang opisina na itakda ang site ng kiosk',
+        'att.site.t': 'HINDI TAGA-SITE NA ITO', 'att.nosite.t': 'WALANG SITE ANG KIOSK',
         'tab.attendance': 'ATTENDANCE', 'tab.enroll': 'PAGKUHA NG DALIRI', 'tab.payroll': 'SAHOD KO', 'tab.summary': 'BUOD',
 
         'win.fullscreen': 'Buong screen', 'win.minimize': 'Hawakan para itago',
@@ -458,7 +462,11 @@ async function loadSites(fresh) {
     // v9: a site renamed on the web gets a new slug. Found by its id, the
     // kiosk stays on it instead of jumping to the first site in the list.
     const byId   = activeIdFromPi ? SITES.find(s => String(s.id) === activeIdFromPi) : null;
-    const wanted = [activeFromPi, remembered].find(slug => slug && siteBySlug(slug))
+    // v10: the site the office set wins. The Pi's own copy only fills in
+    // until the first settings answer arrives.
+    const office = ASSIGNED_SITE ? SITES.find(s => String(s.id) === String(ASSIGNED_SITE.id)) : null;
+    const wanted = (office ? office.slug : null)
+                || [activeFromPi, remembered].find(slug => slug && siteBySlug(slug))
                 || (byId ? byId.slug : null);
 
     // Only push the site again when it is not already what the kiosk holds;
@@ -468,38 +476,42 @@ async function loadSites(fresh) {
     else renderSiteSwitcher();
 }
 
+// v10: the site is set by the office (System Settings → Kiosks → Kiosk
+// site), not on the kiosk. The bar shows it, locked; there is nothing to tap.
 function renderSiteSwitcher() {
     const wrap = document.getElementById('site-switch-btns');
     if (!wrap) return;
 
-    if (!SITES.length) {
-        wrap.innerHTML = `<span class="site-loading">${escapeHtml(t('site.none'))}</span>`;
-        return;
-    }
+    // The web answered "no site yet": say so rather than show an old one.
+    const site = ASSIGNED_SITE === null ? null : siteBySlug(ACTIVE_SITE);
 
-    wrap.innerHTML = SITES.map(s => `
-        <button type="button" class="site-opt${s.slug === ACTIVE_SITE ? ' active' : ''}"
-                data-site="${escapeHtml(s.slug)}" title="${escapeHtml(s.location || s.name)}">
-            <i class="fas fa-location-dot"></i>${escapeHtml(s.name)}
-        </button>`).join('');
+    wrap.innerHTML = site
+        ? `<span class="site-opt active site-fixed" title="${escapeHtml(site.location || site.name)}"><i class="fas fa-location-dot"></i>${escapeHtml(site.name)}</span>`
+        : `<span class="site-loading">${escapeHtml(t(SITES.length ? 'site.waiting' : 'site.none'))}</span>`;
 
-    wrap.querySelectorAll('.site-opt').forEach(btn => {
-        btn.addEventListener('click', () => setActiveSite(btn.dataset.site));
-    });
-
-    const cur  = document.getElementById('site-bar-current');
-    const site = siteBySlug(ACTIVE_SITE);
+    const cur = document.getElementById('site-bar-current');
     if (!cur) return;
-
-    const chip = SITE_SYNC === 'ok'     ? `<span class="site-sync ok"><i class="fas fa-cloud-arrow-up"></i>${escapeHtml(t('site.saved'))}</span>`
-               : SITE_SYNC === 'saving' ? `<span class="site-sync saving"><i class="fas fa-rotate"></i>${escapeHtml(t('site.saving'))}</span>`
-               : SITE_SYNC === 'bad'    ? `<span class="site-sync bad"><i class="fas fa-triangle-exclamation"></i>${escapeHtml(t('site.notsaved'))}</span>`
-               : '';
-
     cur.innerHTML = site
-        ? `<i class="fas fa-circle-check"></i> ${escapeHtml(site.name)}`
-          + (site.location ? `<small>${escapeHtml(site.location)}</small>` : '') + chip
-        : `<span class="site-pick-hint">${escapeHtml(t('site.pick'))}</span>`;
+        ? `<span class="site-sync ok"><i class="fas fa-lock"></i>${escapeHtml(t('site.office'))}</span>`
+          + (site.location ? `<small>${escapeHtml(site.location)}</small>` : '')
+        : '';
+}
+
+// v10: the site the office set, from each settings answer (every 5 s).
+// undefined = not heard yet; null = the office has not set one.
+let ASSIGNED_SITE;
+
+function applyAssignedSite(site) {
+    const was = ASSIGNED_SITE === undefined ? undefined : (ASSIGNED_SITE ? ASSIGNED_SITE.id : null);
+    ASSIGNED_SITE = site || null;
+    const now = site ? site.id : null;
+
+    if (!site) { if (was !== null) renderSiteSwitcher(); return; }
+
+    const local = SITES.find(s => String(s.id) === String(site.id));
+    if (!local) { refreshSites(true); return; }               // a site this kiosk has not listed yet
+    if (local.slug !== ACTIVE_SITE) setActiveSite(local.slug); // moved by the office
+    else if (was !== now) renderSiteSwitcher();
 }
 
 // v7: switching sites is quick now. The button lights up at once, the lists
@@ -545,7 +557,7 @@ async function setActiveSite(slug) {
     try { localStorage.setItem('jeyanco_active_site', slug); } catch (e) { /* ignore */ }
 
     applySiteLabels(site);
-    SITE_SYNC = 'saving';
+    SITE_SYNC = 'ok';
     renderSiteSwitcher();
 
     // The old site's names must not stay on screen while the new ones load.
@@ -562,9 +574,7 @@ async function setActiveSite(slug) {
     window.dispatchEvent(new CustomEvent('sitechange', { detail: { site: slug, id: site.id } }));
     loadRoster();
     loadKioskSettings();
-
-    // 3. The web, in the background — so the map knows before anyone scans.
-    pushSiteToWeb();
+    // v10: nothing is sent to the web — the site came from the web.
 }
 
 async function pushSiteToWeb() {
@@ -681,6 +691,9 @@ async function loadKioskSettings() {
 
         // v9: a site added, renamed or removed on the web shows here within
         // seconds — not on the next five-minute refresh.
+        // v10: the site the office set for this kiosk.
+        if (data && Object.prototype.hasOwnProperty.call(data, 'site')) applyAssignedSite(data.site);
+
         if (data && data.sites_v) {
             if (SITES_V !== null && data.sites_v !== SITES_V) refreshSites(true);
             SITES_V = data.sites_v;

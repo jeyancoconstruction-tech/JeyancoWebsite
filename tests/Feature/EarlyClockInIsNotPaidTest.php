@@ -52,6 +52,7 @@ class EarlyClockInIsNotPaidTest extends TestCase
     private function worker(bool $night): Employee
     {
         return Employee::create([
+            'site_id' => \App\Models\Kiosk::resolve()?->site_id,   // the kiosk records only its own site's workers
             'name' => 'Early Bird', 'status' => Employee::STATUS_ACTIVE,
             'employment_type' => Employee::EMPLOYMENT_DAILY,
             'labor_type_id' => LaborType::create(['name' => 'Mason', 'daily_rate' => 800, 'ot_rate' => 125])->id,

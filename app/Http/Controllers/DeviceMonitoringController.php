@@ -176,7 +176,7 @@ class DeviceMonitoringController extends Controller
                 'active'     => $kiosk->site ? ['slug' => \Illuminate\Support\Str::slug($kiosk->site->name), 'id' => $kiosk->site->id, 'name' => $kiosk->site->name] : null,
                 'kiosk_code' => $kiosk->code,
             ]),
-            'settings'         => response()->json($kiosks->settingsAnswer((string) $request->query('v'))),
+            'settings'         => response()->json($kiosks->settingsAnswer((string) $request->query('v'), $kiosk)),
             'today-attendance' => $kiosks->todayAttendance($as),
             'roster'           => $kiosks->roster($as),
             default            => abort(404),

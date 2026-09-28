@@ -30,6 +30,7 @@ class WholeMinutesTest extends TestCase
     private function worker(bool $night = false): Employee
     {
         return Employee::create([
+            'site_id' => \App\Models\Kiosk::resolve()?->site_id,   // the kiosk records only its own site's workers
             'name'            => $night ? 'Night Crew' : 'Day Crew',
             'status'          => Employee::STATUS_ACTIVE,
             'employment_type' => Employee::EMPLOYMENT_DAILY,

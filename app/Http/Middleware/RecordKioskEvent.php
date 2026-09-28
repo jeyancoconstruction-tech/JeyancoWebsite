@@ -52,9 +52,16 @@ class RecordKioskEvent
         // Identifying a finger (scan-attendance) records nothing by itself:
         // the kiosk then records it with the button pressed, or turns it away.
         if ($request->is('api/kiosk/scan-attendance')) {
-            KioskFeed::push($kiosk, ! empty($data['not_found'])
-                ? ['kind' => 'unknown', 'name' => null, 'message' => 'Fingerprint not recognised']
-                : ['kind' => 'scan', 'name' => $name, 'position' => $position]);
+            KioskFeed::push($kiosk, match (true) {
+                ! empty($data['not_found']) => ['kind' => 'unknown', 'name' => null, 'message' => 'Fingerprint not recognised'],
+                // Turned away at the scan itself — another site's worker, or
+                // a kiosk with no site — so the monitor shows it as refused.
+                empty($data['success']) && ! empty($data['code']) => [
+                    'kind' => 'rej', 'name' => $name, 'position' => $position,
+                    'code' => $data['code'], 'message' => $data['message'] ?? null,
+                ],
+                default => ['kind' => 'scan', 'name' => $name, 'position' => $position],
+            });
 
             return;
         }

@@ -38,11 +38,12 @@ class KioskController extends Controller
     /**
      * Where the kiosk is standing right now.
      *
-     * One device is carried between sites, so the switcher on the kiosk is the
-     * authority — not the row in the database, which only remembers where the
-     * device was last time. An explicit site_id therefore wins over the kiosk's
-     * stored site, and is written back so the dashboard, the geofence and any
-     * later request that omits site_id all agree with what the operator picked.
+     * Since 2026-09-28 the office sets it: System Settings → Kiosks → Kiosk
+     * site. The kiosk has no site buttons any more, and a site_id it sends is
+     * ignored — the kiosk's own row is the authority, so a device carried to
+     * Site B records at Site B only once the office says so, and the geofence
+     * measures against that site. Only a request from an unknown device falls
+     * back to the site it names.
      */
     /**
      * System Settings → Kiosks → Unknown fingerprints: admins hear about a
@@ -67,18 +68,48 @@ class KioskController extends Controller
 
     private function activeSite(Request $request, ?Kiosk $kiosk): ?Site
     {
-        if ($request->filled('site_id')) {
-            $site = Site::find($request->site_id);
-            if ($site) {
-                if ($kiosk && $kiosk->site_id !== $site->id) {
-                    $kiosk->forceFill(['site_id' => $site->id])->save();
-                }
-                $kiosk?->setRelation('site', $site);   // keep the geofence in step
-                return $site;
-            }
+        if ($kiosk) {
+            return $kiosk->site;
         }
 
-        return $kiosk?->site;
+        return $request->filled('site_id') ? Site::find($request->site_id) : null;
+    }
+
+    /**
+     * A worker records attendance only at the site they are assigned to.
+     *
+     * The kiosk stands at one site at a time (set on the web), and the
+     * office decides who works where. A worker from Site A scanning at the
+     * Site B kiosk is refused, and so is anyone at a kiosk no site is set for.
+     * The worker is named in the answer, so the kiosk can say who was refused.
+     */
+    private function siteGate(Employee $employee, ?Site $site): ?array
+    {
+        if (! $site) {
+            return [
+                'success'  => false,
+                'code'     => 'no_site',
+                'message'  => 'This kiosk has no site yet. The office sets it in System Settings → Kiosks.',
+                'employee' => $this->kioskEmployeePayload($employee),
+            ];
+        }
+
+        if ((int) $employee->site_id !== (int) $site->id) {
+            $home = $employee->site?->name;
+
+            return [
+                'success'  => false,
+                'code'     => 'wrong_site',
+                'message'  => $home
+                    ? "{$employee->name} is assigned to {$home}, not {$site->name}. Attendance is recorded only at the assigned site."
+                    : "{$employee->name} is not assigned to {$site->name}. Ask the office to set their site.",
+                'site'     => $site->name,
+                'home'     => $home,
+                'employee' => $this->kioskEmployeePayload($employee),
+            ];
+        }
+
+        return null;
     }
 
     /**
@@ -132,39 +163,19 @@ class KioskController extends Controller
         ]);
 
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
-        $want  = trim((string) ($request->input('site_id') ?? $request->input('site') ?? ''));
 
-        $site = null;
-        if ($want !== '') {
-            $site = ctype_digit($want) ? Site::find((int) $want) : null;
-            $site ??= Site::all()->first(
-                fn ($s) => \Illuminate\Support\Str::slug($s->name) === \Illuminate\Support\Str::slug($want)
-            );
+        if (! $kiosk) {
+            return response()->json(['success' => false, 'message' => 'Unknown kiosk.'], 404);
         }
 
-        if (! $kiosk || ! $site) {
-            return response()->json([
-                'success' => false,
-                'message' => $kiosk ? "Unknown site '{$want}'." : 'Unknown kiosk.',
-            ], 404);
-        }
-
-        $previous = $kiosk->site;
-        $kiosk->forceFill(['site_id' => $site->id])->save();
-
-        if (! $previous || $previous->id !== $site->id) {
-            AuditLog::record('kiosk', 'updated',
-                "Kiosk {$kiosk->code} set to {$site->name}" . ($previous ? " (was {$previous->name})" : ''), $kiosk);
-        }
-
+        // 2026-09-28: the office sets the site (System Settings → Kiosks), so
+        // a pick sent from the device changes nothing. An older kiosk that
+        // still sends one is answered with the site it is actually set to.
         return response()->json([
             'success' => true,
+            'managed' => 'web',
             'kiosk'   => $kiosk->code,
-            'site'    => [
-                'id'   => $site->id,
-                'name' => $site->name,
-                'slug' => \Illuminate\Support\Str::slug($site->name),
-            ],
+            'site'    => $this->assignedSite($kiosk),
         ]);
     }
 
@@ -184,25 +195,27 @@ class KioskController extends Controller
             return null; // no designated location assigned yet → ungated
         }
 
-        // Current position: prefer the coordinates sent with the scan, else the
-        // latest cached heartbeat (must be a real, recent fix).
+        // Current position: the coordinates sent with the scan, else the
+        // kiosk's latest position — its current fix, or when it has none
+        // right now (indoors, under a roof), the last one it had. The last
+        // position stays until a new fix replaces it, so a kiosk carried from
+        // Site A to Site B with no signal still reads as Site A, and is
+        // refused at Site B until the GPS finds it there.
         $curLat = $request->input('lat');
         $curLng = $request->input('lng');
+        $last   = false;
 
         if ($curLat === null || $curLng === null) {
-            $cacheKey = 'kiosk_location_' . ($request->kiosk_id ?: $kiosk->code);
-            $fix = Cache::get($cacheKey);
-            $maxAge = (int) (config('kiosk.location_max_age') ?: config('kiosk.offline_after'));
+            $fix = \App\Support\KioskStatus::of($kiosk)['fix']
+                ?? ($request->kiosk_id ? Cache::get('kiosk_location_' . $request->kiosk_id) : null);
 
-            $fresh = $fix
-                && ($fix['status'] ?? null) === 'fix'
-                && ($fix['lat'] ?? null) !== null
-                && isset($fix['last_seen'])
-                && Carbon::parse($fix['last_seen'])->diffInSeconds(now()) <= $maxAge;
-
-            if ($fresh) {
+            if ($fix && ($fix['lat'] ?? null) !== null && ($fix['lng'] ?? null) !== null) {
                 $curLat = $fix['lat'];
                 $curLng = $fix['lng'];
+                $maxAge = (int) (config('kiosk.location_max_age') ?: config('kiosk.offline_after'));
+                $last   = ($fix['status'] ?? null) !== 'fix'
+                    || ! isset($fix['last_seen'])
+                    || Carbon::parse($fix['last_seen'])->diffInSeconds(now()) > $maxAge;
             }
         }
 
@@ -210,7 +223,7 @@ class KioskController extends Controller
             return [
                 'success' => false,
                 'code'    => 'no_gps',
-                'message' => 'The kiosk is off or has no GPS fix, so attendance cannot be accepted. Turn location on and try again.',
+                'message' => 'The kiosk has never reported its location, so attendance cannot be accepted. Turn the GPS on and try again.',
             ];
         }
 
@@ -221,9 +234,11 @@ class KioskController extends Controller
             return [
                 'success'    => false,
                 'code'       => 'outside_location',
-                'message'    => 'Outside the authorised location (' . number_format($distance)
-                                . 'm, limit ' . $radius . 'm), so attendance cannot be accepted.',
+                'message'    => ($last ? 'The kiosk\'s last known position is ' : 'The kiosk is ')
+                                . number_format($distance) . ' m from ' . $site->name
+                                . ' (limit ' . $radius . ' m), so attendance cannot be accepted.',
                 'distance_m' => round($distance, 1),
+                'last_known' => $last,
             ];
         }
 
@@ -482,7 +497,22 @@ class KioskController extends Controller
     {
         $this->noteSettingsRead($request);
 
-        return response()->json($this->settingsAnswer((string) $request->query('v')));
+        $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
+
+        return response()->json($this->settingsAnswer((string) $request->query('v'), $kiosk));
+    }
+
+    /** The site the office set this kiosk to, as the kiosk shows it. */
+    public function assignedSite(?Kiosk $kiosk): ?array
+    {
+        $site = $kiosk?->site;
+
+        return $site ? [
+            'id'       => $site->id,
+            'name'     => $site->name,
+            'slug'     => \Illuminate\Support\Str::slug($site->name),
+            'location' => $site->location,
+        ] : null;
     }
 
     /**
@@ -498,7 +528,7 @@ class KioskController extends Controller
         return substr(sha1($sites->map(fn (Site $s) => [$s->id, $s->name, $s->location, $s->latitude, $s->longitude, $s->geofenceRadius()])->toJson()), 0, 12);
     }
 
-    public function settingsAnswer(string $v = ''): array
+    public function settingsAnswer(string $v = '', ?Kiosk $kiosk = null): array
     {
         $system = SystemSetting::current();
 
@@ -532,7 +562,11 @@ class KioskController extends Controller
                   // A fingerprint of the site list. A site added, renamed or
                   // moved on the web changes it, and the kiosk re-reads its
                   // sites at once instead of on its five-minute refresh.
-                  'sites_v' => $this->sitesVersion()];
+                  'sites_v' => $this->sitesVersion(),
+                  // The site the office set this kiosk to (System Settings →
+                  // Kiosks). On every answer, so a switch reaches the kiosk
+                  // within one question.
+                  'site'    => $this->assignedSite($kiosk)];
 
         if ($v === $version) {
             return ['success' => true, 'same' => true, 'v' => $version] + $clock;
@@ -674,6 +708,11 @@ class KioskController extends Controller
         }
 
         $employee = Employee::with('shift')->findOrFail($request->employee_id);
+
+        if ($refused = $this->siteGate($employee, $site)) {
+            return response()->json($refused);
+        }
+
         $now      = Carbon::now()->setTimezone('Asia/Manila');
 
         $type = $request->type;
@@ -1211,6 +1250,10 @@ class KioskController extends Controller
             $employee->forceFill(['kiosk_id' => $kiosk->id])->save();
         }
 
+        if ($refused = $this->siteGate($employee, $site)) {
+            return response()->json($refused);
+        }
+
         // Same rules as /attendance — the shift window, a fresh stretch after a
         // time-out, AUTO-closing a forgotten session — from the one method.
         $now  = Carbon::now()->setTimezone('Asia/Manila');
@@ -1290,6 +1333,12 @@ class KioskController extends Controller
                              . 'Add the worker on the web first, then enrol '
                              . 'their finger at the kiosk.',
             ]);
+        }
+
+        // The worker belongs to another site, or the kiosk has none: refused
+        // before the kiosk offers TIME IN at all.
+        if ($refused = $this->siteGate($employee, $site)) {
+            return response()->json($refused);
         }
 
         if (!$employee->kiosk_id && $kiosk) {

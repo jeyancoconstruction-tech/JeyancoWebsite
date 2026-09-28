@@ -50,6 +50,7 @@ class DashboardWorkdayTest extends TestCase
     private function worker(string $name, bool $night, string $status = Employee::STATUS_ACTIVE): Employee
     {
         return Employee::create([
+            'site_id' => \App\Models\Kiosk::resolve()?->site_id,   // the kiosk records only its own site's workers
             'name'            => $name,
             'status'          => $status,
             'employment_type' => Employee::EMPLOYMENT_DAILY,
