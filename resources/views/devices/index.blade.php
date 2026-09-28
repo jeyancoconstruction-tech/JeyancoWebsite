@@ -225,42 +225,9 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
 
     <x-page-header title="Device Monitoring" />
 
-    {{-- ── A · Kiosk console ─────────────────────────────────────────────
-         Outside #dv-live, so the refresh below never reloads the screen or
-         the map. It keeps itself current from devices.live. --}}
-    @if($devices->isNotEmpty())
-    <section class="sx-card dvc" id="dvConsole" data-url="{{ route('devices.live') }}" data-screen="{{ url('device-monitoring') }}" aria-label="Kiosk console">
-        <header class="dvc-head">
-            <span class="sx-idx">A</span><h2 class="sx-card-title">Kiosk console</h2>
-            <div class="dvc-picks">
-                @foreach($devices as $d)
-                    <button type="button" class="dvc-pick" data-kiosk="{{ $d['kiosk']->id }}"><i class="{{ $d['state'] }}"></i>{{ $d['kiosk']->name }} <small>{{ $d['kiosk']->site->name ?? 'Unassigned' }}</small></button>
-                @endforeach
-            </div>
-            <span class="sp"></span>
-            <span class="dvc-live" data-checked>Connecting…</span>
-            <button type="button" class="sx-btn sm" data-full><i data-lucide="maximize"></i> Full screen</button>
-            <a class="sx-btn sm" href="#" target="_blank" rel="noopener" data-open><i data-lucide="external-link"></i> Open screen</a>
-        </header>
-        <div class="dvc-body">
-            <div class="dvc-screen">
-                <div class="km-frame"><div class="km-glass">
-                    <iframe class="km-screen" data-frame title="Kiosk screen" allow="fullscreen"></iframe>
-                    <div class="km-off" data-off hidden></div>
-                </div></div>
-                <div class="dvc-cap" data-cap></div>
-            </div>
-            <aside class="dvc-side">
-                <div class="dvc-map"><div id="dvMap" aria-label="Where the kiosk is"></div></div>
-                <div class="dvc-mapnote" data-mapnote>Reading the kiosk's position…</div>
-                <div class="dvc-facts" data-facts></div>
-                <div class="dvc-log"><header><span>Scans today at this kiosk</span><span data-count></span></header><ol data-log></ol></div>
-            </aside>
-        </div>
-    </section>
-    @endif
-
-    <div id="dv-live" class="dv-live">
+    {{-- ── Summary: the status line and the fleet strip, above the console.
+         Refreshed with #dv-live. --}}
+    <div id="dv-top">
         {{-- ── Status line ─────────────────────────────────────────────── --}}
         @if($summary['total'] === 0)
             <div class="sx-status info">
@@ -315,7 +282,44 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
                 </div>
             </div>
         </div>
+    </div>
 
+    {{-- ── A · Kiosk console ─────────────────────────────────────────────
+         Outside #dv-live, so the refresh below never reloads the screen or
+         the map. It keeps itself current from devices.live. --}}
+    @if($devices->isNotEmpty())
+    <section class="sx-card dvc" id="dvConsole" data-url="{{ route('devices.live') }}" data-screen="{{ url('device-monitoring') }}" aria-label="Kiosk console">
+        <header class="dvc-head">
+            <span class="sx-idx">A</span><h2 class="sx-card-title">Kiosk console</h2>
+            <div class="dvc-picks">
+                @foreach($devices as $d)
+                    <button type="button" class="dvc-pick" data-kiosk="{{ $d['kiosk']->id }}"><i class="{{ $d['state'] }}"></i>{{ $d['kiosk']->name }} <small>{{ $d['kiosk']->site->name ?? 'Unassigned' }}</small></button>
+                @endforeach
+            </div>
+            <span class="sp"></span>
+            <span class="dvc-live" data-checked>Connecting…</span>
+            <button type="button" class="sx-btn sm" data-full><i data-lucide="maximize"></i> Full screen</button>
+            <a class="sx-btn sm" href="#" target="_blank" rel="noopener" data-open><i data-lucide="external-link"></i> Open screen</a>
+        </header>
+        <div class="dvc-body">
+            <div class="dvc-screen">
+                <div class="km-frame"><div class="km-glass">
+                    <iframe class="km-screen" data-frame title="Kiosk screen" allow="fullscreen"></iframe>
+                    <div class="km-off" data-off hidden></div>
+                </div></div>
+                <div class="dvc-cap" data-cap></div>
+            </div>
+            <aside class="dvc-side">
+                <div class="dvc-map"><div id="dvMap" aria-label="Where the kiosk is"></div></div>
+                <div class="dvc-mapnote" data-mapnote>Reading the kiosk's position…</div>
+                <div class="dvc-facts" data-facts></div>
+                <div class="dvc-log"><header><span>Scans today at this kiosk</span><span data-count></span></header><ol data-log></ol></div>
+            </aside>
+        </div>
+    </section>
+    @endif
+
+    <div id="dv-live" class="dv-live">
         {{-- ── B · Kiosks ──────────────────────────────────────────────── --}}
         <div class="dv-listhead">
             <span class="sx-idx">B</span><h2 class="sx-card-title">Kiosks</h2><span class="sx-card-note">{{ $summary['total'] }} registered · the ones that need attention come first</span>
@@ -727,6 +731,9 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
             const fresh = doc.getElementById('dv-live');
             if (!fresh) return;
             live().innerHTML = fresh.innerHTML;
+            // The summary above the console refreshes with it.
+            const top = document.getElementById('dv-top'), freshTop = doc.getElementById('dv-top');
+            if (top && freshTop) top.innerHTML = freshTop.innerHTML;
             applyView(view);
             if (window.lucide) lucide.createIcons();
         } catch (e) { /* offline for a moment: the next tick tries again */ }
