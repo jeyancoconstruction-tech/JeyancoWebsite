@@ -625,3 +625,8 @@ body { display: flex; flex-direction: column; }
 
 /* v8: no shift running (past the day shift, no night crew set on the web). */
 .session-pill.off { background: var(--surface-3); border-color: var(--border); color: var(--text-muted); }
+
+/* ATTENDANCE: no cut-off shown — no day strip under TIME IN / TIME OUT, and
+   no lunch ("12") column between AM and PM on the who-is-on-site board. */
+.scan-panel > .day-strip { display: none; }
+.monitor-table th.c-gap, .monitor-table td.c-gap { display: none; }
