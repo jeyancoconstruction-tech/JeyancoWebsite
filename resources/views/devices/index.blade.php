@@ -16,14 +16,10 @@
     $pct   = fn ($h) => round($h / $hours * 100, 3) . '%';
     $tone  = ['ok' => 'ok', 'late' => 'warn', 'off' => 'danger'];
     $badge = ['ok' => 'Online', 'late' => 'Online · late', 'off' => 'Offline'];
-    $axis  = collect(range(0, $hours - 1))->map(fn ($i) => $i % 2 ? '' : \Illuminate\Support\Carbon::today()->setHour($firstHour + $i)->format('ga'))
-                ->map(fn ($l) => rtrim($l, 'm'));
     $peak  = max(1, $devices->flatMap(fn ($d) => $d['hours'])->max() ?? 1);
     $silent = $devices->where('state', 'off');
     $first  = $silent->first();
     $late   = $devices->where('state', 'late')->first();
-    // A steady mark on the locator, from the coordinates themselves.
-    $spot = fn ($v) => $v === null ? 50 : 18 + (int) (fmod(abs($v) * 1000, 1) * 64);
 @endphp
 
 @push('styles')
@@ -95,6 +91,16 @@
 .dvc-log li span.out { color: var(--danger); background: var(--danger-soft); }
 .dvc-log li span.rej { color: var(--warning); background: var(--warning-soft); }
 .dvc-log li.none { display: block; padding: 22px 14px; text-align: center; color: var(--text-muted); }
+.dvc-log > header span:last-child { text-transform: none; letter-spacing: 0; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.dvc-chips { display: flex; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--border); flex: none; flex-wrap: wrap; }
+.dvc-chips[hidden] { display: none; }
+.dvc-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-secondary); font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.dvc-chip b { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-primary); }
+.dvc-chip i { width: 7px; height: 7px; border-radius: 50%; }
+.dvc-chip i.in { background: var(--success); } .dvc-chip i.out { background: var(--danger); } .dvc-chip i.rej { background: var(--warning); }
+.dvc-chip:hover { border-color: var(--text-muted); }
+.dvc-chip.on { background: var(--text-primary); border-color: var(--text-primary); color: var(--surface); }
+.dvc-chip.on b { color: inherit; }
 
 /* The pins on the map. */
 .dvc-pin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); background: #16a34a; }
@@ -132,91 +138,92 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
 .dv-rule .sx-badge { justify-self: start; }
 
 .dv-listhead { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; flex-wrap: wrap; }
-/* The kiosks share the width and reach the bottom of the screen: one kiosk
-   takes the row, two split it. Each card's list of today's scans takes what
-   height is left, so there is no empty space under or beside them. */
-.dv-live { display: flex; flex-direction: column; min-height: calc(100dvh - var(--topbar-height, 60px) - 118px); }
-.dv-grid { flex: 1 1 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 14px; align-items: stretch; }
-.dv-card { display: flex; flex-direction: column; }
-.dv-today { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 150px; border-bottom: 1px solid var(--border); }
-.dv-today .dv-row { padding: 9px 14px 6px; }
-.dv-today ol { list-style: none; margin: 0; padding: 0; flex: 1 1 0; min-height: 110px; overflow-y: auto; }
-.dv-today li { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 14px; border-top: 1px solid var(--border); font-size: 12.5px; }
-.dv-today li:nth-child(even) { background: color-mix(in srgb, var(--bg-subtle) 60%, transparent); }
-.dv-today time { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-muted); }
-.dv-today li b { font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dv-today li span { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; padding: 2px 7px; border-radius: 5px; white-space: nowrap; }
-.dv-today li span.in { color: var(--success); background: var(--success-soft); }
-.dv-today li span.out { color: var(--danger); background: var(--danger-soft); }
-.dv-today li span.rej { color: var(--warning); background: var(--warning-soft); }
-.dv-today .none { display: grid; place-items: center; padding: 20px; color: var(--text-muted); font-size: 12.5px; border-top: 1px solid var(--border); flex: 1; }
-@media (max-width: 1100px) { .dv-grid { grid-template-columns: 1fr; } .dv-live { min-height: 0; } }
-.dv-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-xs); position: relative; }
-.dv-card.is-off { border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
-.dv-card.is-off::before, .dv-card.is-late::before { content: ""; position: absolute; left: -1px; right: -1px; top: -1px; height: 3px; border-radius: 12px 12px 0 0; background: var(--danger); }
-.dv-card.is-late::before { background: var(--warning); }
-.dv-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
-.dv-ico { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--success-soft); color: var(--success); position: relative; flex: none; }
+.dv-listhead .sx-card-note { margin-right: auto; }
+.dv-hint { font-size: 12px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; }
+.dv-hint svg { width: 13px; height: 13px; }
+
+/* ── B · All kiosks: one line each ───────────────────────────────────────
+   The console above is where a kiosk's scans are read, one kiosk at a time.
+   Down here every kiosk is one line — is it alive, how busy it has been,
+   who scanned last, where it is — and Watch puts it in the console. Nothing
+   here repeats the console's list. */
+.dv-ledger { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-xs); overflow: hidden; }
+.dv-lhead, .dv-line { display: grid; grid-template-columns: minmax(220px, 1.3fr) minmax(170px, 1fr) minmax(230px, 1.35fr) minmax(170px, 1fr) minmax(150px, .9fr) 96px; align-items: center; }
+.dv-lhead { background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+.dv-lhead > span { padding: 7px 14px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+.dv-line { position: relative; border-bottom: 1px solid var(--border); transition: background .15s; }
+.dv-line:last-child { border-bottom: 0; }
+.dv-line > div { padding: 11px 14px; min-width: 0; }
+.dv-line + .dv-line { }
+.dv-line::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: transparent; }
+.dv-line.is-off::before { background: var(--danger); }
+.dv-line.is-late::before { background: var(--warning); }
+.dv-line.is-watched { background: color-mix(in srgb, var(--brand) 5%, transparent); }
+.dv-line.is-watched .dv-go .sx-btn { border-color: var(--brand); color: var(--brand); }
+
+.dv-who { display: flex; align-items: center; gap: 11px; }
+.dv-ico { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--success-soft); color: var(--success); position: relative; flex: none; }
 .dv-ico svg { width: 16px; height: 16px; }
 .dv-ico::after { content: ""; position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 50%; background: var(--success); border: 2.5px solid var(--surface); }
 .is-late .dv-ico { background: var(--warning-soft); color: var(--warning); } .is-late .dv-ico::after { background: var(--warning); }
 .is-off .dv-ico { background: var(--danger-soft); color: var(--danger); } .is-off .dv-ico::after { background: var(--danger); }
-.dv-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
-.dv-meta { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; margin-top: 2px; flex-wrap: wrap; }
+.dv-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dv-meta { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+.dv-meta { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+.dv-meta span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.dv-state { margin-top: 6px; }
 .dv-meta svg { width: 12px; height: 12px; }
-.dv-head .sx-badge { margin-left: auto; }
-.dv-sec { padding: 9px 14px 10px; border-bottom: 1px solid var(--border); }
-.dv-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 9px; }
-.dv-lbl { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
-.dv-val { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.dv-val.ok { color: var(--success); } .dv-val.warn { color: var(--warning); } .dv-val.danger { color: var(--danger); }
+
+.dv-kv { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; white-space: nowrap; }
+.dv-kv b { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.dv-kv b.ok { color: var(--success); } .dv-kv b.warn { color: var(--warning); } .dv-kv b.danger { color: var(--danger); }
 .dv-at { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); }
 
-.ruler-track { position: relative; height: 12px; border-radius: 3px; background: var(--bg-subtle); border: 1px solid var(--border); }
-.ruler-late { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--warning) 14%, transparent) 0 3px, transparent 3px 6px); border-left: 1px dashed color-mix(in srgb, var(--warning) 60%, transparent); }
+.ruler-track { position: relative; height: 6px; border-radius: 3px; background: var(--bg-subtle); border: 1px solid var(--border); overflow: visible; }
+.ruler-late { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--warning) 22%, transparent) 0 3px, transparent 3px 6px); border-left: 1px dashed color-mix(in srgb, var(--warning) 60%, transparent); }
 .ruler-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px 0 0 2px; }
 .ruler-fill.ok { background: var(--success); } .ruler-fill.warn { background: var(--warning); } .ruler-fill.danger { background: var(--danger); border-radius: 2px; }
-.ruler-mark { position: absolute; top: -5px; width: 2px; height: 20px; margin-left: -1px; background: var(--text-primary); border-radius: 1px; }
-.ruler-ticks { height: 7px; margin-top: 2px; border-right: 1px solid var(--tick-major);
-    background-image: linear-gradient(90deg, var(--tick-major) 1px, transparent 1px), linear-gradient(90deg, var(--tick) 1px, transparent 1px);
-    background-size: calc(100% / 6) 7px, calc(100% / 18) 4px; background-repeat: repeat-x; }
-.ruler-lbl { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-muted); margin-top: 3px; }
-.ruler-lbl span:last-child { color: var(--danger); font-weight: 600; }
-.ruler-over { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--danger); }
-.ruler-over svg { width: 14px; height: 14px; }
+.ruler-mark { position: absolute; top: -4px; width: 2px; height: 12px; margin-left: -1px; background: var(--text-primary); border-radius: 1px; }
+.ruler-over { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 11.5px; font-weight: 600; color: var(--danger); line-height: 1.3; }
+.ruler-over svg { width: 13px; height: 13px; flex: none; }
 
-.hr { position: relative; height: 48px; display: grid; grid-template-columns: repeat({{ $hours }}, 1fr); gap: 4px; align-items: end; }
-.hr-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--brand) 6%, transparent); border-left: 1px dashed color-mix(in srgb, var(--brand) 35%, transparent); border-right: 1px dashed color-mix(in srgb, var(--brand) 35%, transparent); }
-.hr-band span { position: absolute; top: 2px; left: 5px; font: 600 9px 'JetBrains Mono', monospace; color: color-mix(in srgb, var(--brand) 75%, var(--text-muted)); }
+/* The workday as fourteen hour-bars: how busy the kiosk has been, when it
+   went quiet, and where "now" is. The count is the same figure as the
+   fleet strip's, kiosk by kiosk. */
+.dv-act { display: flex; align-items: flex-end; gap: 12px; }
+.dv-act .spark { flex: 1; min-width: 0; }
+.hr { position: relative; height: 30px; display: grid; grid-template-columns: repeat({{ $hours }}, 1fr); gap: 2px; align-items: end; }
+.hr-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--brand) 3.5%, transparent); border-radius: 2px; }
 .hr i { display: block; background: var(--brand); border-radius: 2px 2px 0 0; position: relative; z-index: 1; }
 .hr i.zero { background: var(--border-md); height: 2px; }
-.hr i.fut { height: 8px; border: 1px dashed var(--border-md); border-bottom: none; background: transparent; }
-.hr-now { position: absolute; top: -4px; bottom: 0; border-left: 1.5px solid var(--text-primary); z-index: 2; }
-.hr-now::before { content: "now"; position: absolute; top: -3px; left: 4px; font: 600 9.5px 'JetBrains Mono', monospace; color: var(--text-primary); }
-.hr-silent { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--danger) 18%, transparent) 0 4px, transparent 4px 8px); border-left: 1.5px solid var(--danger); z-index: 1; }
-.hr-silent span { position: absolute; bottom: 4px; left: 5px; font: 700 9px 'JetBrains Mono', monospace; color: var(--danger); background: var(--surface); padding: 0 3px; border-radius: 3px; }
-.hr-x { display: grid; grid-template-columns: repeat({{ $hours }}, 1fr); gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-muted); margin-top: 5px; border-top: 1px solid var(--border-md); padding-top: 3px; }
+.hr i.fut { height: 4px; background: repeating-linear-gradient(90deg, var(--border-md) 0 2px, transparent 2px 4px); border-radius: 0; }
+.hr-now { position: absolute; top: -3px; bottom: 0; border-left: 1.5px solid var(--text-primary); z-index: 2; }
+.hr-silent { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--danger) 18%, transparent) 0 3px, transparent 3px 6px); border-left: 1.5px solid var(--danger); z-index: 1; }
+.hr-x { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-muted); margin-top: 3px; }
+.dv-count { flex: none; text-align: right; line-height: 1; }
+.dv-count b { display: block; font-size: 20px; font-weight: 700; letter-spacing: -.02em; color: var(--text-primary); }
+.dv-count small { font-size: 10.5px; color: var(--text-muted); font-weight: 600; }
 
-.dv-foot { display: grid; grid-template-columns: 1.15fr 1fr; }
-.dv-cell { padding: 9px 14px; display: flex; gap: 12px; align-items: center; min-width: 0; }
-.dv-cell + .dv-cell { border-left: 1px solid var(--border); }
-.dv-cell .v { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dv-cell .s { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; }
-.dv-cell .sx-link { font-size: 11.5px; margin-top: 3px; }
-.gps { width: 70px; height: 48px; border-radius: 8px; border: 1px solid var(--border); position: relative; overflow: hidden; flex: none; background-color: var(--bg-subtle);
-    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: 12px 12px; }
-.gps .h { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--brand) 45%, transparent); }
-.gps .vv { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--brand) 45%, transparent); }
-.gps .x { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: color-mix(in srgb, var(--brand) 22%, transparent); display: grid; place-items: center; }
-.gps .x::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 2px var(--surface); }
-.gps.stale .h, .gps.stale .vv { background: color-mix(in srgb, var(--text-muted) 40%, transparent); }
-.gps.stale .x { background: color-mix(in srgb, var(--text-muted) 18%, transparent); }
-.gps.stale .x::after { background: var(--text-muted); }
-.gps.none { display: grid; place-items: center; color: var(--warning); background-image: none; }
-.gps.none svg { width: 20px; height: 20px; }
-.dv-table-view { display: none; }
-.dv-live.as-table .dv-grid { display: none; }
-.dv-live.as-table .dv-table-view { display: block; }
+.dv-last, .dv-gps { display: flex; gap: 10px; align-items: center; }
+.dv-last .av { flex: none; }
+.dv-last .v, .dv-gps .v { font-size: 12.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv-last .s, .dv-gps .s { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dv-last .s i { font-style: normal; font-weight: 700; }
+.dv-last .s i.in { color: var(--success); } .dv-last .s i.out { color: var(--danger); }
+.dv-gps .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--warning); }
+.dv-gps .dot.fix { background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 18%, transparent); }
+.dv-gps .dot.stale { background: var(--text-muted); }
+.dv-gps .sx-link { font-size: 11.5px; }
+.dv-go { text-align: right; }
+.dv-empty { padding: 26px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+@media (max-width: 1180px) {
+    .dv-lhead { display: none; }
+    .dv-line { grid-template-columns: 1fr 1fr; }
+    .dv-line > .dv-who { grid-column: 1 / -1; padding-bottom: 4px; }
+    .dv-line > .dv-go { grid-column: 1 / -1; text-align: left; padding-top: 0; }
+}
+@media (max-width: 640px) { .dv-line { grid-template-columns: 1fr; } }
 </style>
 @endpush
 
@@ -313,158 +320,109 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
                 <div class="dvc-map"><div id="dvMap" aria-label="Where the kiosk is"></div></div>
                 <div class="dvc-mapnote" data-mapnote>Reading the kiosk's position…</div>
                 <div class="dvc-facts" data-facts></div>
-                <div class="dvc-log"><header><span>Scans today at this kiosk</span><span data-count></span></header><ol data-log></ol></div>
+                <div class="dvc-log"><header><span>Today at this kiosk</span><span data-count></span></header>
+                    <div class="dvc-chips" data-chips></div><ol data-log></ol></div>
             </aside>
         </div>
     </section>
     @endif
 
     <div id="dv-live" class="dv-live">
-        {{-- ── B · Kiosks ──────────────────────────────────────────────── --}}
+        {{-- ── B · All kiosks ─────────────────────────────────────────── --}}
+        @php
+            $axisAt = fn ($h) => rtrim(\Illuminate\Support\Carbon::today()->setHour($h)->format('ga'), 'm');
+        @endphp
         <div class="dv-listhead">
-            <span class="sx-idx">B</span><h2 class="sx-card-title">Kiosks</h2><span class="sx-card-note">{{ $summary['total'] }} registered · the ones that need attention come first</span>
-            <div class="sx-card-tools"><div class="sx-seg" data-view-toggle>
-                <button type="button" class="on" data-view="cards"><i data-lucide="layout-grid"></i> Cards</button>
-                <button type="button" data-view="table"><i data-lucide="list"></i> Table</button>
-            </div></div>
+            <span class="sx-idx">B</span><h2 class="sx-card-title">All kiosks</h2><span class="sx-card-note">{{ $summary['total'] }} registered · the ones that need attention come first</span>
+            <span class="dv-hint"><i data-lucide="monitor-play"></i>Watch opens a kiosk in the console above</span>
         </div>
 
-        <div class="dv-grid">
-            @foreach($devices as $d)
+        <div class="dv-ledger">
+            <div class="dv-lhead"><span>Kiosk</span><span>Heartbeat</span><span>Scans this workday</span><span>Last scan</span><span>GPS</span><span></span></div>
+            @forelse($devices as $d)
                 @php
                     $k = $d['kiosk']; $t = $tone[$d['state']];
-                    $nowSlot = $nowAt;
+                    $emp = $d['last']?->employee?->name;
                 @endphp
-                <article class="dv-card is-{{ $d['state'] }}">
-                    <header class="dv-head">
+                <article class="dv-line is-{{ $d['state'] }}" data-line="{{ $k->id }}">
+                    <div class="dv-who">
                         <div class="dv-ico"><i data-lucide="monitor-smartphone"></i></div>
                         <div style="min-width:0">
                             <div class="dv-name">{{ $k->name }}</div>
-                            <div class="dv-meta"><span class="mono">{{ $k->code }}</span>·<i data-lucide="map-pin"></i>{{ $k->site->name ?? 'Unassigned' }}</div>
+                            <div class="dv-meta"><span class="mono">{{ $k->code }}</span>·<i data-lucide="map-pin"></i><span>{{ $k->site->name ?? 'Unassigned' }}</span></div>
+                            <span class="sx-badge {{ $t }} dv-state">{{ $badge[$d['state']] }}</span>
                         </div>
-                        <span class="sx-badge {{ $t }}">{{ $badge[$d['state']] }}</span>
-                        <a class="sx-btn sm dv-watch" href="#dvConsole" data-console-kiosk="{{ $k->id }}"><i data-lucide="monitor-play"></i> Watch</a>
-                    </header>
+                    </div>
 
-                    <section class="dv-sec">
-                        <div class="dv-row">
-                            <span class="dv-lbl">Last heartbeat</span>
-                            <span class="dv-val {{ $t }}">{{ $d['seconds'] === null ? 'never' : $dur($d['seconds']) . ' ago' }}</span>
-                            @if($d['last_seen'])<span class="dv-at">{{ $d['last_seen']->format('H:i:s') }}</span>@endif
-                        </div>
-                        <div class="ruler-track">
+                    <div class="dv-beat">
+                        <div class="dv-kv"><b class="{{ $t }}" @if($d['last_seen']) title="Last heartbeat {{ $d['last_seen']->format('M j, g:i:s A') }}" @endif>{{ $d['seconds'] === null ? 'never' : $dur($d['seconds']) . ' ago' }}</b></div>
+                        <div class="ruler-track" title="Online up to {{ $lateAfter / 60 }} min · late to {{ $offlineAfter / 60 }} min · offline after">
                             <div class="ruler-late" style="left: {{ $lateAfter / $offlineAfter * 100 }}%"></div>
                             <div class="ruler-fill {{ $t }}" style="width: {{ $d['pct'] }}%"></div>
                             @if($d['pct'] < 100)<div class="ruler-mark" style="left: {{ $d['pct'] }}%"></div>@endif
                         </div>
-                        <div class="ruler-ticks"></div>
-                        <div class="ruler-lbl"><span>0</span><span>30s</span><span>1m</span><span>1m30</span><span>2m</span><span>2m30</span><span>3m · offline</span></div>
                         @if($d['over'])
                             <div class="ruler-over"><i data-lucide="triangle-alert"></i>{{ $dur($d['over']) }} past the {{ $offlineAfter / 60 }}-minute limit</div>
                         @elseif($d['seconds'] === null)
                             <div class="ruler-over"><i data-lucide="triangle-alert"></i>No heartbeat received from this kiosk yet</div>
                         @endif
-                    </section>
+                    </div>
 
-                    <section class="dv-sec">
-                        <div class="dv-row"><span class="dv-lbl">Scans this workday, by hour</span><span class="dv-val">{{ $d['scans'] }}</span></div>
-                        <div class="hr">
-                            @foreach($bands as $band)
-                                <div class="hr-band" style="left: {{ $pct($band['from']) }}; width: {{ $pct($band['to'] - $band['from']) }}"><span>{{ $band['label'] }}</span></div>
-                            @endforeach
-                            @foreach($d['hours'] as $i => $n)
-                                @if($i > $nowSlot)
-                                    <i class="fut"></i>
-                                @elseif($n)
-                                    <i style="height: {{ max(3, $n / $peak * 50) }}px" title="{{ $n }} at {{ \Illuminate\Support\Carbon::today()->setHour($firstHour + $i)->format('g A') }}"></i>
-                                @else
-                                    <i class="zero"></i>
-                                @endif
-                            @endforeach
-                            @if($d['silent_from'] !== null && $d['silent_from'] < $nowAt)
-                                <div class="hr-silent" style="left: {{ $pct($d['silent_from']) }}; width: {{ $pct($nowAt - $d['silent_from']) }}"><span>silent</span></div>
-                            @endif
-                            @if($nowAt > 0 && $nowAt < $hours)<div class="hr-now" style="left: {{ $pct($nowAt) }}"></div>@endif
-                        </div>
-                        <div class="hr-x">@foreach($axis as $label)<span>{{ $label }}</span>@endforeach</div>
-                    </section>
-
-                    <section class="dv-today">
-                        <div class="dv-row"><span class="dv-lbl">Scans today at this kiosk</span><span class="dv-val">{{ count($d['today']) }}</span></div>
-                        @if($d['today'])
-                            <ol>
-                                @foreach($d['today'] as $s)
-                                    <li><time>{{ $s['at']->format('g:i A') }}</time><b>{{ $s['name'] }}</b>
-                                        <span class="{{ $s['kind'] }}">{{ $s['kind'] === 'rej' ? mb_strtoupper($s['why']) : ($s['kind'] === 'in' ? 'TIME IN' : 'TIME OUT') . ($s['session'] ? ' · ' . $s['session'] : '') . ($s['auto'] ? ' · AUTO' : '') }}</span></li>
+                    <div class="dv-act">
+                        <div class="spark">
+                            <div class="hr">
+                                @foreach($bands as $band)
+                                    <div class="hr-band" style="left: {{ $pct($band['from']) }}; width: {{ $pct($band['to'] - $band['from']) }}" title="{{ $band['label'] }}"></div>
                                 @endforeach
-                            </ol>
-                        @else
-                            <div class="none">No scans at this kiosk yet today.</div>
-                        @endif
-                    </section>
+                                @foreach($d['hours'] as $i => $n)
+                                    @if($i > $nowAt)
+                                        <i class="fut"></i>
+                                    @elseif($n)
+                                        <i style="height: {{ max(3, $n / $peak * 30) }}px" title="{{ $n }} at {{ \Illuminate\Support\Carbon::today()->setHour($firstHour + $i)->format('g A') }}"></i>
+                                    @else
+                                        <i class="zero"></i>
+                                    @endif
+                                @endforeach
+                                @if($d['silent_from'] !== null && $d['silent_from'] < $nowAt)
+                                    <div class="hr-silent" style="left: {{ $pct($d['silent_from']) }}; width: {{ $pct($nowAt - $d['silent_from']) }}" title="Silent since then"></div>
+                                @endif
+                                @if($nowAt > 0 && $nowAt < $hours)<div class="hr-now" style="left: {{ $pct($nowAt) }}" title="Now"></div>@endif
+                            </div>
+                            <div class="hr-x"><span>{{ $axisAt($firstHour) }}</span><span>{{ $axisAt(12) }}</span><span>{{ $axisAt($firstHour + $hours) }}</span></div>
+                        </div>
+                        <div class="dv-count"><b>{{ $d['scans'] }}</b><small>{{ $d['scans'] === 1 ? 'scan' : 'scans' }}</small></div>
+                    </div>
 
-                    <footer class="dv-foot">
-                        <div class="dv-cell">
-                            @if($d['gps'] === 'none')
-                                <div class="gps none"><i data-lucide="satellite-dish"></i></div>
+                    <div class="dv-last">
+                        <span class="av">{{ $emp ? collect(preg_split('/\s+/', $emp))->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('') : '—' }}</span>
+                        <div style="min-width:0">
+                            @if($d['last'])
+                                <div class="v">{{ $emp ?? 'Unknown worker' }}</div>
+                                <div class="s"><i class="{{ $d['last_out'] ? 'out' : 'in' }}">{{ $d['last_out'] ? 'OUT' : 'IN' }}</i> · {{ $d['last_at']->isToday() ? $d['last_at']->format('g:i A') : $d['last_at']->format('M j, g:i A') }}</div>
                             @else
-                                @php $gx = $spot($d['lng']); $gy = $spot($d['lat']); @endphp
-                                <div class="gps {{ $d['gps'] }}"><span class="h" style="top: {{ $gy }}%"></span><span class="vv" style="left: {{ $gx }}%"></span><span class="x" style="left: {{ $gx }}%; top: {{ $gy }}%"></span></div>
+                                <div class="v">None recorded</div>
+                                <div class="s">—</div>
                             @endif
-                            <div style="min-width:0">
-                                <span class="sx-label">GPS</span>
-                                @if($d['gps'] === 'fix')
-                                    <div class="v">Fix · {{ $d['last_seen']?->format('H:i') }}</div>
-                                @elseif($d['gps'] === 'stale')
-                                    <div class="v">{{ $d['state'] === 'off' ? 'Last known' : 'No signal now' }}@if($d['last_seen']) · {{ $d['last_seen']->format('H:i') }}@endif</div>
-                                @else
-                                    <div class="v">No GPS signal</div>
-                                @endif
-                                <div class="s">{{ $d['lat'] !== null ? number_format($d['lat'], 5) . ', ' . number_format($d['lng'], 5) : 'no coordinates yet' }}</div>
-                                @if($d['lat'] !== null)
-                                    <a class="sx-link" href="https://www.google.com/maps?q={{ $d['lat'] }},{{ $d['lng'] }}" target="_blank" rel="noopener">Open in Maps <i data-lucide="arrow-up-right"></i></a>
-                                @endif
-                            </div>
                         </div>
-                        <div class="dv-cell">
-                            @php $emp = $d['last']?->employee?->name; @endphp
-                            <span class="av">{{ $emp ? collect(preg_split('/\s+/', $emp))->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('') : '—' }}</span>
-                            <div style="min-width:0">
-                                <span class="sx-label">Last attendance</span>
-                                @if($d['last'])
-                                    <div class="v">{{ $emp ?? 'Unknown worker' }}</div>
-                                    <div class="s">{{ $d['last_out'] ? 'Time out' : 'Time in' }} · {{ $d['last_at']->isToday() ? $d['last_at']->format('g:i A') : $d['last_at']->format('M j, g:i A') }}</div>
-                                @else
-                                    <div class="v">None recorded</div>
-                                @endif
-                            </div>
-                        </div>
-                    </footer>
-                </article>
-            @endforeach
-        </div>
+                    </div>
 
-        <div class="dv-table-view sx-card">
-            <div class="sx-table-wrap">
-                <table class="sx-table">
-                    <thead><tr><th>Kiosk</th><th>Site</th><th>Status</th><th>Last heartbeat</th><th>GPS</th><th>Last attendance</th><th style="text-align:right">Scans today</th></tr></thead>
-                    <tbody>
-                    @forelse($devices as $d)
-                        <tr>
-                            <td><b>{{ $d['kiosk']->name }}</b> <span class="mono dim">{{ $d['kiosk']->code }}</span></td>
-                            <td class="muted">{{ $d['kiosk']->site->name ?? 'Unassigned' }}</td>
-                            <td><span class="sx-badge {{ $tone[$d['state']] }}">{{ $badge[$d['state']] }}</span></td>
-                            <td class="mono">{{ $d['seconds'] === null ? 'never' : $dur($d['seconds']) . ' ago' }}</td>
-                            <td class="muted">{{ ['fix' => 'Fix', 'stale' => 'Last known', 'none' => 'No signal'][$d['gps']] }}</td>
-                            <td class="muted">{{ $d['last']?->employee?->name ?? '—' }}</td>
-                            <td class="mono" style="text-align:right">{{ $d['scans'] }}</td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="7"><div class="sx-empty">No kiosks registered.</div></td></tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
+                    <div class="dv-gps">
+                        <span class="dot {{ $d['gps'] }}"></span>
+                        <div style="min-width:0">
+                            <div class="v">{{ ['fix' => 'Fix', 'stale' => $d['state'] === 'off' ? 'Last known' : 'No signal now', 'none' => 'No GPS signal'][$d['gps']] }}@if($d['gps'] !== 'none' && $d['last_seen']) · {{ $d['last_seen']->format('H:i') }}@endif</div>
+                            @if($d['lat'] !== null)
+                                <a class="sx-link" href="https://www.google.com/maps?q={{ $d['lat'] }},{{ $d['lng'] }}" target="_blank" rel="noopener">{{ number_format($d['lat'], 4) }}, {{ number_format($d['lng'], 4) }} ↗</a>
+                            @else
+                                <div class="s">no coordinates yet</div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="dv-go"><a class="sx-btn sm" href="#dvConsole" data-console-kiosk="{{ $k->id }}"><i data-lucide="monitor-play"></i> Watch</a></div>
+                </article>
+            @empty
+                <div class="dv-empty">No kiosks registered.</div>
+            @endforelse
         </div>
     </div>
 </div>
@@ -586,19 +544,23 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
     function renderFacts() {
         const s = data && data.screen, k = s && s.kiosk;
         if (!k) return;
-        const b = s.board || {};
+        const m = k.map || {};
         const cell = (label, value, cls) => `<div><span>${label}</span><b class="${cls || ''}">${value}</b></div>`;
         facts.innerHTML =
             cell('Status', k.state === 'ok' ? 'Online' : k.state === 'late' ? 'Online · late' : 'Off', k.state) +
             cell('Last heartbeat', k.seen ? esc(k.seen) : 'Never') +
             cell('Settings reached it', k.read ? esc(k.read) : '—') +
-            cell('Scanned today', s.on ? (b.total ?? 0) + ' ' + ((b.total ?? 0) === 1 ? 'worker' : 'workers') : '—');
+            cell('GPS', m.gps === 'fix' ? 'Fix' : m.gps === 'stale' ? 'Last known' : 'No signal', m.gps === 'fix' ? 'ok' : m.gps === 'none' ? 'late' : '');
     }
 
+    // The one list of scans on the page. The chips count and filter it.
+    let only = 'all';
+    const chipsBox = box.querySelector('[data-chips]');
     const minutes = v => { const m = String(v || '').match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)$/i); if (!m) return -1; let h = +m[1] % 12; if (m[3].toUpperCase() === 'PM') h += 12; return h * 60 + +m[2]; };
     function renderLog() {
         const s = data && data.screen;
-        if (!s || !s.on) { logBox.innerHTML = '<li class="none">Nothing to show while the kiosk is off.</li>'; logCount.textContent = ''; return; }
+        if (!s || !s.on) { logBox.innerHTML = '<li class="none">Nothing to show while the kiosk is off.</li>'; logCount.textContent = ''; chipsBox.hidden = true; return; }
+        chipsBox.hidden = false;
         const ev = [];
         ((s.board || {}).records || []).forEach(r => (r.entries || []).forEach(e => {
             if (e.in) ev.push({ t: e.in, who: r.name, type: 'in', ses: e.session });
@@ -607,12 +569,24 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
         recent.forEach(e => ev.push({ t: String(e.time || '').replace(/:\d{2}(\s*[AP]M)$/i, '$1'), who: e.name || 'Unknown finger', type: 'rej',
                                       label: e.kind === 'unknown' ? 'NOT RECOGNISED' : (WARN[e.code] || 'REJECTED') }));
         ev.sort((a, b) => minutes(b.t) - minutes(a.t));
-        logCount.textContent = ev.length;
-        logBox.innerHTML = ev.length ? ev.map(e => `<li><time>${esc(e.t)}</time><b>${esc(e.who)}</b><span class="${e.type}">${e.label ? esc(e.label) : (e.type === 'in' ? 'TIME IN' : 'TIME OUT') + ' · ' + esc(e.ses) + (e.auto ? ' · AUTO' : '')}</span></li>`).join('')
-                                     : '<li class="none">No scans at this kiosk yet today.</li>';
+        const n = kind => ev.filter(e => e.type === kind).length;
+        const chip = (key, label, count) => `<button type="button" class="dvc-chip${only === key ? ' on' : ''}" data-chip="${key}">${key === 'all' ? '' : `<i class="${key}"></i>`}${label}<b>${count}</b></button>`;
+        chipsBox.innerHTML = chip('all', 'All', ev.length) + chip('in', 'In', n('in')) + chip('out', 'Out', n('out')) + chip('rej', 'Rejected', n('rej'));
+        logCount.textContent = ev.length + (ev.length === 1 ? ' scan' : ' scans');
+        const shown = only === 'all' ? ev : ev.filter(e => e.type === only);
+        logBox.innerHTML = shown.length ? shown.map(e => `<li><time>${esc(e.t)}</time><b>${esc(e.who)}</b><span class="${e.type}">${e.label ? esc(e.label) : (e.type === 'in' ? 'TIME IN' : 'TIME OUT') + ' · ' + esc(e.ses) + (e.auto ? ' · AUTO' : '')}</span></li>`).join('')
+                                     : `<li class="none">${ev.length ? 'None of these yet today.' : 'No scans at this kiosk yet today.'}</li>`;
     }
 
+    // The kiosk in the console is marked in the list below.
+    function markWatched() {
+        const id = data && data.screen && data.screen.kiosk ? data.screen.kiosk.id : current;
+        document.querySelectorAll('[data-line]').forEach(l => l.classList.toggle('is-watched', Number(l.dataset.line) === id));
+    }
+    document.addEventListener('dv:refreshed', markWatched);
+
     function renderPicks() {
+        markWatched();
         (data.kiosks || []).forEach(k => {
             const b = box.querySelector('[data-kiosk="' + k.id + '"]');
             if (!b) return;
@@ -652,6 +626,8 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
             current = data.screen && data.screen.kiosk ? data.screen.kiosk.id : current;
             mark('Live · ' + data.checked);
             take(data);
+            ((data.screen && data.screen.rejects) || []).forEach(e => { if (!seen.has(e.seq)) { seen.add(e.seq); recent.push(e); } });
+            recent = recent.slice(-30);
             showScreen(); renderFacts(); renderLog(); renderPicks(); fit();
             if (data.screen) drawMap(data.screen.kiosk);
         } catch (e) { mark('Could not reach the server — retrying', true); }
@@ -673,6 +649,8 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
     function schedule() { clearTimeout(timer); timer = setTimeout(async () => { if (document.visibilityState === 'visible') await load(); schedule(); }, 10000); }
 
     box.addEventListener('click', e => {
+        const c = e.target.closest('[data-chip]');
+        if (c) { only = c.dataset.chip; renderLog(); return; }
         const k = e.target.closest('[data-kiosk]');
         if (k) { current = Number(k.dataset.kiosk); seq = null; recent = []; seen.clear(); load(); return; }
         if (e.target.closest('[data-full]')) {
@@ -696,27 +674,9 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
 })();
 
 (function () {
-    const KEY = 'jeyanco-devices-view';
     const live = () => document.getElementById('dv-live');
 
-    function applyView(view) {
-        const el = live();
-        if (!el) return;
-        el.classList.toggle('as-table', view === 'table');
-        el.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === view));
-    }
-    let view = 'cards';
-    try { view = localStorage.getItem(KEY) || 'cards'; } catch (e) {}
-    applyView(view);
-
     document.addEventListener('click', e => {
-        const b = e.target.closest('[data-view]');
-        if (b) {
-            view = b.dataset.view;
-            try { localStorage.setItem(KEY, view); } catch (err) {}
-            applyView(view);
-            return;
-        }
         const r = e.target.closest('[data-refresh]');
         if (r) { e.preventDefault(); refresh(); }
     });
@@ -734,8 +694,8 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
             // The summary above the console refreshes with it.
             const top = document.getElementById('dv-top'), freshTop = doc.getElementById('dv-top');
             if (top && freshTop) top.innerHTML = freshTop.innerHTML;
-            applyView(view);
             if (window.lucide) lucide.createIcons();
+            document.dispatchEvent(new Event('dv:refreshed'));
         } catch (e) { /* offline for a moment: the next tick tries again */ }
     }
     // A kiosk's heartbeat, its site switch and its GPS fix all say so as they

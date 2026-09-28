@@ -130,6 +130,14 @@ class DeviceMonitoringController extends Controller
             ];
         }
 
+        // Scans the web turned away earlier today. The board only holds what
+        // was recorded, so without these a console opened after a rejected
+        // scan would never show it.
+        $screen['rejects'] = $screen['on'] ? array_values(array_filter(
+            KioskFeed::since($kiosk, 0),
+            fn ($e) => ! in_array($e['kind'] ?? '', ['in', 'out', 'scan'], true) && KioskFeed::when($e)->isSameDay($now)
+        )) : [];
+
         return response()->json([
             'checked' => $now->format('g:i:s A'),
             'kiosks'  => $list,
@@ -203,38 +211,20 @@ class DeviceMonitoringController extends Controller
             default                                                   => 'stale',
         };
 
-        // Today's time-ins and time-outs at this kiosk, by the hour they happened.
-        // And each of them as a line, newest first, for the card's list.
+        // Today's time-ins and time-outs at this kiosk, by the hour they
+        // happened. The scans themselves are listed once, in the console.
         $hours = array_fill(0, self::HOURS, 0);
         $scans = 0;
-        $today = [];
-        foreach (Attendance::with('employee:id,name')->where('kiosk_id', $kiosk->id)->onWorkday()->get(['id', 'employee_id', 'session', 'time_in', 'time_out', 'close_type']) as $row) {
+        foreach (Attendance::where('kiosk_id', $kiosk->id)->onWorkday()->get(['id', 'time_in', 'time_out']) as $row) {
             foreach (['time_in', 'time_out'] as $column) {
                 if (! $row->{$column}) {
                     continue;
                 }
-                $today[] = [
-                    'name'    => $row->employee?->name ?? 'Unknown worker',
-                    'kind'    => $column === 'time_in' ? 'in' : 'out',
-                    'session' => $row->session,
-                    'auto'    => $column === 'time_out' && $row->close_type === 'auto',
-                    'at'      => Carbon::parse($row->{$column}),
-                ];
                 $scans++;
                 $slot = Carbon::parse($row->{$column})->hour - self::FIRST_HOUR;
                 $hours[max(0, min(self::HOURS - 1, $slot))]++;
             }
         }
-
-        // Scans the web turned away today — a finger nobody knows, a time in
-        // twice — are not attendance, but they happened at the kiosk.
-        foreach (KioskFeed::since($kiosk) as $e) {
-            if (in_array($e['kind'], ['rej', 'warn', 'unknown'], true) && KioskFeed::when($e)->isSameDay($now)) {
-                $today[] = ['name' => $e['name'] ?? 'Unknown finger', 'kind' => 'rej', 'session' => null, 'auto' => false,
-                            'at' => KioskFeed::when($e), 'why' => $e['kind'] === 'unknown' ? 'Not recognised' : ($e['message'] ?? 'Turned away')];
-            }
-        }
-        usort($today, fn ($a, $b) => $b['at'] <=> $a['at']);
 
         $last = Attendance::with('employee:id,name')->where('kiosk_id', $kiosk->id)->latest('updated_at')->first();
 
@@ -251,7 +241,6 @@ class DeviceMonitoringController extends Controller
             'lng'         => $hasCoords ? (float) $fix['lng'] : null,
             'hours'       => $hours,
             'scans'       => $scans,
-            'today'       => array_slice($today, 0, 40),
             // Where a silence began on today's strip, if it began today.
             'silent_from' => $state === 'off' && $lastSeen && $lastSeen->isSameDay($now) ? $this->position($lastSeen) : null,
             'last'        => $last,
