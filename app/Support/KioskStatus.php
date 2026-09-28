@@ -9,10 +9,11 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Whether a kiosk is talking to us, read one way for every page that asks.
  *
- * Device Monitoring and the kiosk monitor in System Settings both answer
- * "is it on?", and two answers would sooner or later disagree. The Pi's GPS
- * heartbeat (KioskLocationController writes it every ~30 s) is the signal: a
- * kiosk that has not sent one for three minutes is off.
+ * Device Monitoring and System Settings both answer "is it on?", and two
+ * answers would sooner or later disagree. Two signals count: the Pi's GPS
+ * heartbeat (KioskLocationController writes it every ~30 s) and the kiosk
+ * screen asking for its settings (every ~5 s). A kiosk that has sent neither
+ * for three minutes is off.
  */
 class KioskStatus
 {
@@ -41,6 +42,15 @@ class KioskStatus
         $fix = Cache::get(self::LOC_PREFIX . $kiosk->id) ?? Cache::get(self::LOC_PREFIX . $kiosk->code);
 
         $lastSeen = ! empty($fix['last_seen']) ? Carbon::parse($fix['last_seen']) : null;
+
+        // The kiosk screen also asks for its settings every few seconds. That
+        // is a sign of life too: a kiosk whose GPS tracker has stopped (or
+        // whose GPS module is unplugged) is still on and still scanning, and
+        // must not show as off. The newer of the two counts.
+        $read = $kiosk->settingsReadAt();
+        if ($read && (! $lastSeen || $read->greaterThan($lastSeen))) {
+            $lastSeen = Carbon::parse($read);
+        }
         $seconds  = $lastSeen ? (int) abs($lastSeen->diffInSeconds($now, true)) : null;
 
         $state = match (true) {

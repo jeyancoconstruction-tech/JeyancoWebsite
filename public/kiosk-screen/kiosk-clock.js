@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────
-//  JEYANCO KIOSK — ATTENDANCE TAB (v8)
+//  JEYANCO KIOSK — ATTENDANCE TAB (v9)
 //
 //  Two ways to record, chosen on the web (System Settings → Kiosk):
 //
@@ -14,6 +14,14 @@
 //
 //  Also here: the board of who is on site (no totals — those are on the
 //  SUMMARY tab), the detail modal, and the day strip.
+//
+//  v9:
+//    • The time is the office's (script.js sets it from the web), not the
+//      Pi's own clock, which is hours off after a boot without signal.
+//    • A scan that lands while the last one is still saving is kept and
+//      handled next — it used to be dropped without a word.
+//    • A scan no longer waits for the whole board to reload first: the board
+//      read in the last 20 seconds is used, and a reload waits 3 s at most.
 // ─────────────────────────────────────────────────────────────────────────
 (function () {
     'use strict';
@@ -28,10 +36,19 @@
     const ARM_SECONDS   = 12;
     const RESULT_MS     = { in: 4500, out: 4500, none: 5500, warn: 6500, rej: 6500 };
 
+    // v9: how old the board may be and still stand in for a fresh one before a
+    // scan, and how long a scan waits for a fresh one when it is older.
+    const BOARD_FRESH_MS = 20000;
+    const BOARD_WAIT_MS  = 3000;
+    // v9: a scan kept while another was saving is handled after this pause,
+    // so the worker before still sees their own result.
+    const PENDING_GAP_MS = 1500;
+
     let polling   = false;
     let scanTimer = null, boardTimer = null, clockTimer = null;
     let inFlight  = false;     // a /scan request is out
     let busy      = false;     // a record is being written
+    let pending   = null;      // v9: a result that arrived while busy
     let consumed  = true;      // this finger was handled; wait for it to lift
     let lastSeq   = null;      // the numbered result handled last (testing.py v4)
     let primed    = false;
@@ -42,6 +59,7 @@
     let online    = null;
     let board     = { records: [] };
     let boardOk   = true;
+    let boardAt   = 0;         // v9: when the board was read, by the Pi's own clock
 
     // ── Settings and the shift day ───────────────────────────────────────
     const settings = () => (J.settings ? J.settings() : { mode: 'buttons', shifts: [] });
@@ -50,8 +68,11 @@
     const FALLBACK_DAY = { name: 'Day', night: false, opens: '06:00', am_start: '08:00', am_end: '12:00',
                            pm_start: '13:00', pm_end: '17:00', cut: '12:30' };
 
+    // v9: the office's time when script.js knows it, the Pi's otherwise.
+    const nowDate = () => (J.now ? J.now() : new Date());
+
     const toMin = hm => { const p = String(hm || '0:0').split(':').map(Number); return (p[0] || 0) * 60 + (p[1] || 0); };
-    const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+    const nowMin = () => { const d = nowDate(); return d.getHours() * 60 + d.getMinutes(); };
 
     function fmt12(min) {
         min = ((min % 1440) + 1440) % 1440;
@@ -324,9 +345,14 @@
             return;
         }
 
-        // Still writing the last one — this result stays on the sensor a
-        // moment longer, so it is picked up on a later poll.
-        if (busy) return;
+        // Still writing the last one. v9: a numbered result that lands now is
+        // kept and handled once the save is done. It used to wait on the Pi
+        // for a later poll — and was lost when the save took longer than the
+        // Pi keeps a result (about 2 s): nothing recorded, nothing shown.
+        if (busy) {
+            if (hasSeq && d.seq !== lastSeq) pending = d;
+            return;
+        }
 
         if (hasSeq) {
             // testing.py (v4) numbers every result: each touch is handled
@@ -354,6 +380,19 @@
         showResult({ kind: 'rej', verb: t('att.servererr'), notes: [['bad', d.message || t('att.checkconn')]] });
     }
 
+    /** v9: the save is done — handle a scan that was kept meanwhile. */
+    function doneSaving() {
+        busy = false;
+        if (!pending) return;
+        const d = pending;
+        pending = null;
+        setTimeout(() => {
+            if (!polling) return;
+            if (busy) { pending = pending || d; return; }
+            handleScan(d);
+        }, PENDING_GAP_MS);
+    }
+
     async function onKnownScan(emp) {
         const auto = isAuto();
 
@@ -376,11 +415,13 @@
 
         // v8: one IN and one OUT per session — checked against today's record
         // before anything is sent to the web.
-        const verdict = await sessionGuard(emp, type);
+        let verdict = {};
+        try { verdict = await sessionGuard(emp, type); } catch (e) { verdict = {}; }
         if (verdict.block) {
             busy = false;
             showResult(Object.assign({ employee: emp }, verdict.block));
             if (verdict.glowOut) glowOut();
+            doneSaving();
             return;
         }
         if (verdict.type) type = verdict.type;
@@ -395,12 +436,14 @@
 
         if (!res) {
             showResult({ kind: 'rej', verb: t('att.servererr'), employee: emp, notes: [['bad', t('att.checkconn')]] });
+            doneSaving();
             return;
         }
 
         renderRecord(res, emp);
         if (res.success) setTimeout(loadBoard, 300);
         if (res.code === 'mode_buttons' && J.reloadSettings) J.reloadSettings();
+        doneSaving();
     }
 
     // ── v8: one IN, one OUT per session ──────────────────────────────────
@@ -409,9 +452,9 @@
     //   • PM IN while AM is still open    → "TIME OUT AM FIRST"
     //   • anything IN after PM OUT        → "DONE FOR TODAY"
     // A night crew is the same with 1ST HALF / 2ND HALF.
-    // Read from today's board, fresh, just before recording. If the board
-    // cannot be read, the scan goes through as before — a network hiccup must
-    // never stop a worker from timing in; the web's own rules still apply.
+    // Read from today's board just before recording. If the board cannot be
+    // read, the scan goes through as before — a network hiccup must never
+    // stop a worker from timing in; the web's own rules still apply.
 
     function rowFor(emp) {
         const rows = board.records || [];
@@ -433,12 +476,62 @@
         return { any: !!i, open: !!i && !o, done: !!i && !!o, inAt: i || '', outAt: o || '' };
     }
 
+    // v9: a DAY worker cannot TIME IN outside the day shift. Before, nothing
+    // on the kiosk checked the clock at all — a day worker scanning at night
+    // was sent to the web as a normal time in and landed in the PM session,
+    // where it counted for 0 hours. TIME IN is open from `opens` to `pm_end`.
+    function isNightWorker(emp) {
+        if (emp.shift) return !!emp.shift.crosses_midnight;
+        return null;                                          // unknown
+    }
+
+    function offShiftBlock(emp) {
+        const night = isNightWorker(emp);
+        if (night === true) return null;                      // the night crew has its own hours
+        if (night === null && nightShift()) return null;      // cannot tell — the web decides
+        const sh = dayShift();
+        // rel() counts from `opens` and wraps at midnight, so anything past
+        // pm_end — evening, after midnight, or before `opens` — is outside.
+        if (relNow(sh) <= rel(sh, sh.pm_end)) return null;
+        return {
+            kind: 'rej', verb: t('att.wrongshift.t'),
+            notes: [['bad', t('att.wrongshift', {
+                shift: (emp.shift && emp.shift.name) || sh.name || 'Day',
+                a: fmt12(toMin(sh.opens)), b: fmt12(toMin(sh.pm_end)) })]],
+        };
+    }
+
+    /** v9: the board is recent enough to stand in for a fresh read. */
+    const boardFresh = () => boardOk && boardAt > 0 && (Date.now() - boardAt) < BOARD_FRESH_MS;
+
     async function sessionGuard(emp, type) {
-        try {
-            await loadBoard(true);
-        } catch (e) { /* handled below */ }
-        if (!boardOk) return {};
+        const offBlock = offShiftBlock(emp);
+        // A pressed TIME IN outside the shift: refuse at once, nothing is sent.
+        if (offBlock && type === 'time_in') return { block: offBlock };
+
+        // v9: the board is reloaded every 15 s and straight after every scan
+        // here, so it is nearly always fresh already. Only an older one is
+        // re-read — and never waited on for more than a few seconds. Before,
+        // every scan re-read it first: up to 20 s on a weak signal before the
+        // time in was even sent.
+        if (!boardFresh()) {
+            await Promise.race([
+                loadBoard(true).catch(() => {}),
+                new Promise(r => setTimeout(r, BOARD_WAIT_MS)),
+            ]);
+        }
+        if (!boardFresh()) return {};
         const r = rowFor(emp);
+
+        // Automatic mode outside the shift: only a way OUT is allowed (someone
+        // still inside from the afternoon). With nothing open, it would be a
+        // time in — refuse it.
+        if (offBlock && type === 'auto') {
+            const open = r && (sessionState(r, 'AM').open || sessionState(r, 'PM').open);
+            if (!open) return { block: offBlock };
+            return { type: 'time_out' };
+        }
+
         if (!r) return {};                                   // nothing yet today
 
         const night = !!(r.night || (emp.shift && emp.shift.crosses_midnight));
@@ -490,7 +583,6 @@
     function renderRecord(r, emp) {
         const who   = r.employee || emp;
         const night = !!(who.shift && who.shift.crosses_midnight);
-        const site  = J.activeSite && J.activeSite() ? J.activeSite().name : '';
 
         if (r.success) {
             const inn   = r.type === 'time_in';
@@ -611,7 +703,8 @@
                 if (gen !== boardGen) return;
                 if (!data || data.success === false || !Array.isArray(data.records)) throw new Error(data && data.message || 'bad board');
                 board = data;
-                board.loadedAt = new Date();
+                board.loadedAt = nowDate();
+                boardAt = Date.now();
                 boardOk = true;
                 renderBoard();
             } catch (e) {
@@ -631,13 +724,12 @@
         $('monitor-body').innerHTML = `<tr class="mon-empty"><td colspan="9"><i class="fas fa-hard-hat"></i>${esc(text)}</td></tr>`;
     }
 
-    function cell(v, auto, count) {
+    function cell(v, auto) {
         if (!v) return '<span class="t-dash">—</span>';
         const m = String(v).match(/^(\d{1,2}:\d{2})\s*([AP]M)?$/i);
         const inner = m ? `${esc(m[1])}<small>${esc((m[2] || '').toUpperCase())}</small>` : esc(v);
         return `<span class="t-val${auto ? ' auto' : ''}">${inner}</span>`
-             + (auto ? '<span class="auto-tag">AUTO</span>' : '')
-             ;   // v8: one IN per session — no more ×2
+             + (auto ? '<span class="auto-tag">AUTO</span>' : '');   // v8: one IN per session — no more ×2
     }
 
     function badge(state) {
@@ -665,10 +757,10 @@
             return `<tr class="${r.working ? 'row-working' : ''}" data-i="${i}">
                 <td class="col-emp"><div class="mon-name${r.pending ? ' pending' : ''}">${esc(r.name)}${tag}</div>
                     <div class="mon-sub">${esc(r.pending ? t('mon.pending') : (r.position || ''))}</div></td>
-                <td>${cell(r.am_in, false, r.am_count)}</td>
+                <td>${cell(r.am_in, false)}</td>
                 <td>${cell(r.am_out, r.am_out_auto)}</td>
                 <td class="c-gap"></td>
-                <td>${cell(r.pm_in, false, r.pm_count)}</td>
+                <td>${cell(r.pm_in, false)}</td>
                 <td>${cell(r.pm_out, r.pm_out_auto)}</td>
                 <td class="t-total c-paid">${Number(r.total_hours || 0).toFixed(2)}</td>
                 <td class="c-ot">${ot}</td>
@@ -753,6 +845,7 @@
         consumed = true;      // a finger already on the sensor belongs to another tab
         primed   = false;
         online   = null;
+        pending  = null;
         clearInterval(scanTimer);
         scanTimer = setInterval(pollScan, SCAN_POLL_MS);
         clearInterval(boardTimer);
@@ -763,6 +856,7 @@
 
     function stop() {
         polling = false;
+        pending = null;
         clearInterval(scanTimer); scanTimer = null;
         clearInterval(boardTimer); boardTimer = null;
         if (armed) disarm(true);
@@ -811,6 +905,7 @@
         boardGen++;
         board = { records: [] };
         boardOk = true;
+        boardAt = 0;
         closeModal();
         renderBoardMessage(t('mon.loading'));
         const wrap = document.querySelector('.monitor-table-wrap');

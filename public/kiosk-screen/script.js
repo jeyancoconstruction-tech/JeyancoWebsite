@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────
-//  JEYANCO ATTENDANCE KIOSK — v8
+//  JEYANCO ATTENDANCE KIOSK — v9
 //
 //  Talks to two things:
 //    • Flask on this Pi (http://127.0.0.1:5000) — the fingerprint sensor,
@@ -632,6 +632,31 @@ const SETTINGS_V_KEY = 'jeyanco_kiosk_settings_v';
 let SETTINGS_V = null;
 try { SETTINGS_V = localStorage.getItem(SETTINGS_V_KEY); } catch (e) { /* ignore */ }
 
+// v9: THE OFFICE'S CLOCK. A Pi has no clock battery. One that boots without
+// signal keeps a wrong time — and the kiosk reads the time to decide AM or
+// PM, whether TIME IN is open, and what the header clock says. Every settings
+// answer carries the web's own time and time zone; the kiosk keeps the
+// difference and reads the time through kioskNow(). Until the first answer
+// arrives, the Pi's clock is all there is.
+let CLOCK_SHIFT_MS = 0;
+
+function kioskNow() { return new Date(Date.now() + CLOCK_SHIFT_MS); }
+
+function learnServerClock(data, sentAt, gotAt) {
+    if (!data || typeof data.server_time !== 'number') return;
+    // The web stamped its time somewhere in the round trip — take the middle.
+    const epochShift = data.server_time + (gotAt - sentAt) / 2 - gotAt;
+    // The office's zone, not the Pi's: a Pi left on UTC would be 8 hours out.
+    const zoneShift = typeof data.tz_offset === 'number'
+        ? (data.tz_offset + new Date().getTimezoneOffset()) * 60000 : 0;
+    const next = Math.round(epochShift + zoneShift);
+    if (Math.abs(next - CLOCK_SHIFT_MS) > 1500) {           // ignore network jitter
+        CLOCK_SHIFT_MS = next;
+        if (Math.abs(next) > 60000) console.warn(`Pi clock is ${Math.round(next / 1000)} s off — using the web's time.`);
+        updateClock();
+    }
+}
+
 let settingsBusy = false;
 async function loadKioskSettings() {
     if (settingsBusy) return;
@@ -640,8 +665,10 @@ async function loadKioskSettings() {
         const params = siteStamp();
         if (SETTINGS_V) params.v = SETTINGS_V;
         const qs   = new URLSearchParams(params).toString();
+        const sentAt = Date.now();
         const data = await safeParseJSON(await apiFetch('/settings' + (qs ? '?' + qs : ''),
             { headers: { 'Accept': 'application/json' } }, 8000));
+        learnServerClock(data, sentAt, Date.now());
 
         if (data && data.success && data.same) return;      // nothing changed
 
@@ -781,7 +808,7 @@ function watchAutoScroll() {
 
 // ── CLOCK ────────────────────────────────────────────────────────────────
 function updateClock() {
-    const now = new Date();
+    const now = kioskNow();
     setText('digital-clock', now.toLocaleTimeString('en-GB'));
     let date;
     try {
@@ -808,7 +835,7 @@ function updateSessionPill() {
     let mode = window.jeyanco && window.jeyanco.pillMode ? window.jeyanco.pillMode() : null;
     if (!mode) {
         if (window.jeyanco && window.jeyanco.pillMode) mode = 'off';
-        else { const h = new Date().getHours(); mode = (h >= 18 || h < 6) ? 'night' : (h < 12 ? 'am' : 'pm'); }
+        else { const h = kioskNow().getHours(); mode = (h >= 18 || h < 6) ? 'night' : (h < 12 ? 'am' : 'pm'); }
     }
     lbl.textContent = t('pill.' + mode);
     const icon = pill.querySelector('i');
@@ -1318,18 +1345,29 @@ async function attachFingerprint() {
 
     try {
         const body = { employee_id: pickedEmp.id, fingerprint_id: String(enrolledSlot) };
-        let out;
-        const viaFlask = await flaskFetch('/save-fingerprint', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(body) }, 15000).catch(() => null);
+        const saveOnce = async () => {
+            const viaFlask = await flaskFetch('/save-fingerprint', {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(body) }, 15000).catch(() => null);
 
-        if (viaFlask && !isMissingRoute(viaFlask)) {
-            out = await safeParseJSON(viaFlask);
-        } else {
-            out = await safeParseJSON(await apiFetch('/save-fingerprint', {
+            if (viaFlask && !isMissingRoute(viaFlask) && viaFlask.status < 500) return safeParseJSON(viaFlask);
+            return safeParseJSON(await apiFetch('/save-fingerprint', {
                 method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify(Object.assign({}, body, siteStamp())) }, 15000));
+        };
+
+        // v9: the finger is already on the sensor. If the web cannot be
+        // reached, try again before giving up — a retry from the START
+        // button would take a new slot and leave this one to be deleted.
+        let out = null, lastErr = null;
+        for (let attempt = 0; attempt < 3 && !out; attempt++) {
+            if (attempt) {
+                setText('reg-hint', t('enr.saving') + ` (${attempt + 1}/3)`);
+                await new Promise(r => setTimeout(r, 2500));
+            }
+            try { out = await saveOnce(); } catch (e) { lastErr = e; }
         }
+        if (!out) throw lastErr || new Error(t('enr.notsaved'));
 
         if (!out.success) throw new Error(out.message || t('enr.notsaved'));
 
@@ -1408,6 +1446,7 @@ Object.assign(window.jeyanco, {
     reloadSettings: loadKioskSettings,
     currentTab,
     dragScroll: enableDragScroll,
+    now: kioskNow,
 });
 
 // ── INIT ─────────────────────────────────────────────────────────────────

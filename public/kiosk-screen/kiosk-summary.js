@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────
-//  JEYANCO KIOSK — SUMMARY TAB (v8)
+//  JEYANCO KIOSK — SUMMARY TAB (v9)
 //
 //  Every total the kiosk has, beside MY PAYROLL: who is working, on lunch,
 //  done, on overtime, needs review, came late; the AM in / AM out / PM in /
@@ -75,7 +75,7 @@
         const d     = J.currentShift ? J.currentShift() : (J.dayShift ? J.dayShift() : null);
         const isNight = !!(d && d.night);
         const fmt   = hm => (J.fmt12 && J.toMin) ? J.fmt12(J.toMin(hm)) : hm;
-        const lateNames = rows.filter(r => Number(r.late_minutes) > 0).map(r => r.name.split(' ')[0]);
+        const lateNames = rows.filter(r => Number(r.late_minutes) > 0).map(r => String(r.name || '').split(' ')[0]);
         const r = (J.rosterCounts ? J.rosterCounts() : null) || { pending: 0, enrolled: 0, total: 0 };
 
         $('sum-tiles').innerHTML = [

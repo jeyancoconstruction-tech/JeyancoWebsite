@@ -125,7 +125,10 @@ class KioskAutoModeTest extends TestCase
 
         $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A&v=' . $v)
             ->assertOk()
-            ->assertExactJson(['success' => true, 'same' => true, 'v' => $v]);
+            ->assertJson(['success' => true, 'same' => true, 'v' => $v])
+            ->assertJsonMissingPath('attendance')
+            // v9: every answer carries the office's clock, for a Pi whose own is off.
+            ->assertJsonStructure(['server_time', 'tz_offset']);
 
         // The office moves the day crew to seven to four.
         $day = \App\Models\Shift::where('crosses_midnight', false)->firstOrFail();

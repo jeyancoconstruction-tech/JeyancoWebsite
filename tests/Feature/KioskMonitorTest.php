@@ -252,4 +252,25 @@ class KioskMonitorTest extends TestCase
     {
         $this->getJson(route('devices.live'))->assertUnauthorized();
     }
+
+    /** A kiosk whose GPS tracker has stopped is still on while its screen checks in. */
+    public function test_a_kiosk_asking_for_its_settings_counts_as_on(): void
+    {
+        $kiosk = $this->kiosk('SITE_A', null);             // no GPS heartbeat at all
+        $this->assertSame('off', \App\Support\KioskStatus::of($kiosk)['state']);
+
+        $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A')->assertOk();
+
+        $this->assertSame('ok', \App\Support\KioskStatus::of($kiosk->fresh())['state']);
+    }
+
+    /** The kiosk sets its clock by the office's: epoch ms and the Manila offset. */
+    public function test_the_settings_answer_carries_the_office_clock(): void
+    {
+        $this->kiosk('SITE_A', 5);
+        $json = $this->getJson('/api/kiosk/settings?kiosk_code=SITE_A')->assertOk()->json();
+
+        $this->assertEqualsWithDelta(now()->getTimestampMs(), $json['server_time'], 5000);
+        $this->assertSame(480, $json['tz_offset']);
+    }
 }

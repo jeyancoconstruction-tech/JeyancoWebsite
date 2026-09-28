@@ -516,11 +516,17 @@ class KioskController extends Controller
         // costs next to nothing.
         $version = substr(sha1(json_encode($attendance)), 0, 16);
 
+        // The office's clock, on every answer. A Pi has no clock battery: one
+        // that boots without signal can be hours off, and the kiosk decides
+        // AM / PM and whether TIME IN is open from the time. It sets its own
+        // clock by this one instead.
+        $clock = ['server_time' => now()->getTimestampMs(), 'tz_offset' => now()->utcOffset()];
+
         if ($v === $version) {
-            return ['success' => true, 'same' => true, 'v' => $version];
+            return ['success' => true, 'same' => true, 'v' => $version] + $clock;
         }
 
-        return [
+        return $clock + [
             'success'     => true,
             'v'           => $version,
             'labor_types' => LaborType::select('id', 'name', 'daily_rate')->get(),
