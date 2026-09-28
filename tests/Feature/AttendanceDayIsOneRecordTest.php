@@ -162,15 +162,15 @@ class AttendanceDayIsOneRecordTest extends TestCase
         $this->assertSame(1, substr_count($html, '<b>Juan Dela Cruz</b>'),
             'one row, not one per clock');
 
-        // The list shows the day's time in and its time out…
+        // The list lays it out as the shift is: AM in, AM out, PM in, PM out…
         preg_match('#<tr class="atm-row[^"]*".*?</tr>\s*<tr class="atm-detail".*?</tr>#s', $html, $row);
         $this->assertNotEmpty($row);
 
         $list  = strstr($row[0], '<tr class="atm-detail"', true);
         $times = array_map('trim', preg_match_all('#<span class="atm-t">\s*([^<]+?)\s*</span>#', $list, $m) ? $m[1] : []);
-        $this->assertSame(['8:00 AM', '5:00 PM'], $times, 'the first time in and the last time out');
+        $this->assertSame(['8:00 AM', '12:00 PM', '1:00 PM', '5:00 PM'], $times, 'AM in and out, PM in and out');
 
-        // …and its detail lays it out as the shift is: in, out for lunch, back, and home.
+        // …and so does its detail: in, out for lunch, back, and home.
         $times = array_map('trim', preg_match_all('#<span class="atm-ses-v">\s*<b[^>]*>\s*([^<]+?)\s*<#', $row[0], $m) ? $m[1] : []);
         $this->assertSame(['8:00 AM', '12:00 PM', '1:00 PM', '5:00 PM'], $times,
             'the morning ends where it ended and the afternoon starts where it started');
@@ -191,7 +191,7 @@ class AttendanceDayIsOneRecordTest extends TestCase
         $list  = strstr($row[0], '<tr class="atm-detail"', true);
         $times = array_map('trim', preg_match_all('#<span class="atm-t">\s*([^<]+?)\s*</span>#', $list, $m) ? $m[1] : []);
         $this->assertSame(['8:00 AM', '5:00 PM'], $times, 'the first time in and the last time out');
-        $this->assertSame(2, substr_count($row[0], 'No break scan'), 'both break scans are marked absent');
+        $this->assertSame(2, substr_count($list, 'No break scan'), 'both break scans are marked absent');
     }
 
     public function test_two_workers_on_one_date_are_two_records(): void

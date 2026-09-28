@@ -124,9 +124,10 @@ class AttendanceListLayoutTest extends TestCase
             return array_map('trim', $m[1]);
         }, $heads[2]);
 
-        // The list answers who came in, when, and whether anything is wrong;
-        // both sessions and the timeline are in the day's detail.
-        $this->assertSame(['Employee', 'Time in', 'Time out', 'Hours', 'Status'], $labels[0]);
+        // The list answers who came in, when, and whether anything is wrong:
+        // the AM and PM sessions, each in and out. The timeline and every
+        // scan are in the day's detail.
+        $this->assertSame(['Employee', 'AM in', 'AM out', 'PM in', 'PM out', 'Hours', 'Status'], $labels[0]);
         $this->assertSame($labels[0], $labels[1], 'the tabs must not shuffle the columns between them');
     }
 

@@ -155,7 +155,7 @@ html[data-bs-theme] .atm-field select:focus-visible { box-shadow:none !important
    Five columns: who, in, out, hours, status. Wide enough for them; narrower
    than that, it scrolls sideways inside the card. */
 .atm-scroll { overflow-x:auto; }
-.atm-table { width:100%; min-width:680px; border-collapse:separate; border-spacing:0; }
+.atm-table { width:100%; min-width:860px; border-collapse:separate; border-spacing:0; }
 .atm-table thead th {
     padding:9px 18px; text-align:left; white-space:nowrap;
     font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
@@ -191,7 +191,9 @@ tr.atm-dayhead td {
 .atm-emp b { display:block; font-size:13.5px; font-weight:700; color:var(--atm-ink); white-space:nowrap; }
 .atm-emp small { display:block; font-size:11.5px; color:var(--atm-mute); white-space:nowrap; margin-top:1px; }
 
-.atm-punch { display:flex; flex-direction:column; gap:2px; min-width:90px; }
+.atm-punch { display:flex; flex-direction:column; gap:2px; min-width:82px; }
+/* AM and PM are told apart by a rule between them. */
+.atm-table td.atm-sep, .atm-table th.atm-sep { border-left:1px solid var(--border); }
 .atm-t { display:flex; align-items:center; gap:5px; font-size:13.5px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--atm-ink); }
 .atm-t.is-mute { color:var(--atm-mute); font-weight:500; }
 .atm-edited { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--brand); }
@@ -566,7 +568,8 @@ tr.atm-dayhead td {
 
         @php
             $heads = '<th>' . e(__('Employee')) . '</th>'
-                   . '<th>' . e(__('Time in')) . '</th><th>' . e(__('Time out')) . '</th>'
+                   . '<th>' . e(__('AM in')) . '</th><th>' . e(__('AM out')) . '</th>'
+                   . '<th class="atm-sep">' . e(__('PM in')) . '</th><th>' . e(__('PM out')) . '</th>'
                    . '<th>' . e(__('Hours')) . '</th><th>' . e(__('Status')) . '</th>'
                    . '<th class="atm-col-chev"><span class="visually-hidden">' . e(__('Open')) . '</span></th>';
         @endphp
@@ -612,7 +615,7 @@ tr.atm-dayhead td {
                             <tbody>
                                 @foreach($historyBoard->groupBy(fn ($d) => $d->day->date()->toDateString()) as $date => $group)
                                     <tr class="atm-dayhead" data-live-key="date-{{ $date }}">
-                                        <td colspan="6">{{ \Carbon\Carbon::parse($date)->format('l, m/d/Y') }}</td>
+                                        <td colspan="8">{{ \Carbon\Carbon::parse($date)->format('l, m/d/Y') }}</td>
                                     </tr>
                                     @foreach($group as $d)
                                         @include('attendance._day', ['d' => $d, 'tab' => 'history'])

@@ -2,7 +2,7 @@
 
      Both tables draw a day the same way, so it is written once here. The row
      answers one question — who came in, when, and is anything wrong — with
-     the day's time in, its time out, the hours and where it stands. Everything
+     the AM and PM sessions (each in and out), the hours and where it stands. Everything
      else (both sessions, the timeline, every scan, the hours in full and the
      fixes) is in the row under it, which the page shows in a side panel when
      the row is clicked.
@@ -36,10 +36,6 @@
         ? ($day->date()->isSameDay(today()->subDay()) ? __('Started last night') : __('Started :date', ['date' => $day->date()->format('m/d/Y')]))
         : null;
 
-    // Time out on the list is the day's last one: the 2nd session's when it
-    // has one (or is missing one), otherwise the 1st session's.
-    $outSlot = ($d->slot('out') || ($d->tag('out')['tone'] ?? null) === 'bad') ? 'out' : 'bo';
-
     // A time on the list: the scan, or what stands in for it. A time the
     // system guessed is not shown as a time — it was never scanned.
     $cell = function (string $slot) use ($d) {
@@ -52,8 +48,9 @@
             'tag'    => $tag,
         ];
     };
-    $in  = $cell('in');
-    $out = $cell($outSlot);
+
+    // The two sessions as the list shows them: AM in, AM out, PM in, PM out.
+    $cells = [$cell('in'), $cell('bo'), $cell('bi'), $cell('out')];
 @endphp
 <tr @class(['atm-row', 'is-flag' => $flag]) data-live-key="{{ $key }}" data-day="{{ $key }}"
     tabindex="0" aria-expanded="false" aria-controls="{{ $key }}-detail">
@@ -64,8 +61,8 @@
         </div>
     </td>
 
-    @foreach([$in, $out] as $c)
-        <td>
+    @foreach($cells as $i => $c)
+        <td @class(['atm-sep' => $i === 2])>
             <div class="atm-punch">
                 @if($c['time'])
                     <span class="atm-t">{{ $c['time'] }}@if($c['edited'])<i class="atm-edited" title="{{ __('Set by the office') }}"></i>@endif</span>
@@ -108,7 +105,7 @@
 </tr>
 
 <tr class="atm-detail" id="{{ $key }}-detail" data-live-key="{{ $key }}-detail" hidden>
-    <td colspan="6">
+    <td colspan="8">
         <div class="atm-dhead">
             <div>
                 <h3>{{ $name }}</h3>
