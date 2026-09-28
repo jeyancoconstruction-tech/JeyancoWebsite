@@ -320,6 +320,31 @@ class EarlyClockInIsNotPaidTest extends TestCase
         $this->assertSame('Monday', $context['previous_cutoff']['attendance'][0]['day']);
     }
 
+    /** The kiosk's pay card lists last week's days beside this week's, each with its own totals. */
+    public function test_the_kiosk_pay_card_carries_last_week(): void
+    {
+        $this->shape(false, '08:00', '17:00', '12:00', '13:00', 8);
+        $emp = $this->worker(false);
+        $emp->update(['fingerprint_id' => '41']);
+
+        $thisMonday = Carbon::today()->startOfWeek(Carbon::MONDAY)->addWeek();
+        foreach ([7, 6] as $back) {
+            $day = $thisMonday->copy()->subDays($back)->format('Y-m-d');
+            $this->clock($emp, 'time_in', $day . ' 08:00:00');
+            $this->clock($emp, 'time_out', $day . ' 12:00:00');
+        }
+        $this->clock($emp, 'time_in', $thisMonday->format('Y-m-d') . ' 08:00:00');
+        Carbon::setTestNow($thisMonday->copy()->setTime(9, 0));
+
+        $json = $this->getJson('/api/kiosk/my-payroll/41')->assertOk()->json();
+
+        $this->assertCount(1, $json['attendance'], 'this week: only today');
+        $this->assertTrue($json['attendance'][0]['open']);
+        $this->assertCount(2, $json['previous']['attendance'], 'last week: Monday and Tuesday');
+        $this->assertSame($thisMonday->copy()->subWeek()->toDateString(), $json['previous']['period']['start']);
+        $this->assertEqualsWithDelta(8.0, $json['previous']['totals']['hours'], 0.01);
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();

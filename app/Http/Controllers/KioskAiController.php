@@ -77,18 +77,7 @@ class KioskAiController extends Controller
         $start = Carbon::now()->startOfWeek(Carbon::MONDAY);
         $end   = Carbon::now()->endOfWeek(Carbon::SUNDAY);
 
-        $totals = [];
-        try {
-            $rows = $payroll->computeForRange($start->toDateString(), $end->toDateString())['employees'] ?? [];
-            foreach ($rows as $row) {
-                if ((int) ($row['employee_id'] ?? 0) === (int) $employee->id) {
-                    $totals = $row['totals'] ?? [];
-                    break;
-                }
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Kiosk payroll summary failed — ' . $e->getMessage());
-        }
+        $totals = $this->weekTotals($employee, $payroll, $start, $end);
 
         $num = fn ($key) => round((float) ($totals[$key] ?? 0), 2);
 
@@ -99,31 +88,7 @@ class KioskAiController extends Controller
         // is closed, and an open one contributes no hours and no pay. The
         // person standing at the kiosk had every reason to think their scan
         // had not registered. Their own time-in is the proof it did.
-        $records = Attendance::where('employee_id', $employee->id)
-            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
-            ->orderByDesc('date')
-            ->orderBy('session')
-            ->get()
-            ->map(function (Attendance $a) {
-                // Whole minutes, as payroll counts them.
-                $in  = $a->time_in  ? Carbon::parse($a->time_in)->startOfMinute()  : null;
-                $out = $a->time_out ? Carbon::parse($a->time_out)->startOfMinute() : null;
-
-                return [
-                    'date'     => Carbon::parse($a->date)->toDateString(),
-                    'day'      => Carbon::parse($a->date)->format('D, M d'),
-                    'session'  => $a->session,
-                    'time_in'  => $in  ? $in->format('g:i A')  : null,
-                    'time_out' => $out ? $out->format('g:i A') : null,
-                    // Still on site: the hours are real but not yet countable,
-                    // and saying so beats showing a silent zero.
-                    'open'     => (bool) ($in && ! $out),
-                    'hours'    => ($in && $out)
-                        ? round(abs($in->diffInMinutes($out)) / 60, 2)
-                        : 0.0,
-                ];
-            })
-            ->values();
+        $records = $this->weekRecords($employee, $start, $end);
 
         $daysPresent = $records->filter(fn ($r) => $r['time_in'] !== null)
             ->pluck('date')->unique()->count();
@@ -210,10 +175,87 @@ class KioskAiController extends Controller
             // listahan sa ibaba kahit hindi pa tapos ang isang session.
             'days_present' => $daysPresent,
             'attendance'   => $records,
+
+            // Last week, beside this one. The cutoff starts over every Monday,
+            // so early in the week the card above holds a day or two — on a
+            // Monday, only today — and the worker's question is about the
+            // week they just worked. Its own totals: never added to the above.
+            'previous'     => $this->previousWeek($employee, $payroll, $start),
             'vale' => round((float) ($employee->vale ?? 0), 2),
             // So the kiosk can say why the chat is quiet instead of looking broken.
             'assistant_available' => ! empty(config('services.anthropic.key')),
         ]);
+    }
+
+    /** One employee's payroll totals for a Monday–Sunday week, as Payroll Records has them. */
+    private function weekTotals(Employee $employee, PayrollService $payroll, Carbon $start, Carbon $end): array
+    {
+        try {
+            foreach ($payroll->computeForRange($start->toDateString(), $end->toDateString())['employees'] ?? [] as $row) {
+                if ((int) ($row['employee_id'] ?? 0) === (int) $employee->id) {
+                    return $row['totals'] ?? [];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Kiosk payroll summary failed — ' . $e->getMessage());
+        }
+
+        return [];
+    }
+
+    /** One employee's scans for a week, newest day first, one row per session. */
+    private function weekRecords(Employee $employee, Carbon $start, Carbon $end)
+    {
+        return Attendance::where('employee_id', $employee->id)
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->orderByDesc('date')
+            ->orderBy('session')
+            ->get()
+            ->map(function (Attendance $a) {
+                // Whole minutes, as payroll counts them.
+                $in  = $a->time_in  ? Carbon::parse($a->time_in)->startOfMinute()  : null;
+                $out = $a->time_out ? Carbon::parse($a->time_out)->startOfMinute() : null;
+
+                return [
+                    'date'     => Carbon::parse($a->date)->toDateString(),
+                    'day'      => Carbon::parse($a->date)->format('D, M d'),
+                    'session'  => $a->session,
+                    'time_in'  => $in  ? $in->format('g:i A')  : null,
+                    'time_out' => $out ? $out->format('g:i A') : null,
+                    // Still on site: the hours are real but not yet countable,
+                    // and saying so beats showing a silent zero.
+                    'open'     => (bool) ($in && ! $out),
+                    'hours'    => ($in && $out)
+                        ? round(abs($in->diffInMinutes($out)) / 60, 2)
+                        : 0.0,
+                ];
+            })
+            ->values();
+    }
+
+    /** Last week's card: its dates, what payroll made of it, and its scans. */
+    private function previousWeek(Employee $employee, PayrollService $payroll, Carbon $thisStart): array
+    {
+        $start  = $thisStart->copy()->subWeek();
+        $end    = $start->copy()->endOfWeek(Carbon::SUNDAY);
+        $totals = $this->weekTotals($employee, $payroll, $start, $end);
+        $num    = fn ($key) => round((float) ($totals[$key] ?? 0), 2);
+
+        return [
+            'period' => [
+                'start' => $start->toDateString(),
+                'end'   => $end->toDateString(),
+                'label' => $start->format('M d') . ' – ' . $end->format('M d, Y'),
+            ],
+            'totals' => [
+                'workdays' => (int) ($totals['workdays'] ?? 0),
+                'hours'    => $num('hours'),
+                'overtime' => $num('overtime'),
+                'gross'    => $num('gross'),
+                'net'      => $num('net'),
+            ],
+            'attendance' => $this->weekRecords($employee, $start, $end),
+        ];
     }
 
     public function ask(Request $request, PayrollService $payroll): JsonResponse
