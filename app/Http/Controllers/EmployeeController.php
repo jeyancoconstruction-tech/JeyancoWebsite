@@ -677,7 +677,8 @@ class EmployeeController extends Controller
      */
     public function register()
     {
-        $with = ['laborType', 'site', 'kiosk'];
+        // shift: the worker card on an Active row names it.
+        $with = ['laborType', 'site', 'kiosk', 'shift'];
 
         $pending  = Employee::pending()->with($with)->withCount('attendances')
                         ->orderByDesc('created_at')->get();

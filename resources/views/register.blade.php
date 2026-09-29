@@ -267,27 +267,39 @@ tr.rmx-row-card:hover .rmx-name { color: var(--brand, #1668DC); }
 /* The whole row opens the worker; its checkbox and buttons keep their own jobs. */
 tr.rmx-row-card { cursor: pointer; }
 
-/* The worker dialog's body. */
-.wm-head-ico { color: #8fbef7; }
-.wm-who { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border, #e4e9f0); }
-.wm-av { width: 60px; height: 60px; border-radius: 50%; flex: none; display: grid; place-items: center;
-    background: var(--brand-subtle, #EAF2FD); color: var(--brand, #1668DC); }
-.wm-who-t { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.wm-who-t b { font-size: 17px; font-weight: 700; color: var(--text-primary, #101828); line-height: 1.25; }
-.wm-who-t small { font-size: 12.5px; color: var(--text-muted, #667085); }
-.wm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
-.wm-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px;
-    background: var(--bg-subtle, #F2F4F7); color: var(--text-secondary, #344054); border: 1px solid var(--border, #e4e9f0); }
-.wm-chip.ok { background: #ECFDF3; color: #067647; border-color: #ABEFC6; }
-[data-bs-theme="dark"] .wm-chip.ok { background: rgba(18,183,106,.14); color: #75E0A7; border-color: rgba(18,183,106,.35); }
-.wm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
-.wm-grid div { min-width: 0; }
-.wm-grid span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted, #667085); margin-bottom: 2px; }
-.wm-grid b { display: block; font-size: 13.5px; font-weight: 600; color: var(--text-primary, #101828); overflow-wrap: anywhere; }
-.wm-grid b.none { color: var(--text-muted, #98A2B3); font-weight: 500; }
-.wm-grid .wide { grid-column: 1 / -1; }
+/* The worker dialog. Who they are is said once, in the navy head; the body
+   is the pay as three figures and then the rest as a plain list. */
+#workerModal .emp-head { align-items: center; padding: 18px 20px; }
+.wm-av { width: 52px; height: 52px; border-radius: 14px; flex: none; display: grid; place-items: center;
+    background: rgba(255,255,255,.10); color: #8fbef7; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+#workerModal .emp-head-title { font-size: 17px; margin-bottom: 3px; }
+.wm-id { font: 600 11.5px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #cfe0f5;
+    background: rgba(255,255,255,.10); padding: 3px 6px; border-radius: 5px; margin-right: 6px; }
+.wm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.wm-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+    background: rgba(255,255,255,.08); color: #cfe0f5; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+.wm-chip i { font-size: 10px; }
+.wm-chip.ok { background: rgba(18,183,106,.18); color: #86efac; box-shadow: inset 0 0 0 1px rgba(18,183,106,.40); }
+.wm-chip.warn { background: rgba(247,144,9,.16); color: #fcd34d; box-shadow: inset 0 0 0 1px rgba(247,144,9,.40); }
+
+.wm-pay { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border, #e4e9f0); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.wm-pay > div { padding: 11px 14px; border-left: 1px solid var(--border, #e4e9f0); min-width: 0; }
+.wm-pay > div:first-child { border-left: 0; }
+.wm-pay span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted, #667085); margin-bottom: 3px; }
+.wm-pay b { font-size: 17px; font-weight: 700; color: var(--text-primary, #101828); font-variant-numeric: tabular-nums; letter-spacing: -.01em; white-space: nowrap; }
+.wm-pay small { font-size: 11.5px; font-weight: 500; color: var(--text-muted, #667085); margin-left: 2px; }
+
+.wm-group { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border, #e4e9f0); }
+.wm-group:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+.wm-group h6 { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand, #1668DC); margin: 0 0 8px; }
+.wm-list { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+.wm-list > div { min-width: 0; }
+.wm-list > .wide { grid-column: 1 / -1; }
+.wm-list dt { font-size: 11.5px; font-weight: 600; color: var(--text-muted, #667085); margin-bottom: 1px; }
+.wm-list dd { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--text-primary, #101828); overflow-wrap: anywhere; }
+.wm-list dd.none { color: var(--text-muted, #98A2B3); font-weight: 500; }
 .emp-foot a.emp-btn-cancel, .emp-foot a.emp-btn-save { text-decoration: none; }
-@media (max-width: 575px) { .wm-grid { grid-template-columns: 1fr; } }
+@media (max-width: 575px) { .wm-pay b { font-size: 15px; } }
 </style>
 @endpush
 
@@ -440,7 +452,18 @@ tr.rmx-row-card { cursor: pointer; }
                                 'phone'    => $e->phone,
                                 'email'    => $e->email,
                                 'hired'    => $e->date_hired?->format('M j, Y'),
-                                'place'    => collect([$e->address_city, $e->address_province])->filter()->implode(', ') ?: null,
+                                'place'    => collect([$e->address_street, $e->address_barangay, $e->address_city, $e->address_province, $e->address_postal])->filter()->implode(', ') ?: null,
+                                'born'     => $e->birth_date ? $e->birth_date->format('M j, Y') . ' · ' . $e->birth_date->age . ' ' . __('yrs') : null,
+                                'birthplace' => $e->birth_place,
+                                'gender'   => $e->gender,
+                                'civil'    => $e->civil_status,
+                                'nation'   => $e->nationality,
+                                'blood'    => $e->blood_type,
+                                'shift'    => $e->shift ? $e->shift->name . ' · ' . \Carbon\Carbon::parse($e->shift->starts_at)->format('g:i A') : null,
+                                'contract' => $e->employment_type === 'contractual' && $e->contract_rate ? '₱' . number_format((float) $e->contract_rate, 2) : null,
+                                'ends'     => $e->end_of_contract?->format('M j, Y'),
+                                'ice'      => collect([$e->emergency_contact_name, $e->emergency_contact_relation ? '(' . $e->emergency_contact_relation . ')' : null])->filter()->implode(' ') ?: null,
+                                'icePhone' => $e->emergency_contact_phone,
                                 'edit'     => route('employees.edit', $e->id),
                                 'profile'  => route('employees.show', $e->id),
                             ];
@@ -1323,26 +1346,40 @@ tr.rmx-row-card { cursor: pointer; }
     // it too, so both are looked up when a worker is first opened.
     const modal = { show: () => bootstrap.Modal.getOrCreateInstance(document.getElementById('workerModal')).show() };
     const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const fact = (label, value, wide) => `<div class="${wide ? 'wide' : ''}"><span>${label}</span><b class="${value ? '' : 'none'}">${esc(value || '—')}</b></div>`;
+    const fact = (label, value, wide) => `<div class="${wide ? 'wide' : ''}"><dt>${label}</dt><dd class="${value ? '' : 'none'}">${esc(value || '—')}</dd></div>`;
+    // "₱150.00 / hr" → the figure large, its unit small beside it.
+    const money = (label, value) => {
+        const [fig, unit] = String(value || '—').split(/\s*\/\s*/);
+        return `<div><span>${label}</span><b>${esc(fig)}</b>${unit ? `<small>/ ${esc(unit)}</small>` : ''}</div>`;
+    };
     const $ = id => document.getElementById(id);
 
     function open(row) {
         let d;
         try { d = JSON.parse(row.dataset.emp || '{}'); } catch (e) { return; }
         $('wmTitle').textContent = d.name;
-        $('wmSub').textContent = [d.id, d.role].filter(Boolean).join(' · ');
-        $('wmName').textContent = d.name;
-        $('wmMeta').textContent = [d.id, d.role, d.site].filter(Boolean).join(' · ');
+        $('wmSub').innerHTML = (d.id ? `<span class="wm-id">${esc(d.id)}</span>` : '') + esc([d.role, d.site].filter(Boolean).join(' · '));
         $('wmChips').innerHTML = [
             d.type ? `<span class="wm-chip">${esc(d.type)}</span>` : '',
-            d.fp ? `<span class="wm-chip ok">Fingerprint · ${esc(d.fp)}</span>` : `<span class="wm-chip">No fingerprint yet</span>`,
+            d.fp ? `<span class="wm-chip ok"><i class="fas fa-fingerprint"></i>${esc(d.fp)}</span>`
+                 : `<span class="wm-chip warn"><i class="fas fa-fingerprint"></i>No fingerprint yet</span>`,
         ].join('');
+        $('wmPay').innerHTML =
+            money('Rate', d.rate) + money('Daily', d.daily) +
+            `<div><span>Logs</span><b>${esc(String(d.logs ?? 0))}</b><small>scans</small></div>`;
+        const group = (title, rows) => `<section class="wm-group"><h6>${title}</h6><dl class="wm-list">${rows}</dl></section>`;
         $('wmFacts').innerHTML =
-            fact('Site', d.site) + fact('Labor type', d.role) +
-            fact('Rate', d.rate) + fact('Daily', d.daily) +
-            fact('Logs', String(d.logs ?? 0)) + fact('Hired', d.hired) +
-            fact('Phone', d.phone) + fact('Email', d.email) +
-            (d.place ? fact('Address', d.place, true) : '');
+            group('Personal',
+                fact('Born', d.born) + fact('Birthplace', d.birthplace) +
+                fact('Gender', d.gender) + fact('Civil status', d.civil) +
+                fact('Nationality', d.nation) + fact('Blood type', d.blood)) +
+            group('Contact',
+                fact('Phone', d.phone) + fact('Email', d.email) + fact('Address', d.place, true)) +
+            group('In case of emergency',
+                fact('Contact', d.ice) + fact('Phone', d.icePhone)) +
+            group('Work',
+                fact('Hired', d.hired) + fact('Shift', d.shift) +
+                (d.contract ? fact('Contract', d.contract) + fact('Ends', d.ends) : ''));
         $('wmProfile').href = d.profile;
         $('wmEdit').href = d.edit;
         modal.show();
@@ -1367,26 +1404,20 @@ tr.rmx-row-card { cursor: pointer; }
      the worker's icon, their record at a glance, and the two ways on — the
      full profile, or Edit (the Register Employee form). Filled from the row. --}}
 <div class="modal fade" id="workerModal" tabindex="-1" aria-labelledby="wmTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:540px">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:560px">
         <div class="modal-content emp-modal">
             <div class="emp-head">
-                <span class="emp-head-icon wm-head-ico">@include('partials.worker-icon', ['size' => '19px'])</span>
+                <span class="wm-av">@include('partials.worker-icon', ['size' => '60%'])</span>
                 <div class="emp-head-text">
                     <h6 class="emp-head-title" id="wmTitle">{{ __('Worker') }}</h6>
                     <p class="emp-head-sub" id="wmSub"></p>
+                    <div class="wm-chips" id="wmChips"></div>
                 </div>
                 <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body emp-body">
-                <div class="wm-who">
-                    <span class="wm-av">@include('partials.worker-icon', ['size' => '58%'])</span>
-                    <div class="wm-who-t">
-                        <b id="wmName"></b>
-                        <small id="wmMeta"></small>
-                        <span class="wm-chips" id="wmChips"></span>
-                    </div>
-                </div>
-                <div class="wm-grid" id="wmFacts"></div>
+                <div class="wm-pay" id="wmPay"></div>
+                <div id="wmFacts"></div>
             </div>
             <div class="emp-foot">
                 <p class="emp-foot-note">{{ __('Edit opens the full employee form.') }}</p>
