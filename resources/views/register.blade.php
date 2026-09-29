@@ -61,26 +61,39 @@ html[data-bs-theme="dark"] .rmx {
 /* On the page header's right, both as tall as the header itself. */
 .rmx .page-head-actions > :is(.rmx-outline, .rmx-primary) { height: 36px; text-decoration: none; }
 
-/* Stat cards — they also switch tabs */
+/* Stat cards — they also switch the list. Drawn as the Dashboard's KPI tiles:
+   a tinted icon square, a small capitalised label, the number, one line under. */
 .rmx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: .75rem; }
-@media (max-width: 720px) {
-    .rmx-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-    .rmx-stat { padding: .5rem .7rem; }
-    .rmx-stat-num { font-size: 19px; }
-    .rmx-stat-lbl { align-items: flex-start; font-size: 10px; letter-spacing: .3px; line-height: 1.3; }
-    .rmx-stat-lbl i { font-size: 12px; }
+.rmx-stat {
+    appearance: none; margin: 0; font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer;
+    display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 12px;
+    background: var(--bg-surface, #fff); border: 1px solid var(--border, #E4E7EC); border-radius: var(--radius-md, 10px);
+    transition: border-color .15s ease, background .15s ease;
 }
-.rmx-stat { appearance: none; margin: 0; font: inherit; color: inherit; text-align: left; width: 100%; cursor: pointer;
-    background: var(--rmx-card); border: 0; border-left: 3px solid var(--rmx-slate); border-radius: 0 12px 12px 0;
-    padding: .6rem 1.1rem; box-shadow: var(--rmx-lift); transition: background .15s; }
-.rmx-stat:hover { background: var(--rmx-hover); }
-.rmx-stat-active  { border-left-color: var(--rmx-green); }
-.rmx-stat-pending { border-left-color: var(--rmx-amber); }
-.rmx-stat-num { display: block; font-size: 22px; font-weight: 600; color: var(--rmx-txt); line-height: 1; font-variant-numeric: tabular-nums; }
-.rmx-stat-lbl { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 11px; color: var(--rmx-txt-2); text-transform: uppercase; letter-spacing: .5px; }
-.rmx-stat-lbl i { font-size: 15px; color: var(--rmx-txt-3); }
-.rmx-stat-active  .rmx-stat-lbl i { color: var(--rmx-green-ico); }
-.rmx-stat-pending .rmx-stat-lbl i { color: var(--rmx-amber-ico); }
+.rmx-stat:hover { border-color: var(--brand, #1668DC); background: var(--brand-subtle, #EAF2FD); }
+.rmx-stat-ic {
+    width: 32px; height: 32px; border-radius: 8px; flex: none;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.rmx-stat-active  .rmx-stat-ic { background: var(--brand-subtle); color: var(--brand); }
+.rmx-stat-pending .rmx-stat-ic { background: var(--warning-soft); color: var(--warning); }
+.rmx-stat-removed .rmx-stat-ic { background: var(--danger-soft);  color: var(--danger); }
+.rmx-stat-body { min-width: 0; display: flex; flex-direction: column; }
+.rmx-stat-lbl {
+    order: 1; font-size: .6rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    color: var(--text-muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rmx-stat-num {
+    order: 2; display: block; font-size: 1.02rem; font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; line-height: 1.2; margin: 1px 0 0;
+}
+.rmx-stat-sub { order: 3; font-size: .64rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 720px) {
+    .rmx-stats { gap: 8px; }
+    .rmx-stat { padding: 8px 9px; gap: 8px; }
+    .rmx-stat-ic { width: 26px; height: 26px; font-size: 11px; }
+    .rmx-stat-sub { display: none; }
+}
 
 /* Tabs and the one Select toggle */
 .rmx-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; flex-wrap: wrap; gap: 10px; }
@@ -224,7 +237,7 @@ html[data-bs-theme="dark"] .rmx {
 .rmx-sumwrap.open .rmx-stats { transform: none; opacity: 1; transition: transform .22s ease-out, opacity .22s ease-out; }
 .rmx-sumwrap.no-anim, .rmx-sumwrap.no-anim .rmx-stats { transition: none !important; }
 @media (prefers-reduced-motion: reduce) { .rmx-sumwrap, .rmx-sumwrap .rmx-stats { transition: none !important; } }
-.rmx-stat.is-on { background: var(--rmx-hover); box-shadow: inset 0 0 0 1.5px var(--brand, #1668DC); }
+.rmx-stat.is-on { border-color: var(--brand, #1668DC); background: var(--brand-subtle, #EAF2FD); box-shadow: inset 0 0 0 1px var(--brand, #1668DC); }
 
 /* The arrow: a tab on the edge by the navigation bar. › shows the cards, ‹ hides them. */
 .rmx-handle {
@@ -345,16 +358,28 @@ tr.rmx-row-card { cursor: pointer; }
             <div class="rmx-sum-in">
                 <div class="rmx-stats">
                     <button type="button" class="rmx-stat rmx-stat-active" data-tab="active">
-                        <span class="rmx-stat-num">{{ $active->count() }}</span>
-                        <span class="rmx-stat-lbl"><i class="ti ti-user-check" aria-hidden="true"></i>{{ __('Active') }}</span>
+                        <span class="rmx-stat-ic"><i class="fas fa-helmet-safety" aria-hidden="true"></i></span>
+                        <span class="rmx-stat-body">
+                            <span class="rmx-stat-num">{{ $active->count() }}</span>
+                            <span class="rmx-stat-lbl">{{ __('Active') }}</span>
+                            <span class="rmx-stat-sub">{{ __('On the payroll') }}</span>
+                        </span>
                     </button>
                     <button type="button" class="rmx-stat rmx-stat-pending" data-tab="pending">
-                        <span class="rmx-stat-num">{{ $pending->count() }}</span>
-                        <span class="rmx-stat-lbl"><i class="ti ti-fingerprint" aria-hidden="true"></i>{{ __('Pending from kiosk') }}</span>
+                        <span class="rmx-stat-ic"><i class="fas fa-fingerprint" aria-hidden="true"></i></span>
+                        <span class="rmx-stat-body">
+                            <span class="rmx-stat-num">{{ $pending->count() }}</span>
+                            <span class="rmx-stat-lbl">{{ __('Pending from kiosk') }}</span>
+                            <span class="rmx-stat-sub">{{ __('Waiting for their details') }}</span>
+                        </span>
                     </button>
                     <button type="button" class="rmx-stat rmx-stat-removed" data-tab="removed">
-                        <span class="rmx-stat-num">{{ $removed->count() }}</span>
-                        <span class="rmx-stat-lbl"><i class="ti ti-user-off" aria-hidden="true"></i>{{ __('Removed') }}</span>
+                        <span class="rmx-stat-ic"><i class="fas fa-user-slash" aria-hidden="true"></i></span>
+                        <span class="rmx-stat-body">
+                            <span class="rmx-stat-num">{{ $removed->count() }}</span>
+                            <span class="rmx-stat-lbl">{{ __('Removed') }}</span>
+                            <span class="rmx-stat-sub">{{ __('Records kept, can be restored') }}</span>
+                        </span>
                     </button>
                 </div>
             </div>
