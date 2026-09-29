@@ -35,6 +35,10 @@ class ProfilePhotoController extends Controller
             return response()->json(['success' => false, 'message' => __('That picture could not be read, or is too large.')], 422);
         }
 
+        if (! self::ready()) {
+            return self::notReady();
+        }
+
         $request->user()->forceFill(['photo' => $data])->save();
 
         return response()->json(['success' => true, 'message' => __('Profile photo updated.'), 'avatar' => $data]);
@@ -42,6 +46,10 @@ class ProfilePhotoController extends Controller
 
     public function destroy(Request $request): JsonResponse
     {
+        if (! self::ready()) {
+            return self::notReady();
+        }
+
         $user = $request->user();
         $user->forceFill(['photo' => null])->save();
 
@@ -50,5 +58,19 @@ class ProfilePhotoController extends Controller
             'message' => $user->google_avatar ? __('Your Google photo is back.') : __('Profile photo removed.'),
             'avatar'  => $user->avatarUrl(),
         ]);
+    }
+
+    /** Whether the database has the photo column yet (its migration has run). */
+    private static function ready(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasColumn('users', 'photo');
+    }
+
+    private static function notReady(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => __('Profile photos need the latest database update. Ask the administrator to run the migrations.'),
+        ], 503);
     }
 }

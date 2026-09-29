@@ -217,8 +217,14 @@ class AuthController extends Controller
 
         // Google's picture for the address, refreshed at every Google sign-in so
         // a new one there shows here. A photo the person chose still wins.
+        // Never at the cost of the sign-in: if the picture cannot be kept (the
+        // column not there yet, a database hiccup), they are still let in.
         if (Auth::check() && ($avatar = self::googleAvatar($google))) {
-            Auth::user()->forceFill(['google_avatar' => $avatar])->saveQuietly();
+            try {
+                Auth::user()->forceFill(['google_avatar' => $avatar])->saveQuietly();
+            } catch (Throwable $e) {
+                report($e);
+            }
         }
 
         return $response;

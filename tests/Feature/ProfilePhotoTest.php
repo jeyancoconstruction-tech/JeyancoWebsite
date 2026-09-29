@@ -49,6 +49,25 @@ class ProfilePhotoTest extends TestCase
         $this->assertSame('https://lh3.googleusercontent.com/a/abc=s256-c', $user->fresh()->avatarUrl());
     }
 
+    /** Production once served the new code before the migration ran: sign-in must not break. */
+    public function test_a_google_sign_in_still_works_before_the_columns_exist(): void
+    {
+        config(['services.google.client_id' => 'x.apps.googleusercontent.com', 'services.google.client_secret' => 's']);
+        $user = $this->account();
+        \Illuminate\Support\Facades\Schema::table('users', fn ($t) => $t->dropColumn(['google_avatar', 'photo']));
+
+        $google = (new GoogleUser)
+            ->setRaw(['sub' => '1', 'email' => 'maria.santos@gmail.com', 'email_verified' => true])
+            ->map(['id' => '1', 'email' => 'maria.santos@gmail.com', 'avatar' => 'https://lh3.googleusercontent.com/a/abc=s96-c']);
+        Socialite::shouldReceive('driver->user')->andReturn($google);
+
+        $this->get(route('login.google.callback', ['state' => 'x', 'code' => 'y']))->assertRedirect();
+        $this->assertAuthenticatedAs($user);
+
+        $this->postJson(route('profile.photo.store'), ['photo' => self::PNG])->assertStatus(503);
+        $this->get(route('dashboard'))->assertOk();
+    }
+
     public function test_a_picture_from_elsewhere_is_not_kept(): void
     {
         config(['services.google.client_id' => 'x.apps.googleusercontent.com', 'services.google.client_secret' => 's']);
