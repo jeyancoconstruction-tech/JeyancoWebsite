@@ -25,7 +25,7 @@
 
     <div class="row">
         <div class="col-12">
-            <form action="{{ route('employees.store') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('employees.store') }}" method="POST" enctype="multipart/form-data" class="rgx" id="rgxForm">
                 @csrf
 
                 <div class="ep-section">
@@ -222,6 +222,13 @@
                 @include('employees._profile_fields')
 
                 <div class="ep-actions">
+                    {{-- How much of the form is left. Counted in the page from
+                         the fields that are required right now, so it follows
+                         the Regular / Contractual switch. --}}
+                    <div class="rgx-prog" aria-live="polite">
+                        <span class="rgx-bar"><i id="rgxBar"></i></span>
+                        <span class="rgx-count"><b id="rgxDone">0</b> {{ __('of') }} <b id="rgxTotal">0</b> {{ __('required') }}</span>
+                    </div>
                     <p class="ep-actions-note">{{ __('Every field marked') }} <span class="ep-req">*</span> {{ __('is required. The Government ID numbers, the blood type and the email may be left blank.') }}</p>
                     <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">{{ __('Cancel') }}</a>
                     <button type="submit" class="btn btn-primary fw-bold px-4">
@@ -237,6 +244,7 @@
      the end of the page paints the sections unstyled first. --}}
 @push('styles')
     @include('employees._profile_styles')
+    @include('employees._register_layout')
 @endpush
 
 {{-- site-location-picker.js is not loaded here any more: it existed for the
@@ -286,5 +294,6 @@
 </script>
 
 @include('employees._employment_type_toggle')
+@include('employees._register_progress')
 
 @endsection
