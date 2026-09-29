@@ -113,3 +113,81 @@
     .rgx .ep-section:has(#sss_number) .ep-optional { display: none; }
 }
 </style>
+
+{{-- Edit Employee: the strip at the top and the change marks. --}}
+<style>
+.rgx-who {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 16px; margin-bottom: 14px;
+    background: var(--bg-surface, #fff);
+    border: 1px solid var(--border, #e3e6e9);
+    border-radius: var(--radius-lg, 6px);
+}
+.rgx-who-av {
+    flex: none; width: 46px; height: 46px; border-radius: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--brand-subtle, #edf3f9); color: var(--brand, #1e5c9b);
+}
+.rgx-who-main { min-width: 0; flex: 1; }
+.rgx-who-name {
+    font-size: 1.05rem; font-weight: 700; line-height: 1.2;
+    color: var(--text-primary, #1b2430);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rgx-who-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.rgx-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .72rem; font-weight: 600; line-height: 1;
+    padding: 5px 8px; border-radius: 6px;
+    color: var(--text-secondary, #66707c);
+    background: var(--bg-subtle, #f1f3f5);
+}
+.rgx-tag i { font-size: .7rem; opacity: .8; }
+.rgx-tag-id   { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-primary, #1b2430); }
+.rgx-tag-ok   { color: var(--success, #1d7a46); background: var(--success-soft, #e6f4ec); }
+.rgx-tag-warn { color: var(--warning, #b26a00); background: var(--warning-soft, #fff4e0); }
+
+.rgx-rates {
+    flex: none; display: flex;
+    border: 1px solid var(--border, #e3e6e9); border-radius: 8px; overflow: hidden;
+}
+.rgx-rate { padding: 7px 14px; border-left: 1px solid var(--border, #e3e6e9); }
+.rgx-rate:first-child { border-left: 0; }
+.rgx-rate small {
+    display: block; font-size: .64rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted, #8a929b);
+}
+.rgx-rate b { font-size: .86rem; color: var(--text-primary, #1b2430); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rgx-rate-name { background: var(--brand-subtle, #edf3f9); }
+.rgx-rate-name b { color: var(--brand, #1e5c9b); }
+
+/* A field that differs from what was loaded: a dot on its label and a
+   brand edge on the box. */
+.rgx-changed .ep-label::after {
+    content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px;
+    border-radius: 50%; background: var(--brand, #1e5c9b); vertical-align: middle;
+}
+.rgx-changed .form-control, .rgx-changed .form-select { border-color: var(--brand, #1e5c9b) !important; }
+
+.rgx-dirty {
+    font-size: .76rem; font-weight: 700; padding: 5px 10px; border-radius: 999px;
+    color: var(--text-muted, #8a929b); background: var(--bg-subtle, #f1f3f5);
+}
+.rgx-dirty.is-on { color: #fff; background: var(--brand, #1e5c9b); }
+
+@media (min-width: 1200px) {
+    .rgx-edit {
+        grid-template-areas:
+            "who who who"
+            "emp per ids"
+            "emp adr con"
+            "act act act";
+    }
+    .rgx-edit > .rgx-who { grid-area: who; margin: 0; }
+}
+@media (max-width: 991px) {
+    .rgx-who { flex-wrap: wrap; }
+    .rgx-rates { width: 100%; }
+    .rgx-rate { flex: 1; }
+}
+</style>

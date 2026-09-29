@@ -25,9 +25,44 @@
 
     <div class="row">
         <div class="col-12">
-            <form action="{{ route('employees.update', $employee->id) }}" method="POST">
+            <form action="{{ route('employees.update', $employee->id) }}" method="POST" class="rgx rgx-edit" id="rgxForm" data-mode="edit">
                 @csrf
                 @method('PUT')
+
+                {{-- Who is being edited, at a glance. The Employee ID, the
+                     fingerprint and the labor type's rates were read-only
+                     boxes and a card inside Employment & Pay; they are facts
+                     about the worker, not answers to type, so they sit here.
+                     The name follows the name fields as they are typed. --}}
+                @php $lt = $employee->laborType; @endphp
+                <div class="rgx-who">
+                    <span class="rgx-who-av">@include('partials.worker-icon', ['size' => '58%'])</span>
+                    <div class="rgx-who-main">
+                        <div class="rgx-who-name" id="rgxWhoName">{{ $employee->name }}</div>
+                        <div class="rgx-who-meta">
+                            <span class="rgx-tag rgx-tag-id" title="{{ __('Used in Payroll & Reports.') }}">#{{ $employee->id }}</span>
+                            @if($employee->fingerprint_id)
+                                <span class="rgx-tag rgx-tag-ok" title="{{ __('Cannot be changed here.') }}"><i class="fas fa-fingerprint"></i> {{ __('Fingerprint') }} {{ $employee->fingerprint_id }}</span>
+                            @else
+                                <span class="rgx-tag rgx-tag-warn" title="{{ __('Enrolled at the kiosk.') }}"><i class="fas fa-fingerprint"></i> {{ __('No fingerprint yet') }}</span>
+                            @endif
+                            @if($employee->site)
+                                <span class="rgx-tag"><i class="fas fa-location-dot"></i> {{ $employee->site->name }}</span>
+                            @endif
+                            @if($employee->date_hired)
+                                <span class="rgx-tag"><i class="fas fa-calendar"></i> {{ __('Hired') }} {{ $employee->date_hired->format('M j, Y') }}</span>
+                            @endif
+                        </div>
+                    </div>
+                    @if($lt)
+                        <div class="rgx-rates" title="{{ __('Current Labor Type') }}">
+                            <div class="rgx-rate rgx-rate-name"><small>{{ __('Labor type') }}</small><b>{{ $lt->name }}</b></div>
+                            <div class="rgx-rate"><small>{{ __('Daily') }}</small><b>{{ $lt->getFormattedDailyRate() }}</b></div>
+                            <div class="rgx-rate"><small>{{ __('Hourly') }}</small><b>{{ $lt->getFormattedHourlyRate() }}</b></div>
+                            <div class="rgx-rate"><small>{{ __('OT') }}</small><b>{{ $lt->getFormattedOTRate() }}</b></div>
+                        </div>
+                    @endif
+                </div>
 
                 <div class="ep-section">
                     <div class="ep-section-head">
@@ -198,44 +233,22 @@
                                  twenty-five other things. --}}
                         </div>
 
-                        {{-- Employee ID (read-only) --}}
-                        <div class="col-md-6 col-lg-3">
-                            <label class="ep-label">{{ __('Employee ID') }}</label>
-                            <input type="text" value="#{{ $employee->id }}" class="form-control ep-mono" readonly>
-                            <span class="ep-hint">{{ __('Used in Payroll & Reports.') }}</span>
-                        </div>
-
-                        {{-- Fingerprint ID (read-only) --}}
-                        <div class="col-md-6 col-lg-3">
-                            <label class="ep-label">{{ __('Fingerprint ID') }}</label>
-                            <input type="text" value="{{ $employee->fingerprint_id ?? 'Not set' }}"
-                                   class="form-control ep-mono" readonly>
-                            <input type="hidden" name="fingerprint_id" value="{{ $employee->fingerprint_id }}">
-                            <span class="ep-hint">{{ __('Cannot be changed here.') }}</span>
-                        </div>
-
-                        {{-- Current labor type info card --}}
-                        @if($employee->laborType)
-                        <div class="col-12 p-3 rounded-3" style="background:var(--bg-subtle,#f0f4ff);border-left:4px solid #3b82f6;">
-                            <small class="text-muted d-block mb-2">{{ __('Current Labor Type') }}</small>
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <strong style="color:var(--primary,#3b82f6);">{{ $employee->laborType->name }}</strong>
-                                    <small class="text-muted d-block">Daily: {{ $employee->laborType->getFormattedDailyRate() }}</small>
-                                </div>
-                                <div class="col-6">
-                                    <small class="text-muted d-block">Hourly: {{ $employee->laborType->getFormattedHourlyRate() }}</small>
-                                    <small class="text-muted">OT: {{ $employee->laborType->getFormattedOTRate() }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
+                        {{-- Employee ID, fingerprint and the labor type's rates are
+                             shown in the strip at the top. The fingerprint still
+                             goes back with the form, unchanged, as it always did. --}}
+                        <input type="hidden" name="fingerprint_id" value="{{ $employee->fingerprint_id }}">
                     </div>
                 </div>
 
                 @include('employees._profile_fields', ['employee' => $employee])
 
                 <div class="ep-actions">
+                    {{-- What has been changed so far, counted in the page. --}}
+                    <div class="rgx-prog" aria-live="polite">
+                        <span class="rgx-dirty" id="rgxDirty">{{ __('No changes yet') }}</span>
+                        <span class="rgx-count"><b id="rgxDone">0</b> {{ __('of') }} <b id="rgxTotal">0</b> {{ __('required filled') }}</span>
+                    </div>
+                    <span class="ep-actions-note"></span>
                     <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">{{ __('Cancel') }}</a>
                     <button type="submit" class="btn btn-primary fw-bold px-4">
                         <i class="fas fa-save me-2"></i>{{ __('Save Changes') }}
@@ -250,6 +263,7 @@
      the end of the page paints the sections unstyled first. --}}
 @push('styles')
     @include('employees._profile_styles')
+    @include('employees._register_layout')
 @endpush
 
 {{-- site-location-picker.js is not loaded here any more: it existed for the
@@ -285,5 +299,6 @@
 </script>
 
 @include('employees._employment_type_toggle')
+@include('employees._register_progress')
 
 @endsection
