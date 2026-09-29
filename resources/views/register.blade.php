@@ -208,6 +208,45 @@ html[data-bs-theme="dark"] .rmx {
 }
 .emp-bonus-remove:hover     { text-decoration: underline; }
 .emp-bonus-remove:disabled  { opacity: .55; cursor: not-allowed; }
+
+/* A worker's name opens their card. */
+.rmx-open { all: unset; display: block; cursor: pointer; border-radius: 8px; margin: -4px -6px; padding: 4px 6px; max-width: 100%; }
+.rmx-open:hover { background: var(--rmx-hover); }
+.rmx-open:hover .rmx-name { color: var(--brand, #1668DC); }
+.rmx-open:focus-visible { outline: 2px solid var(--brand, #1668DC); outline-offset: 1px; }
+.rmx-avatar .rmx-worker { width: 17px; height: 17px; }
+.rmx-worker[hidden] { display: none; }
+.rmx-cp-ico .rmx-worker { width: 23px; height: 23px; }
+
+/* The card: small, beside the name, the record at a glance and the way to edit it. */
+.rmx-card-pop {
+    position: absolute; z-index: 1080; width: 320px; max-width: calc(100vw - 24px);
+    background: var(--rmx-card, #fff); color: var(--rmx-txt, #101828);
+    border: 1px solid var(--rmx-line-strong, #D0D5DD); border-radius: 12px;
+    box-shadow: 0 14px 34px rgba(16, 24, 40, .18); overflow: hidden;
+    animation: rmxPop .14s ease-out;
+}
+@keyframes rmxPop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rmx-card-pop { animation: none; } }
+.rmx-cp-head { display: flex; align-items: center; gap: 11px; padding: 14px 14px 12px; border-bottom: 1px solid var(--rmx-line, #E4E7EC); }
+.rmx-cp-ico { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: 20px; }
+.rmx-cp-who { min-width: 0; flex: 1; }
+.rmx-cp-who b { display: block; font-size: 14.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rmx-cp-who small { font-size: 12px; color: var(--rmx-txt-2, #475467); }
+.rmx-cp-x { all: unset; cursor: pointer; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--rmx-txt-3, #667085); }
+.rmx-cp-x:hover { background: var(--rmx-hover); color: var(--rmx-txt, #101828); }
+.rmx-cp-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 12px 14px; }
+.rmx-cp-body div { min-width: 0; }
+.rmx-cp-body span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--rmx-txt-3, #667085); }
+.rmx-cp-body b { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rmx-cp-body b.none { color: var(--rmx-txt-3, #98A2B3); font-weight: 500; }
+.rmx-cp-body .wide { grid-column: 1 / -1; }
+.rmx-cp-foot { display: flex; gap: 8px; padding: 10px 14px 14px; }
+.rmx-cp-foot a { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid var(--rmx-line-strong, #D0D5DD); color: var(--rmx-txt, #101828); }
+.rmx-cp-foot a:hover { background: var(--rmx-hover); }
+.rmx-cp-foot a.pri { background: var(--brand, #1668DC); border-color: var(--brand, #1668DC); color: #fff; }
+.rmx-cp-foot a.pri:hover { filter: brightness(.95); }
 </style>
 @endpush
 
@@ -316,9 +355,30 @@ html[data-bs-theme="dark"] .rmx {
                     </thead>
                     <tbody>
                     @forelse($active as $e)
-                        <tr>
+                        @php
+                            // What the card a click on the name opens shows: the
+                            // record as it stands, read here, no extra request.
+                            $card = [
+                                'id'       => '#' . str_pad($e->id, 4, '0', STR_PAD_LEFT),
+                                'name'     => $e->name,
+                                'role'     => $e->laborType?->name ?: ($e->job_title ?: $e->position),
+                                'type'     => $e->employment_label,
+                                'site'     => $e->site?->name,
+                                'rate'     => '₱' . number_format((float) $e->rate_per_hour, 2) . ' / hr',
+                                'daily'    => $e->laborType ? '₱' . number_format((float) $e->laborType->daily_rate, 2) . ' / day' : null,
+                                'fp'       => $e->fingerprint_id ? __('Slot') . ' ' . $e->fingerprint_id : null,
+                                'logs'     => $e->attendances_count,
+                                'phone'    => $e->phone,
+                                'email'    => $e->email,
+                                'hired'    => $e->date_hired?->format('M j, Y'),
+                                'place'    => collect([$e->address_city, $e->address_province])->filter()->implode(', ') ?: null,
+                                'edit'     => route('employees.edit', $e->id),
+                                'profile'  => route('employees.show', $e->id),
+                            ];
+                        @endphp
+                        <tr class="rmx-row-card" data-emp="{{ json_encode($card) }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
-                            <td>@include('employees._person', ['e' => $e, 'displayName' => $e->name])</td>
+                            <td><button type="button" class="rmx-open" aria-haspopup="dialog" aria-label="{{ __('Details of :name', ['name' => $e->name]) }}">@include('employees._person', ['e' => $e, 'displayName' => $e->name])</button></td>
                             <td>@include('employees._site', ['e' => $e])</td>
                             <td>@include('employees._labor', ['e' => $e])</td>
                             <td class="rmx-rate">₱{{ number_format($e->rate_per_hour, 2) }}</td>
@@ -1151,6 +1211,79 @@ html[data-bs-theme="dark"] .rmx {
 
     document.querySelectorAll('.rm-pane').forEach(sync);
     syncToggle();
+})();
+
+// ── A worker's card ─────────────────────────────────────────────────────────
+// A click on a name opens a small card beside it: the record at a glance, and
+// Edit (the full Register Employee form) or the full profile. One card at a
+// time; a click outside, Esc, or the name again closes it.
+(function () {
+    let card = null, openRow = null;
+    const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const fact = (label, value, wide) => `<div class="${wide ? 'wide' : ''}"><span>${label}</span><b class="${value ? '' : 'none'}">${esc(value || '—')}</b></div>`;
+
+    function close() {
+        card?.remove(); card = null;
+        openRow?.querySelector('.rmx-open')?.setAttribute('aria-expanded', 'false');
+        openRow = null;
+    }
+
+    function open(row, anchor) {
+        const d = JSON.parse(row.dataset.emp || '{}');
+        const tint = row.querySelector('.rmx-avatar')?.getAttribute('style') || '';
+        close();
+        card = document.createElement('div');
+        card.className = 'rmx-card-pop';
+        card.setAttribute('role', 'dialog');
+        card.setAttribute('aria-label', d.name);
+        card.innerHTML = `
+            <div class="rmx-cp-head">
+                <span class="rmx-cp-ico" style="${esc(tint)}"><svg class="rmx-worker" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 10a5.5 5.5 0 0 1 11 0"/><path d="M4.5 10.2h15"/><path d="M12 4.5v2.8"/><path d="M8.2 11a3.8 3.8 0 0 0 7.6 0"/><path d="M5 21a7 7 0 0 1 14 0"/></svg></span>
+                <div class="rmx-cp-who"><b>${esc(d.name)}</b><small>${esc(d.id)}${d.role ? ' · ' + esc(d.role) : ''}</small></div>
+                <button type="button" class="rmx-cp-x" aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button>
+            </div>
+            <div class="rmx-cp-body">
+                ${fact('Site', d.site)}${fact('Type', d.type)}
+                ${fact('Rate', d.rate)}${fact('Daily', d.daily)}
+                ${fact('Fingerprint', d.fp || 'Not enrolled')}${fact('Logs', String(d.logs ?? 0))}
+                ${fact('Phone', d.phone)}${fact('Hired', d.hired)}
+                ${fact('Email', d.email, true)}
+                ${d.place ? fact('Address', d.place, true) : ''}
+            </div>
+            <div class="rmx-cp-foot">
+                <a href="${esc(d.profile)}"><i class="ti ti-id" aria-hidden="true"></i>Full profile</a>
+                <a class="pri" href="${esc(d.edit)}"><i class="ti ti-pencil" aria-hidden="true"></i>Edit</a>
+            </div>`;
+        document.body.appendChild(card);
+
+        // Beside the name: below it, or above when there is no room below.
+        const r = anchor.getBoundingClientRect(), w = card.offsetWidth, h = card.offsetHeight;
+        const left = Math.max(12, Math.min(r.left, window.innerWidth - w - 12));
+        const below = r.bottom + 6 + h < window.innerHeight;
+        card.style.left = (left + window.scrollX) + 'px';
+        card.style.top  = ((below ? r.bottom + 6 : r.top - h - 6) + window.scrollY) + 'px';
+
+        openRow = row;
+        anchor.setAttribute('aria-expanded', 'true');
+        card.querySelector('.rmx-cp-x').addEventListener('click', close);
+        card.querySelector('a.pri').focus({ preventScroll: true });
+    }
+
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.rmx-open');
+        if (btn) {
+            const row = btn.closest('tr[data-emp]');
+            if (!row) return;
+            e.preventDefault();
+            if (openRow === row) { close(); return; }
+            open(row, btn);
+            return;
+        }
+        if (card && !card.contains(e.target)) close();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && card) { const b = openRow?.querySelector('.rmx-open'); close(); b?.focus(); } });
+    window.addEventListener('resize', close);
+    document.addEventListener('scroll', close, true);
 })();
 </script>
 @endsection
