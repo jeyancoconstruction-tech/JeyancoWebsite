@@ -147,6 +147,10 @@ html[data-bs-theme="dark"] .rmx {
 .rmx-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 600; flex-shrink: 0; overflow: hidden; }
 .rmx-avatar img { width: 100%; height: 100%; object-fit: cover; }
+/* Every worker the same: the brand tint, the icon in the brand colour. */
+.rmx-avatar { background: var(--brand-subtle, #EAF2FD); color: var(--brand, #1668DC); }
+.rmx-avatar-ico { width: 62%; height: 62%; display: block; }
+.rmx-avatar-ico[hidden] { display: none; }
 .rmx-who { min-width: 0; }
 .rmx-name { font-size: 13px; font-weight: 500; color: var(--rmx-txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
 .rmx-name.is-muted { color: var(--rmx-warn-fg); font-style: italic; }
@@ -244,42 +248,33 @@ html[data-bs-theme="dark"] .rmx {
 
 /* A worker's name opens their card. */
 .rmx-open { all: unset; display: block; cursor: pointer; border-radius: 8px; margin: -4px -6px; padding: 4px 6px; max-width: 100%; }
-.rmx-open:hover { background: var(--rmx-hover); }
-.rmx-open:hover .rmx-name { color: var(--brand, #1668DC); }
+tr.rmx-row-card:hover .rmx-name { color: var(--brand, #1668DC); }
 .rmx-open:focus-visible { outline: 2px solid var(--brand, #1668DC); outline-offset: 1px; }
-.rmx-avatar .rmx-worker { width: 17px; height: 17px; }
-.rmx-worker[hidden] { display: none; }
-.rmx-cp-ico .rmx-worker { width: 23px; height: 23px; }
 
-/* The card: small, beside the name, the record at a glance and the way to edit it. */
-.rmx-card-pop {
-    position: absolute; z-index: 1080; width: 320px; max-width: calc(100vw - 24px);
-    background: var(--rmx-card, #fff); color: var(--rmx-txt, #101828);
-    border: 1px solid var(--rmx-line-strong, #D0D5DD); border-radius: 12px;
-    box-shadow: 0 14px 34px rgba(16, 24, 40, .18); overflow: hidden;
-    animation: rmxPop .14s ease-out;
-}
-@keyframes rmxPop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .rmx-card-pop { animation: none; } }
-.rmx-cp-head { display: flex; align-items: center; gap: 11px; padding: 14px 14px 12px; border-bottom: 1px solid var(--rmx-line, #E4E7EC); }
-.rmx-cp-ico { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: 20px; }
-.rmx-cp-who { min-width: 0; flex: 1; }
-.rmx-cp-who b { display: block; font-size: 14.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rmx-cp-who small { font-size: 12px; color: var(--rmx-txt-2, #475467); }
-.rmx-cp-x { all: unset; cursor: pointer; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--rmx-txt-3, #667085); }
-.rmx-cp-x:hover { background: var(--rmx-hover); color: var(--rmx-txt, #101828); }
-.rmx-cp-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 12px 14px; }
-.rmx-cp-body div { min-width: 0; }
-.rmx-cp-body span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--rmx-txt-3, #667085); }
-.rmx-cp-body b { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rmx-cp-body b.none { color: var(--rmx-txt-3, #98A2B3); font-weight: 500; }
-.rmx-cp-body .wide { grid-column: 1 / -1; }
-.rmx-cp-foot { display: flex; gap: 8px; padding: 10px 14px 14px; }
-.rmx-cp-foot a { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; border-radius: 8px;
-    font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid var(--rmx-line-strong, #D0D5DD); color: var(--rmx-txt, #101828); }
-.rmx-cp-foot a:hover { background: var(--rmx-hover); }
-.rmx-cp-foot a.pri { background: var(--brand, #1668DC); border-color: var(--brand, #1668DC); color: #fff; }
-.rmx-cp-foot a.pri:hover { filter: brightness(.95); }
+/* The whole row opens the worker; its checkbox and buttons keep their own jobs. */
+tr.rmx-row-card { cursor: pointer; }
+
+/* The worker dialog's body. */
+.wm-head-ico { color: #8fbef7; }
+.wm-who { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border, #e4e9f0); }
+.wm-av { width: 60px; height: 60px; border-radius: 50%; flex: none; display: grid; place-items: center;
+    background: var(--brand-subtle, #EAF2FD); color: var(--brand, #1668DC); }
+.wm-who-t { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wm-who-t b { font-size: 17px; font-weight: 700; color: var(--text-primary, #101828); line-height: 1.25; }
+.wm-who-t small { font-size: 12.5px; color: var(--text-muted, #667085); }
+.wm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+.wm-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px;
+    background: var(--bg-subtle, #F2F4F7); color: var(--text-secondary, #344054); border: 1px solid var(--border, #e4e9f0); }
+.wm-chip.ok { background: #ECFDF3; color: #067647; border-color: #ABEFC6; }
+[data-bs-theme="dark"] .wm-chip.ok { background: rgba(18,183,106,.14); color: #75E0A7; border-color: rgba(18,183,106,.35); }
+.wm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
+.wm-grid div { min-width: 0; }
+.wm-grid span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted, #667085); margin-bottom: 2px; }
+.wm-grid b { display: block; font-size: 13.5px; font-weight: 600; color: var(--text-primary, #101828); overflow-wrap: anywhere; }
+.wm-grid b.none { color: var(--text-muted, #98A2B3); font-weight: 500; }
+.wm-grid .wide { grid-column: 1 / -1; }
+.emp-foot a.emp-btn-cancel, .emp-foot a.emp-btn-save { text-decoration: none; }
+@media (max-width: 575px) { .wm-grid { grid-template-columns: 1fr; } }
 </style>
 @endpush
 
@@ -1294,77 +1289,86 @@ html[data-bs-theme="dark"] .rmx {
     syncToggle();
 })();
 
-// ── A worker's card ─────────────────────────────────────────────────────────
-// A click on a name opens a small card beside it: the record at a glance, and
-// Edit (the full Register Employee form) or the full profile. One card at a
-// time; a click outside, Esc, or the name again closes it.
+// ── A worker, opened from their row ─────────────────────────────────────────
+// A click anywhere on an Active row — but its checkbox and its own buttons —
+// opens the worker in the centred dialog below: the record at a glance, and
+// Full profile or Edit (the Register Employee form). Enter on the name does too.
 (function () {
-    let card = null, openRow = null;
+    // The dialog's markup comes after this script, and Bootstrap loads after
+    // it too, so both are looked up when a worker is first opened.
+    const modal = { show: () => bootstrap.Modal.getOrCreateInstance(document.getElementById('workerModal')).show() };
     const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const fact = (label, value, wide) => `<div class="${wide ? 'wide' : ''}"><span>${label}</span><b class="${value ? '' : 'none'}">${esc(value || '—')}</b></div>`;
+    const $ = id => document.getElementById(id);
 
-    function close() {
-        card?.remove(); card = null;
-        openRow?.querySelector('.rmx-open')?.setAttribute('aria-expanded', 'false');
-        openRow = null;
-    }
-
-    function open(row, anchor) {
-        const d = JSON.parse(row.dataset.emp || '{}');
-        const tint = row.querySelector('.rmx-avatar')?.getAttribute('style') || '';
-        close();
-        card = document.createElement('div');
-        card.className = 'rmx-card-pop';
-        card.setAttribute('role', 'dialog');
-        card.setAttribute('aria-label', d.name);
-        card.innerHTML = `
-            <div class="rmx-cp-head">
-                <span class="rmx-cp-ico" style="${esc(tint)}"><svg class="rmx-worker" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 10a5.5 5.5 0 0 1 11 0"/><path d="M4.5 10.2h15"/><path d="M12 4.5v2.8"/><path d="M8.2 11a3.8 3.8 0 0 0 7.6 0"/><path d="M5 21a7 7 0 0 1 14 0"/></svg></span>
-                <div class="rmx-cp-who"><b>${esc(d.name)}</b><small>${esc(d.id)}${d.role ? ' · ' + esc(d.role) : ''}</small></div>
-                <button type="button" class="rmx-cp-x" aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button>
-            </div>
-            <div class="rmx-cp-body">
-                ${fact('Site', d.site)}${fact('Type', d.type)}
-                ${fact('Rate', d.rate)}${fact('Daily', d.daily)}
-                ${fact('Fingerprint', d.fp || 'Not enrolled')}${fact('Logs', String(d.logs ?? 0))}
-                ${fact('Phone', d.phone)}${fact('Hired', d.hired)}
-                ${fact('Email', d.email, true)}
-                ${d.place ? fact('Address', d.place, true) : ''}
-            </div>
-            <div class="rmx-cp-foot">
-                <a href="${esc(d.profile)}"><i class="ti ti-id" aria-hidden="true"></i>Full profile</a>
-                <a class="pri" href="${esc(d.edit)}"><i class="ti ti-pencil" aria-hidden="true"></i>Edit</a>
-            </div>`;
-        document.body.appendChild(card);
-
-        // Beside the name: below it, or above when there is no room below.
-        const r = anchor.getBoundingClientRect(), w = card.offsetWidth, h = card.offsetHeight;
-        const left = Math.max(12, Math.min(r.left, window.innerWidth - w - 12));
-        const below = r.bottom + 6 + h < window.innerHeight;
-        card.style.left = (left + window.scrollX) + 'px';
-        card.style.top  = ((below ? r.bottom + 6 : r.top - h - 6) + window.scrollY) + 'px';
-
-        openRow = row;
-        anchor.setAttribute('aria-expanded', 'true');
-        card.querySelector('.rmx-cp-x').addEventListener('click', close);
-        card.querySelector('a.pri').focus({ preventScroll: true });
+    function open(row) {
+        let d;
+        try { d = JSON.parse(row.dataset.emp || '{}'); } catch (e) { return; }
+        $('wmTitle').textContent = d.name;
+        $('wmSub').textContent = [d.id, d.role].filter(Boolean).join(' · ');
+        $('wmName').textContent = d.name;
+        $('wmMeta').textContent = [d.id, d.role, d.site].filter(Boolean).join(' · ');
+        $('wmChips').innerHTML = [
+            d.type ? `<span class="wm-chip">${esc(d.type)}</span>` : '',
+            d.fp ? `<span class="wm-chip ok">Fingerprint · ${esc(d.fp)}</span>` : `<span class="wm-chip">No fingerprint yet</span>`,
+        ].join('');
+        $('wmFacts').innerHTML =
+            fact('Site', d.site) + fact('Labor type', d.role) +
+            fact('Rate', d.rate) + fact('Daily', d.daily) +
+            fact('Logs', String(d.logs ?? 0)) + fact('Hired', d.hired) +
+            fact('Phone', d.phone) + fact('Email', d.email) +
+            (d.place ? fact('Address', d.place, true) : '');
+        $('wmProfile').href = d.profile;
+        $('wmEdit').href = d.edit;
+        modal.show();
     }
 
     document.addEventListener('click', e => {
-        const btn = e.target.closest('.rmx-open');
-        if (btn) {
-            const row = btn.closest('tr[data-emp]');
-            if (!row) return;
-            e.preventDefault();
-            if (openRow === row) { close(); return; }
-            open(row, btn);
-            return;
-        }
-        if (card && !card.contains(e.target)) close();
+        const row = e.target.closest('tr.rmx-row-card[data-emp]');
+        if (!row) return;
+        // The checkbox, bonus, edit and remove keep their own jobs. Only what is
+        // inside the row counts — the whole table sits inside the bulk form.
+        const inRow = sel => { const hit = e.target.closest(sel); return hit && row.contains(hit); };
+        if (inRow('input, label, a, form, .rmx-actions, .rmx-check-col')) return;
+        if (inRow('button') && !inRow('.rmx-open')) return;
+        e.preventDefault();
+        open(row);
     });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && card) { const b = openRow?.querySelector('.rmx-open'); close(); b?.focus(); } });
-    window.addEventListener('resize', close);
-    document.addEventListener('scroll', close, true);
 })();
 </script>
+
+{{-- ── A worker, opened from their row ───────────────────────────────────────
+     Centred, in the same dress as the Leave & Advances dialogs: the navy head,
+     the worker's icon, their record at a glance, and the two ways on — the
+     full profile, or Edit (the Register Employee form). Filled from the row. --}}
+<div class="modal fade" id="workerModal" tabindex="-1" aria-labelledby="wmTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:540px">
+        <div class="modal-content emp-modal">
+            <div class="emp-head">
+                <span class="emp-head-icon wm-head-ico">@include('partials.worker-icon', ['size' => '19px'])</span>
+                <div class="emp-head-text">
+                    <h6 class="emp-head-title" id="wmTitle">{{ __('Worker') }}</h6>
+                    <p class="emp-head-sub" id="wmSub"></p>
+                </div>
+                <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body emp-body">
+                <div class="wm-who">
+                    <span class="wm-av">@include('partials.worker-icon', ['size' => '58%'])</span>
+                    <div class="wm-who-t">
+                        <b id="wmName"></b>
+                        <small id="wmMeta"></small>
+                        <span class="wm-chips" id="wmChips"></span>
+                    </div>
+                </div>
+                <div class="wm-grid" id="wmFacts"></div>
+            </div>
+            <div class="emp-foot">
+                <p class="emp-foot-note">{{ __('Edit opens the full employee form.') }}</p>
+                <a class="emp-btn-cancel" id="wmProfile" href="#"><i class="ti ti-id" aria-hidden="true"></i>{{ __('Full profile') }}</a>
+                <a class="emp-btn-save" id="wmEdit" href="#"><i class="fas fa-pen" aria-hidden="true"></i>{{ __('Edit') }}</a>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

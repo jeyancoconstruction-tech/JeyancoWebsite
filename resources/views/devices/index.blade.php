@@ -397,7 +397,7 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
                     </div>
 
                     <div class="dv-last">
-                        <span class="av">{{ $emp ? collect(preg_split('/\s+/', $emp))->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('') : '—' }}</span>
+                        <span class="av">@if($emp)@include('partials.worker-icon')@else — @endif</span>
                         <div style="min-width:0">
                             @if($d['last'])
                                 <div class="v">{{ $emp ?? 'Unknown worker' }}</div>

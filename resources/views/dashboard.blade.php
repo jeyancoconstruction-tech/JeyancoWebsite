@@ -138,7 +138,7 @@
             <div class="panel-body">
                 @forelse($todayAttendance as $att)
                     <div class="row-item hoverable">
-                        <div class="row-av">{{ strtoupper(substr(optional($att->employee)->name ?? 'W', 0, 1)) }}</div>
+                        <div class="row-av">@include('partials.worker-icon')</div>
                         <div class="row-main">
                             <p class="row-title">{{ optional($att->employee)->name ?? __('Worker') }}</p>
                             <p class="row-sub">{{ optional($att->employee)->position ?? __('On site') }}</p>

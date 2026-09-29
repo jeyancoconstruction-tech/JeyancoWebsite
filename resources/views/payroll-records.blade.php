@@ -168,7 +168,7 @@ html[data-bs-theme] .prx .prx-h {
 .prx-emp { display: flex; gap: 8px; align-items: center; }
 .prx-av {
     width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none;
-    font-weight: 700; font-size: 11.5px; color: #fff; background: var(--c, var(--brand));
+    color: var(--brand); background: var(--brand-subtle);
 }
 .prx-emp b { display: block; font-size: 12.5px; font-weight: 700; line-height: 1.3; }
 .prx-emp small { display: block; color: var(--text-muted); font-size: 11px; }
@@ -664,7 +664,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
                             <tr class="pr-row" tabindex="0" @if($rowSlip) data-slip="{{ json_encode($rowSlip) }}" @endif>
                                 <td class="l emp">
                                     <div class="prx-emp">
-                                        <span class="prx-av" style="--c:{{ $s['color'] ?? $palette[0] }}">{{ $s['initial'] ?? mb_substr($d['name'], 0, 1) }}</span>
+                                        <span class="prx-av">@include('partials.worker-icon')</span>
                                         <div>
                                             <b>{{ $d['name'] }}</b>
                                             <small>{{ $s['code'] ?? '' }}@if(($s['position'] ?? '') !== '') · {{ $s['position'] }}@endif
@@ -729,7 +729,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
                         <tr class="pr-row" tabindex="0" data-slip="{{ json_encode($s) }}">
                             <td class="l emp">
                                 <div class="prx-emp">
-                                    <span class="prx-av" style="--c:{{ $s['color'] }}">{{ $s['initial'] }}</span>
+                                    <span class="prx-av">@include('partials.worker-icon')</span>
                                     <div>
                                         <b>{{ $s['name'] }}</b>
                                         <small>{{ $s['code'] }}@if($s['position'] !== '') · {{ $s['position'] }}@endif
@@ -795,7 +795,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
          worker's whole slip, so nothing is fetched. --}}
     <aside class="offcanvas offcanvas-end prx-drawer" tabindex="-1" id="prSlip" aria-labelledby="rcName">
         <div class="prx-dh">
-            <span class="prx-av" id="rcAv"></span>
+            <span class="prx-av" id="rcAv">@include('partials.worker-icon')</span>
             <div><b id="rcName">&mdash;</b><small id="rcMeta">&mdash;</small></div>
             <button type="button" class="prx-ib" data-bs-dismiss="offcanvas" aria-label="{{ __('Close') }}">{!! $icon['close'] !!}</button>
         </div>
@@ -1031,8 +1031,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         current = s;
 
         const av = $('rcAv');
-        av.textContent = s.initial;
-        av.style.setProperty('--c', s.color);
+        // The worker icon is already in the panel; one colour for everyone.
         set('rcName', s.name);
         set('rcMeta', meta(s));
         set('rcNet', money(s.net));
