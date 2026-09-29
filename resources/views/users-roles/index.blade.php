@@ -317,7 +317,7 @@ html[data-bs-theme] .main-content .ur > .page-head { margin-bottom: -4px !import
                             <tr class="{{ $isSel ? 'sel' : '' }} {{ $u->is_active ? '' : 'off' }}" data-href="{{ $href }}">
                                 <td>
                                     <div class="person">
-                                        <span class="av {{ $cls($rk) }}">{{ $initials($u->name ?: $u->username) }}</span>
+                                        <span class="av {{ $cls($rk) }}">@include('partials.user-avatar', ['user' => $u, 'text' => $initials($u->name ?: $u->username)])</span>
                                         <div style="min-width:0">
                                             <div class="nm"><a href="{{ $href }}">{{ $u->name ?: $u->username }}</a>@if($me && $me->id === $u->id)<span class="you">You</span>@endif</div>
                                             <div class="sb" title="{{ $u->username }}{{ $sub ? ' · ' . $sub : '' }}">{{ $u->username ?: '—' }}{{ $sub ? ' · ' . $sub : ($u->email ? '' : ' · no email on file') }}</div>
@@ -440,7 +440,7 @@ html[data-bs-theme] .main-content .ur > .page-head { margin-bottom: -4px !import
                     <a class="ins-x" href="{{ request()->fullUrlWithoutQuery(['account']) }}" aria-label="Close" data-close-inspector><i data-lucide="x"></i></a>
                 </div>
                 <div class="ins-top {{ $cls($selRole) }}">
-                    <span class="av">{{ $initials($selected->name ?: $selected->username) }}</span>
+                    <span class="av">@include('partials.user-avatar', ['user' => $selected, 'text' => $initials($selected->name ?: $selected->username)])</span>
                     <div style="min-width:0">
                         <div class="ins-name">{{ $selected->name ?: $selected->username }}</div>
                         <div class="ins-meta">{{ $selected->username }}@if($selected->email && $selected->email !== $selected->username) · {{ $selected->email }}@endif</div>

@@ -96,6 +96,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'photo',          // a data URL; shown through avatarUrl(), never serialised
     ];
 
     /**
@@ -201,6 +202,23 @@ class User extends Authenticatable
         }
 
         return $this->google_linked_at ? 'linked' : 'pending';
+    }
+
+    // ── The face on the account ─────────────────────────────────────────────
+
+    /**
+     * The picture to show for this account: the one they chose, else the one
+     * Google gave at their last Google sign-in, else none (the letter shows).
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->photo ?: ($this->google_avatar ?: null);
+    }
+
+    /** The letter shown when there is no picture. */
+    public function initial(): string
+    {
+        return mb_strtoupper(mb_substr($this->name ?: ($this->username ?: '?'), 0, 1));
     }
 
     /** Forgot password sends the company's own email, not Laravel's stock one. */

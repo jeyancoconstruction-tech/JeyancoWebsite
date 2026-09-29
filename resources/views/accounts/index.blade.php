@@ -90,7 +90,7 @@
                                      ui-avatars.com for a picture of a letter, and
                                      took each account's name with it. --}}
                                 <div class="acct-avatar {{ $account->isAdmin() ? 'is-admin' : 'is-staff' }}" aria-hidden="true">
-                                    {{ mb_strtoupper(mb_substr($account->name, 0, 1)) }}
+                                    @include('partials.user-avatar', ['user' => $account, 'text' => mb_strtoupper(mb_substr($account->name, 0, 1))])
                                 </div>
                                 <div class="acct-person-text">
                                     <span class="acct-name">

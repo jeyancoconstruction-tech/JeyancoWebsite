@@ -43,6 +43,21 @@ class AuthController extends Controller
         return filled(config('services.google.client_id')) && filled(config('services.google.client_secret'));
     }
 
+    /**
+     * Google's picture for the account, asked for at 256px (it sends 96px),
+     * or null when there is none. Only an https address on Google's own
+     * picture host is kept.
+     */
+    private static function googleAvatar($google): ?string
+    {
+        $url = (string) ($google->getAvatar() ?? '');
+        if (! str_starts_with($url, 'https://') || ! str_contains((string) parse_url($url, PHP_URL_HOST), 'googleusercontent.com')) {
+            return null;
+        }
+
+        return mb_substr(preg_replace('/=s\d+(-c)?$/', '=s256-c', $url), 0, 1024);
+    }
+
     // Ipakita ang Login Form
     public function showLoginForm() {
         return view('login', [
@@ -198,6 +213,12 @@ class AuthController extends Controller
         // showing it as pending.
         if (Auth::check() && ! Auth::user()->google_linked_at) {
             Auth::user()->forceFill(['google_linked_at' => now()])->saveQuietly();
+        }
+
+        // Google's picture for the address, refreshed at every Google sign-in so
+        // a new one there shows here. A photo the person chose still wins.
+        if (Auth::check() && ($avatar = self::googleAvatar($google))) {
+            Auth::user()->forceFill(['google_avatar' => $avatar])->saveQuietly();
         }
 
         return $response;

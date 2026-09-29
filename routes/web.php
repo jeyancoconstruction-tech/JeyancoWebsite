@@ -69,6 +69,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/live/stream',    [\App\Http\Controllers\LiveController::class, 'stream'])->name('live.stream');
     Route::get('/live/revisions', [\App\Http\Controllers\LiveController::class, 'revisions'])->name('live.revisions');
 
+    // Your own profile photo (the profile menu in the top bar).
+    Route::post  ('/profile/photo', [\App\Http\Controllers\ProfilePhotoController::class, 'store'])->name('profile.photo.store');
+    Route::delete('/profile/photo', [\App\Http\Controllers\ProfilePhotoController::class, 'destroy'])->name('profile.photo.destroy');
+
     // DASHBOARD
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/map', [DashboardController::class, 'map'])->name('dashboard.map');   // JSON, read-only

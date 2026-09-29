@@ -555,8 +555,9 @@
                          picture of a letter from ui-avatars.com. That request
                          went out on every page load, and any refresh where it
                          was slow, blocked or offline left the profile blank. --}}
-                    <div class="avatar-box avatar-letter" aria-hidden="true">
-                        {{ mb_strtoupper(mb_substr(auth()->user()->name ?? 'A', 0, 1)) }}
+                    {{-- Their picture — the one they chose, or Google's — else the letter. --}}
+                    <div class="avatar-box avatar-letter" aria-hidden="true" data-me-avatar>
+                        @include('partials.user-avatar', ['user' => auth()->user(), 'text' => auth()->user()?->initial() ?? 'A'])
                     </div>
                     <div class="profile-info d-none d-md-block">
                         <span class="u-name">{{ auth()->user()->name ?? 'ADMIN123' }}</span>
@@ -565,6 +566,11 @@
                     <i data-lucide="chevron-down" class="chevron"></i>
                 </div>
                 <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                    <li>
+                        <button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#profilePhotoModal">
+                            <i data-lucide="image"></i> {{ __('Profile photo') }}
+                        </button>
+                    </li>
                     @if(auth()->user()?->isAdmin())
                         <li>
                             <a class="dropdown-item" href="{{ route('accounts.index') }}">
@@ -590,6 +596,8 @@
     </div>
 
 </div>
+
+@include('partials.profile-photo-modal')
 
 <!-- FLOATING CHATBOT -->
 <button id="chatbot-fab" class="chatbot-fab" title="{{ __('Chat with Jeyanco AI · drag to move') }}">
