@@ -209,6 +209,39 @@ html[data-bs-theme="dark"] .rmx {
 .emp-bonus-remove:hover     { text-decoration: underline; }
 .emp-bonus-remove:disabled  { opacity: .55; cursor: not-allowed; }
 
+/* The three cards, behind the arrow at the side. They open by the height of
+   a grid row (0fr → 1fr), so the list below is pushed down smoothly and
+   nothing jumps; the cards slide in from the arrow's side as they appear. */
+.rmx-top { position: relative; }
+.rmx-sumwrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .16s ease-in; }
+.rmx-sumwrap.open { grid-template-rows: 1fr; transition: grid-template-rows .22s ease-out; }
+.rmx-sum-in { min-height: 0; overflow: hidden; }
+.rmx-sumwrap .rmx-stats { transform: translateX(-16px); opacity: 0; transition: transform .16s ease-in, opacity .16s ease-in; }
+.rmx-sumwrap.open .rmx-stats { transform: none; opacity: 1; transition: transform .22s ease-out, opacity .22s ease-out; }
+.rmx-sumwrap.no-anim, .rmx-sumwrap.no-anim .rmx-stats { transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .rmx-sumwrap, .rmx-sumwrap .rmx-stats { transition: none !important; } }
+.rmx-stat.is-on { background: var(--rmx-hover); box-shadow: inset 0 0 0 1.5px var(--brand, #1668DC); }
+
+/* The arrow: a tab on the edge by the navigation bar. › shows the cards, ‹ hides them. */
+.rmx-handle {
+    position: absolute; z-index: 5; top: 0; left: calc(-1 * var(--rmx-gutter, 20px));
+    width: 17px; height: 38px; padding: 0; cursor: pointer;
+    display: grid; place-items: center; color: var(--brand, #1668DC);
+    background: var(--rmx-card, #fff); border: var(--rmx-bw, 1px) solid var(--rmx-line-strong, #D0D5DD); border-left: 0;
+    border-radius: 0 10px 10px 0; box-shadow: 3px 0 10px rgba(16, 24, 40, .08);
+    transition: background .15s, color .15s, height .22s ease-out;
+}
+.rmx-handle svg { width: 13px; height: 13px; transition: transform .22s ease-out; }
+.rmx-handle:hover { background: var(--rmx-hover); }
+.rmx-handle:focus-visible { outline: 2px solid var(--brand, #1668DC); outline-offset: 2px; }
+.rmx-handle[aria-expanded="true"] { background: var(--brand, #1668DC); border-color: var(--brand, #1668DC); color: #fff; height: 62px; }
+.rmx-handle[aria-expanded="true"] svg { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .rmx-handle, .rmx-handle svg { transition: none; } }
+
+/* Which list is showing, where the tabs were. */
+.rmx-showing { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; font-size: 14px; color: var(--rmx-txt); }
+.rmx-showing b { font-weight: 600; }
+
 /* A worker's name opens their card. */
 .rmx-open { all: unset; display: block; cursor: pointer; border-radius: 8px; margin: -4px -6px; padding: 4px 6px; max-width: 100%; }
 .rmx-open:hover { background: var(--rmx-hover); }
@@ -296,31 +329,46 @@ html[data-bs-theme="dark"] .rmx {
         </x-slot:actions>
     </x-page-header>
 
-    {{-- ── Stat cards (also switch tabs) ───────────────────────────────────── --}}
-    <div class="rmx-stats">
-        <button type="button" class="rmx-stat rmx-stat-active" data-tab="active">
-            <span class="rmx-stat-num">{{ $active->count() }}</span>
-            <span class="rmx-stat-lbl"><i class="ti ti-user-check" aria-hidden="true"></i>{{ __('Active') }}</span>
+    {{-- ── The three cards, behind the arrow at the side ─────────────────────
+         The list comes first. The cards — which are also how you switch
+         between Active, Pending and Removed — slide out from the arrow by the
+         navigation bar when it is pressed, and push the list down. Whether
+         they are out is remembered in this browser. --}}
+    @php
+        $showing = [
+            'active'  => [__('Active'), $active->count()],
+            'pending' => [__('Pending from kiosk'), $pending->count()],
+            'removed' => [__('Removed'), $removed->count()],
+        ];
+    @endphp
+    <div class="rmx-top">
+        <button type="button" class="rmx-handle" id="rmxHandle" aria-expanded="false" aria-controls="rmxSum"
+                title="{{ __('Show Active, Pending and Removed') }}" aria-label="{{ __('Show Active, Pending and Removed') }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
         </button>
-        <button type="button" class="rmx-stat rmx-stat-pending" data-tab="pending">
-            <span class="rmx-stat-num">{{ $pending->count() }}</span>
-            <span class="rmx-stat-lbl"><i class="ti ti-fingerprint" aria-hidden="true"></i>{{ __('Pending from kiosk') }}</span>
-        </button>
-        <button type="button" class="rmx-stat rmx-stat-removed" data-tab="removed">
-            <span class="rmx-stat-num">{{ $removed->count() }}</span>
-            <span class="rmx-stat-lbl"><i class="ti ti-user-off" aria-hidden="true"></i>{{ __('Removed') }}</span>
-        </button>
-    </div>
+        <div class="rmx-sumwrap" id="rmxSum">
+            <div class="rmx-sum-in">
+                <div class="rmx-stats">
+                    <button type="button" class="rmx-stat rmx-stat-active" data-tab="active">
+                        <span class="rmx-stat-num">{{ $active->count() }}</span>
+                        <span class="rmx-stat-lbl"><i class="ti ti-user-check" aria-hidden="true"></i>{{ __('Active') }}</span>
+                    </button>
+                    <button type="button" class="rmx-stat rmx-stat-pending" data-tab="pending">
+                        <span class="rmx-stat-num">{{ $pending->count() }}</span>
+                        <span class="rmx-stat-lbl"><i class="ti ti-fingerprint" aria-hidden="true"></i>{{ __('Pending from kiosk') }}</span>
+                    </button>
+                    <button type="button" class="rmx-stat rmx-stat-removed" data-tab="removed">
+                        <span class="rmx-stat-num">{{ $removed->count() }}</span>
+                        <span class="rmx-stat-lbl"><i class="ti ti-user-off" aria-hidden="true"></i>{{ __('Removed') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-    {{-- ── Tabs, and the one Select toggle for whichever tab is open ────────── --}}
+    {{-- ── Which list is showing, and the one Select toggle for it ─────────── --}}
     <div class="rmx-bar">
-        <div class="rmx-tabs" role="tablist">
-            @foreach($tabs as $key => $t)
-                <button type="button" class="rmx-tab {{ $openTab === $key ? 'is-open' : '' }}" data-tab="{{ $key }}"
-                        role="tab" aria-selected="{{ $openTab === $key ? 'true' : 'false' }}">
-                    {{ $t['label'] }} <span class="rmx-count">{{ $t['count'] }}</span>
-                </button>
-            @endforeach
+        <div class="rmx-showing" id="rmxShowing" aria-live="polite">
+            <b>{{ $showing[$openTab][0] }}</b><span class="rmx-count">{{ $showing[$openTab][1] }}</span>
         </div>
         {{-- Bulk removal is destructive, so it is something you opt into: the
              checkbox column stays hidden until Select is pressed, and pressing
@@ -328,6 +376,7 @@ html[data-bs-theme="dark"] .rmx {
         <button type="button" class="rmx-outline" id="rmxSelect">
             <i class="ti ti-list-check" aria-hidden="true"></i><span class="js-select-label">{{ __('Select') }}</span>
         </button>
+    </div>
     </div>
 
     {{-- ═══ ACTIVE ═════════════════════════════════════════════════════════ --}}
@@ -880,6 +929,14 @@ html[data-bs-theme="dark"] .rmx {
             t.classList.toggle('is-open', on);
             t.setAttribute('aria-selected', on ? 'true' : 'false');
         });
+        // The card for the list on screen, and the label where the tabs were.
+        document.querySelectorAll('.rmx-stat').forEach(c => c.classList.toggle('is-on', c.dataset.tab === name));
+        const card = document.querySelector('.rmx-stat[data-tab="' + name + '"]');
+        const showing = document.getElementById('rmxShowing');
+        if (card && showing) {
+            showing.querySelector('b').textContent = card.querySelector('.rmx-stat-lbl').textContent.trim();
+            showing.querySelector('.rmx-count').textContent = card.querySelector('.rmx-stat-num').textContent.trim();
+        }
         document.querySelectorAll('.rm-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
         document.dispatchEvent(new CustomEvent('rmx:tab', {
             detail: { from: leaving && leaving.dataset.pane !== name ? leaving : null },
@@ -891,6 +948,29 @@ html[data-bs-theme="dark"] .rmx {
     // still honoured for links saved before ?tab= existed.
     const hash = (location.hash || '').replace('#', '');
     if (['pending', 'active', 'removed'].includes(hash)) switchTab(hash);
+    // The card for the list the page opened on.
+    const opened = document.querySelector('.rm-pane.active')?.dataset.pane;
+    document.querySelectorAll('.rmx-stat').forEach(c => c.classList.toggle('is-on', c.dataset.tab === opened));
+
+    // ── The arrow at the side ────────────────────────────────────────────────
+    // Shut on a first visit; after that, as it was left in this browser.
+    const sum = document.getElementById('rmxSum'), handle = document.getElementById('rmxHandle');
+    if (sum && handle) {
+        const KEY = 'jeyanco-employees-summary';
+        const setOpen = (on, save) => {
+            sum.classList.toggle('open', on);
+            handle.setAttribute('aria-expanded', on ? 'true' : 'false');
+            const label = on ? @json(__('Hide Active, Pending and Removed')) : @json(__('Show Active, Pending and Removed'));
+            handle.title = label; handle.setAttribute('aria-label', label);
+            if (save) { try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) {} }
+        };
+        let start = false;
+        try { start = localStorage.getItem(KEY) === '1'; } catch (e) {}
+        sum.classList.add('no-anim');
+        setOpen(start, false);
+        requestAnimationFrame(() => requestAnimationFrame(() => sum.classList.remove('no-anim')));
+        handle.addEventListener('click', () => setOpen(!sum.classList.contains('open'), true));
+    }
 
     // ── Employee form modal (confirm / complete) ─────────────────────────────
     const storeUrl = "{{ route('employees.store') }}";
@@ -1011,6 +1091,7 @@ html[data-bs-theme="dark"] .rmx {
             ['pending', 'active', 'removed'].forEach(k => {
                 setCount('.rmx-stat-' + k + ' .rmx-stat-num', c[k]);
                 setCount('.rmx-tab[data-tab="' + k + '"] .rmx-count', c[k]);
+                if (document.querySelector('.rmx-stat.is-on')?.dataset.tab === k) setCount('#rmxShowing .rmx-count', c[k]);
             });
             const badge = document.querySelector('.nav-pending-badge');
             if (badge) {
