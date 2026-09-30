@@ -72,9 +72,10 @@ class LeaveRequest extends Model
         'approved_at' => 'datetime',
     ];
 
+    /** Removed workers too: what they filed, borrowed or were paid is history. See Attendance::employee(). */
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class)->withTrashed();
     }
 
     public function approver(): BelongsTo

@@ -686,7 +686,7 @@ class EmployeeController extends Controller
                         ->orderBy('name')->get();
         $archived = Employee::archived()->with($with)->withCount('attendances')
                         ->orderByDesc('archived_at')->get();
-        $removed  = Employee::onlyTrashed()->with($with)->withCount('attendances')
+        $removed  = Employee::removed()->with($with)->withCount('attendances')
                         ->orderByDesc('deleted_at')->get();
 
         $laborTypes        = LaborType::orderBy('name')->get();
@@ -889,35 +889,30 @@ class EmployeeController extends Controller
     /** Restore a soft-deleted (removed) worker. */
     public function restore($id)
     {
-        $employee = Employee::onlyTrashed()->findOrFail($id);
+        $employee = Employee::removed()->findOrFail($id);
         $employee->restore();
 
         return back()->with('success', $employee->name . ' was restored.');
     }
 
     /**
-     * Permanently delete a removed record. Last resort — only reachable from the
-     * Removed tab. Detaches attendance first so payroll math never hits a
-     * dangling employee reference.
+     * Delete a removed worker for good. Only reachable from the Removed tab.
+     * The worker goes; the attendance and payroll they earned stay — see
+     * Employee::deleteForGood().
      */
     public function forceDelete($id)
     {
-        $employee = Employee::onlyTrashed()->findOrFail($id);
+        $employee = Employee::removed()->findOrFail($id);
+        $employee->deleteForGood();
 
-        if ($employee->photo) {
-            Storage::disk('public')->delete($employee->photo);
-        }
-        $employee->attendances()->delete();
-        $employee->forceDelete();
-
-        return back()->with('success', 'Record permanently deleted.');
+        return back()->with('success', $employee->name . ' was deleted for good. Their attendance and payroll records are kept.');
     }
 
     /**
      * Restore several removed workers at once.
      *
-     * Scoped to onlyTrashed() exactly like the single-row restore, so an id
-     * that is not actually in the Removed tab is ignored rather than acted on.
+     * Scoped to removed() exactly like the single-row restore, so an id that
+     * is not actually in the Removed tab is ignored rather than acted on.
      */
     public function bulkRestore(Request $request)
     {
@@ -926,7 +921,7 @@ class EmployeeController extends Controller
             'ids.*' => 'required|integer',
         ]);
 
-        $employees = Employee::onlyTrashed()->whereIn('id', $request->ids)->get();
+        $employees = Employee::removed()->whereIn('id', $request->ids)->get();
         foreach ($employees as $employee) {
             $employee->restore();
         }
@@ -935,11 +930,11 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Permanently delete several removed workers at once.
+     * Delete several removed workers for good at once.
      *
-     * Same steps as forceDelete() for each row — photo file, attendance rows,
-     * then the record — and the same onlyTrashed() guard, so nothing that is
-     * still live can be destroyed through this path.
+     * Same step as forceDelete() for each row, and the same removed() guard,
+     * so nothing that is still live can be deleted through this path. Their
+     * attendance and payroll stay.
      */
     public function bulkForceDelete(Request $request)
     {
@@ -948,13 +943,9 @@ class EmployeeController extends Controller
             'ids.*' => 'required|integer',
         ]);
 
-        $employees = Employee::onlyTrashed()->whereIn('id', $request->ids)->get();
+        $employees = Employee::removed()->whereIn('id', $request->ids)->get();
         foreach ($employees as $employee) {
-            if ($employee->photo) {
-                Storage::disk('public')->delete($employee->photo);
-            }
-            $employee->attendances()->delete();
-            $employee->forceDelete();
+            $employee->deleteForGood();
         }
 
         return response()->json(['success' => true, 'deleted' => $employees->count()]);

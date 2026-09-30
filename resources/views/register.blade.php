@@ -610,7 +610,7 @@ tr.rmx-row-card { cursor: pointer; }
                                         </button>
                                     </form>
                                     <form action="{{ route('employees.force-delete', $e->id) }}" method="POST"
-                                          data-confirm="{{ __('This deletes :name and every attendance record they have. It cannot be undone.', ['name' => $e->name]) }}"
+                                          data-confirm="{{ __(':name leaves this list for good and cannot be restored. Their attendance and payroll records are kept.', ['name' => $e->name]) }}"
                                           data-confirm-title="{{ __('Delete permanently?') }}"
                                           data-confirm-label="{{ __('Delete permanently') }}"
                                           data-confirm-tone="danger">
@@ -1270,7 +1270,7 @@ tr.rmx-row-card { cursor: pointer; }
 
         const ASK = {
             purge:   { title: 'Permanently delete ' + many + '?',
-                       message: 'This cannot be undone. Their attendance history and photos go too.',
+                       message: 'They cannot be restored. Their attendance and payroll records are kept.',
                        confirmLabel: 'Delete permanently', tone: 'danger' },
             restore: { title: 'Restore ' + many + '?',
                        message: 'They move back to the list they came from.',

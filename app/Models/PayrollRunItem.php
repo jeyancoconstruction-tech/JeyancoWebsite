@@ -56,9 +56,10 @@ class PayrollRunItem extends Model
         return $this->belongsTo(PayrollRun::class, 'payroll_run_id');
     }
 
+    /** Removed workers too: what they filed, borrowed or were paid is history. See Attendance::employee(). */
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class)->withTrashed();
     }
 
     public function site(): BelongsTo

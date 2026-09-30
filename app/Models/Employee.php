@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class Employee extends Model
 {
@@ -16,6 +17,7 @@ class Employee extends Model
     public const STATUS_PENDING  = 'pending';   // detected by a kiosk, details incomplete
     public const STATUS_ACTIVE   = 'active';     // fully registered, part of the workforce
     public const STATUS_ARCHIVED = 'archived';   // left the company, records preserved
+    public const STATUS_DELETED  = 'deleted';    // deleted for good: off every list, history kept — see deleteForGood()
 
     /** Paid for each day actually worked — what every worker is today. */
     public const EMPLOYMENT_DAILY = 'daily';
@@ -138,10 +140,48 @@ class Employee extends Model
         return $q->where('status', self::STATUS_ARCHIVED);
     }
 
+    /** The Removed tab: taken off the lists, and still able to come back. */
+    public function scopeRemoved(Builder $q): Builder
+    {
+        return $q->onlyTrashed()->where('status', '!=', self::STATUS_DELETED);
+    }
+
     // ── State helpers ────────────────────────────────────────────────────────
     public function isPending(): bool  { return $this->status === self::STATUS_PENDING; }
     public function isActive(): bool   { return $this->status === self::STATUS_ACTIVE; }
     public function isArchived(): bool { return $this->status === self::STATUS_ARCHIVED; }
+
+    /**
+     * Delete a removed worker for good.
+     *
+     * They leave the Removed tab, cannot be restored, and their finger is
+     * freed for the next worker (the kiosk would otherwise bring them back on
+     * a scan). The row itself stays, soft-deleted. The days they worked, the
+     * pay those days earned, their leave, advances and remittances all point
+     * at it, and every one of those foreign keys cascades, so removing the row
+     * would erase that history with it. Past weeks do not change because
+     * somebody left afterwards (Michael, 2026-09-30).
+     *
+     * A worker still pending was never on the payroll, and their scans are
+     * shown nowhere, so there is nothing to keep. That row really goes.
+     */
+    public function deleteForGood(): void
+    {
+        if ($this->photo) {
+            Storage::disk('public')->delete($this->photo);
+        }
+
+        if ($this->isPending()) {
+            $this->attendances()->delete();
+            $this->forceDelete();
+            return;
+        }
+
+        $this->forceFill(['status' => self::STATUS_DELETED, 'fingerprint_id' => null, 'photo' => null])->save();
+        if (! $this->trashed()) {
+            $this->delete();
+        }
+    }
 
     // ── Fingerprint slots ────────────────────────────────────────────────────
 

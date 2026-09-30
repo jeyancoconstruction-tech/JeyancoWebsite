@@ -90,8 +90,13 @@ class Attendance extends Model
         return $this->belongsTo(Shift::class);
     }
 
+    /**
+     * Whoever worked the day, removed or deleted for good since. A day worked
+     * is history. Read without the removed, a worker's past days lost their
+     * name and dropped out of the payroll the moment they left.
+     */
     public function employee() {
-        return $this->belongsTo(Employee::class);
+        return $this->belongsTo(Employee::class)->withTrashed();
     }
 
     /** Where this clock was taken — the kiosk's active site, not the worker's home site. */
