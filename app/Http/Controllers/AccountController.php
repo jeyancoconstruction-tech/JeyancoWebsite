@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Notifications\AccountCreatedEmail;
+use App\Notifications\EmailVerificationCode;
+use App\Support\EmailVerification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -55,6 +59,11 @@ class AccountController extends Controller
             $this->messages()
         );
 
+        // The address has to be proven first: a code sent to it, typed back.
+        if (! EmailVerification::verified($request->session(), $data['email'])) {
+            return back()->withInput()->withErrors(['email' => self::VERIFY_FIRST]);
+        }
+
         $method = $data['login_method'];
 
         $account = User::create([
@@ -76,8 +85,85 @@ class AccountController extends Controller
             default              => "They can sign in with Google as {$account->email}, or with the username \"{$account->username}\".",
         };
 
+        EmailVerification::forget($request->session(), $account->email);
+
+        // Their welcome, at the address they just proved. The account stands
+        // either way; the admin is told if the email did not go.
+        try {
+            $account->notify(new AccountCreatedEmail);
+            $mailed = " A welcome email went to {$account->email}.";
+        } catch (\Throwable $e) {
+            report($e);
+            $mailed = " The welcome email to {$account->email} could not be sent.";
+        }
+
         return redirect()->route('accounts.index')
-            ->with('success', "Account for {$account->name} created. {$how}");
+            ->with('success', "Account for {$account->name} created. {$how}{$mailed}");
+    }
+
+    /** Asked for until the address has passed its code. */
+    private const VERIFY_FIRST = 'Verify this email first: press Send code and enter the 6-digit code that arrives.';
+
+    /**
+     * Send a six-digit code to the address typed on Create or Edit Account.
+     * JSON, for the form's Send code button.
+     */
+    public function sendEmailCode(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($request->integer('account') ?: null)],
+        ], ['email.unique' => 'That email is already used by another account.']);
+
+        [$code, $wait] = EmailVerification::issue($request->session(), $data['email']);
+        if ($code === null) {
+            return response()->json([
+                'success'   => false,
+                'message'   => "A code was just sent. You can send another in {$wait} s.",
+                'resend_in' => $wait,
+            ], 429);
+        }
+
+        try {
+            Notification::route('mail', $data['email'])
+                ->notifyNow(new EmailVerificationCode($code, EmailVerification::MINUTES));
+        } catch (\Throwable $e) {
+            report($e);
+            EmailVerification::cancel($request->session(), $data['email']);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'The code could not be sent. Check the address and try again.',
+            ], 502);
+        }
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Code sent to ' . $data['email'] . '. It expires in ' . EmailVerification::MINUTES . ' minutes.',
+            'resend_in' => EmailVerification::RESEND_AFTER,
+        ]);
+    }
+
+    /** Check the code the admin typed. JSON, for the form's Verify button. */
+    public function verifyEmailCode(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'code'  => ['required', 'string', 'max:12'],
+        ]);
+
+        $result = EmailVerification::check($request->session(), $data['email'], $data['code']);
+
+        return response()->json([
+            'success'  => $result === 'ok',
+            'verified' => $result === 'ok',
+            'message'  => match ($result) {
+                'ok'      => 'Email verified.',
+                'wrong'   => 'That code is not right. Check the email and try again.',
+                'locked'  => 'Too many wrong codes. Send a new one.',
+                'expired' => 'That code has expired. Send a new one.',
+                default   => 'Send a code to this address first.',
+            },
+        ], $result === 'ok' ? 200 : 422);
     }
 
     public function edit(User $account)
@@ -114,6 +200,13 @@ class AccountController extends Controller
             return back()->withInput()->withErrors([
                 'is_active' => 'This is the only active administrator. Activate another admin first.',
             ]);
+        }
+
+        $newEmail = ($data['email'] ?? null) ?: null;
+        if ($newEmail !== null
+            && mb_strtolower($newEmail) !== mb_strtolower((string) $account->email)
+            && ! EmailVerification::verified($request->session(), $newEmail)) {
+            return back()->withInput()->withErrors(['email' => self::VERIFY_FIRST]);
         }
 
         $method = $data['login_method'];
@@ -217,9 +310,11 @@ class AccountController extends Controller
                 'regex:/^[A-Za-z0-9._-]+$/',
                 Rule::unique('users', 'username')->ignore($id),
             ],
-            // Sign in with Google matches this address, so it is required
-            // whenever Google is one of the ways in.
-            'email'    => ['required_unless:login_method,' . User::LOGIN_PASSWORD, 'nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
+            // Every new account has an email, proven by a code (2026-09-30).
+            // On edit it stays required whenever Google is one of the ways in,
+            // since Sign in with Google matches this address; an older
+            // password-only account may still have none.
+            'email'    => [$account === null ? 'required' : 'required_unless:login_method,' . User::LOGIN_PASSWORD, 'nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
             'role'     => ['required', Rule::in(array_keys(User::ROLES))],
             'password' => [
                 'exclude_if:login_method,' . User::LOGIN_GOOGLE,
@@ -237,6 +332,7 @@ class AccountController extends Controller
             'username.regex'  => 'The username may only contain letters, numbers, dots, dashes and underscores.',
             'username.unique' => 'That username is already taken.',
             'email.unique'    => 'That email is already used by another account.',
+            'email.required'        => 'Enter their email. A code is sent to it to prove it is theirs.',
             'email.required_unless' => 'Sign in with Google needs the Google account email.',
             'password.required'     => 'Set a password — this account will sign in with one.',
         ];

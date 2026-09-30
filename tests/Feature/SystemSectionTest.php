@@ -45,8 +45,8 @@ class SystemSectionTest extends TestCase
     {
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post(route('accounts.store'), [
-            'first_name' => 'Maria', 'last_name' => 'Santos', 'login_method' => User::LOGIN_PASSWORD, 'username' => 'maria.santos', 'email' => '',
+        $this->actingAs($admin)->withVerifiedEmail('maria@jeyanco.test')->post(route('accounts.store'), [
+            'first_name' => 'Maria', 'last_name' => 'Santos', 'login_method' => User::LOGIN_PASSWORD, 'username' => 'maria.santos', 'email' => 'maria@jeyanco.test',
             'role' => User::ROLE_HR, 'password' => 'payroll2026', 'password_confirmation' => 'payroll2026',
         ])->assertRedirect();
 

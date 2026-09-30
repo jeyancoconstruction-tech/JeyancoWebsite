@@ -47,7 +47,7 @@ class AccountManagementTest extends TestCase
     {
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post(route('accounts.store'), [
+        $this->actingAs($admin)->withVerifiedEmail('maria@jeyanco.test')->post(route('accounts.store'), [
             'first_name'            => 'Maria',
             'last_name'             => 'Santos',
             'login_method'          => User::LOGIN_BOTH,
@@ -78,7 +78,8 @@ class AccountManagementTest extends TestCase
         $this->assertAuthenticatedAs($created);
     }
 
-    public function test_admin_can_create_an_account_without_an_email(): void
+    /** Since 2026-09-30 every new account has an email, password-only ones too. */
+    public function test_a_new_account_needs_an_email(): void
     {
         $this->actingAs($this->admin())->post(route('accounts.store'), [
             'first_name'            => 'No',
@@ -89,9 +90,9 @@ class AccountManagementTest extends TestCase
             'role'                  => User::ROLE_HR,
             'password'              => 'payroll2026',
             'password_confirmation' => 'payroll2026',
-        ])->assertRedirect(route('accounts.index'));
+        ])->assertSessionHasErrors(['email' => 'Enter their email. A code is sent to it to prove it is theirs.']);
 
-        $this->assertNull(User::where('username', 'no.email')->first()->email);
+        $this->assertNull(User::where('username', 'no.email')->first());
     }
 
     public function test_admin_can_edit_account_details_and_reset_the_password(): void
@@ -99,7 +100,7 @@ class AccountManagementTest extends TestCase
         $admin = $this->admin();
         $staff = $this->staff();
 
-        $this->actingAs($admin)->put(route('accounts.update', $staff), [
+        $this->actingAs($admin)->withVerifiedEmail('renamed@jeyanco.test')->put(route('accounts.update', $staff), [
             'first_name'            => 'Renamed',
             'last_name'             => 'Staff',
             'login_method'          => User::LOGIN_BOTH,

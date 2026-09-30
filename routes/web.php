@@ -180,6 +180,8 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     Route::get   ('/accounts',                 [AccountController::class, 'index'])->name('accounts.index');
     Route::get   ('/accounts/create',          [AccountController::class, 'create'])->name('accounts.create');
     Route::post  ('/accounts',                 [AccountController::class, 'store'])->name('accounts.store');
+    Route::post  ('/accounts/email-code',        [AccountController::class, 'sendEmailCode'])->middleware('throttle:10,1')->name('accounts.email-code');
+    Route::post  ('/accounts/email-code/verify', [AccountController::class, 'verifyEmailCode'])->middleware('throttle:30,1')->name('accounts.email-code.verify');
     Route::get   ('/accounts/{account}/edit',  [AccountController::class, 'edit'])->name('accounts.edit');
     Route::put   ('/accounts/{account}',       [AccountController::class, 'update'])->name('accounts.update');
     Route::patch ('/accounts/{account}/toggle',[AccountController::class, 'toggle'])->name('accounts.toggle');

@@ -30,6 +30,16 @@
         'originalEmail'  => $account->email ?? '',
         'linked'         => (bool) ($account?->google_linked_at),
         'googleReady'    => $google,
+        // Proven already: the address on file, or one that passed its code in
+        // this session before a refused save brought the form back.
+        'verifiedEmail'  => (function () use ($account) {
+            $typed = (string) old('email', $account->email ?? '');
+            if ($typed !== '' && ($typed === ($account->email ?? null) || \App\Support\EmailVerification::verified(request()->session(), $typed))) {
+                return mb_strtolower($typed);
+            }
+            return $account?->email ? mb_strtolower($account->email) : null;
+        })(),
+        'accountId'      => $account?->id,
     ];
 
     // What each role opens, straight from the permission map.
@@ -140,13 +150,26 @@
 
                 <div class="ca-field">
                     <label class="ca-l" for="email"><span id="caEmailLabel">{{ __('Google account email') }}</span> <span class="ca-req" id="caEmailReq">*</span><span class="ca-opt" id="caEmailOpt" hidden>{{ __('optional') }}</span></label>
-                    <div class="ca-iconin">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
-                        <input id="email" name="email" type="email" class="ca-in {{ $fieldError('email') }}" maxlength="255" spellcheck="false" autocapitalize="none"
-                               value="{{ old('email', $account->email ?? '') }}" placeholder="{{ __('e.g., maria.santos@gmail.com') }}">
+                    {{-- The address is proven before it is saved (2026-09-30): Send
+                         code mails six digits to it, the owner reads them out, and
+                         they are typed below. The server refuses an unproven one. --}}
+                    <div class="ca-row">
+                        <div class="ca-iconin">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+                            <input id="email" name="email" type="email" class="ca-in {{ $fieldError('email') }}" maxlength="255" spellcheck="false" autocapitalize="none"
+                                   value="{{ old('email', $account->email ?? '') }}" placeholder="{{ __('e.g., maria.santos@gmail.com') }}">
+                        </div>
+                        <button type="button" class="ca-btn" id="caSendCode">{{ __('Send code') }}</button>
+                        <span class="ca-ok" id="caVerified" hidden>{!! $checkSvg !!}{{ __('Verified') }}</span>
                     </div>
+                    <div class="ca-otp" id="caOtp" hidden>
+                        <input id="caCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="ca-in"
+                               placeholder="{{ __('6-digit code') }}" aria-label="{{ __('Verification code') }}">
+                        <button type="button" class="ca-btn primary" id="caVerify">{{ __('Verify') }}</button>
+                    </div>
+                    <span class="ca-hint" id="caCodeMsg" aria-live="polite" hidden></span>
                     @error('email')
-                        <span class="ca-err">{{ $message }}</span>
+                        <span class="ca-err" id="caEmailErr">{{ $message }}</span>
                     @else
                         <span class="ca-hint" id="caEmailHelp">{{ __('Must be the exact Gmail or Workspace address they will pick on the Google screen.') }}</span>
                     @enderror
@@ -306,6 +329,17 @@ html[data-bs-theme] .main-content .ca-page > .page-head { margin-bottom: -12px !
 .ca-row { display: flex; gap: 8px; }
 .ca-row .ca-in { flex: 1; min-width: 0; }
 .ca-row .ca-btn { height: 48px; }
+.ca-row > .ca-iconin { flex: 1; min-width: 0; }
+.ca-row .ca-btn:disabled { opacity: .6; cursor: not-allowed; }
+/* The email's proof: the code box, and the mark once it has passed. */
+.ca-otp { display: flex; gap: 8px; max-width: 360px; }
+.ca-otp .ca-in { flex: 1; min-width: 0; letter-spacing: .3em; font-size: 18px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+.ca-otp .ca-in::placeholder { letter-spacing: normal; font-size: 15px; font-weight: 400; }
+.ca-otp .ca-btn { height: 48px; }
+.ca-ok { display: inline-flex; align-items: center; gap: 6px; height: 48px; padding: 0 14px; border-radius: 12px; font-size: 14px; font-weight: 700;
+    color: var(--success); background: var(--success-soft); white-space: nowrap; }
+#caCodeMsg.bad { color: var(--danger); }
+#caCodeMsg.good { color: var(--success); }
 /* Edge draws its own reveal eye inside a password box. */
 .ca-in::-ms-reveal, .ca-in::-ms-clear { display: none; }
 
@@ -401,7 +435,7 @@ html[data-bs-theme] .main-content .ca-page > .page-head { margin-bottom: -12px !
         gLabel: @json(__('Google account email')),
         eLabel: @json(__('Email')),
         gHelp:  @json(__('Must be the exact Gmail or Workspace address they will pick on the Google screen.')),
-        eHelp:  @json(__('Used only for password reset links.')),
+        eHelp:  @json(__('Their welcome email and password reset links go here.')),
     };
 
     function initials(n) {
@@ -423,7 +457,9 @@ html[data-bs-theme] .main-content .ca-page > .page-head { margin-bottom: -12px !
         $('caSwitch').setAttribute('aria-pressed', String(S.active));
 
         $('caEmailLabel').textContent = g ? TEXT.gLabel : TEXT.eLabel;
-        $('caEmailReq').hidden = !g; $('caEmailOpt').hidden = g;
+        // Every new account has one; an older password-only account may not.
+        const emailNeeded = g || !S.editing;
+        $('caEmailReq').hidden = !emailNeeded; $('caEmailOpt').hidden = emailNeeded;
         if ($('caEmailHelp')) $('caEmailHelp').textContent = g ? TEXT.gHelp : TEXT.eHelp;
 
         $('caGoogleNote').hidden = !g;
@@ -487,7 +523,88 @@ html[data-bs-theme] .main-content .ca-page > .page-head { margin-bottom: -12px !
         $('password').type = 'text'; $('password_confirmation').type = 'text';
     });
 
+    // ── The email's code ─────────────────────────────────────────────────────
+    // Send code mails six digits to the address; typing them proves it. An
+    // address changed after that has to be proven again. The server checks
+    // the same thing on save, so this only saves a refused round trip.
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const norm = v => v.trim().toLowerCase();
+    let sentTo = null, cooldown = 0, timer = null;
+
+    function say(text, tone) {
+        const m = $('caCodeMsg');
+        m.hidden = !text; m.textContent = text || ''; m.className = 'ca-hint' + (tone ? ' ' + tone : '');
+    }
+    function verifiedNow() { const v = norm($('email').value); return v !== '' && v === S.verifiedEmail; }
+    function paintCode() {
+        const v = norm($('email').value), ok = verifiedNow();
+        $('caVerified').hidden = !ok;
+        $('caSendCode').hidden = ok;
+        $('caSendCode').disabled = v === '' || cooldown > 0;
+        $('caSendCode').textContent = cooldown > 0
+            ? @json(__('Resend in')) + ' ' + cooldown + 's'
+            : (sentTo && sentTo === v ? @json(__('Resend code')) : @json(__('Send code')));
+        $('caOtp').hidden = ok || !sentTo || sentTo !== v;
+    }
+    function startCooldown(s) {
+        cooldown = s; clearInterval(timer);
+        timer = setInterval(() => { cooldown = Math.max(0, cooldown - 1); if (!cooldown) clearInterval(timer); paintCode(); }, 1000);
+        paintCode();
+    }
+    async function post(url, body) {
+        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf }, body: JSON.stringify(body) });
+        let data = {}; try { data = await res.json(); } catch (e) {}
+        return { ok: res.ok, status: res.status, data };
+    }
+
+    $('caSendCode').addEventListener('click', async () => {
+        const email = $('email').value.trim();
+        if (!email) return;
+        $('caSendCode').disabled = true; say(@json(__('Sending…')));
+        const r = await post(@json(route('accounts.email-code')), { email, account: S.accountId });
+        if (r.ok) {
+            sentTo = norm(email); say(r.data.message, 'good'); startCooldown(r.data.resend_in || 60);
+            $('caCode').value = ''; $('caCode').focus();
+        } else {
+            say((r.data.errors && r.data.errors.email && r.data.errors.email[0]) || r.data.message || @json(__('The code could not be sent.')), 'bad');
+            if (r.status === 429 && r.data.resend_in) { sentTo = norm(email); startCooldown(r.data.resend_in); } else paintCode();
+        }
+    });
+
+    async function verify() {
+        const code = $('caCode').value.replace(/\D/g, '');
+        if (code.length !== 6) { say(@json(__('Enter the 6 digits from the email.')), 'bad'); return; }
+        $('caVerify').disabled = true;
+        const r = await post(@json(route('accounts.email-code.verify')), { email: $('email').value.trim(), code });
+        $('caVerify').disabled = false;
+        if (r.ok && r.data.verified) {
+            S.verifiedEmail = norm($('email').value); sentTo = null; say('', '');
+            if ($('caEmailErr')) $('caEmailErr').hidden = true;
+            $('email').classList.remove('bad');
+        } else {
+            say(r.data.message || @json(__('That code is not right.')), 'bad');
+            $('caCode').select();
+        }
+        paintCode();
+    }
+    $('caVerify').addEventListener('click', verify);
+    $('caCode').addEventListener('input', () => { $('caCode').value = $('caCode').value.replace(/\D/g, '').slice(0, 6); if ($('caCode').value.length === 6) verify(); });
+    $('caCode').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); verify(); } });
+    $('email').addEventListener('input', () => { if (sentTo && sentTo !== norm($('email').value)) say('', ''); paintCode(); });
+
+    // Saving an unproven address would only come back refused.
+    $('caForm').addEventListener('submit', e => {
+        const v = norm($('email').value);
+        const unchanged = S.editing && v === norm(S.originalEmail || '');
+        if (v === '' || unchanged || verifiedNow()) return;
+        e.preventDefault();
+        say(@json(__('Verify this email first: press Send code and enter the 6-digit code that arrives.')), 'bad');
+        $('email').scrollIntoView({ block: 'center', behavior: 'smooth' });
+        (!$('caOtp').hidden ? $('caCode') : $('caSendCode')).focus({ preventScroll: true });
+    });
+
     onName();
     render();
+    paintCode();
 })();
 </script>

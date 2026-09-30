@@ -40,12 +40,15 @@ class SignInMethodTest extends TestCase
         );
     }
 
+    /** Every new account has an email, proven by its code; this proves it. */
     private function create(array $fields): \Illuminate\Testing\TestResponse
     {
-        return $this->actingAs($this->admin())->post(route('accounts.store'), $fields + [
+        $fields += [
             'first_name' => 'Maria', 'last_name' => 'Santos', 'username' => 'maria.santos',
-            'role' => User::ROLE_HR, 'is_active' => 1,
-        ]);
+            'email' => 'maria.santos@example.com', 'role' => User::ROLE_HR, 'is_active' => 1,
+        ];
+
+        return $this->actingAs($this->admin())->withVerifiedEmail($fields['email'])->post(route('accounts.store'), $fields);
     }
 
     private function googleSays(string $email): void
@@ -132,7 +135,7 @@ class SignInMethodTest extends TestCase
 
         $this->create(['login_method' => User::LOGIN_GOOGLE, 'email' => 'maria.santos@gmail.com'])
              ->assertRedirect(route('accounts.index'))
-             ->assertSessionHas('success', 'Account for Maria Santos created. They sign in with Google as maria.santos@gmail.com.');
+             ->assertSessionHas('success', 'Account for Maria Santos created. They sign in with Google as maria.santos@gmail.com. A welcome email went to maria.santos@gmail.com.');
 
         $maria = User::where('username', 'maria.santos')->firstOrFail();
         $this->assertSame(User::LOGIN_GOOGLE, $maria->login_method);
@@ -180,7 +183,7 @@ class SignInMethodTest extends TestCase
         $maria = User::where('username', 'maria.santos')->firstOrFail();
         $maria->forceFill(['google_linked_at' => now()])->saveQuietly();
 
-        $this->actingAs($this->admin())->put(route('accounts.update', $maria), [
+        $this->actingAs($this->admin())->withVerifiedEmail('maria.new@gmail.com')->put(route('accounts.update', $maria), [
             'first_name' => 'Maria', 'last_name' => 'Santos', 'username' => 'maria.santos',
             'email' => 'maria.new@gmail.com', 'login_method' => User::LOGIN_GOOGLE,
             'role' => User::ROLE_HR, 'is_active' => 1,
@@ -233,8 +236,17 @@ class SignInMethodTest extends TestCase
 
     public function test_both_needs_the_google_address(): void
     {
+        // A new account needs an email whatever the method (2026-09-30).
         $this->create(['login_method' => User::LOGIN_BOTH, 'email' => '', 'password' => 'payroll2026', 'password_confirmation' => 'payroll2026'])
-             ->assertSessionHasErrors(['email' => 'Sign in with Google needs the Google account email.']);
+             ->assertSessionHasErrors(['email' => 'Enter their email. A code is sent to it to prove it is theirs.']);
+
+        // An older password-only account without one cannot take on Google without it.
+        $old = User::create(['first_name' => 'Old', 'last_name' => 'Account', 'username' => 'old.account',
+            'password' => Hash::make('payroll2026'), 'login_method' => User::LOGIN_PASSWORD, 'role' => User::ROLE_HR, 'is_active' => true]);
+        $this->actingAs($this->admin())->put(route('accounts.update', $old), [
+            'first_name' => 'Old', 'last_name' => 'Account', 'username' => 'old.account', 'email' => '',
+            'login_method' => User::LOGIN_BOTH, 'role' => User::ROLE_HR, 'is_active' => 1,
+        ])->assertSessionHasErrors(['email' => 'Sign in with Google needs the Google account email.']);
     }
 
     // ── A password of their own ──────────────────────────────────────────────
