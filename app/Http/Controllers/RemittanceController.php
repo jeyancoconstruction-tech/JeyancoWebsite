@@ -36,7 +36,7 @@ class RemittanceController extends Controller
 
         $key    = $month->format('Y-m');
         $today  = $this->tracker->today();
-        // Brought up in the last week of the month after: a reminder, not a deadline.
+        // Brought up once the month's last pay week has ended: a reminder, not a deadline.
         $remind = $this->tracker->reminder($month);
 
         // Everyone with a contribution this month, for their ID numbers.

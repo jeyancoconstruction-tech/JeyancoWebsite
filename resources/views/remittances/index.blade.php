@@ -6,7 +6,7 @@
      remittances. Laid out after the jeyanco-remittance-tracker.html mockup
      (2026-09-26); every figure is real — the employee contributions payroll
      deducted and the payments the office recorded here. There is no set due
-     date: a month is brought up in the last week of the month after, as a
+     date: a month is brought up as soon as its last pay week has ended, as a
      reminder (it can still be sent later). Colours are the theme's tokens. --}}
 
 @push('styles')
@@ -184,11 +184,13 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
 
     $owing = collect($rows)->filter(fn ($r) => $r['total'] > 0 || $r['payment']);
     $paid  = collect($rows)->where('status', 'paid');
-    $pend  = collect($rows)->where('status', 'pend');
+    // Upcoming: what is still building up, the month in progress included,
+    // since a month is to remit the day after its last pay week ends.
+    $pend  = collect($rows)->whereIn('status', ['pend', 'fut'])->filter(fn ($r) => $r['total'] > 0);
     $due   = collect($rows)->where('status', 'due');
-    // The month's reminder week: the last seven days of the month after.
+    // The month is brought up from the day after its last pay week ends.
     [$rFrom, $rTo] = $remind;
-    $week  = $rFrom->format('M j') . ' – ' . $rTo->format('j');
+    $week  = __('From') . ' ' . $rFrom->format('M j');
     $sum   = fn ($list) => $list->sum('total');
 
     $icon = [
@@ -267,7 +269,7 @@ html[data-bs-theme] .rmt-f input:focus, html[data-bs-theme] .rmt-f select:focus 
                         <th class="l">{{ __('Agency') }}</th>
                         <th>{{ __('Employees') }}</th>
                         <th>{{ __('Amount') }}</th>
-                        <th class="l sepl" title="{{ __('Brought up in the last week of the month after. It can still be sent later.') }}">{{ __('Reminder') }}</th>
+                        <th class="l sepl" title="{{ __('Brought up once the month\'s last pay week has ended. It can still be sent later.') }}">{{ __('Reminder') }}</th>
                         <th class="l">{{ __('Status') }}</th>
                         <th class="l">{{ __('Payment') }}</th>
                     </tr>

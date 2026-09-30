@@ -20,11 +20,13 @@ use Illuminate\Support\Facades\Cache;
  * to the month it ends in: the week of Monday 31 August to Sunday 6 September
  * is September's. Payments are what the office marked paid.
  *
- * There is no set due date (Michael, 2026-09-26). A month's remittances are
- * brought up in the last week of the month after, for every agency alike:
- * August's in the last seven days of September. That is a reminder, not a
- * deadline; they can still be sent after it, so nothing is ever "overdue".
- * Where each one stands is worked out from today's date whenever it is read.
+ * There is no set due date (Michael, 2026-09-26). A month is brought up as
+ * soon as its last pay week has ended (Michael, 2026-09-30: "dapat magkaroon
+ * na ng paalala kapag tapos na ang week count ng isang buwan"), for every
+ * agency alike: September's weeks run to Sunday the 27th, so it is to remit
+ * from Monday the 28th. That is a reminder, not a deadline; nothing is ever
+ * "overdue". Until then the reminder came in the last week of the month
+ * after. Where each one stands is worked out from today's date on every read.
  *
  * A month's figures are cached. The month on screen is worked out again
  * whenever payroll has moved at all since. The others — the year at a glance
@@ -87,16 +89,38 @@ final class RemittanceTracker
         return Carbon::now('Asia/Manila')->startOfDay();
     }
 
-    /** The latest month whose contributions are complete: last month. */
+    /** The latest month whose contributions are complete: the one before this month. */
     public function lastClosed(): Carbon
     {
-        return $this->today()->startOfMonth()->subMonthNoOverflow();
+        return $this->thisMonth()->subMonthNoOverflow();
     }
 
-    /** This month: still running, its contributions so far. */
+    /**
+     * This month, still running: the month this pay week ends in, since a
+     * week belongs to the month it ends in. On Wednesday 30 September the
+     * week runs to Sunday 4 October, so October is running and September's
+     * weeks are all done.
+     */
     public function thisMonth(): Carbon
     {
-        return $this->today()->startOfMonth();
+        return $this->weekEnd($this->today())->startOfMonth();
+    }
+
+    /** The day a pay week ends on: six after Payroll Settings' "Week starts". */
+    private function weekEndsOn(): int
+    {
+        return ((int) (SystemSetting::current()->week_starts_on ?? Carbon::MONDAY) + 6) % 7;
+    }
+
+    /** The last day of the pay week a day falls in. */
+    private function weekEnd(Carbon $day): Carbon
+    {
+        $end = $day->copy()->startOfDay();
+        while ($end->dayOfWeek !== $this->weekEndsOn()) {
+            $end->addDay();
+        }
+
+        return $end;
     }
 
     /**
@@ -158,7 +182,7 @@ final class RemittanceTracker
      */
     public function weeksOf(Carbon $month): array
     {
-        $endsOn = ((int) (SystemSetting::current()->week_starts_on ?? Carbon::MONDAY) + 6) % 7;
+        $endsOn = $this->weekEndsOn();
 
         $first = $month->copy()->startOfMonth();
         while ($first->dayOfWeek !== $endsOn) {
@@ -174,16 +198,17 @@ final class RemittanceTracker
     }
 
     /**
-     * When a month's remittances are brought up: the last seven days of the
-     * month after — 24 to 30 September for August. Every agency alike.
+     * When a month's remittances are brought up: the day after its last pay
+     * week ends, 28 September for September. Every agency alike. The second
+     * date closes the first week of it, which the tracker calls "this week".
      *
-     * @return array{0: Carbon, 1: Carbon}  the first and last day of that week
+     * @return array{0: Carbon, 1: Carbon}  the first and seventh day of the reminder
      */
     public function reminder(Carbon $month): array
     {
-        $end = $month->copy()->startOfMonth()->addMonthNoOverflow()->endOfMonth()->startOfDay();
+        $from = $this->weeksOf($month)[1]->copy()->addDay();
 
-        return [$end->copy()->subDays(6), $end];
+        return [$from, $from->copy()->addDays(6)];
     }
 
     // ── What each month owed ─────────────────────────────────────────────────
@@ -336,7 +361,7 @@ final class RemittanceTracker
         if ($payment) {
             return 'paid';
         }
-        if ($month->copy()->startOfMonth()->gte($this->today()->startOfMonth())) {
+        if ($month->copy()->startOfMonth()->gte($this->thisMonth())) {
             return 'fut';
         }
         if ($total <= 0) {
@@ -375,7 +400,7 @@ final class RemittanceTracker
         try {
             \App\Notifications\PayrollNotification::fireKeyed($user, 'remittance_due', $key,
                 'Remittances to send',
-                $due . ' ' . ($due === 1 ? 'contribution is' : 'contributions are') . ' in their reminder week and not marked paid yet.');
+                $due . ' ' . ($due === 1 ? 'contribution is' : 'contributions are') . ' to remit and not marked paid yet.');
             session(['remittance_reminded' => $key]);
         } catch (\Throwable) {
             // A reminder is never worth a broken page.

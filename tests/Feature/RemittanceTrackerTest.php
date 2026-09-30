@@ -119,37 +119,49 @@ class RemittanceTrackerTest extends TestCase
     }
 
     /**
-     * Michael, 2026-09-26: no set due date. A month is brought up in the last
-     * week of the month after, every agency alike, and it is a reminder, not
-     * a deadline: it can still be sent later, so nothing turns "overdue".
+     * No set due date (Michael, 2026-09-26), and a month is brought up as
+     * soon as its last pay week has ended (2026-09-30: "dapat magkaroon na ng
+     * paalala kapag tapos na ang week count ng isang buwan"), every agency
+     * alike. It is a reminder, not a deadline: nothing turns "overdue".
      */
-    public function test_a_month_is_brought_up_in_the_last_week_of_the_month_after(): void
+    public function test_a_month_is_brought_up_once_its_last_pay_week_has_ended(): void
     {
-        // 26 September: August's reminder week is 24–30 September, and it has come.
+        // August's pay weeks run 27 July to Sunday 30 August: it is to remit
+        // from Monday 31 August, and on 26 September it still is.
         $rows = $this->page()->viewData('rows');
         foreach (['sss', 'philhealth', 'pagibig', 'bir'] as $agency) {
             [$from, $to] = $rows[$agency]['remind'];
-            $this->assertSame('2026-09-24', $from->toDateString(), "{$agency} is brought up from the 24th");
-            $this->assertSame('2026-09-30', $to->toDateString());
+            $this->assertSame('2026-08-31', $from->toDateString(), "{$agency} is brought up from the 31st");
+            $this->assertSame('2026-09-06', $to->toDateString());
             if ($rows[$agency]['total'] > 0) {
                 $this->assertSame('due', $rows[$agency]['status'], "{$agency} is to remit");
             }
         }
-        $this->page()->assertSee('To remit')->assertSee('Sep 24 – 30')->assertDontSee('Overdue');
+        $this->page()->assertSee('To remit')->assertSee('From Aug 31')->assertDontSee('Overdue');
 
-        // A week earlier it was only upcoming, and nothing on the rail said so.
-        Carbon::setTestNow(Carbon::parse('2026-09-20 09:00:00', 'Asia/Manila'));
-        $rows = $this->page()->viewData('rows');
-        $this->assertSame('pend', $rows['sss']['status']);
-        $this->assertSame(4, $rows['sss']['days'], 'four days to the reminder');
+        // On the Sunday its last week ends, August is still running.
+        Carbon::setTestNow(Carbon::parse('2026-08-30 18:00:00', 'Asia/Manila'));
+        $tracker = app(\App\Services\RemittanceTracker::class);
+        $this->assertSame('fut', $tracker->status('sss', Carbon::parse('2026-08-01', 'Asia/Manila'), 100, null));
 
-        // Past the week it is still just to remit — never late.
+        // The Monday after, it is to remit.
+        Carbon::setTestNow(Carbon::parse('2026-08-31 08:00:00', 'Asia/Manila'));
+        $this->assertSame('due', $tracker->status('sss', Carbon::parse('2026-08-01', 'Asia/Manila'), 100, null));
+
+        // Wednesday 30 September: September's weeks ended on the 27th, so it
+        // is to remit while October, whose first week runs to 4 October, runs.
+        Carbon::setTestNow(Carbon::parse('2026-09-30 09:00:00', 'Asia/Manila'));
+        $this->assertSame('2026-10', $tracker->thisMonth()->format('Y-m'));
+        $this->assertSame('due', $tracker->status('sss', Carbon::parse('2026-09-01', 'Asia/Manila'), 100, null));
+        $this->assertSame('fut', $tracker->status('sss', Carbon::parse('2026-10-01', 'Asia/Manila'), 100, null));
+
+        // Long after, it is still just to remit, never late.
         Carbon::setTestNow(Carbon::parse('2026-10-12 09:00:00', 'Asia/Manila'));
-        $this->assertSame('due', $this->page()->viewData('rows')['sss']['status']);
+        $this->assertSame('due', $this->page(['month' => '2026-08'])->viewData('rows')['sss']['status']);
 
-        // February's is the last seven days of a short March too.
-        [$from, $to] = app(\App\Services\RemittanceTracker::class)->reminder(Carbon::parse('2027-01-01', 'Asia/Manila'));
-        $this->assertSame(['2027-02-22', '2027-02-28'], [$from->toDateString(), $to->toDateString()]);
+        // February 2027's weeks end on Sunday the 28th: brought up 1 March.
+        [$from, $to] = $tracker->reminder(Carbon::parse('2027-02-01', 'Asia/Manila'));
+        $this->assertSame(['2027-03-01', '2027-03-07'], [$from->toDateString(), $to->toDateString()]);
 
         // And nothing is set in Payroll Settings any more.
         $this->assertFalse(\Illuminate\Support\Facades\Route::has('settings.remittance-due.update'));
