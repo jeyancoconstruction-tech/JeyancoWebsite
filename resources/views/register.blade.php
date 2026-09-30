@@ -258,6 +258,45 @@ html[data-bs-theme="dark"] .rmx {
 .rmx-showing { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; font-size: 14px; color: var(--rmx-txt); }
 .rmx-showing b { font-weight: 600; }
 
+/* The Site and Labor type headings are filters: a click lists what is in the
+   column, with how many workers each holds. */
+.rmx-fbtn { display: inline-flex; align-items: center; gap: 4px; margin: -3px -6px; padding: 3px 6px; border: 0; border-radius: 6px;
+    background: none; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; }
+.rmx-fbtn i { font-size: 12px; transition: transform .15s; }
+.rmx-fbtn:hover { background: var(--rmx-hover); color: var(--rmx-txt); }
+.rmx-fbtn:focus-visible { outline: 2px solid var(--brand, #1668DC); outline-offset: 1px; }
+.rmx-fbtn.is-on { background: var(--rmx-accent-bg); color: var(--rmx-accent-fg); font-weight: 600; }
+.rmx-fbtn[aria-expanded="true"] i { transform: rotate(180deg); }
+/* A filtered-out row stays gone even where the phone layout draws rows as cards. */
+.rmx-table tbody tr[hidden] { display: none !important; }
+
+.rmx-fmenu { position: fixed; z-index: 1060; min-width: 210px; max-width: 290px; max-height: 340px; overflow-y: auto; padding: 5px;
+    background: var(--rmx-card); border: var(--rmx-bw) solid var(--rmx-line-strong); border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(16, 24, 40, .16); }
+.rmx-fmenu[hidden] { display: none; }
+.rmx-fopt { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; padding: 7px 10px;
+    border: 0; border-radius: 7px; background: none; font-size: 13px; color: var(--rmx-txt); text-align: left; cursor: pointer; }
+.rmx-fopt span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rmx-fopt b { flex: none; font-size: 11px; font-weight: 600; color: var(--rmx-txt-3); background: var(--rmx-chip);
+    padding: 1px 7px; border-radius: 10px; font-variant-numeric: tabular-nums; }
+.rmx-fopt:hover, .rmx-fopt:focus-visible { background: var(--rmx-hover); outline: none; }
+.rmx-fopt[aria-checked="true"] { color: var(--rmx-accent-fg); font-weight: 600; }
+.rmx-fopt[aria-checked="true"] b { background: var(--rmx-accent-bg); color: var(--rmx-accent-fg); }
+.rmx-fopt.is-all { margin-bottom: 4px; }
+
+/* Beside the list's count: what it is narrowed to, and how many that leaves. */
+.rmx-fsum { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; padding: 3px 3px 3px 9px; border-radius: 999px;
+    font-size: 12.5px; color: var(--rmx-accent-fg); background: var(--rmx-accent-bg); }
+.rmx-fsum[hidden] { display: none; }
+.rmx-fsum b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.rmx-fclear { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%;
+    background: none; color: inherit; cursor: pointer; }
+.rmx-fclear:hover { background: var(--rmx-accent-line); }
+.rmx-fempty { padding: 34px 16px; text-align: center; font-size: 13px; color: var(--rmx-txt-2); border-top: var(--rmx-bw) solid var(--rmx-line); }
+.rmx-fempty[hidden] { display: none; }
+.rmx-fclear-link { border: 0; background: none; padding: 0; color: var(--rmx-accent-fg); font-weight: 600; cursor: pointer; }
+.rmx-fclear-link:hover { text-decoration: underline; }
+
 /* A worker's name opens their card. */
 .rmx-open { all: unset; display: block; cursor: pointer; border-radius: 8px; margin: -4px -6px; padding: 4px 6px; max-width: 100%; }
 tr.rmx-row-card:hover .rmx-name { color: var(--brand, #1668DC); }
@@ -400,6 +439,7 @@ tr.rmx-row-card { cursor: pointer; }
     <div class="rmx-bar">
         <div class="rmx-showing" id="rmxShowing" aria-live="polite">
             <b>{{ $showing[$openTab][0] }}</b><span class="rmx-count">{{ $showing[$openTab][1] }}</span>
+            <span class="rmx-fsum" id="rmxFilterSum" hidden><i class="ti ti-filter" aria-hidden="true"></i><span data-fsum-text></span><b data-fsum-n></b><button type="button" class="rmx-fclear" data-fclear title="{{ __('Show everybody') }}" aria-label="{{ __('Clear the filters') }}"><i class="ti ti-x" aria-hidden="true"></i></button></span>
         </div>
         {{-- Bulk removal is destructive, so it is something you opt into: the
              checkbox column stays hidden until Select is pressed, and pressing
@@ -425,8 +465,8 @@ tr.rmx-row-card { cursor: pointer; }
                         <tr>
                             <th class="rmx-check-col"><input type="checkbox" class="rmx-check-all" aria-label="{{ __('Select all') }}"></th>
                             <th>{{ __('Employee') }}</th>
-                            <th>{{ __('Site') }}</th>
-                            <th>{{ __('Labor type') }}</th>
+                            <th><button type="button" class="rmx-fbtn" data-filter="site" aria-haspopup="menu" aria-expanded="false" title="{{ __('Show one site only') }}">{{ __('Site') }}<i class="ti ti-chevron-down" aria-hidden="true"></i></button></th>
+                            <th><button type="button" class="rmx-fbtn" data-filter="labor" aria-haspopup="menu" aria-expanded="false" title="{{ __('Show one labor type only') }}">{{ __('Labor type') }}<i class="ti ti-chevron-down" aria-hidden="true"></i></button></th>
                             <th class="rmx-num">{{ __('Rate / hr') }}</th>
                             <th class="rmx-center" title="{{ __('Fingerprint slot on the kiosk') }}">{{ __('FP') }}</th>
                             <th class="rmx-center">{{ __('Logs') }}</th>
@@ -467,7 +507,7 @@ tr.rmx-row-card { cursor: pointer; }
                                 'profile'  => route('employees.show', $e->id),
                             ];
                         @endphp
-                        <tr class="rmx-row-card" data-emp="{{ json_encode($card) }}">
+                        <tr class="rmx-row-card" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td><button type="button" class="rmx-open" aria-haspopup="dialog" aria-label="{{ __('Details of :name', ['name' => $e->name]) }}">@include('employees._person', ['e' => $e, 'displayName' => $e->name])</button></td>
                             <td>@include('employees._site', ['e' => $e])</td>
@@ -550,7 +590,7 @@ tr.rmx-row-card { cursor: pointer; }
                             <th class="rmx-check-col"><input type="checkbox" class="rmx-check-all" aria-label="{{ __('Select all') }}"></th>
                             <th>{{ __('Worker') }}</th>
                             <th class="rmx-center" title="{{ __('Fingerprint slot on the kiosk') }}">{{ __('FP') }}</th>
-                            <th>{{ __('Site') }}</th>
+                            <th><button type="button" class="rmx-fbtn" data-filter="site" aria-haspopup="menu" aria-expanded="false" title="{{ __('Show one site only') }}">{{ __('Site') }}<i class="ti ti-chevron-down" aria-hidden="true"></i></button></th>
                             <th>{{ __('First seen') }}</th>
                             <th class="rmx-center">{{ __('Logs') }}</th>
                             <th class="rmx-num">{{ __('Actions') }}</th>
@@ -584,8 +624,8 @@ tr.rmx-row-card { cursor: pointer; }
                         <tr>
                             <th class="rmx-check-col"><input type="checkbox" class="rmx-check-all" aria-label="{{ __('Select all') }}"></th>
                             <th>{{ __('Employee') }}</th>
-                            <th>{{ __('Site') }}</th>
-                            <th>{{ __('Labor type') }}</th>
+                            <th><button type="button" class="rmx-fbtn" data-filter="site" aria-haspopup="menu" aria-expanded="false" title="{{ __('Show one site only') }}">{{ __('Site') }}<i class="ti ti-chevron-down" aria-hidden="true"></i></button></th>
+                            <th><button type="button" class="rmx-fbtn" data-filter="labor" aria-haspopup="menu" aria-expanded="false" title="{{ __('Show one labor type only') }}">{{ __('Labor type') }}<i class="ti ti-chevron-down" aria-hidden="true"></i></button></th>
                             <th>{{ __('Removed') }}</th>
                             <th class="rmx-center">{{ __('Logs') }}</th>
                             <th class="rmx-num">{{ __('Actions') }}</th>
@@ -593,7 +633,7 @@ tr.rmx-row-card { cursor: pointer; }
                     </thead>
                     <tbody>
                     @forelse($removed as $e)
-                        <tr>
+                        <tr data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td>@include('employees._person', ['e' => $e, 'displayName' => $e->name])</td>
                             <td>@include('employees._site', ['e' => $e])</td>
@@ -1176,7 +1216,9 @@ tr.rmx-row-card { cursor: pointer; }
 
     const openPane = () => document.querySelector('.rm-pane.active');
     const paneOf   = el   => el.closest('.rm-pane');
-    const boxesIn  = pane => Array.from(pane.querySelectorAll('tbody .rmx-check'));
+    // Only the rows on screen: a filter hides the rest, and a Select all or a
+    // bulk delete must never reach a worker nobody can see.
+    const boxesIn  = pane => Array.from(pane.querySelectorAll('tbody tr:not([hidden]) .rmx-check'));
     const pickedIn = pane => boxesIn(pane).filter(b => b.checked);
 
     function syncToggle() {
@@ -1235,6 +1277,7 @@ tr.rmx-row-card { cursor: pointer; }
         if (e.detail && e.detail.from) setSelecting(e.detail.from, false);
         syncToggle();
     });
+    document.addEventListener('rmx:filtered', function (e) { sync(e.detail.pane); });
 
     document.addEventListener('change', function (e) {
         const t = e.target;
@@ -1328,6 +1371,152 @@ tr.rmx-row-card { cursor: pointer; }
 
     document.querySelectorAll('.rm-pane').forEach(sync);
     syncToggle();
+})();
+
+// ── Site and labor type filters ─────────────────────────────────────────────
+// The Site and Labor type headings open a list of what is in that column, each
+// with how many workers it holds; picking one shows only those workers, and
+// the count beside the list's name says how many that leaves. Each tab keeps
+// its own; a reload shows everybody again. The counts follow the other filter,
+// so they always add up to what the list would show.
+(function () {
+    const KEYS = {
+        site:  { all: @json(__('All sites')),       none: @json(__('No site')) },
+        labor: { all: @json(__('All labor types')), none: @json(__('No labor type')) },
+    };
+    const state   = new Map();
+    const stateOf = pane => { if (!state.has(pane)) state.set(pane, { site: null, labor: null }); return state.get(pane); };
+    const rowsOf  = pane => Array.from(pane.querySelectorAll('tbody > tr[data-site]'));
+    const valueOf = (tr, key) => tr.dataset[key] || '';
+    // null is "all"; '' is the rows with nothing in the column.
+    const matches = (tr, f, skip) => Object.keys(KEYS).every(k => k === skip || f[k] === null || valueOf(tr, k) === f[k]);
+    const nameOf  = (key, value) => value === '' ? KEYS[key].none : value;
+
+    function apply(pane) {
+        const f    = stateOf(pane);
+        const rows = rowsOf(pane);
+        let shown  = 0;
+        rows.forEach(tr => {
+            const on = matches(tr, f);
+            tr.hidden = !on;
+            if (on) shown++;
+            else { const box = tr.querySelector('.rmx-check'); if (box) box.checked = false; }
+        });
+        pane.querySelectorAll('.rmx-fbtn').forEach(b => b.classList.toggle('is-on', f[b.dataset.filter] !== null));
+
+        const on = Object.keys(KEYS).filter(k => f[k] !== null);
+        let empty = pane.querySelector('.rmx-fempty');
+        if (!empty) {
+            empty = document.createElement('div');
+            empty.className = 'rmx-fempty';
+            empty.innerHTML = @json(__('No workers match this filter.')) + ' <button type="button" class="rmx-fclear-link" data-fclear>' + @json(__('Show everybody')) + '</button>';
+            pane.querySelector('.rmx-card')?.appendChild(empty);
+        }
+        empty.hidden = !(on.length && shown === 0);
+
+        if (pane.classList.contains('active')) {
+            const sum = document.getElementById('rmxFilterSum');
+            if (sum) {
+                sum.hidden = !on.length;
+                sum.querySelector('[data-fsum-text]').textContent = on.map(k => nameOf(k, f[k])).join(' · ');
+                sum.querySelector('[data-fsum-n]').textContent = shown;
+            }
+        }
+        document.dispatchEvent(new CustomEvent('rmx:filtered', { detail: { pane } }));
+    }
+
+    // One list for every heading, on the page itself, so the table's own
+    // scrolling box cannot cut it off. .rmx gives it the page's colours.
+    const menu = document.createElement('div');
+    menu.className = 'rmx rmx-fmenu';
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+    document.body.appendChild(menu);
+    let openBtn = null;
+
+    function closeMenu() {
+        if (!openBtn) return;
+        menu.hidden = true;
+        openBtn.setAttribute('aria-expanded', 'false');
+        openBtn = null;
+    }
+
+    function openMenu(btn) {
+        const pane = btn.closest('.rm-pane');
+        const key  = btn.dataset.filter;
+        const f    = stateOf(pane);
+        const pool = rowsOf(pane).filter(tr => matches(tr, f, key));
+        const counts = new Map();
+        pool.forEach(tr => counts.set(valueOf(tr, key), (counts.get(valueOf(tr, key)) || 0) + 1));
+
+        const items = [[null, KEYS[key].all, pool.length]]
+            .concat([...counts.keys()].filter(Boolean).sort((a, b) => a.localeCompare(b)).map(v => [v, v, counts.get(v)]));
+        if (counts.has('')) items.push(['', KEYS[key].none, counts.get('')]);
+
+        menu.innerHTML = '';
+        items.forEach(([value, label, n]) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'rmx-fopt' + (value === null ? ' is-all' : '');
+            b.setAttribute('role', 'menuitemradio');
+            b.setAttribute('aria-checked', f[key] === value ? 'true' : 'false');
+            const t = document.createElement('span'); t.textContent = label;
+            const c = document.createElement('b');    c.textContent = n;
+            b.append(t, c);
+            b.addEventListener('click', () => { f[key] = value; closeMenu(); apply(pane); btn.focus(); });
+            menu.appendChild(b);
+        });
+
+        menu.hidden = false;
+        const r = btn.getBoundingClientRect();
+        menu.style.top  = Math.round(r.bottom + 6) + 'px';
+        menu.style.left = Math.round(Math.max(8, Math.min(r.left - 6, window.innerWidth - menu.offsetWidth - 8))) + 'px';
+        btn.setAttribute('aria-expanded', 'true');
+        openBtn = btn;
+        (menu.querySelector('[aria-checked="true"]') || menu.firstElementChild).focus();
+    }
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.rmx-fbtn');
+        if (btn) {
+            e.stopPropagation();
+            const again = openBtn === btn;
+            closeMenu();
+            if (!again) openMenu(btn);
+            return;
+        }
+        if (e.target.closest('[data-fclear]')) {
+            const pane = document.querySelector('.rm-pane.active');
+            if (pane) { state.set(pane, { site: null, labor: null }); apply(pane); }
+            return;
+        }
+        if (openBtn && !menu.contains(e.target)) closeMenu();
+    });
+
+    menu.addEventListener('keydown', function (e) {
+        const opts = Array.from(menu.querySelectorAll('.rmx-fopt'));
+        const at   = opts.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') { e.preventDefault(); opts[Math.min(at + 1, opts.length - 1)]?.focus(); }
+        if (e.key === 'ArrowUp')   { e.preventDefault(); opts[Math.max(at - 1, 0)]?.focus(); }
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && openBtn) { const b = openBtn; closeMenu(); b.focus(); }
+    });
+    window.addEventListener('resize', closeMenu);
+    window.addEventListener('scroll', closeMenu, true);
+
+    // The list's count and the summary beside it belong to the tab on screen.
+    document.addEventListener('rmx:tab', function () {
+        closeMenu();
+        const pane = document.querySelector('.rm-pane.active');
+        if (pane) apply(pane);
+    });
+
+    // The pending rows are replaced by the live refresh; the filter holds.
+    document.querySelectorAll('.rm-pane').forEach(pane => {
+        const body = pane.querySelector('tbody');
+        if (body) new MutationObserver(() => apply(pane)).observe(body, { childList: true });
+    });
 })();
 
 // ── A worker, opened from their row ─────────────────────────────────────────

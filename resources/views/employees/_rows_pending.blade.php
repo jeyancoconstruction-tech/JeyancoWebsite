@@ -25,7 +25,7 @@
         // admin has nothing to complete — the kiosk does the next step.
         $awaitingFingerprint = empty($e->fingerprint_id);
     @endphp
-    <tr>
+    <tr data-site="{{ $e->site?->name }}">
         {{-- Also rendered by the 5-second live refresh, so a row that arrives
              from the kiosk is selectable the moment it appears. --}}
         <td class="rmx-check-col">
