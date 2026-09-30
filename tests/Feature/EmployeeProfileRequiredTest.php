@@ -11,11 +11,13 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * The office wants a registration filled in completely — every field on the
- * Register Employee and Edit Employee pages except the photo and the four
- * Government ID numbers.
+ * On Register Employee and Edit Employee only Employment & Pay is required
+ * (Michael, 2026-09-30): the name, the employee type, the labor type and rate
+ * (or the contract), the position, the date hired and the site. Personal
+ * Information, Address, Contact Information and Government IDs may be left
+ * blank and filled in later. Until then the first three were required too.
  *
- * The rule cannot simply be "these columns are required", because store() and
+ * Even that rule cannot simply be "these columns are required", because store() and
  * update() are also reached by the quick-edit modal on Register & Manage, which
  * posts five pay fields, and by the kiosk's complete endpoint, which posts what
  * it read off a finger. Requiring a birthday there would stop an admin
@@ -103,15 +105,9 @@ class EmployeeProfileRequiredTest extends TestCase
      * Each field on its own, so a failure names the one that stopped being
      * required rather than reporting "the form rejects a blank submission".
      */
-    public function test_every_field_on_the_full_form_is_required(): void
+    public function test_every_employment_and_pay_field_is_required(): void
     {
-        $required = [
-            'middle_name', 'job_title', 'date_hired', 'site_id',
-            'birth_date', 'birth_place', 'gender', 'civil_status', 'nationality',
-            'phone',
-            'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
-            'address_province', 'address_city', 'address_barangay', 'address_street', 'address_postal',
-        ];
+        $required = ['first_name', 'middle_name', 'last_name', 'job_title', 'date_hired', 'site_id', 'labor_type_id', 'rate_per_hour'];
 
         foreach ($required as $field) {
             $this->actingAs($this->admin())
@@ -122,48 +118,50 @@ class EmployeeProfileRequiredTest extends TestCase
         $this->assertSame(0, Employee::count(), 'no rejected submission should have been saved');
     }
 
-    /**
-     * The standing exceptions: the photo, the four ID numbers, and — since a
-     * site worker often has neither — the blood type and the email. Requiring
-     * any of them stops a registration over something nobody can produce on
-     * the day.
-     */
-    public function test_the_optional_fields_stay_optional(): void
+    /** Every other section may be left blank and filled in later. */
+    public function test_the_other_sections_may_be_left_blank(): void
     {
+        $blank = array_fill_keys([
+            'birth_date', 'birth_place', 'gender', 'civil_status', 'nationality', 'blood_type',
+            'phone', 'email', 'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
+            'address_province', 'address_city', 'address_barangay', 'address_street', 'address_postal',
+            'sss_number', 'philhealth_number', 'pagibig_number', 'tin_number',
+        ], '');
+
         $this->actingAs($this->admin())
-             ->post(route('employees.store'), $this->completeProfile([
-                 'sss_number'        => '',
-                 'philhealth_number' => '',
-                 'pagibig_number'    => '',
-                 'tin_number'        => '',
-                 'blood_type'        => '',
-                 'email'             => '',
-             ]))
+             ->post(route('employees.store'), $this->completeProfile($blank))
              ->assertSessionHasNoErrors();
 
         $employee = Employee::firstOrFail();
 
+        $this->assertSame('Juan Santos Dela Cruz', $employee->name);
+        $this->assertNull($employee->birth_date);
+        $this->assertNull($employee->address_province);
+        $this->assertNull($employee->emergency_contact_name);
         $this->assertNull($employee->sss_number);
         $this->assertNull($employee->photo);
-        $this->assertNull($employee->blood_type);
-        $this->assertNull($employee->email);
+    }
+
+    /** The form marks only Employment & Pay as required. */
+    public function test_the_form_marks_only_employment_and_pay(): void
+    {
+        $html = $this->actingAs($this->admin())->get(route('employees.create'))->assertOk()->getContent();
+
+        foreach (['birth_date', 'gender', 'phone', 'emergency_contact_name', 'address_province', 'address_postal'] as $field) {
+            $this->assertDoesNotMatchRegularExpression('/<(input|select)[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is optional");
+        }
+        foreach (['first_name', 'last_name', 'job_title', 'date_hired'] as $field) {
+            $this->assertMatchesRegularExpression('/<input[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is required");
+        }
+        $this->assertStringContainsString('Only Employment &amp; Pay is required', $html);
     }
 
     /**
-     * The cost of pointing Register & Manage's Edit button at the full form.
-     *
-     * The button used to open a five-field modal, so correcting a rate on a
-     * worker whose profile was never filled in took one save. It now opens
-     * Register Employee's own form, which posts profile_form — and that is the
-     * flag that makes the office's "fill everything in" rule apply. So the same
-     * correction on the same worker now asks for fifteen fields first.
-     *
-     * That is the intended trade: one screen per job, and a record that gets
-     * completed rather than staying half-empty forever. It is written down here
-     * because it is the kind of change that looks like a bug from the other
-     * side of the screen.
+     * Correcting a rate on a worker whose profile was never filled in takes one
+     * save again. Before 2026-09-30 the Edit page asked for fourteen profile
+     * fields first; now only Employment & Pay has to be complete.
      */
-    public function test_editing_an_incomplete_record_through_the_full_form_asks_for_the_profile(): void
+    public function test_editing_an_incomplete_record_needs_only_employment_and_pay(): void
     {
         $employee = Employee::create([
             'name'          => 'Blank Profile',
@@ -176,6 +174,7 @@ class EmployeeProfileRequiredTest extends TestCase
         $this->actingAs($this->admin())
              ->put(route('employees.update', $employee->id), [
                  'profile_form'  => 1,
+                 'employment_type' => Employee::EMPLOYMENT_DAILY,
                  'first_name'    => 'Blank',
                  'middle_name'   => 'X',
                  'last_name'     => 'Profile',
@@ -185,17 +184,10 @@ class EmployeeProfileRequiredTest extends TestCase
                  'job_title'     => 'Mason',
                  'date_hired'    => '2026-09-10',
              ])
-             ->assertSessionHasErrors([
-                 'birth_date', 'gender', 'phone',
-                 'emergency_contact_name', 'address_province',
-             ]);
+             ->assertSessionHasNoErrors();
 
-        // The two that are allowed to stay blank are not among them.
-        $this->assertArrayNotHasKey('blood_type', session('errors')->getBag('default')->messages());
-        $this->assertArrayNotHasKey('email', session('errors')->getBag('default')->messages());
-
-        // And the rate was not saved behind the rejection.
-        $this->assertSame(100.0, (float) $employee->refresh()->rate_per_hour);
+        $this->assertSame(125.0, (float) $employee->refresh()->rate_per_hour);
+        $this->assertNull($employee->birth_date);
     }
 
     /**

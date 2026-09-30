@@ -492,61 +492,57 @@ class EmployeeController extends Controller
     /**
      * Validation for the resume-style half of the registration form.
      *
-     * A post carrying `profile_form` came from Register Employee or Edit
-     * Employee — the two full forms — and the office's rule is that those are
-     * filled in completely. Nothing else may be held to that rule. The
+     * Only Employment & Pay is required (Michael, 2026-09-30). A post carrying
+     * `profile_form` came from Register Employee or Edit Employee, the two full
+     * forms, and on those the position and the date hired must be filled in
+     * with the rest of that section. Nothing else may be held to that: the
      * quick-edit modal on Register & Manage posts five pay fields, and the
-     * kiosk's complete endpoint posts what it read off a finger; demanding a
-     * birthday there would stall an enrolment that has nothing to do with one.
-     * So the same rule set is strict or lenient depending on who is posting.
+     * kiosk's complete endpoint posts what it read off a finger.
      *
-     * Four things stay optional no matter who is posting, because requiring
-     * them blocks a registration over something nobody can produce on the day:
-     * the photo, the Government ID numbers — a new hire is often still waiting
-     * to be issued an SSS or Pag-IBIG number — the blood type, and the email,
-     * which most site workers simply do not have. Both columns are already
-     * nullable on `employees`, so this is a validation rule and nothing more.
+     * Personal Information, Address, Contact Information and Government IDs
+     * may all be left blank and filled in later. Until 2026-09-30 the full
+     * forms required the first three, which held up a registration over a
+     * birthday or a barangay nobody had to hand on the day.
      *
      * Religion and the repeatable education / work history / skills / notes
-     * lists stay optional whoever is posting — they have no inputs on the form,
-     * so requiring them would fail a submission over a field nobody can see.
+     * lists have no inputs on the form and are optional too.
      */
     private function profileRules(Request $request): array
     {
-        // Every rule below opens with one or the other.
+        // The position and the date hired: required on the two full forms only.
         $need = $request->boolean('profile_form') ? 'required' : 'nullable';
 
         return [
-            // Personal
-            'birth_date'   => "$need|date|before:today",
-            'birth_place'  => "$need|string|max:180",
-            'gender'       => [$need, Rule::in(Employee::GENDERS)],
-            'civil_status' => [$need, Rule::in(Employee::CIVIL_STATUSES)],
-            'nationality'  => "$need|string|max:60",
+            // Personal — optional, see above.
+            'birth_date'   => 'nullable|date|before:today',
+            'birth_place'  => 'nullable|string|max:180',
+            'gender'       => ['nullable', Rule::in(Employee::GENDERS)],
+            'civil_status' => ['nullable', Rule::in(Employee::CIVIL_STATUSES)],
+            'nationality'  => 'nullable|string|max:60',
             'religion'     => 'nullable|string|max:60',
-            'blood_type'   => 'nullable|string|max:5',   // see the note above
+            'blood_type'   => 'nullable|string|max:5',
 
-            // Contact
-            'phone'                      => "$need|string|max:30",
-            'email'                      => 'nullable|email|max:150',   // see the note above
-            'emergency_contact_name'     => "$need|string|max:150",
-            'emergency_contact_relation' => "$need|string|max:60",
-            'emergency_contact_phone'    => "$need|string|max:30",
+            // Contact — optional.
+            'phone'                      => 'nullable|string|max:30',
+            'email'                      => 'nullable|email|max:150',
+            'emergency_contact_name'     => 'nullable|string|max:150',
+            'emergency_contact_relation' => 'nullable|string|max:60',
+            'emergency_contact_phone'    => 'nullable|string|max:30',
 
-            // Address
-            'address_street'   => "$need|string|max:200",
-            'address_barangay' => "$need|string|max:120",
-            'address_city'     => "$need|string|max:120",
-            'address_province' => "$need|string|max:120",
-            'address_postal'   => "$need|string|max:20",
+            // Address — optional.
+            'address_street'   => 'nullable|string|max:200',
+            'address_barangay' => 'nullable|string|max:120',
+            'address_city'     => 'nullable|string|max:120',
+            'address_province' => 'nullable|string|max:120',
+            'address_postal'   => 'nullable|string|max:20',
 
-            // Government IDs — optional by design, see above.
+            // Government IDs — optional.
             'sss_number'        => 'nullable|string|max:40',
             'philhealth_number' => 'nullable|string|max:40',
             'pagibig_number'    => 'nullable|string|max:40',
             'tin_number'        => 'nullable|string|max:40',
 
-            // Job
+            // Job — part of Employment & Pay, so required on the full forms.
             'job_title'  => "$need|string|max:150",
             'date_hired' => "$need|date",
 

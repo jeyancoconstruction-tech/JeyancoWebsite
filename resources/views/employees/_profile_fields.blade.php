@@ -40,22 +40,22 @@
 
     <div class="row g-3">
         <div class="col-md-6 col-lg-3">
-            <label class="ep-label" for="birth_date">{{ __('Date of Birth') }} <span class="ep-req">*</span></label>
-            <input type="date" id="birth_date" name="birth_date" required
+            <label class="ep-label" for="birth_date">{{ __('Date of Birth') }}</label>
+            <input type="date" id="birth_date" name="birth_date"
                    class="form-control @error('birth_date') is-invalid @enderror"
                    value="{{ $val('birth_date') }}">
             @error('birth_date')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6 col-lg-4">
-            <label class="ep-label" for="birth_place">{{ __('Place of Birth') }} <span class="ep-req">*</span></label>
-            <input type="text" id="birth_place" name="birth_place" required
+            <label class="ep-label" for="birth_place">{{ __('Place of Birth') }}</label>
+            <input type="text" id="birth_place" name="birth_place"
                    class="form-control @error('birth_place') is-invalid @enderror"
                    value="{{ $val('birth_place') }}" placeholder="{{ __('City / Municipality, Province') }}">
             @error('birth_place')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4 col-lg-2">
-            <label class="ep-label" for="gender">{{ __('Gender') }} <span class="ep-req">*</span></label>
-            <select id="gender" name="gender" required class="form-select @error('gender') is-invalid @enderror">
+            <label class="ep-label" for="gender">{{ __('Gender') }}</label>
+            <select id="gender" name="gender" class="form-select @error('gender') is-invalid @enderror">
                 <option value="">—</option>
                 @foreach(\App\Models\Employee::GENDERS as $g)
                     <option value="{{ $g }}" {{ $val('gender') === $g ? 'selected' : '' }}>{{ $g }}</option>
@@ -64,8 +64,8 @@
             @error('gender')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-4 col-lg-2">
-            <label class="ep-label" for="civil_status">{{ __('Civil Status') }} <span class="ep-req">*</span></label>
-            <select id="civil_status" name="civil_status" required class="form-select @error('civil_status') is-invalid @enderror">
+            <label class="ep-label" for="civil_status">{{ __('Civil Status') }}</label>
+            <select id="civil_status" name="civil_status" class="form-select @error('civil_status') is-invalid @enderror">
                 <option value="">—</option>
                 @foreach(\App\Models\Employee::CIVIL_STATUSES as $c)
                     <option value="{{ $c }}" {{ $val('civil_status') === $c ? 'selected' : '' }}>{{ $c }}</option>
@@ -82,8 +82,8 @@
             <span class="ep-hint">{{ __('Optional.') }}</span>
         </div>
         <div class="col-md-6 col-lg-3">
-            <label class="ep-label" for="nationality">{{ __('Nationality') }} <span class="ep-req">*</span></label>
-            <input type="text" id="nationality" name="nationality" required
+            <label class="ep-label" for="nationality">{{ __('Nationality') }}</label>
+            <input type="text" id="nationality" name="nationality"
                    class="form-control @error('nationality') is-invalid @enderror"
                    value="{{ $val('nationality', 'Filipino') }}">
             @error('nationality')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -103,8 +103,8 @@
 
     <div class="row g-3">
         <div class="col-md-6 col-lg-4">
-            <label class="ep-label" for="phone">{{ __('Mobile Number') }} <span class="ep-req">*</span></label>
-            <input type="text" id="phone" name="phone" required
+            <label class="ep-label" for="phone">{{ __('Mobile Number') }}</label>
+            <input type="text" id="phone" name="phone"
                    class="form-control @error('phone') is-invalid @enderror"
                    value="{{ $val('phone') }}" placeholder="{{ __('09XX XXX XXXX') }}">
             @error('phone')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -123,22 +123,22 @@
 
     <div class="row g-3">
         <div class="col-md-6 col-lg-4">
-            <label class="ep-label" for="emergency_contact_name">{{ __('Contact Person') }} <span class="ep-req">*</span></label>
-            <input type="text" id="emergency_contact_name" name="emergency_contact_name" required
+            <label class="ep-label" for="emergency_contact_name">{{ __('Contact Person') }}</label>
+            <input type="text" id="emergency_contact_name" name="emergency_contact_name"
                    class="form-control @error('emergency_contact_name') is-invalid @enderror"
                    value="{{ $val('emergency_contact_name') }}" placeholder="{{ __('Full name') }}">
             @error('emergency_contact_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6 col-lg-3">
-            <label class="ep-label" for="emergency_contact_relation">{{ __('Relationship') }} <span class="ep-req">*</span></label>
-            <input type="text" id="emergency_contact_relation" name="emergency_contact_relation" required
+            <label class="ep-label" for="emergency_contact_relation">{{ __('Relationship') }}</label>
+            <input type="text" id="emergency_contact_relation" name="emergency_contact_relation"
                    class="form-control @error('emergency_contact_relation') is-invalid @enderror"
                    value="{{ $val('emergency_contact_relation') }}" placeholder="{{ __('e.g. Spouse') }}">
             @error('emergency_contact_relation')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6 col-lg-4">
-            <label class="ep-label" for="emergency_contact_phone">{{ __('Contact Number') }} <span class="ep-req">*</span></label>
-            <input type="text" id="emergency_contact_phone" name="emergency_contact_phone" required
+            <label class="ep-label" for="emergency_contact_phone">{{ __('Contact Number') }}</label>
+            <input type="text" id="emergency_contact_phone" name="emergency_contact_phone"
                    class="form-control @error('emergency_contact_phone') is-invalid @enderror"
                    value="{{ $val('emergency_contact_phone') }}" placeholder="{{ __('09XX XXX XXXX') }}">
             @error('emergency_contact_phone')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -165,9 +165,9 @@
          The lists come from PSGC via public/js/address-picker.js. --}}
     <div class="row g-3">
         <div class="col-md-6 col-lg-3">
-            <label class="ep-label" for="address_province">{{ __('Province') }} <span class="ep-req">*</span></label>
+            <label class="ep-label" for="address_province">{{ __('Province') }}</label>
             <div class="ap-field">
-                <input type="text" id="address_province" name="address_province" required
+                <input type="text" id="address_province" name="address_province"
                        class="form-control @error('address_province') is-invalid @enderror"
                        value="{{ $val('address_province') }}"
                        placeholder="{{ __('Type to search, e.g. Camarines') }}">
@@ -175,9 +175,9 @@
             @error('address_province')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6 col-lg-3">
-            <label class="ep-label" for="address_city">{{ __('City / Municipality') }} <span class="ep-req">*</span></label>
+            <label class="ep-label" for="address_city">{{ __('City / Municipality') }}</label>
             <div class="ap-field">
-                <input type="text" id="address_city" name="address_city" required
+                <input type="text" id="address_city" name="address_city"
                        class="form-control @error('address_city') is-invalid @enderror"
                        value="{{ $val('address_city') }}"
                        placeholder="{{ __('Pick a province first') }}">
@@ -185,9 +185,9 @@
             @error('address_city')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6 col-lg-2">
-            <label class="ep-label" for="address_barangay">{{ __('Barangay') }} <span class="ep-req">*</span></label>
+            <label class="ep-label" for="address_barangay">{{ __('Barangay') }}</label>
             <div class="ap-field">
-                <input type="text" id="address_barangay" name="address_barangay" required
+                <input type="text" id="address_barangay" name="address_barangay"
                        class="form-control @error('address_barangay') is-invalid @enderror"
                        value="{{ $val('address_barangay') }}"
                        placeholder="{{ __('Pick a city first') }}">
@@ -195,15 +195,15 @@
             @error('address_barangay')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6 col-lg-3">
-            <label class="ep-label" for="address_street">{{ __('House No. / Street') }} <span class="ep-req">*</span></label>
-            <input type="text" id="address_street" name="address_street" required
+            <label class="ep-label" for="address_street">{{ __('House No. / Street') }}</label>
+            <input type="text" id="address_street" name="address_street"
                    class="form-control @error('address_street') is-invalid @enderror"
                    value="{{ $val('address_street') }}" placeholder="{{ __('e.g. 123 Rizal St.') }}">
             @error('address_street')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
         <div class="col-md-6 col-lg-1">
-            <label class="ep-label" for="address_postal">{{ __('ZIP Code') }} <span class="ep-req">*</span></label>
-            <input type="text" id="address_postal" name="address_postal" required
+            <label class="ep-label" for="address_postal">{{ __('ZIP Code') }}</label>
+            <input type="text" id="address_postal" name="address_postal"
                    class="form-control @error('address_postal') is-invalid @enderror"
                    value="{{ $val('address_postal') }}">
             @error('address_postal')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror

@@ -229,7 +229,7 @@
                         <span class="rgx-bar"><i id="rgxBar"></i></span>
                         <span class="rgx-count"><b id="rgxDone">0</b> {{ __('of') }} <b id="rgxTotal">0</b> {{ __('required') }}</span>
                     </div>
-                    <p class="ep-actions-note">{{ __('Every field marked') }} <span class="ep-req">*</span> {{ __('is required. The Government ID numbers, the blood type and the email may be left blank.') }}</p>
+                    <p class="ep-actions-note">{{ __('Only Employment & Pay is required') }} (<span class="ep-req">*</span>). {{ __('The rest can be filled in later.') }}</p>
                     <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">{{ __('Cancel') }}</a>
                     <button type="submit" class="btn btn-primary fw-bold px-4">
                         <i class="fas fa-user-plus me-2"></i>{{ __('Register Employee') }}
