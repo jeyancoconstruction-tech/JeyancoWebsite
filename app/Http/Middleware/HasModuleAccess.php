@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AuditLog;
 use App\Support\Modules;
 use Closure;
 use Illuminate\Http\Request;
@@ -19,6 +20,12 @@ class HasModuleAccess
     {
         if (Modules::allows($request->user(), $module)) {
             return $next($request);
+        }
+
+        // Written to the Audit Log, like a refusal at the admin gate.
+        if ($request->user()) {
+            AuditLog::record('Security', 'denied',
+                $request->user()->name . ' was refused ' . $request->method() . ' /' . $request->path() . " (no access to {$module}).");
         }
 
         abort(403, 'You do not have access to this module.');

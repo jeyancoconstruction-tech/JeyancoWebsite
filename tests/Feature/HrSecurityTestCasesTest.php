@@ -199,4 +199,17 @@ class HrSecurityTestCasesTest extends TestCase
 
         $this->assertStringContainsString("Present: 1 / 2", $reply);
     }
+    /** Also checked: a refused request is written to the Audit Log under the account that tried it. */
+    public function test_a_refused_request_is_logged(): void
+    {
+        $hr = $this->hr();
+
+        $this->actingAs($hr)->get(route("system-settings.about"))->assertForbidden();
+        $this->post(route("employees.bonus.store", $this->worker()), ["amount" => 5000])->assertForbidden();
+
+        $logs = AuditLog::where("module", "Security")->where("action", "denied")->get();
+        $this->assertCount(2, $logs);
+        $this->assertTrue($logs->every(fn ($l) => $l->user_id === $hr->id));
+        $this->assertStringContainsString("/system-settings", $logs->first()->description);
+    }
 }
