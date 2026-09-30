@@ -181,7 +181,9 @@ class KioskController extends Controller
 
     private function locationGate(?Kiosk $kiosk, Request $request): ?array
     {
-        if (! config('kiosk.enforce_location')) {
+        // Off in System Settings → Kiosks when the kiosk's location is broken,
+        // so the crew can still scan in. The site check (siteGate) still holds.
+        if (! SystemSetting::current()->checksKioskLocation()) {
             return null;
         }
         if (! $kiosk) {

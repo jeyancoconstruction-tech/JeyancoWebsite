@@ -617,13 +617,13 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                  records only for this site's workers, and only inside
                                  the site's radius. Takes effect at once. --}}
                             <div class="ss-row"><div class="lb"><b>{{ __('Kiosk site') }}</b><small>{{ __("Where each kiosk is standing. It records attendance only for this site's workers, and only inside the site's radius. Pick a site, then press Save — the kiosk follows within a few seconds.") }}</small></div>
-                                <div class="ks-list" data-ks-url="{{ url('system-settings/kiosk') }}" @if(config('kiosk.enforce_location')) data-ks-check="1" @endif>
+                                <div class="ks-list" data-ks-url="{{ url('system-settings/kiosk') }}" @if($s->checksKioskLocation()) data-ks-check="1" @endif>
                                     @foreach($kiosks as $k)
                                         @php
                                             $m = $k['map'];
                                             [$geoCls, $geoText] = match (true) {
                                                 ! $k['site_id']        => ['warn', __('No site yet')],
-                                                ! config('kiosk.enforce_location') => ['warn', __('Location check is off')],
+                                                ! $s->checksKioskLocation() => ['warn', __('Location check is off')],
                                                 ! $m['site']           => ['out', __('No location on Sites — refusing scans')],
                                                 $m['lat'] === null     => ['warn', __('No GPS yet')],
                                                 (bool) $m['inside']    => ['in', __('Inside') . ' · ' . $m['distance'] . ' m'],
@@ -663,6 +663,11 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                         <div class="ks-add-hint">@error('name'){{ $message }} @enderror @error('code'){{ $message }}@else{{ __('The code must match KIOSK_CODE in testing.py on that kiosk\'s Pi.') }}@enderror</div>
                                     </details>
                                 </div></div>
+                            {{-- On: a scan the kiosk cannot place inside its site's radius is
+                                 refused, as it always was. Off is for a broken GPS, so the
+                                 crew can still scan in; the site check still holds. --}}
+                            <div class="ss-row"><div class="lb"><b>{{ __('Reject scans out of range') }}</b><small>{{ __("On: a kiosk outside its site's radius, or with no GPS, refuses the scan. Turn it off if the kiosk's location is broken, so workers can still scan in.") }}</small></div>
+                                <div class="ss-tgrow"><input type="hidden" name="kiosk_location_check" value="0"><label class="ss-tg"><input type="checkbox" name="kiosk_location_check" value="1" @checked($isOn('kiosk_location_check')) aria-label="{{ __('Reject scans out of range') }}" data-track data-saved="{{ $sw('kiosk_location_check') }}" data-label="{{ __('Reject scans out of range') }}"><span></span></label><small></small></div></div>
                             <div class="ss-row"><div class="lb"><b>{{ __('Scan mode') }}</b><small>{{ __('Automatic fills the next slot: 1st in, 1st out, 2nd in, 2nd out.') }}</small></div>
                                 <div class="ss-inp"><div class="ss-seg" role="radiogroup" aria-label="{{ __('Scan mode') }}">
                                     @foreach([SystemSetting::KIOSK_AUTO => 'Automatic', SystemSetting::KIOSK_BUTTONS => 'Worker picks'] as $val => $label)

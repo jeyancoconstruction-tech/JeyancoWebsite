@@ -49,6 +49,7 @@ class SystemSetting extends Model
         'sessions_revoked_at',
         'kiosk_unknown_alert',
         'kiosk_offline_alert_minutes',
+        'kiosk_location_check',
         'notify_missing_scans',
         'notify_remittances',
         'notify_payroll',
@@ -116,6 +117,7 @@ class SystemSetting extends Model
         'sessions_revoked_at'        => 'datetime',
         'kiosk_unknown_alert'        => 'boolean',
         'kiosk_offline_alert_minutes' => 'integer',
+        'kiosk_location_check'       => 'boolean',
         'notify_missing_scans'       => 'boolean',
         'notify_remittances'         => 'boolean',
         'notify_payroll'             => 'boolean',
@@ -165,6 +167,17 @@ class SystemSetting extends Model
         return (bool) ($this->getAttribute($key) ?? self::DEFAULTS[$key] ?? false);
     }
 
+    /**
+     * Whether a kiosk refuses a scan it cannot place inside its site's radius:
+     * outside it, with no GPS, or at a site with no location. Off in System
+     * Settings, for when the kiosk's location is broken, workers can still
+     * scan in. KIOSK_ENFORCE_LOCATION=false turns it off for the whole deploy.
+     */
+    public function checksKioskLocation(): bool
+    {
+        return config('kiosk.enforce_location') && $this->enabled('kiosk_location_check');
+    }
+
     /** How long a kiosk may be quiet before admins are told. */
     public function kioskOfflineAlertSeconds(): int
     {
@@ -206,6 +219,7 @@ class SystemSetting extends Model
         'sessions_revoked_at'        => null,
         'kiosk_unknown_alert'        => true,
         'kiosk_offline_alert_minutes' => 10,
+        'kiosk_location_check'       => true,
         'notify_missing_scans'       => true,
         'notify_remittances'         => true,
         'notify_payroll'             => true,
