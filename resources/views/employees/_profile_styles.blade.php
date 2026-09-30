@@ -178,6 +178,10 @@
     color: var(--brand, #1e5c9b);
 }
 
+/* Jr., Sr., II… on the end of the last name: a small dropdown, not a column. */
+.ep-suffix-group > .form-control { min-width: 0; }
+.ep-suffix-group > .ep-suffix { flex: 0 0 88px; width: 88px; padding-right: 26px; background-position: right 8px center; }
+
 @media (max-width: 576px) {
     .ep-section { padding: 16px 14px; }
     .ep-actions { flex-wrap: wrap; }

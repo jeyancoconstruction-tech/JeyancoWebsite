@@ -420,8 +420,10 @@ class EmployeeController extends Controller
         return [
             'name'        => 'required_without:first_name|nullable|string|max:255',
             'first_name'  => 'required_without:name|nullable|string|max:100',
-            'middle_name' => $full ? 'required|string|max:100' : 'nullable|string|max:100',
+            // Optional since 2026-09-30 (Michael): not everybody has one.
+            'middle_name' => 'nullable|string|max:100',
             'last_name'   => 'required_with:first_name|nullable|string|max:100',
+            'name_suffix' => ['nullable', Rule::in(Employee::SUFFIXES)],
 
             'labor_type_id' => $contractual
                 ? 'nullable|exists:labor_types,id'
@@ -458,8 +460,12 @@ class EmployeeController extends Controller
             $data['first_name']  = trim($request->input('first_name'));
             $data['middle_name'] = trim((string) $request->input('middle_name')) ?: null;
             $data['last_name']   = trim((string) $request->input('last_name')) ?: null;
+            // The quick-edit modal posts no suffix, and must not drop one.
+            $data['name_suffix'] = $request->has('name_suffix')
+                ? ($request->input('name_suffix') ?: null)
+                : $employee?->name_suffix;
             $data['name']        = Employee::composeName(
-                $data['first_name'], $data['middle_name'], $data['last_name']
+                $data['first_name'], $data['middle_name'], $data['last_name'], $data['name_suffix']
             );
         } elseif ($request->filled('name')) {
             $data['name'] = trim($request->input('name'));
@@ -494,8 +500,8 @@ class EmployeeController extends Controller
      *
      * Only Employment & Pay is required (Michael, 2026-09-30). A post carrying
      * `profile_form` came from Register Employee or Edit Employee, the two full
-     * forms, and on those the position and the date hired must be filled in
-     * with the rest of that section. Nothing else may be held to that: the
+     * forms, and on those the position must be filled in with the rest of that
+     * section (not the middle name or the date hired, since 2026-09-30). Nothing else may be held to that: the
      * quick-edit modal on Register & Manage posts five pay fields, and the
      * kiosk's complete endpoint posts what it read off a finger.
      *
@@ -509,7 +515,7 @@ class EmployeeController extends Controller
      */
     private function profileRules(Request $request): array
     {
-        // The position and the date hired: required on the two full forms only.
+        // The position: required on the two full forms only.
         $need = $request->boolean('profile_form') ? 'required' : 'nullable';
 
         return [
@@ -542,9 +548,10 @@ class EmployeeController extends Controller
             'pagibig_number'    => 'nullable|string|max:40',
             'tin_number'        => 'nullable|string|max:40',
 
-            // Job — part of Employment & Pay, so required on the full forms.
+            // Job — the position is part of Employment & Pay, so required on
+            // the full forms. The date hired is optional (2026-09-30).
             'job_title'  => "$need|string|max:150",
-            'date_hired' => "$need|date",
+            'date_hired' => 'nullable|date',
 
             // Education (repeatable)
             'education'                  => 'nullable|array|max:10',
@@ -793,7 +800,7 @@ class EmployeeController extends Controller
             ]
             : [];
         $named['name'] = $named
-            ? Employee::composeName($named['first_name'], $named['middle_name'], $named['last_name'])
+            ? Employee::composeName($named['first_name'], $named['middle_name'], $named['last_name'], $employee->name_suffix)
             : trim((string) $request->input('name'));
 
         $data = $named + [

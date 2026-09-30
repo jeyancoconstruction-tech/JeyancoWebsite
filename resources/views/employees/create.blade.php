@@ -48,18 +48,27 @@
                             @error('first_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4 col-lg-2">
-                            <label class="ep-label" for="middle_name">{{ __('Middle Name') }} <span class="ep-req">*</span></label>
-                            <input type="text" id="middle_name" name="middle_name" required value="{{ old('middle_name') }}"
+                            <label class="ep-label" for="middle_name">{{ __('Middle Name') }}</label>
+                            <input type="text" id="middle_name" name="middle_name" value="{{ old('middle_name') }}"
                                    class="form-control @error('middle_name') is-invalid @enderror"
                                    placeholder="{{ __('Santos') }}">
                             @error('middle_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4 col-lg-3">
                             <label class="ep-label" for="last_name">{{ __('Last Name') }} <span class="ep-req">*</span></label>
-                            <input type="text" id="last_name" name="last_name" value="{{ old('last_name') }}"
-                                   class="form-control @error('last_name') is-invalid @enderror"
-                                   placeholder="{{ __('Dela Cruz') }}" required>
+                            <div class="input-group ep-suffix-group">
+                                <input type="text" id="last_name" name="last_name" value="{{ old('last_name') }}"
+                                       class="form-control @error('last_name') is-invalid @enderror"
+                                       placeholder="{{ __('Dela Cruz') }}" required>
+                                {{-- Jr., Sr., II… kept apart from the surname and added to the end of the name. --}}
+                                <select name="name_suffix" id="name_suffix" class="form-select ep-suffix @error('name_suffix') is-invalid @enderror"
+                                        aria-label="{{ __('Suffix') }}" title="{{ __('Suffix: Jr., Sr., II…') }}">
+                                    <option value="">{{ __('Suffix') }}</option>
+                                    @foreach(\App\Models\Employee::SUFFIXES as $sx)<option value="{{ $sx }}" @selected(old('name_suffix') === $sx)>{{ $sx }}</option>@endforeach
+                                </select>
+                            </div>
                             @error('last_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            @error('name_suffix')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
                         {{-- Employee type drives the three fields below it. --}}
@@ -139,14 +148,14 @@
                         </div>
 
                         <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="date_hired">{{ __('Date Hired') }} <span class="ep-req">*</span></label>
+                            <label class="ep-label" for="date_hired">{{ __('Date Hired') }}</label>
                             {{-- A worker is nearly always registered on the day they
                                  start, so today is the right answer often enough to be
                                  the default. It stays a plain date input — changing it
                                  costs the same as filling it in did. now() is Manila
                                  time (config/app.php), so this is the office's today,
                                  not the server's UTC one. --}}
-                            <input type="date" id="date_hired" name="date_hired" required
+                            <input type="date" id="date_hired" name="date_hired"
                                    value="{{ old('date_hired', now()->toDateString()) }}"
                                    class="form-control @error('date_hired') is-invalid @enderror">
                             @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror

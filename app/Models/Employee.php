@@ -36,7 +36,10 @@ class Employee extends Model
      * generic profile mapping — `name` is composed from the parts, and the
      * contract end date depends on the employment type.
      */
-    public const IDENTITY_FIELDS = ['first_name', 'middle_name', 'last_name', 'end_of_contract'];
+    public const IDENTITY_FIELDS = ['first_name', 'middle_name', 'last_name', 'name_suffix', 'end_of_contract'];
+
+    /** What may follow the last name. */
+    public const SUFFIXES = ['Jr.', 'Sr.', 'II', 'III', 'IV'];
 
     /** Every profile column the Register Employee form writes. */
     public const PROFILE_FIELDS = [
@@ -365,13 +368,28 @@ class Employee extends Model
     }
 
     /** The full name, composed from the parts when they are on file. */
-    public static function composeName(?string $first, ?string $middle, ?string $last): string
+    public static function composeName(?string $first, ?string $middle, ?string $last, ?string $suffix = null): string
     {
         return trim(preg_replace('/\s+/', ' ', implode(' ', array_filter([
             trim((string) $first),
             trim((string) $middle),
             trim((string) $last),
+            trim((string) $suffix),
         ]))));
+    }
+
+    /** The suffix a name ends in, if it ends in one: "jr" and "Jr." both read as "Jr.". */
+    public static function suffixOf(string $word): ?string
+    {
+        $bare = strtolower(rtrim($word, '.'));
+
+        foreach (self::SUFFIXES as $suffix) {
+            if (strtolower(rtrim($suffix, '.')) === $bare) {
+                return $suffix;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -380,15 +398,20 @@ class Employee extends Model
      * Only used to pre-fill the edit form for workers registered before the
      * name was captured in pieces — the kiosk still creates workers with a
      * bare name. One word is a first name; two are first and last; anything
-     * more puts the middle words in the middle. It will not always be right,
-     * which is why the admin sees the result in editable fields rather than it
-     * being written to the record behind their back.
+     * more puts the middle words in the middle. A trailing Jr., Sr., II… is
+     * the suffix, not the last name. It will not always be right, which is
+     * why the admin sees the result in editable fields rather than it being
+     * written to the record behind their back.
      */
     public static function splitName(?string $name): array
     {
-        $parts = preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $parts  = preg_split('/\s+/', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $suffix = count($parts) > 1 ? self::suffixOf(end($parts)) : null;
+        if ($suffix) {
+            array_pop($parts);
+        }
 
-        return match (count($parts)) {
+        return ['name_suffix' => $suffix ?? ''] + match (count($parts)) {
             0       => ['first_name' => '', 'middle_name' => '', 'last_name' => ''],
             1       => ['first_name' => $parts[0], 'middle_name' => '', 'last_name' => ''],
             default => [

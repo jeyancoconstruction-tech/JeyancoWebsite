@@ -56,7 +56,7 @@
             dirty.classList.toggle('is-on', n > 0);
         }
         if (who) {
-            const name = ['first_name', 'middle_name', 'last_name']
+            const name = ['first_name', 'middle_name', 'last_name', 'name_suffix']
                 .map(function (id) { const f = document.getElementById(id); return f ? f.value.trim() : ''; })
                 .filter(Boolean).join(' ');
             if (name) who.textContent = name;

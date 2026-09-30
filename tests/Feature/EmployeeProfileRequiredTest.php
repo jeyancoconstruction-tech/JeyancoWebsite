@@ -12,8 +12,9 @@ use Tests\TestCase;
 
 /**
  * On Register Employee and Edit Employee only Employment & Pay is required
- * (Michael, 2026-09-30): the name, the employee type, the labor type and rate
- * (or the contract), the position, the date hired and the site. Personal
+ * (Michael, 2026-09-30): the first and last name, the employee type, the
+ * labor type and rate (or the contract), the position and the site. The
+ * middle name and the date hired are optional (the same day). Personal
  * Information, Address, Contact Information and Government IDs may be left
  * blank and filled in later. Until then the first three were required too.
  *
@@ -107,7 +108,7 @@ class EmployeeProfileRequiredTest extends TestCase
      */
     public function test_every_employment_and_pay_field_is_required(): void
     {
-        $required = ['first_name', 'middle_name', 'last_name', 'job_title', 'date_hired', 'site_id', 'labor_type_id', 'rate_per_hour'];
+        $required = ['first_name', 'last_name', 'job_title', 'site_id', 'labor_type_id', 'rate_per_hour'];
 
         foreach ($required as $field) {
             $this->actingAs($this->admin())
@@ -142,15 +143,28 @@ class EmployeeProfileRequiredTest extends TestCase
         $this->assertNull($employee->photo);
     }
 
+    public function test_the_middle_name_and_date_hired_may_be_left_blank(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('employees.store'), $this->completeProfile(['middle_name' => '', 'date_hired' => '']))
+             ->assertSessionHasNoErrors();
+
+        $employee = Employee::firstOrFail();
+
+        $this->assertSame('Juan Dela Cruz', $employee->name);
+        $this->assertNull($employee->middle_name);
+        $this->assertNull($employee->date_hired);
+    }
+
     /** The form marks only Employment & Pay as required. */
     public function test_the_form_marks_only_employment_and_pay(): void
     {
         $html = $this->actingAs($this->admin())->get(route('employees.create'))->assertOk()->getContent();
 
-        foreach (['birth_date', 'gender', 'phone', 'emergency_contact_name', 'address_province', 'address_postal'] as $field) {
+        foreach (['middle_name', 'date_hired', 'birth_date', 'gender', 'phone', 'emergency_contact_name', 'address_province', 'address_postal'] as $field) {
             $this->assertDoesNotMatchRegularExpression('/<(input|select)[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is optional");
         }
-        foreach (['first_name', 'last_name', 'job_title', 'date_hired'] as $field) {
+        foreach (['first_name', 'last_name', 'job_title'] as $field) {
             $this->assertMatchesRegularExpression('/<input[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is required");
         }
         $this->assertStringContainsString('Only Employment &amp; Pay is required', $html);

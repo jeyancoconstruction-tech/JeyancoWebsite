@@ -82,6 +82,7 @@
                         $first  = old('first_name',  $employee->first_name  ?: $parts['first_name']);
                         $middle = old('middle_name', $employee->middle_name ?: $parts['middle_name']);
                         $last   = old('last_name',   $employee->last_name   ?: $parts['last_name']);
+                        $suffix = old('name_suffix', $employee->name_suffix ?: $parts['name_suffix']);
                     @endphp
 
                     <div class="row g-3">
@@ -93,16 +94,25 @@
                             @error('first_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4 col-lg-2">
-                            <label class="ep-label" for="middle_name">{{ __('Middle Name') }} <span class="ep-req">*</span></label>
-                            <input type="text" id="middle_name" name="middle_name" required value="{{ $middle }}"
+                            <label class="ep-label" for="middle_name">{{ __('Middle Name') }}</label>
+                            <input type="text" id="middle_name" name="middle_name" value="{{ $middle }}"
                                    class="form-control @error('middle_name') is-invalid @enderror">
                             @error('middle_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4 col-lg-3">
                             <label class="ep-label" for="last_name">{{ __('Last Name') }} <span class="ep-req">*</span></label>
-                            <input type="text" id="last_name" name="last_name" value="{{ $last }}"
-                                   class="form-control @error('last_name') is-invalid @enderror" required>
+                            <div class="input-group ep-suffix-group">
+                                <input type="text" id="last_name" name="last_name" value="{{ $last }}"
+                                       class="form-control @error('last_name') is-invalid @enderror" required>
+                                {{-- Jr., Sr., II… kept apart from the surname and added to the end of the name. --}}
+                                <select name="name_suffix" id="name_suffix" class="form-select ep-suffix @error('name_suffix') is-invalid @enderror"
+                                        aria-label="{{ __('Suffix') }}" title="{{ __('Suffix: Jr., Sr., II…') }}">
+                                    <option value="">{{ __('Suffix') }}</option>
+                                    @foreach(\App\Models\Employee::SUFFIXES as $sx)<option value="{{ $sx }}" @selected($suffix === $sx)>{{ $sx }}</option>@endforeach
+                                </select>
+                            </div>
                             @error('last_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            @error('name_suffix')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
                         {{-- Employee type drives the fields below it. --}}
@@ -180,8 +190,8 @@
                         </div>
 
                         <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="date_hired">{{ __('Date Hired') }} <span class="ep-req">*</span></label>
-                            <input type="date" id="date_hired" name="date_hired" required
+                            <label class="ep-label" for="date_hired">{{ __('Date Hired') }}</label>
+                            <input type="date" id="date_hired" name="date_hired"
                                    value="{{ old('date_hired', $employee->date_hired?->format('Y-m-d')) }}"
                                    class="form-control @error('date_hired') is-invalid @enderror">
                             @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
