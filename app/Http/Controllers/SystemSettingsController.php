@@ -54,8 +54,6 @@ class SystemSettingsController extends Controller
         'table_density'              => ['table density', ''],
         'signin_intro'               => ['intro animation', ''],
         'google_sign_in'             => ['Google sign-in', ''],
-        'kiosk_unknown_alert'        => ['unknown fingerprint alert', ''],
-        'kiosk_offline_alert_minutes' => ['offline alert after', ' min'],
         'kiosk_location_check'       => ['reject scans out of range', ''],
         'notify_missing_scans'       => ['missing scans', ''],
         'notify_remittances'         => ['remittance reminders', ''],
@@ -65,7 +63,7 @@ class SystemSettingsController extends Controller
 
     /** Switches: saved as true/false, written to the Audit Log as on/off. */
     private const SWITCHES = [
-        'signin_intro', 'google_sign_in', 'kiosk_unknown_alert', 'kiosk_location_check',
+        'signin_intro', 'google_sign_in', 'kiosk_location_check',
         'notify_missing_scans', 'notify_remittances', 'notify_payroll', 'notify_email',
     ];
 
@@ -281,9 +279,10 @@ class SystemSettingsController extends Controller
                 // No duplicate-scan setting since 2026-09-27: the kiosk takes one
                 // time in and one time out per session (KioskController::recordClock).
                 'kiosk_idle_return_seconds'  => ['required', 'integer', 'min:15', 'max:600'],
-                'kiosk_unknown_alert'        => ['sometimes', 'boolean'],
                 'kiosk_location_check'       => ['sometimes', 'boolean'],
-                'kiosk_offline_alert_minutes' => ['sometimes', 'integer', 'min:5', 'max:240'],
+                // Unknown fingerprints and Offline alert left the page on 2026-09-30
+                // (Michael). Both alerts still run on their saved values; nothing
+                // here writes them.
                 // Written to every shift; empty leaves shifts that differ as they are.
                 'kiosk_opens_minutes'        => ['sometimes', 'nullable', 'integer', 'min:15', 'max:240'],
             ], [

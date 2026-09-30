@@ -32,12 +32,10 @@
     $secs    = fn (int $x) => $x >= 3600 && $x % 3600 === 0 ? ($x / 3600) . ' ' . Str::plural('hour', $x / 3600)
                             : ($x % 60 === 0 ? ($x / 60) . ' ' . Str::plural('minute', $x / 60) : $x . ' seconds');
     $span    = fn (int $x) => $x % 60 === 0 ? ($x / 60) . ' min' : ($x < 60 ? $x . ' s' : intdiv($x, 60) . ' min ' . ($x % 60) . ' s');
-    $after   = fn (int $m) => 'After ' . ($m % 60 === 0 ? ($m / 60) . ' ' . Str::plural('hour', $m / 60) : $m . ' min');
 
     $savedTheme = $s->default_theme ?: 'dark';
     $savedMode  = $s->kioskMode();
     $savedIdle  = (int) ($s->kiosk_idle_return_seconds ?? 60);
-    $savedOff   = (int) ($s->kiosk_offline_alert_minutes ?: 10);
     $accent     = old('accent_color', $s->accent_color ?: 'blue');
     $density    = old('table_density', $s->table_density ?: 'comfortable');
     $lockout    = (int) $v('lockout_seconds');
@@ -51,7 +49,7 @@
         'default_theme' => 'appearance', 'accent_color' => 'appearance', 'table_density' => 'appearance',
         'session_timeout_minutes' => 'security', 'password_min_length' => 'security', 'max_login_attempts' => 'security', 'lockout_seconds' => 'security',
         'kiosk_attendance_mode' => 'kiosk', 'kiosk_idle_return_seconds' => 'kiosk',
-        'kiosk_offline_alert_minutes' => 'kiosk', 'kiosk_opens_minutes' => 'kiosk',
+        'kiosk_opens_minutes' => 'kiosk',
     ];
     foreach ($errors->keys() as $k) {
         if (isset($fieldSection[$k])) { $section = $fieldSection[$k]; break; }
@@ -679,12 +677,6 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                     @if($opens === null)<option value="" @selected((string) $openNow === '')>{{ __('Varies by shift') }}</option>@endif
                                     @foreach($choices([30, 60, 90], $opens) as $m)<option value="{{ $m }}" @selected((string) $openNow === (string) $m)>{{ $m }} min</option>@endforeach
                                 </select>@error('kiosk_opens_minutes')<span class="ss-err">{{ $message }}</span>@enderror</div></div>
-                            <div class="ss-row"><div class="lb"><b>{{ __('Unknown fingerprints') }}</b><small>{{ __("Tell admins when a finger that isn't registered is scanned.") }}</small></div>
-                                <div class="ss-tgrow"><input type="hidden" name="kiosk_unknown_alert" value="0"><label class="ss-tg"><input type="checkbox" name="kiosk_unknown_alert" value="1" @checked($isOn('kiosk_unknown_alert')) aria-label="{{ __('Unknown fingerprints') }}" data-track data-saved="{{ $sw('kiosk_unknown_alert') }}" data-label="{{ __('Unknown fingerprints') }}"><span></span></label><small></small></div></div>
-                            <div class="ss-row"><div class="lb"><b>{{ __('Offline alert') }}</b><small>{{ __('Notify admins when a kiosk stops sending scans.') }}</small></div>
-                                <div class="ss-inp short"><select name="kiosk_offline_alert_minutes" data-track data-saved="{{ $savedOff }}" data-label="{{ __('Offline alert') }}">
-                                    @foreach($choices([10, 30, 60], $savedOff) as $m)<option value="{{ $m }}" @selected((int) old('kiosk_offline_alert_minutes', $savedOff) === $m)>{{ $after($m) }}</option>@endforeach
-                                </select>@error('kiosk_offline_alert_minutes')<span class="ss-err">{{ $message }}</span>@enderror</div></div>
                             <div class="ss-row"><div class="lb"><b>{{ __('Back to ATTENDANCE after') }}</b><small>{{ __('Idle time on another tab before the kiosk returns to the scanner.') }}</small></div>
                                 <div class="ss-inp short"><select name="kiosk_idle_return_seconds" data-track data-saved="{{ $savedIdle }}" data-label="{{ __('Back to ATTENDANCE after') }}">
                                     @foreach($choices([30, 60, 120], $savedIdle) as $x)<option value="{{ $x }}" @selected((int) old('kiosk_idle_return_seconds', $savedIdle) === $x)>{{ $span($x) }}</option>@endforeach
@@ -750,7 +742,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                 <div class="it" data-bell="notify_missing_scans" style="--c:var(--warning);--c-soft:var(--warning-soft)"><span>{!! $svg($ico['clock'], '2') !!}</span><div><b>{{ __('Missing time out') }}<em data-bell-mail>{{ __('+ email') }}</em></b><small>{{ __('Jason Caridad timed in at 7:50 AM and has not timed out.') }}</small></div></div>
                                 <div class="it" data-bell="notify_remittances" style="--c:var(--brand);--c-soft:var(--brand-subtle)"><span>{!! $svg($ico['cal'], '2') !!}</span><div><b>{{ __('Remittance due') }}<em data-bell-mail>{{ __('+ email') }}</em></b><small>{{ __('SSS for August is due by Sep 30 and is not marked paid.') }}</small></div></div>
                                 <div class="it" data-bell="notify_payroll" style="--c:var(--success);--c-soft:var(--success-soft)"><span>{!! $svg($ico['peso'], '2') !!}</span><div><b>{{ __('Payroll ready') }}<em data-bell-mail>{{ __('+ email') }}</em></b><small>{{ __("This week's payroll is ready to review.") }}</small></div></div>
-                                <div class="it" data-bell="kiosk_unknown_alert" style="--c:var(--danger);--c-soft:var(--danger-soft)"><span>{!! $svg($ico['scan'], '2') !!}</span><div><b>{{ __('Unknown fingerprint') }}<em data-bell-mail>{{ __('+ email') }}</em></b><small>{{ __('A finger that is not registered was scanned at Site A. Set under Kiosks.') }}</small></div></div>
+                                <div class="it @unless($s->enabled('kiosk_unknown_alert')) is-off @endunless" style="--c:var(--danger);--c-soft:var(--danger-soft)"><span>{!! $svg($ico['scan'], '2') !!}</span><div><b>{{ __('Unknown fingerprint') }}<em data-bell-mail>{{ __('+ email') }}</em></b><small>{{ __('A finger that is not registered was scanned at Site A. Set under Kiosks.') }}</small></div></div>
                             </div>
                             <p class="note">{{ __('Examples only. Each admin gets these in the bell at the top of the page; with email on, a copy goes to their address too.') }}</p>
                         </aside>
@@ -1078,7 +1070,8 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
     // Notifications: the bell.
     function bell() {
         let n = 0;
-        $$('[data-bell]').forEach(it => { const lit = on(it.dataset.bell); it.classList.toggle('is-off', !lit); if (lit) n++; });
+        $$('[data-bell]').forEach(it => { it.classList.toggle('is-off', !on(it.dataset.bell)); });
+        n = $$('.ss-bell .it:not(.is-off)').length;
         $$('[data-bell-mail]').forEach(m => { m.hidden = !on('notify_email'); });
         const c = document.querySelector('[data-bell-count]'); if (c) c.textContent = n;
         const meta = document.querySelector('[data-notif-meta]');

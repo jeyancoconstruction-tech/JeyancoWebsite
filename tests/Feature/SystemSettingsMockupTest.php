@@ -63,7 +63,7 @@ class SystemSettingsMockupTest extends TestCase
             // Security
             'Session length', 'Failed sign-in limit', 'Google sign-in', 'Sign out all sessions',
             // Kiosks
-            'Scan mode', 'Worker picks', 'Kiosk opens before shift', 'Unknown fingerprints', 'Offline alert',
+            'Scan mode', 'Worker picks', 'Kiosk opens before shift',
             // Notifications
             'Missing scans', 'Remittance reminders', 'Payroll ready', 'Also send by email',
             // Audit logs and the bar
@@ -185,15 +185,37 @@ class SystemSettingsMockupTest extends TestCase
 
         $this->put(route('system-settings.kiosk.update'), [
             'kiosk_attendance_mode' => 'buttons', 'kiosk_idle_return_seconds' => 60,
-            'kiosk_opens_minutes' => 60, 'kiosk_unknown_alert' => '1', 'kiosk_offline_alert_minutes' => 30,
+            'kiosk_opens_minutes' => 60,
         ])->assertSessionHasNoErrors();
 
         $this->assertSame([60], Shift::query()->pluck('time_in_opens_minutes')->unique()->values()->all());
         $this->assertTrue(AuditLog::where('description', 'like', '%kiosk opens before shift 120 → 60 min%')->exists());
-        $this->assertTrue(AuditLog::where('description', 'like', '%offline alert after 10 → 30 min%')->exists());
 
         // No duplicate-scan setting any more; the page does not offer one.
         $this->get(route('system-settings.kiosk'))->assertDontSee('Ignore duplicate scans');
+    }
+
+    /**
+     * Unknown fingerprints and Offline alert left the page on 2026-09-30
+     * (Michael). Both alerts keep running on their saved values, and a save
+     * cannot change them any more.
+     */
+    public function test_the_unknown_finger_and_offline_alert_rows_are_gone(): void
+    {
+        $this->actingAs($this->admin())->get(route('system-settings.kiosk'))->assertOk()
+             ->assertDontSee('Unknown fingerprints')
+             ->assertDontSee('Offline alert')
+             ->assertDontSee('name="kiosk_unknown_alert"', false)
+             ->assertDontSee('name="kiosk_offline_alert_minutes"', false);
+
+        $this->put(route('system-settings.kiosk.update'), [
+            'kiosk_attendance_mode' => 'buttons', 'kiosk_idle_return_seconds' => 60,
+            'kiosk_unknown_alert' => '0', 'kiosk_offline_alert_minutes' => 60,
+        ])->assertSessionHasNoErrors();
+
+        SystemSetting::forget();
+        $this->assertTrue(SystemSetting::current()->enabled('kiosk_unknown_alert'));
+        $this->assertSame(600, SystemSetting::current()->kioskOfflineAlertSeconds());
     }
 
     public function test_an_unknown_finger_is_reported_once_a_day_when_asked(): void
