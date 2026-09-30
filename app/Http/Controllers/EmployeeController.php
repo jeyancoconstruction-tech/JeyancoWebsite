@@ -731,7 +731,7 @@ class EmployeeController extends Controller
             'pending'  => $pending->count(),
             'active'   => Employee::active()->count(),
             'archived' => Employee::archived()->count(),
-            'removed'  => Employee::onlyTrashed()->count(),
+            'removed'  => Employee::removed()->count(),
         ];
 
         return response()->json([

@@ -180,6 +180,9 @@ html[data-bs-theme="dark"] .rmx {
 .rmx-labor { display: inline-flex; align-items: center; gap: 5px; color: var(--rmx-txt-2); font-size: 13px; white-space: nowrap; }
 .rmx-labor i { font-size: 14px; color: var(--rmx-txt-3); }
 .rmx-labor + .rmx-pill { margin-left: 6px; }
+.rmx-shift { display: inline-flex; align-items: center; gap: 5px; color: var(--rmx-txt-2); font-size: 13px; white-space: nowrap; }
+.rmx-shift i { font-size: 14px; color: var(--rmx-txt-3); }
+.rmx-shift small { font-size: 11.5px; color: var(--rmx-txt-3); margin-left: 2px; }
 .rmx-rate { text-align: right; font-weight: 500; color: var(--rmx-txt); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rmx-logs { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px;
     border-radius: 11px; background: var(--rmx-chip); color: var(--rmx-txt-2); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -467,6 +470,7 @@ tr.rmx-row-card { cursor: pointer; }
                             <th>{{ __('Employee') }}</th>
                             <th><button type="button" class="rmx-fbtn" data-filter="site" aria-haspopup="menu" aria-expanded="false" title="{{ __('Show one site only') }}">{{ __('Site') }}<i class="ti ti-chevron-down" aria-hidden="true"></i></button></th>
                             <th><button type="button" class="rmx-fbtn" data-filter="labor" aria-haspopup="menu" aria-expanded="false" title="{{ __('Show one labor type only') }}">{{ __('Labor type') }}<i class="ti ti-chevron-down" aria-hidden="true"></i></button></th>
+                            <th><button type="button" class="rmx-fbtn" data-filter="shift" aria-haspopup="menu" aria-expanded="false" title="{{ __('Show one shift only') }}">{{ __('Shift') }}<i class="ti ti-chevron-down" aria-hidden="true"></i></button></th>
                             <th class="rmx-num">{{ __('Rate / hr') }}</th>
                             <th class="rmx-center" title="{{ __('Fingerprint slot on the kiosk') }}">{{ __('FP') }}</th>
                             <th class="rmx-center">{{ __('Logs') }}</th>
@@ -507,11 +511,12 @@ tr.rmx-row-card { cursor: pointer; }
                                 'profile'  => route('employees.show', $e->id),
                             ];
                         @endphp
-                        <tr class="rmx-row-card" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}">
+                        <tr class="rmx-row-card" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}" data-shift="{{ $e->shift?->name }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td><button type="button" class="rmx-open" aria-haspopup="dialog" aria-label="{{ __('Details of :name', ['name' => $e->name]) }}">@include('employees._person', ['e' => $e, 'displayName' => $e->name])</button></td>
                             <td>@include('employees._site', ['e' => $e])</td>
                             <td>@include('employees._labor', ['e' => $e])</td>
+                            <td>@if($e->shift)<span class="rmx-shift" title="{{ $e->shift->name }} · {{ \Carbon\Carbon::parse($e->shift->starts_at)->format('g:i A') }}"><i class="ti ti-{{ $e->shift->crosses_midnight ? 'moon' : 'sun' }}" aria-hidden="true"></i>{{ $e->shift->name }}<small>{{ \Carbon\Carbon::parse($e->shift->starts_at)->format('g:i A') }}</small></span>@else<span class="rmx-dash">—</span>@endif</td>
                             <td class="rmx-rate">₱{{ number_format($e->rate_per_hour, 2) }}</td>
                             <td class="rmx-center">@include('employees._fp', ['e' => $e])</td>
                             <td class="rmx-center"><span class="rmx-logs">{{ $e->attendances_count }}</span></td>
@@ -1392,9 +1397,10 @@ tr.rmx-row-card { cursor: pointer; }
     const KEYS = {
         site:  { all: @json(__('All sites')),       none: @json(__('No site')) },
         labor: { all: @json(__('All labor types')), none: @json(__('No labor type')) },
+        shift: { all: @json(__('All shifts')),      none: @json(__('No shift')) },
     };
     const state   = new Map();
-    const stateOf = pane => { if (!state.has(pane)) state.set(pane, { site: null, labor: null }); return state.get(pane); };
+    const stateOf = pane => { if (!state.has(pane)) state.set(pane, { site: null, labor: null, shift: null }); return state.get(pane); };
     const rowsOf  = pane => Array.from(pane.querySelectorAll('tbody > tr[data-site]'));
     const valueOf = (tr, key) => tr.dataset[key] || '';
     // null is "all"; '' is the rows with nothing in the column.
@@ -1496,7 +1502,7 @@ tr.rmx-row-card { cursor: pointer; }
         }
         if (e.target.closest('[data-fclear]')) {
             const pane = document.querySelector('.rm-pane.active');
-            if (pane) { state.set(pane, { site: null, labor: null }); apply(pane); }
+            if (pane) { state.set(pane, { site: null, labor: null, shift: null }); apply(pane); }
             return;
         }
         if (openBtn && !menu.contains(e.target)) closeMenu();

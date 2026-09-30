@@ -99,4 +99,34 @@ class EmployeesColumnFilterTest extends TestCase
         // The summary beside the list's count, with its clear button.
         $this->assertStringContainsString('id="rmxFilterSum" hidden', $html);
     }
+    /** Shift, beside Labor type on the Active list (2026-09-30). */
+    public function test_the_active_list_has_a_shift_column_to_filter_on(): void
+    {
+        $shift = \App\Models\Shift::where("crosses_midnight", true)->firstOrFail();
+        $e = $this->worker("Night Owl", null, null);
+        $e->forceFill(["shift_id" => $shift->id])->save();
+
+        $active = $this->pane($this->page(), "active");
+
+        $this->assertStringContainsString("class=\"rmx-fbtn\" data-filter=\"shift\"", $active);
+        $this->assertStringContainsString("data-shift=\"" . e($shift->name) . "\"", $active);
+        $this->assertStringContainsString("ti ti-moon", $active, "a night shift reads as one");
+    }
+
+    /**
+     * The Removed card counted workers deleted for good whenever the page
+     * refreshed itself (a kiosk enrolment sets that off), and was right again
+     * after a reload. The live count is the page\x27s count.
+     */
+    public function test_the_live_refresh_counts_removed_as_the_page_does(): void
+    {
+        $gone = $this->worker("Deleted For Good", null, null);
+        $gone->delete();
+        $gone->deleteForGood();
+        $kept = $this->worker("Just Removed", null, null);
+        $kept->delete();
+
+        $this->actingAs($this->admin())->getJson(route("employees.register.live"))
+             ->assertOk()->assertJsonPath("counts.removed", 1);
+    }
 }
