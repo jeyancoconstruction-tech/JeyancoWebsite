@@ -413,6 +413,15 @@ class AIController extends Controller
         }
 
         // ===== USERS / SECURITY =====
+        // Admin only, as Users & Roles is: who has an account, their email and
+        // who holds admin rights are not for HR to read here either
+        // (2026-09-30). Before this, "list users" gave HR every account.
+        $asksAccounts = $has('total', 'users') || $has('how many', 'users')
+            || $any('admin users', 'admins', 'administrators', 'list users', 'all users',
+                    'security overview', 'security summary', 'access control');
+        if ($asksAccounts && ! auth()->user()?->isAdmin()) {
+            return "Account and security details are for administrators only. Ask an administrator if you need them.";
+        }
         if ($has('total', 'users') || $has('how many', 'users')) {
             return "Total system users: " . DB::table('users')->count();
         }
