@@ -255,8 +255,10 @@ class AIController extends Controller
         }
 
         // ===== EMPLOYEE COUNTS & LISTS =====
+        // Not "how many employees are present today": that is an attendance
+        // question, and answering the headcount instead was wrong (2026-09-30).
         if (($has('total', 'employees') || $has('how many', 'employees') || $n === 'employees')
-            && ! $any('site', 'labor', 'position')) {
+            && ! $any('site', 'labor', 'position', 'present', 'absent', 'attendance', 'here', 'clocked', 'today')) {
             $count = $this->employees()->count();
             return "There are $count active employees in the system.";
         }

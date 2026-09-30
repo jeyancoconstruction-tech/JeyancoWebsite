@@ -188,4 +188,15 @@ class HrSecurityTestCasesTest extends TestCase
         $this->assertMatchesRegularExpression('/\b1\b/', $reply);
         $this->assertStringNotContainsString('for administrators only', $reply);
     }
+    /** HR-U6 · "How many employees are present today?" is answered with attendance, not the headcount. */
+    public function test_the_assistant_answers_who_is_present_today(): void
+    {
+        $e = Employee::create(["name" => "Juan Dela Cruz", "status" => Employee::STATUS_ACTIVE, "rate_per_hour" => 100, "fingerprint_id" => "5"]);
+        Employee::create(["name" => "Pedro Penduko", "status" => Employee::STATUS_ACTIVE, "rate_per_hour" => 100, "fingerprint_id" => "6"]);
+        Attendance::create(["employee_id" => $e->id, "date" => now()->toDateString(), "session" => "AM", "time_in" => now()->format("H:i:s")]);
+
+        $reply = $this->actingAs($this->hr())->postJson(route("ai.chat"), ["message" => "how many employees are present today?"])->json("reply");
+
+        $this->assertStringContainsString("Present: 1 / 2", $reply);
+    }
 }
