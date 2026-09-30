@@ -18,8 +18,9 @@ use Tests\TestCase;
 /**
  * Part III, Security Testing — the HR role on the web (2026-09-30).
  *
- * One test per case in the security test table, named by its number, so the
- * "Actual Output" column can be read off a green run. The kiosk role's cases
+ * One test per case in the security test table (HR-S1 to HR-S8), named by
+ * its number, so the "Actual Output" column can be read off a green run; a
+ * few more checks that are not in the table follow them. The kiosk role's cases
  * (S1–S8) are about the IoT device; these are about what an HR account can
  * and cannot reach in the web system.
  */
@@ -103,8 +104,8 @@ class HrSecurityTestCasesTest extends TestCase
         $this->get('/audit-logs/export')->assertForbidden();
     }
 
-    /** HR-S6 · Unauthorized bonus on a worker's pay. */
-    public function test_hr_s6_cannot_give_a_bonus(): void
+    /** Also checked: HR cannot put a bonus on a worker's pay. */
+    public function test_hr_cannot_give_a_bonus(): void
     {
         $e = $this->worker();
 
@@ -114,8 +115,8 @@ class HrSecurityTestCasesTest extends TestCase
         $this->assertSame(0, Bonus::count());
     }
 
-    /** HR-S7 · A correction HR is allowed to make is written to the audit trail under their name. */
-    public function test_hr_s7_attendance_corrections_are_logged(): void
+    /** Also checked: a correction HR is allowed to make is written to the audit trail under their name. */
+    public function test_hr_attendance_corrections_are_logged(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-15 10:00:00'));
         $e   = $this->worker();
@@ -131,8 +132,8 @@ class HrSecurityTestCasesTest extends TestCase
         $this->assertStringContainsString('Juan Dela Cruz', $log->description);
     }
 
-    /** HR-S8 · Brute-force sign-in is locked out. */
-    public function test_hr_s8_repeated_wrong_passwords_lock_the_sign_in(): void
+    /** HR-S6 · Brute-force sign-in is locked out. */
+    public function test_hr_s6_repeated_wrong_passwords_lock_the_sign_in(): void
     {
         $this->hr();
 
@@ -145,8 +146,8 @@ class HrSecurityTestCasesTest extends TestCase
         $this->assertGuest();
     }
 
-    /** HR-S9 · A deactivated HR account cannot get in, and an open session ends. */
-    public function test_hr_s9_a_deactivated_account_is_refused(): void
+    /** Also checked: a deactivated HR account cannot get in, and an open session ends. */
+    public function test_a_deactivated_hr_account_is_refused(): void
     {
         $hr = $this->hr(['is_active' => false]);
 
@@ -157,16 +158,16 @@ class HrSecurityTestCasesTest extends TestCase
         $this->actingAs($hr)->get(route('attendance'))->assertRedirect(route('login'));
     }
 
-    /** HR-S10 · Records cannot be opened without signing in. */
-    public function test_hr_s10_no_page_opens_without_signing_in(): void
+    /** Also checked: records cannot be opened without signing in. */
+    public function test_no_page_opens_without_signing_in(): void
     {
         foreach ([route('attendance'), route('payroll-records'), route('employees.register'), route('payslip.batch')] as $url) {
             $this->get($url)->assertRedirect(route('login'));
         }
     }
 
-    /** HR-S13 · The assistant declines what HR may not see. */
-    public function test_hr_s13_the_assistant_declines_account_details(): void
+    /** HR-S7 · The assistant declines what HR may not see. */
+    public function test_hr_s7_the_assistant_declines_account_details(): void
     {
         User::create(['name' => 'Boss', 'username' => 'boss', 'email' => 'boss@jeyanco.test', 'password' => Hash::make('x1234567'),
             'role' => User::ROLE_ADMIN, 'is_active' => true]);
@@ -177,8 +178,8 @@ class HrSecurityTestCasesTest extends TestCase
         $this->assertStringNotContainsString('boss@jeyanco.test', $reply);
     }
 
-    /** HR-S14 · The assistant answers inside HR's role. */
-    public function test_hr_s14_the_assistant_answers_within_the_role(): void
+    /** HR-S8 · The assistant answers inside HR's role. */
+    public function test_hr_s8_the_assistant_answers_within_the_role(): void
     {
         $this->worker();
 
