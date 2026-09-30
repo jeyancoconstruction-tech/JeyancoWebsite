@@ -447,3 +447,13 @@
     .rp-hb .v { min-width: 64px !important; }
     .rp-col .cv { font-size: 10px !important; }
 }
+
+
+/* ── 14 · THE ARROW AT THE SIDE ────────────────────────────────────────────
+   Employees and Attendance hang an arrow in the page's left gutter, which is
+   20px on a desktop and 14px from a tablet down (design-tokens.css). Hung
+   by 20px it would sit partly off the screen, so it follows the gutter in. */
+@media (max-width: 991.98px) {
+    .rmx-top { --rmx-gutter: 14px; }
+    .atm-top { --atm-gutter: 14px; }
+}

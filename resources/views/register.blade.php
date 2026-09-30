@@ -235,7 +235,6 @@ html[data-bs-theme="dark"] .rmx {
 .rmx-sum-in { min-height: 0; overflow: hidden; }
 .rmx-sumwrap .rmx-stats { transform: translateX(-16px); opacity: 0; transition: transform .16s ease-in, opacity .16s ease-in; }
 .rmx-sumwrap.open .rmx-stats { transform: none; opacity: 1; transition: transform .22s ease-out, opacity .22s ease-out; }
-.rmx-sumwrap.no-anim, .rmx-sumwrap.no-anim .rmx-stats { transition: none !important; }
 @media (prefers-reduced-motion: reduce) { .rmx-sumwrap, .rmx-sumwrap .rmx-stats { transition: none !important; } }
 .rmx-stat.is-on { border-color: var(--brand, #1668DC); background: var(--brand-subtle, #EAF2FD); box-shadow: inset 0 0 0 1px var(--brand, #1668DC); }
 
@@ -352,8 +351,8 @@ tr.rmx-row-card { cursor: pointer; }
     {{-- ── The three cards, behind the arrow at the side ─────────────────────
          The list comes first. The cards — which are also how you switch
          between Active, Pending and Removed — slide out from the arrow by the
-         navigation bar when it is pressed, and push the list down. Whether
-         they are out is remembered in this browser. --}}
+         navigation bar, pushing the list down. They are out whenever the page
+         loads; the arrow puts them away until the next load. --}}
     @php
         $showing = [
             'active'  => [__('Active'), $active->count()],
@@ -362,11 +361,11 @@ tr.rmx-row-card { cursor: pointer; }
         ];
     @endphp
     <div class="rmx-top">
-        <button type="button" class="rmx-handle" id="rmxHandle" aria-expanded="false" aria-controls="rmxSum"
-                title="{{ __('Show Active, Pending and Removed') }}" aria-label="{{ __('Show Active, Pending and Removed') }}">
+        <button type="button" class="rmx-handle" id="rmxHandle" aria-expanded="true" aria-controls="rmxSum"
+                title="{{ __('Hide Active, Pending and Removed') }}" aria-label="{{ __('Hide Active, Pending and Removed') }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
         </button>
-        <div class="rmx-sumwrap" id="rmxSum">
+        <div class="rmx-sumwrap open" id="rmxSum">
             <div class="rmx-sum-in">
                 <div class="rmx-stats">
                     <button type="button" class="rmx-stat rmx-stat-active" data-tab="active">
@@ -996,23 +995,17 @@ tr.rmx-row-card { cursor: pointer; }
     document.querySelectorAll('.rmx-stat').forEach(c => c.classList.toggle('is-on', c.dataset.tab === opened));
 
     // ── The arrow at the side ────────────────────────────────────────────────
-    // Shut on a first visit; after that, as it was left in this browser.
+    // The cards are out on every load (the markup opens them). Put away, they
+    // stay away only until the page loads again: nothing is remembered.
     const sum = document.getElementById('rmxSum'), handle = document.getElementById('rmxHandle');
     if (sum && handle) {
-        const KEY = 'jeyanco-employees-summary';
-        const setOpen = (on, save) => {
+        handle.addEventListener('click', () => {
+            const on = !sum.classList.contains('open');
             sum.classList.toggle('open', on);
             handle.setAttribute('aria-expanded', on ? 'true' : 'false');
             const label = on ? @json(__('Hide Active, Pending and Removed')) : @json(__('Show Active, Pending and Removed'));
             handle.title = label; handle.setAttribute('aria-label', label);
-            if (save) { try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) {} }
-        };
-        let start = false;
-        try { start = localStorage.getItem(KEY) === '1'; } catch (e) {}
-        sum.classList.add('no-anim');
-        setOpen(start, false);
-        requestAnimationFrame(() => requestAnimationFrame(() => sum.classList.remove('no-anim')));
-        handle.addEventListener('click', () => setOpen(!sum.classList.contains('open'), true));
+        });
     }
 
     // ── Employee form modal (confirm / complete) ─────────────────────────────

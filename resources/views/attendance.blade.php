@@ -78,6 +78,33 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
 .atm-stat.is-bad.has-some .atm-stat-num { color:var(--atm-bad); }
 .atm-stat.is-bad.is-active::after { background:var(--atm-bad); }
 
+/* The strip goes behind an arrow at the side, as the cards do on Employees.
+   It folds by the height of a grid row (1fr → 0fr), so the list below rises
+   smoothly and nothing jumps. Out on every page load. */
+.atm-top { position:relative; }
+.atm-fold { display:grid; grid-template-rows:0fr; transition:grid-template-rows .16s ease-in; }
+.atm-fold.open { grid-template-rows:1fr; transition:grid-template-rows .22s ease-out; }
+.atm-fold-in { min-height:0; overflow:hidden; }
+.atm-fold .atm-stats { transform:translateX(-16px); opacity:0; transition:transform .16s ease-in, opacity .16s ease-in; }
+.atm-fold.open .atm-stats { transform:none; opacity:1; transition:transform .22s ease-out, opacity .22s ease-out; }
+@media (prefers-reduced-motion:reduce) { .atm-fold, .atm-fold .atm-stats { transition:none !important; } }
+
+/* The arrow: a tab on the edge by the navigation bar. ‹ hides the strip, › brings it back. */
+.atm-handle {
+    position:absolute; z-index:5; top:0; left:calc(-1 * var(--atm-gutter, 20px));
+    width:17px; height:38px; padding:0; cursor:pointer;
+    display:grid; place-items:center; color:var(--brand);
+    background:var(--surface); border:1px solid var(--border-md); border-left:0;
+    border-radius:0 10px 10px 0; box-shadow:3px 0 10px rgba(16, 24, 40, .08);
+    transition:background .15s, color .15s, height .22s ease-out;
+}
+.atm-handle svg { width:13px; height:13px; transition:transform .22s ease-out; }
+.atm-handle:hover { background:var(--bg-subtle); }
+.atm-handle:focus-visible { outline:2px solid var(--brand); outline-offset:2px; }
+.atm-handle[aria-expanded="true"] { background:var(--brand); border-color:var(--brand); color:#fff; height:62px; }
+.atm-handle[aria-expanded="true"] svg { transform:rotate(180deg); }
+@media (prefers-reduced-motion:reduce) { .atm-handle, .atm-handle svg { transition:none; } }
+
 /* ── The records card: tabs, filters, the list ─────────────────────────── */
 .atm-card {
     display:flex; flex-direction:column; min-width:0;
@@ -425,7 +452,17 @@ tr.atm-dayhead td {
     {{-- ── Cards ────────────────────────────────────────────────────────────
          They follow the site and shift chosen below, so the numbers and the
          rows always describe the same crew. They do not follow the status or
-         the search, which narrow the lists to a question about that crew. --}}
+         the search, which narrow the lists to a question about that crew.
+         The arrow at the side puts them away until the page loads again.
+         The fold sits outside #attStats, whose inside the filters and the
+         live feed replace, so a fetch never reopens it. --}}
+    <div class="atm-top">
+    <button type="button" class="atm-handle" id="attStatsHandle" aria-expanded="true" aria-controls="attStatsFold"
+            title="{{ __('Hide today\'s counts') }}" aria-label="{{ __('Hide today\'s counts') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <div class="atm-fold open" id="attStatsFold">
+    <div class="atm-fold-in">
     <div class="atm-stats" id="attStats" data-live="attendance employees">
         <a class="atm-stat is-brand {{ $cardOn('present') ? 'is-active' : '' }}" href="{{ $cardUrl('present') }}" data-view="present"
            @if($cardOn('present')) aria-current="true" @endif>
@@ -464,6 +501,9 @@ tr.atm-dayhead td {
             <span class="atm-stat-num">{{ $invalidCount }}</span>
             <span class="atm-stat-sub">{{ $reviewToday }} {{ __('today') }} · {{ $reviewEarlier }} {{ __('earlier this week') }}</span>
         </a>
+    </div>
+    </div>
+    </div>
     </div>
 
     <section class="atm-card" aria-label="{{ __('Attendance records') }}">
@@ -805,6 +845,30 @@ tr.atm-dayhead td {
     document.fonts?.ready.then(respace);
     window.addEventListener('resize', respace);
     document.addEventListener('live:updated', respace);
+
+    // ── The arrow at the side ───────────────────────────────────────────────
+    // Out on every load (the markup opens the strip); put away, it stays away
+    // only until the page loads again. The card below keeps its foot at the
+    // bottom of the screen: as the strip folds, the card grows by the strip's
+    // height at once, so it rises without its foot lifting, and it is
+    // measured properly once the fold has finished.
+    const fold   = document.getElementById('attStatsFold');
+    const handle = document.getElementById('attStatsHandle');
+    if (fold && handle) {
+        const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+        handle.addEventListener('click', () => {
+            const on = !fold.classList.contains('open');
+            if (!on && card.style.minHeight) card.style.minHeight = (parseFloat(card.style.minHeight) + fold.offsetHeight) + 'px';
+            fold.classList.toggle('open', on);
+            handle.setAttribute('aria-expanded', on ? 'true' : 'false');
+            const label = on ? @json(__('Hide today\'s counts')) : @json(__('Show today\'s counts'));
+            handle.title = label; handle.setAttribute('aria-label', label);
+            if (still.matches) respace();
+        });
+        fold.addEventListener('transitionend', e => {
+            if (e.target === fold && e.propertyName === 'grid-template-rows') respace();
+        });
+    }
 
     // ── Filters, fetched in place ───────────────────────────────────────────
     // Any choice asks the server for the page as it would be, and swaps in
