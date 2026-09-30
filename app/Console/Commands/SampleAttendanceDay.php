@@ -18,7 +18,8 @@ use Illuminate\Console\Command;
  *
  * Each worker gets their last shift that has fully finished, overtime
  * included: the day crew's today once the evening is over, the night crew's
- * last complete night. It is laid out as the kiosk records a day, a time in
+ * last complete night. A day is eight paid hours: home when the regular
+ * hours are done, and only past that is overtime. It is laid out as the kiosk records a day, a time in
  * and out for each session, and varied the way a real crew is. Most arrive a
  * little early, a few are late in the morning or back late from the break,
  * some stay for overtime, and one or two leave early. The same day always
@@ -101,12 +102,12 @@ class SampleAttendanceDay extends Command
         return self::SUCCESS;
     }
 
-    /** The latest shift day, today or before, whose second session and its overtime are over. */
+    /** The latest shift day, today or before, whose regular hours and a stretch of overtime are over. */
     private function lastFinishedDay(array $sched, Carbon $now): ?string
     {
         for ($back = 0; $back <= 3; $back++) {
             $day = $now->copy()->subDays($back)->toDateString();
-            if (WorkSchedule::sessionEnd($sched, 'PM', $day)->copy()->addMinutes(self::OVERTIME_ROOM)->lte($now)) {
+            if (WorkSchedule::regularEnd($sched, $day)->addMinutes(self::OVERTIME_ROOM)->lte($now)) {
                 return $day;
             }
         }
@@ -128,13 +129,17 @@ class SampleAttendanceDay extends Command
         $amStart = WorkSchedule::sessionStart($sched, 'AM', $day);
         $amEnd   = WorkSchedule::sessionEnd($sched, 'AM', $day);
         $pmStart = WorkSchedule::sessionStart($sched, 'PM', $day);
-        $pmEnd   = WorkSchedule::sessionEnd($sched, 'PM', $day);
+        // Home once the regular hours are done (eight, on this crew), not at
+        // the end of a longer shift: past that is overtime.
+        $pmEnd   = WorkSchedule::regularEnd($sched, $day);
 
         // A little early, straight out at the break, back a little early,
         // home on time: the ordinary day, which most of the crew has.
         $times = [
             'AM' => [$at($amStart, -20, -3), $at($amEnd, 0, 4)],
-            'PM' => [$at($pmStart, -12, -2), $at($pmEnd, 0, 6)],
+            // Out within the minute the regular hours end: pay is counted by
+            // the whole minute, so 5:02 would already be two minutes of overtime.
+            'PM' => [$at($pmStart, -12, -2), $at($pmEnd, 0, 0)],
         ];
 
         $roll = mt_rand(0, 99);

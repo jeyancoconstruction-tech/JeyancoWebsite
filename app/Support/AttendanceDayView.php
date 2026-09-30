@@ -41,6 +41,9 @@ final class AttendanceDayView
     /** ['AM' => [start, end], 'PM' => [start, end]] for this workday. */
     private ?array $w = null;
 
+    /** When the day's regular hours are done: the time out a full day is measured by. */
+    private ?Carbon $regularOut = null;
+
     /** Stretches of the first session, and of the second, in time order. */
     private Collection $first;
     private Collection $second;
@@ -71,8 +74,9 @@ final class AttendanceDayView
         $schedule = $day->shift()?->schedule();
 
         if (WorkSchedule::has($schedule)) {
-            $this->sched = $schedule;
-            $this->w     = WorkSchedule::windows($schedule, $day->date()->toDateString());
+            $this->sched      = $schedule;
+            $this->w          = WorkSchedule::windows($schedule, $day->date()->toDateString());
+            $this->regularOut = WorkSchedule::regularEnd($schedule, $day->date()->toDateString());
         }
 
         $stretches    = $day->stretches();
@@ -194,7 +198,9 @@ final class AttendanceDayView
             'in'  => $this->w['AM'][0]->copy(),
             'bo'  => $this->w['AM'][1]->copy(),
             'bi'  => $this->w['PM'][0]->copy(),
-            default => $this->w['PM'][1]->copy(),
+            // Home when the regular hours are done, which is the shift's end
+            // unless the shift runs longer than the day's rate buys.
+            default => $this->regularOut->copy(),
         };
     }
 
@@ -367,8 +373,10 @@ final class AttendanceDayView
             return ['text' => __('Overbreak') . ' ' . self::together($late), 'tone' => 'warn'];
         }
 
-        if ($slot === 'out' && $this->w && $scan['at']->lessThan($this->w['PM'][1])) {
-            return ['text' => __('Undertime') . ' ' . self::together($scan['at']->diffInMinutes($this->w['PM'][1])), 'tone' => 'warn'];
+        // Short of the regular hours, not of the shift: on an 8 AM–8 PM shift
+        // that buys eight hours, out at 5 PM is a full day (2026-09-30).
+        if ($slot === 'out' && $this->w && $scan['at']->lessThan($this->regularOut)) {
+            return ['text' => __('Undertime') . ' ' . self::together($scan['at']->diffInMinutes($this->regularOut)), 'tone' => 'warn'];
         }
 
         return null;

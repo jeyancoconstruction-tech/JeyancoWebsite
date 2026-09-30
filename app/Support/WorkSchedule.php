@@ -289,6 +289,30 @@ final class WorkSchedule
     }
 
     /**
+     * When a day's regular hours are done, keeping to the sessions: the
+     * shift's end, or earlier when the day's rate buys fewer hours than the
+     * sessions hold. An 8 AM–8 PM shift that buys eight hours, with lunch
+     * from twelve to one, is a full day at 5 PM; what comes after is
+     * overtime (Michael, 2026-09-30: "kailangan makalampas muna ng 8 hours").
+     */
+    public static function regularEnd(array $s, string $shiftDay): Carbon
+    {
+        $w   = self::windows($s, $shiftDay);
+        $cap = self::regularMinutes($s);
+
+        if ($cap === null) {
+            return $w['PM'][1]->copy();
+        }
+
+        $am  = (int) round(abs($w['AM'][1]->getTimestamp() - $w['AM'][0]->getTimestamp()) / 60);
+        $end = $cap <= $am
+            ? $w['AM'][0]->copy()->addMinutes($cap)
+            : $w['PM'][0]->copy()->addMinutes($cap - $am);
+
+        return $end->greaterThan($w['PM'][1]) ? $w['PM'][1]->copy() : $end;
+    }
+
+    /**
      * How many paid minutes a shift counts as regular before the rest of it
      * becomes overtime. Null is the older rule: all of it.
      */
