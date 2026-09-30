@@ -392,7 +392,9 @@ class EmployeeController extends Controller
 
         $employee->update($updateData);
 
-        return redirect()->route('employees.register')->with('success', 'Employee updated successfully!');
+        // A worker still pending is edited from the Pending tab; land back on it.
+        return redirect()->route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : [])
+            ->with('success', 'Employee updated successfully!');
     }
 
     // ── Worker profile (Register Employee form) ───────────────────────────────
@@ -841,7 +843,10 @@ class EmployeeController extends Controller
                 : $employee->name . ' still needs fingerprint enrolment at the kiosk.'
         );
 
-        return redirect()->to(route('employees.register') . ($activated ? '#active' : '#pending'))
+        // Back to Pending, where the office was working through the list, even
+        // when this worker has just gone active (Michael, 2026-09-30): the
+        // toast says where they went.
+        return redirect()->route('employees.register', ['tab' => 'pending'])
             ->with('success', $activated
                 ? $employee->name . ' has been registered and activated.'
                 : $employee->name . ' has been saved. They become active once their fingerprint is enrolled at the kiosk.');

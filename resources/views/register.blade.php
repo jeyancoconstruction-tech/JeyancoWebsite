@@ -1023,7 +1023,16 @@ tr.rmx-row-card { cursor: pointer; }
         document.dispatchEvent(new CustomEvent('rmx:tab', {
             detail: { from: leaving && leaving.dataset.pane !== name ? leaving : null },
         }));
-        try { history.replaceState(null, '', '#' + name); } catch (e) {}
+        // In the address itself, not after a #: a save, a cancel or a restore
+        // redirects back to this address, and the server opens the tab it
+        // names. A # never reaches the server, so every action used to land
+        // on Active.
+        try {
+            const url = new URL(location.href);
+            url.searchParams.set('tab', name);
+            url.hash = '';
+            history.replaceState(null, '', url);
+        } catch (e) {}
     }
     document.querySelectorAll('.rmx-tab, .rmx-stat').forEach(el => el.addEventListener('click', () => switchTab(el.dataset.tab)));
     // The open tab is decided in the markup — see $openTab above. The hash is

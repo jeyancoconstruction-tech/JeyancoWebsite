@@ -8,7 +8,7 @@
 <div class="employee-container">
     <x-page-header :title="__('Edit Employee Profile')">
         <x-slot:actions>
-            <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary shadow-sm px-4">
+            <a href="{{ route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : []) }}" class="btn btn-outline-secondary shadow-sm px-4">
                 <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Employees') }}
             </a>
         </x-slot:actions>
@@ -259,7 +259,7 @@
                         <span class="rgx-count"><b id="rgxDone">0</b> {{ __('of') }} <b id="rgxTotal">0</b> {{ __('required filled') }}</span>
                     </div>
                     <span class="ep-actions-note"></span>
-                    <a href="{{ route('employees.register') }}" class="btn btn-outline-secondary px-4">{{ __('Cancel') }}</a>
+                    <a href="{{ route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : []) }}" class="btn btn-outline-secondary px-4">{{ __('Cancel') }}</a>
                     <button type="submit" class="btn btn-primary fw-bold px-4">
                         <i class="fas fa-save me-2"></i>{{ __('Save Changes') }}
                     </button>
