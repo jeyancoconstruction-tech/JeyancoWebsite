@@ -987,11 +987,13 @@ class EmployeeController extends Controller
     /**
      * Return the next sequential fingerprint ID by finding the numeric
      * maximum of all existing IDs. Uses CAST to avoid string-ordering
-     * bugs where '9' > '10' lexicographically.
+     * bugs where '9' > '10' lexicographically. Stand-in fingerprints (9001
+     * and up) are not real sensor slots, so they do not count.
      */
     private function nextFingerprintId(): int
     {
         $max = Employee::withTrashed()->whereNotNull('fingerprint_id')
+            ->whereRaw('CAST(fingerprint_id AS UNSIGNED) < ?', [Employee::FAKE_FINGERPRINT_FROM])
             ->selectRaw('MAX(CAST(fingerprint_id AS UNSIGNED)) as max_id')
             ->value('max_id');
 

@@ -189,6 +189,17 @@ class Employee extends Model
     // ── Fingerprint slots ────────────────────────────────────────────────────
 
     /**
+     * Stand-in fingerprints (php artisan employees:fake-fingerprints) start
+     * here: far above what any sensor holds, so no real finger matches one.
+     */
+    public const FAKE_FINGERPRINT_FROM = 9001;
+
+    public static function isFakeFingerprint($fingerprintId): bool
+    {
+        return is_numeric($fingerprintId) && (int) $fingerprintId >= self::FAKE_FINGERPRINT_FROM;
+    }
+
+    /**
      * Free a sensor slot so it can be handed to another worker.
      *
      * fingerprint_id carries a DB-level unique index that spans soft-deleted
