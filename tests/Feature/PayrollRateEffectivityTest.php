@@ -222,7 +222,12 @@ class PayrollRateEffectivityTest extends TestCase
         $before = PayrollRate::count();
 
         $this->actingAs($this->admin())
-             ->post(route('payroll-rates.store'), $this->payload(['ot_multiplier' => 1.50]))
+             // Ahead of whatever today is: the fixed 2026-10-01 stopped being
+             // "ahead" the day it arrived.
+             ->post(route('payroll-rates.store'), $this->payload([
+                 'ot_multiplier'  => 1.50,
+                 'effective_from' => now()->addMonth()->toDateString(),
+             ]))
              ->assertSessionHasNoErrors();
 
         $this->assertSame($before + 1, PayrollRate::count(), 'a new row, not an edit');
