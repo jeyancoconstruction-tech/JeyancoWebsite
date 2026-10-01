@@ -180,7 +180,10 @@
         @keyframes alertIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
         .alert-error   { background: rgba(240,138,138,.1); border: 1px solid rgba(240,138,138,.28); color: var(--danger); }
         .alert-success { background: rgba(95,203,159,.1);  border: 1px solid rgba(95,203,159,.28);  color: var(--success); }
-        .alert .i { margin-top: 1px; }
+        .alert .i { margin-top: 1px; flex: none; }
+        /* A message can quote what was typed; a long address breaks rather
+           than widening the page. */
+        .alert span { min-width: 0; overflow-wrap: anywhere; }
 
         .field { display: flex; flex-direction: column; gap: 7px; }
         .field label { font-size: 12.5px; font-weight: 600; letter-spacing: .01em; color: var(--text-2); }

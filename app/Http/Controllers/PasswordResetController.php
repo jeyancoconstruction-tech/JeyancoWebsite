@@ -34,7 +34,7 @@ class PasswordResetController extends Controller
     public function email(Request $request)
     {
         $request->validate([
-            'login' => ['required', 'string'],
+            'login' => ['required', 'string', 'max:255'],
         ], [], ['login' => 'username or email']);
 
         // Before anything is looked up: can this deployment send mail at all?
@@ -61,20 +61,32 @@ class PasswordResetController extends Controller
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
         $user = User::where($field, $login)->first();
 
+        // Nobody by that email or username: say so (Michael, 2026-10-01).
+        // The form used to give one reply to everything so it could not be
+        // used to find out who has an account; a person who mistyped their
+        // address was then told a link was on its way and waited for nothing.
+        // The route's throttle is what is left against guessing.
+        if (! $user) {
+            $shown = Str::limit($login, 80);
+
+            return back()->withInput($request->only('login'))->withErrors(['login' => $field === 'email'
+                ? "{$shown} is not registered. Check the spelling, or ask an administrator to add it to your account."
+                : "No account has the username “{$shown}”. Check the spelling, or ask an administrator."]);
+        }
+
         // Only a live account with an address on file gets a link — and only
         // one that signs in with a password: a Google-only account has none
-        // to reset. Everything else falls through to the same reply below, so
-        // this form cannot be used to discover which usernames exist.
-        if ($user && $user->is_active && ! empty($user->email) && $user->usesPassword()) {
+        // to reset. An account that exists but gets no link falls through to
+        // the same reply below, so the form says nothing about its state.
+        if ($user->is_active && ! empty($user->email) && $user->usesPassword()) {
             try {
                 Password::sendResetLink(['email' => $user->email]);
             } catch (Throwable $e) {
                 // A refused SMTP handshake throws out of sendResetLink. Left
-                // alone it renders a 500 page — and only ever for an address
-                // that exists, which turns a broken mailer into exactly the
-                // account oracle the branch above is written to avoid. So it
-                // is swallowed into the same reply as every other outcome,
-                // and the detail goes to the log for whoever runs the system.
+                // alone it renders a 500 page, which tells the person nothing
+                // they can act on. So it is swallowed into the same reply as
+                // any other request for an account that exists, and the
+                // detail goes to the log for whoever runs the system.
                 Log::error('Password reset email could not be sent.', [
                     'user_id' => $user->id,
                     'mailer'  => config('mail.default'),
@@ -84,7 +96,7 @@ class PasswordResetController extends Controller
         }
 
         return back()->with('success',
-            'If that account exists and has an email on file, a reset link is on its way. '
+            'If that account has an email on file, a reset link is on its way. '
             . 'The link expires in 60 minutes.');
     }
 

@@ -323,4 +323,60 @@ class SignInMethodTest extends TestCase
         Notification::assertNotSentTo(User::where('username', 'maria.santos')->first(), ResetPasswordEmail::class);
         Notification::assertSentTo(User::where('username', 'pedro.reyes')->first(), ResetPasswordEmail::class);
     }
+
+    /**
+     * An email nobody has gets told so (Michael, 2026-10-01). The form used
+     * to promise a link to anything typed into it, so a mistyped address left
+     * the person waiting for a message that was never sent.
+     */
+    public function test_an_email_that_is_not_registered_is_told_so(): void
+    {
+        config(['mail.default' => 'smtp']);
+        Notification::fake();
+
+        $this->from(route('password.request'))
+             ->post(route('password.email'), ['login' => 'stranger@gmail.com'])
+             ->assertRedirect(route('password.request'))
+             ->assertSessionHasErrors(['login' => 'stranger@gmail.com is not registered. Check the spelling, or ask an administrator to add it to your account.'])
+             ->assertSessionMissing('success');
+
+        Notification::assertNothingSent();
+
+        // The form comes back with the message and what was typed, not the
+        // "open your email" panel.
+        $this->get(route('password.request'))
+             ->assertSee('stranger@gmail.com is not registered.')
+             ->assertSee('value="stranger@gmail.com"', false)
+             ->assertDontSee('What happens now')
+             // The message quotes the address; a long one must wrap, not
+             // push a phone's page sideways.
+             ->assertSee('.alert span { min-width: 0; overflow-wrap: anywhere; }', false);
+    }
+
+    public function test_a_username_nobody_has_is_told_so(): void
+    {
+        config(['mail.default' => 'smtp']);
+        Notification::fake();
+
+        $this->post(route('password.email'), ['login' => 'no.such.person'])
+             ->assertSessionHasErrors(['login' => 'No account has the username “no.such.person”. Check the spelling, or ask an administrator.']);
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_a_registered_email_still_gets_its_link_and_no_error(): void
+    {
+        config(['mail.default' => 'smtp']);
+        Notification::fake();
+
+        $this->create(['login_method' => User::LOGIN_BOTH, 'email' => 'maria.santos@gmail.com',
+                       'password' => 'payroll2026', 'password_confirmation' => 'payroll2026']);
+        $this->signOut();
+
+        $this->post(route('password.email'), ['login' => 'maria.santos@gmail.com'])
+             ->assertSessionHasNoErrors()
+             ->assertSessionHas('success', 'If that account has an email on file, a reset link is on its way. The link expires in 60 minutes.');
+
+        Notification::assertSentTo(User::where('username', 'maria.santos')->first(), ResetPasswordEmail::class);
+    }
 }

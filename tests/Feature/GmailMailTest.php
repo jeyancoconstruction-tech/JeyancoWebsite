@@ -135,8 +135,8 @@ class GmailMailTest extends TestCase
         ]);
         $this->account();
 
-        // The same reply as any other request, so the form cannot tell anyone
-        // which accounts exist — the failure is logged, not shown.
+        // The same reply as any other request for an account that exists —
+        // the failure is logged, not shown.
         $this->post(route('password.email'), ['login' => 'maria.santos'])
              ->assertRedirect()
              ->assertSessionHasNoErrors();
