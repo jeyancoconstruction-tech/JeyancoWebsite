@@ -273,7 +273,7 @@ html[data-bs-theme="dark"] .rmx {
 /* A filtered-out row stays gone even where the phone layout draws rows as cards. */
 .rmx-table tbody tr[hidden] { display: none !important; }
 
-.rmx-fmenu { position: fixed; z-index: 1060; min-width: 210px; max-width: 290px; max-height: 340px; overflow-y: auto; padding: 5px;
+.rmx-fmenu { position: fixed; z-index: 1060; min-width: 210px; max-width: 290px; max-height: 340px; overflow-y: auto; overscroll-behavior: contain; padding: 5px;
     background: var(--rmx-card); border: var(--rmx-bw) solid var(--rmx-line-strong); border-radius: 10px;
     box-shadow: 0 12px 28px rgba(16, 24, 40, .16); }
 .rmx-fmenu[hidden] { display: none; }
@@ -1518,7 +1518,8 @@ tr.rmx-row-card { cursor: pointer; }
         if (e.key === 'Escape' && openBtn) { const b = openBtn; closeMenu(); b.focus(); }
     });
     window.addEventListener('resize', closeMenu);
-    window.addEventListener('scroll', closeMenu, true);
+    // The page moving under the list closes it; the list's own scrolling does not.
+    window.addEventListener('scroll', function (e) { if (e.target !== menu) closeMenu(); }, true);
 
     // The list's count and the summary beside it belong to the tab on screen.
     document.addEventListener('rmx:tab', function () {

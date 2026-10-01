@@ -99,6 +99,23 @@ class EmployeesColumnFilterTest extends TestCase
         // The summary beside the list's count, with its clear button.
         $this->assertStringContainsString('id="rmxFilterSum" hidden', $html);
     }
+
+    /**
+     * The list closes when the page scrolls under it, and that listener hears
+     * the list's own scrolling too: a long Labor type list shut the moment it
+     * was wheeled, so the types past the fold could not be reached (Michael,
+     * 2026-10-01).
+     */
+    public function test_a_long_list_scrolls_without_closing(): void
+    {
+        $html = $this->page();
+
+        $this->assertStringContainsString("window.addEventListener('scroll', function (e) { if (e.target !== menu) closeMenu(); }, true);", $html);
+        $this->assertStringNotContainsString("window.addEventListener('scroll', closeMenu, true);", $html);
+        // Reaching the end of the list does not hand the wheel to the page.
+        $this->assertMatchesRegularExpression('/\.rmx-fmenu \{[^}]*overflow-y: auto; overscroll-behavior: contain;/', $html);
+    }
+
     /** Shift, beside Labor type on the Active list (2026-09-30). */
     public function test_the_active_list_has_a_shift_column_to_filter_on(): void
     {
