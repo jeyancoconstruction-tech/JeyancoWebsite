@@ -80,7 +80,25 @@ class PayrollRecordsSiteFilterTest extends TestCase
 
         $this->assertSame(['Ana Alpha'], array_column($page->viewData('employees'), 'name'));
         $this->assertSame(1, $page->viewData('summary')['employee_count']);
-        $page->assertSee('All sites (as a whole)')->assertSee('Site Alpha');
+        $page->assertSee('All sites')->assertSee('Site Alpha');
+    }
+
+    /**
+     * The first choice reads "All sites" and nothing more (Michael,
+     * 2026-10-02), and the open list is painted from the theme: the field is
+     * see-through, which the browser draws as a white list, and in the dark
+     * theme that left the site names light on white.
+     */
+    public function test_the_site_list_reads_all_sites_and_follows_the_theme(): void
+    {
+        $html = $this->page()->getContent();
+
+        $this->assertStringContainsString('<option value="">All sites</option>', $html);
+        $this->assertStringNotContainsString('as a whole)', $html);
+        $this->assertStringContainsString(
+            'html[data-bs-theme] .prx .prx-sel select option { background: var(--surface); color: var(--text-primary); }',
+            $html
+        );
     }
 
     public function test_the_register_and_the_payslips_follow_the_site(): void

@@ -84,6 +84,9 @@ html[data-bs-theme] .prx .prx-sel select {
     border: 0 !important; background: transparent !important; box-shadow: none !important; outline: none;
     height: 30px; width: 190px; padding: 0; color: var(--text-primary); font-size: 12.5px; font-weight: 500;
 }
+/* The open list is drawn by the browser, which takes a see-through field for
+   a white one: in the dark theme that was light text on white. */
+html[data-bs-theme] .prx .prx-sel select option { background: var(--surface); color: var(--text-primary); }
 
 /* ── Summary ──────────────────────────────────────────────────────────── */
 /* Kept short (Michael, 2026-09-26) so the list of employees sits higher:
@@ -540,7 +543,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         <label class="prx-sel">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0112 2.5a7 7 0 017 7C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
             <select name="site" id="prSite" aria-label="{{ __('Site') }}">
-                <option value="">{{ __('All sites (as a whole)') }}</option>
+                <option value="">{{ __('All sites') }}</option>
                 @foreach($sites as $st)
                     <option value="{{ $st->id }}" @selected($siteId === $st->id)>{{ $st->name }}</option>
                 @endforeach

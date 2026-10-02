@@ -112,6 +112,19 @@ html[data-bs-theme="dark"] .rmx {
 .rmx-outline:hover { background: var(--rmx-hover); }
 .rmx-outline.is-on { background: var(--rmx-primary); border-color: var(--rmx-primary); color: #fff; }
 .rmx-outline:disabled { opacity: .5; cursor: not-allowed; }
+/* Search, before Select: as tall as the button beside it. */
+.rmx-tools { display: flex; align-items: center; gap: 8px; }
+.rmx-search { display: flex; align-items: center; gap: 7px; height: 30px; width: 230px; margin: 0; padding: 0 10px;
+    background: var(--rmx-card); border: var(--rmx-bw) solid var(--rmx-line-strong); border-radius: 8px; cursor: text;
+    transition: border-color .15s, box-shadow .15s; }
+.rmx-search:focus-within { border-color: var(--brand, #1668DC); box-shadow: 0 0 0 3px var(--rmx-accent-bg); }
+.rmx-search i { font-size: 15px; color: var(--rmx-txt-3); flex: none; }
+html[data-bs-theme] .rmx .rmx-search input {
+    flex: 1; min-width: 0; height: 28px; padding: 0; border: 0 !important; background: transparent !important;
+    box-shadow: none !important; outline: none; font: inherit; font-size: 12.5px; color: var(--rmx-txt);
+}
+.rmx-search input::placeholder { color: var(--rmx-txt-3); }
+.rmx-search input::-webkit-search-cancel-button { cursor: pointer; }
 
 /* Panes */
 .rm-pane { display: none; }
@@ -444,12 +457,21 @@ tr.rmx-row-card { cursor: pointer; }
             <b>{{ $showing[$openTab][0] }}</b><span class="rmx-count">{{ $showing[$openTab][1] }}</span>
             <span class="rmx-fsum" id="rmxFilterSum" hidden><i class="ti ti-filter" aria-hidden="true"></i><span data-fsum-text></span><b data-fsum-n></b><button type="button" class="rmx-fclear" data-fclear title="{{ __('Show everybody') }}" aria-label="{{ __('Clear the filters') }}"><i class="ti ti-x" aria-hidden="true"></i></button></span>
         </div>
-        {{-- Bulk removal is destructive, so it is something you opt into: the
-             checkbox column stays hidden until Select is pressed, and pressing
-             it again (it reads Done) puts it away. --}}
-        <button type="button" class="rmx-outline" id="rmxSelect">
-            <i class="ti ti-list-check" aria-hidden="true"></i><span class="js-select-label">{{ __('Select') }}</span>
-        </button>
+        <div class="rmx-tools">
+            {{-- Finds a worker in the list on screen by name or number, as it
+                 is typed. It narrows the list the same way the headings do. --}}
+            <label class="rmx-search">
+                <i class="ti ti-search" aria-hidden="true"></i>
+                <input type="search" id="rmxSearch" placeholder="{{ __('Search employee') }}" autocomplete="off"
+                       spellcheck="false" enterkeyhint="search" aria-label="{{ __('Search employee by name or ID') }}">
+            </label>
+            {{-- Bulk removal is destructive, so it is something you opt into: the
+                 checkbox column stays hidden until Select is pressed, and pressing
+                 it again (it reads Done) puts it away. --}}
+            <button type="button" class="rmx-outline" id="rmxSelect">
+                <i class="ti ti-list-check" aria-hidden="true"></i><span class="js-select-label">{{ __('Select') }}</span>
+            </button>
+        </div>
     </div>
     </div>
 
@@ -1403,8 +1425,14 @@ tr.rmx-row-card { cursor: pointer; }
     const stateOf = pane => { if (!state.has(pane)) state.set(pane, { site: null, labor: null, shift: null }); return state.get(pane); };
     const rowsOf  = pane => Array.from(pane.querySelectorAll('tbody > tr[data-site]'));
     const valueOf = (tr, key) => tr.dataset[key] || '';
+    // The search box: every word typed has to be in the worker's name or
+    // number, whatever the capitals or accents ("renono" finds Reñono).
+    const search  = document.getElementById('rmxSearch');
+    const fold    = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    let words     = [];
+    const found   = tr => !words.length || (t => words.every(w => t.includes(w)))(fold(tr.querySelector('.rmx-who')?.textContent || ''));
     // null is "all"; '' is the rows with nothing in the column.
-    const matches = (tr, f, skip) => Object.keys(KEYS).every(k => k === skip || f[k] === null || valueOf(tr, k) === f[k]);
+    const matches = (tr, f, skip) => found(tr) && Object.keys(KEYS).every(k => k === skip || f[k] === null || valueOf(tr, k) === f[k]);
     const nameOf  = (key, value) => value === '' ? KEYS[key].none : value;
 
     function apply(pane) {
@@ -1427,13 +1455,15 @@ tr.rmx-row-card { cursor: pointer; }
             empty.innerHTML = @json(__('No workers match this filter.')) + ' <button type="button" class="rmx-fclear-link" data-fclear>' + @json(__('Show everybody')) + '</button>';
             pane.querySelector('.rmx-card')?.appendChild(empty);
         }
-        empty.hidden = !(on.length && shown === 0);
+        const narrowed = on.length > 0 || words.length > 0;
+        empty.hidden = !(narrowed && shown === 0);
 
         if (pane.classList.contains('active')) {
             const sum = document.getElementById('rmxFilterSum');
             if (sum) {
-                sum.hidden = !on.length;
-                sum.querySelector('[data-fsum-text]').textContent = on.map(k => nameOf(k, f[k])).join(' · ');
+                sum.hidden = !narrowed;
+                sum.querySelector('[data-fsum-text]').textContent = (words.length ? ['“' + search.value.trim() + '”'] : [])
+                    .concat(on.map(k => nameOf(k, f[k]))).join(' · ');
                 sum.querySelector('[data-fsum-n]').textContent = shown;
             }
         }
@@ -1502,11 +1532,28 @@ tr.rmx-row-card { cursor: pointer; }
         }
         if (e.target.closest('[data-fclear]')) {
             const pane = document.querySelector('.rm-pane.active');
+            if (search) search.value = '';
+            words = [];
             if (pane) { state.set(pane, { site: null, labor: null, shift: null }); apply(pane); }
             return;
         }
         if (openBtn && !menu.contains(e.target)) closeMenu();
     });
+
+    // Typing narrows the list on screen at once. The words stay in the box
+    // from one tab to the next, so the same worker can be looked for in each.
+    function typed() {
+        words = fold(search.value).split(/\s+/).filter(Boolean);
+        closeMenu();
+        const pane = document.querySelector('.rm-pane.active');
+        if (pane) apply(pane);
+    }
+    if (search) {
+        search.addEventListener('input', typed);
+        search.addEventListener('search', typed);
+        // A box the browser refilled on Back narrows the list it shows.
+        if (search.value) typed();
+    }
 
     menu.addEventListener('keydown', function (e) {
         const opts = Array.from(menu.querySelectorAll('.rmx-fopt'));

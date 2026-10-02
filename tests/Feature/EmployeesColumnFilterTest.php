@@ -116,6 +116,29 @@ class EmployeesColumnFilterTest extends TestCase
         $this->assertMatchesRegularExpression('/\.rmx-fmenu \{[^}]*overflow-y: auto; overscroll-behavior: contain;/', $html);
     }
 
+    /**
+     * A search box before Select (Michael, 2026-10-02): it finds a worker in
+     * the list on screen by name or number. It narrows the rows the same way
+     * the headings do — by hiding them — so the rule above covers it too.
+     */
+    public function test_a_search_box_sits_before_select(): void
+    {
+        $html = $this->page();
+
+        $box    = strpos($html, 'id="rmxSearch"');
+        $select = strpos($html, 'id="rmxSelect"');
+        $this->assertNotFalse($box);
+        $this->assertLessThan($select, $box, 'the search box comes before Select');
+        $this->assertStringContainsString('placeholder="Search employee"', $html);
+
+        // Read from the name and number each row already shows, so the rows
+        // the live refresh brings in are searched as well.
+        $this->assertStringContainsString("tr.querySelector('.rmx-who')", $html);
+        // One test for the headings and the search alike: a row is on screen
+        // only when it passes both.
+        $this->assertStringContainsString('const matches = (tr, f, skip) => found(tr) && ', $html);
+    }
+
     /** Shift, beside Labor type on the Active list (2026-09-30). */
     public function test_the_active_list_has_a_shift_column_to_filter_on(): void
     {

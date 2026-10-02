@@ -162,6 +162,12 @@
     .rmx-table td.rmx-check-col::before { display: none; }
     .rm-pane.selecting .rmx-table td:nth-child(2) { padding-right: 34px !important; }
 
+    /* Employees: the search box takes the row under the list's name, with
+       Select at its end. */
+    .rmx-tools { flex: 1 1 100%; }
+    .rmx-search { flex: 1 1 auto; width: auto !important; min-width: 0; height: 36px !important; }
+    .rmx-tools .rmx-outline { height: 36px !important; flex: none; }
+
     /* Users & Roles: the accounts. Written out on its own rather than added
        to the lists above, where the id would outweigh the Register rules. A
        tap on a card still opens the account; the open one keeps its bar. */

@@ -50,6 +50,8 @@ html[data-bs-theme] .rp .rp-sel select {
 html[data-bs-theme] .rp .rp-sel input[type=date] { width: 114px; font-family: var(--rp-mono); font-size: 12.5px; }
 html[data-bs-theme] .rp .rp-sel input.q { width: 140px; }
 html[data-bs-theme] .rp .rp-sel select { width: 120px; }
+/* The open list, which the browser draws white behind a see-through field. */
+html[data-bs-theme] .rp .rp-sel select option { background: var(--surface); color: var(--text-primary); }
 .rp-sel .dash { color: var(--text-muted); }
 .rp-filters .sp { flex: 1; }
 .rp-lnk { color: var(--brand); font-size: 13px; font-weight: 600; padding: 0 6px; text-decoration: none; }
