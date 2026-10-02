@@ -1,5 +1,5 @@
 {{-- The quick prompts: categories down the side, their prompts beside them.
-     Shared by the Jeyanco AI page and the chat's full-screen view, so the
+     Shared by the Jeyanco Bot page and the chat's full-screen view, so the
      two never offer different lists. Each includer wires the clicks itself,
      inside its own panel. --}}
 <div class="prompts-panel-inner">

@@ -1,8 +1,8 @@
 /* =========================================================================
    FLOATING CHAT · FULL SCREEN
    -------------------------------------------------------------------------
-   Jeyanco AI is reached from the floating chat, not the sidebar. Its expand
-   button grows the window into the Jeyanco AI page (quick prompts down the
+   Jeyanco Bot is reached from the floating chat, not the sidebar. Its expand
+   button grows the window into the Jeyanco Bot page (quick prompts down the
    side, the same conversation beside them) over the page it was opened on,
    blurred behind it. js/chatbot-full.js plays the move; this is the two
    states it moves between. Phones and tablets: see mobile.css.
@@ -130,7 +130,7 @@ html[data-bs-theme="dark"] #chatbot-window.is-full {
     to   { opacity: 1; transform: none; }
 }
 
-/* The Jeyanco AI page's quick prompts (ai.css draws them; the same
+/* The Jeyanco Bot page's quick prompts (ai.css draws them; the same
    partial the page uses). Switching category eases the list in. */
 #chatbot-window.is-full .cb-prompts { display: flex; }
 #chatbot-window .cb-prompts.collapsed { border-right-width: 0; }
@@ -165,7 +165,7 @@ html[data-bs-theme="dark"] #chatbot-window.is-full {
 #chatbot-window.is-full .cb-compose { gap: 10px; }
 #chatbot-window.is-full .cb-new-btn { padding: 0 16px; border-radius: 12px; font-size: 13.5px; gap: 8px; }
 #chatbot-window.is-full .cb-new-btn i { font-size: 13px; }
-/* One field, as on the Jeyanco AI page: the row draws the border and the
+/* One field, as on the Jeyanco Bot page: the row draws the border and the
    focus ring, the input inside it none of its own. */
 html[data-bs-theme] #chatbot-window.is-full .cb-input,
 html[data-bs-theme] #chatbot-window.is-full .cb-input:focus {

@@ -285,6 +285,27 @@ class NotificationSystemTest extends TestCase
         $this->assertStringContainsString("closest('[data-confirm]')", $html, 'the delegated click hook should be present');
     }
 
+    /** Michael, 2026-10-02: Logout asks "are you sure" before it ends the session. */
+    public function test_logout_asks_before_it_signs_out(): void
+    {
+        $html = $this->actingAs($this->admin())
+            ->get(route('employees.register'))
+            ->assertOk()
+            ->getContent();
+
+        $start = strpos($html, 'action="' . route('logout') . '"');
+        $this->assertNotFalse($start, 'the logout form should be on the page');
+        $form = substr($html, $start, strpos($html, '>', $start) - $start);
+
+        $this->assertStringContainsString('data-confirm="Are you sure you want to log out?"', $form);
+        $this->assertStringContainsString('data-confirm-title="Log out?"', $form);
+        $this->assertStringContainsString('data-confirm-label="Logout"', $form);
+
+        // The route itself is unchanged: a confirmed submit still signs out.
+        $this->post(route('logout'))->assertRedirect(route('login'));
+        $this->assertGuest();
+    }
+
     /**
      * The tone is not decoration. A delete that cannot be undone and a rate
      * that saved should not arrive looking the same.

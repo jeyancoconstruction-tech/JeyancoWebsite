@@ -7,8 +7,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Jeyanco AI left the sidebar on 2026-09-26; the floating chat is how it is
- * reached. Its full-screen button grows the window into the Jeyanco AI page
+ * Jeyanco Bot left the sidebar on 2026-09-26; the floating chat is how it is
+ * reached. Its full-screen button grows the window into the Jeyanco Bot page
  * (the same quick prompts, the same conversation) over the page it was
  * opened on, blurred behind it. The move itself was checked in Chrome on
  * desktop and phone, light and dark; this keeps its wiring in place.
@@ -33,14 +33,14 @@ class ChatbotFullScreenTest extends TestCase
         return substr($html, $start, strpos($html, '</nav>', $start) - $start);
     }
 
-    public function test_jeyanco_ai_is_off_the_sidebar_but_the_chat_stays(): void
+    public function test_jeyanco_bot_is_off_the_sidebar_but_the_chat_stays(): void
     {
         foreach ([User::ROLE_ADMIN, User::ROLE_HR] as $i => $role) {
             $html = $this->actingAs($this->user($role, 'chat.full' . $i))->get('/dashboard')->assertOk()->getContent();
             $rail = $this->rail($html);
 
-            $this->assertStringNotContainsString('ai-assistant', $rail, "{$role} still has Jeyanco AI in the sidebar");
-            $this->assertStringNotContainsString('Jeyanco AI', $rail);
+            $this->assertStringNotContainsString('ai-assistant', $rail, "{$role} still has Jeyanco Bot in the sidebar");
+            $this->assertStringNotContainsString('Jeyanco Bot', $rail);
             $this->assertStringContainsString('id="chatbot-fab"', $html, "{$role} lost the floating chat");
         }
 
@@ -59,7 +59,7 @@ class ChatbotFullScreenTest extends TestCase
         $this->assertStringContainsString('id="chatbot-prompts-btn"', $html);
         $this->assertStringContainsString('chatbot-full.css', $html);
 
-        // The Jeyanco AI page's own prompts, from the partial they share.
+        // The Jeyanco Bot page's own prompts, from the partial they share.
         $this->assertStringContainsString('id="cb-prompts"', $html);
         $this->assertSame(40, substr_count($html, 'class="prompt-chip"'));
 

@@ -167,12 +167,12 @@ return [
     ],
 
     'ai-assistant' => [
-        'en' => ['title' => 'Jeyanco AI', 'lines' => [
+        'en' => ['title' => 'Jeyanco Bot', 'lines' => [
             'Ask in plain language about payroll, attendance and the workforce.',
             'Prompts holds ready-made questions if you are not sure where to start.',
             'New Chat clears the thread and starts again.',
         ]],
-        'tl' => ['title' => 'Jeyanco AI', 'lines' => [
+        'tl' => ['title' => 'Jeyanco Bot', 'lines' => [
             'Magtanong sa karaniwang salita tungkol sa sahod, attendance at mga manggagawa.',
             'Nasa Prompts ang mga handang tanong kung hindi ka sigurado kung saan magsisimula.',
             'Nililinis ng New Chat ang usapan at nagsisimula ulit.',

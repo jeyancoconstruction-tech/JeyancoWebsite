@@ -580,7 +580,12 @@
                     @endif
                     <li><hr class="dropdown-divider"></li>
                     <li>
-                        <form action="{{ route('logout') }}" method="POST">
+                        {{-- Asked first: one stray click here ended the session. --}}
+                        <form action="{{ route('logout') }}" method="POST"
+                              data-confirm="{{ __('Are you sure you want to log out?') }}"
+                              data-confirm-title="{{ __('Log out?') }}"
+                              data-confirm-label="{{ __('Logout') }}"
+                              data-confirm-tone="brand">
                             @csrf
                             <button class="dropdown-item text-danger" type="submit"><i data-lucide="power"></i> {{ __('Logout') }}</button>
                         </form>
@@ -600,7 +605,7 @@
 @include('partials.profile-photo-modal')
 
 <!-- FLOATING CHATBOT -->
-<button id="chatbot-fab" class="chatbot-fab" title="{{ __('Chat with Jeyanco AI · drag to move') }}">
+<button id="chatbot-fab" class="chatbot-fab" title="{{ __('Chat with Jeyanco Bot · drag to move') }}">
     <i class="fas fa-robot"></i>
     <span class="fab-pulse-ring"></span>
 </button>
@@ -608,7 +613,7 @@
 {{-- Behind the chat in full screen: the page it was opened on, blurred. --}}
 <div id="chatbot-backdrop" class="chatbot-backdrop" hidden></div>
 
-<div id="chatbot-window" class="chatbot-window" role="dialog" aria-label="{{ __('Jeyanco AI') }}">
+<div id="chatbot-window" class="chatbot-window" role="dialog" aria-label="{{ __('Jeyanco Bot') }}">
     <div class="chatbot-header">
         <div class="chatbot-header-left">
             <div class="chatbot-avatar-wrap">
@@ -616,7 +621,7 @@
                 <span class="cb-status-dot"></span>
             </div>
             <div>
-                <span class="chatbot-name">{{ __('Jeyanco AI') }}</span>
+                <span class="chatbot-name">{{ __('Jeyanco Bot') }}</span>
                 <span class="chatbot-status-text">{{ __('Online • Ready to help') }}</span>
             </div>
         </div>
@@ -628,7 +633,7 @@
     </div>
 
     <div class="chatbot-body">
-    {{-- Full screen only: the Jeyanco AI page's quick prompts. --}}
+    {{-- Full screen only: the Jeyanco Bot page's quick prompts. --}}
     <aside class="prompts-panel cb-prompts" id="cb-prompts" aria-label="{{ __('Quick prompts') }}">
         @include('partials.ai-prompts')
     </aside>
@@ -638,7 +643,7 @@
         <div class="cb-welcome">
             <div class="cb-welcome-icon"><i class="fas fa-robot"></i></div>
             <div class="cb-welcome-text">
-                <p><strong>{{ __('Mabuhay!') }}</strong> {{ __('I\'m Jeyanco AI') }}</p>
+                <p><strong>{{ __('Mabuhay!') }}</strong> {{ __('I\'m Jeyanco Bot') }}</p>
                 <p>{{ __('Ask me about payroll, attendance, employees, and workforce data.') }}</p>
             </div>
         </div>
@@ -668,7 +673,7 @@
 {{-- The button can be dragged out of the way while the page is open; every
      page load puts it back in its corner. --}}
 <script src="{{ asset('js/chatbot-move.js') }}?v={{ @filemtime(public_path('js/chatbot-move.js')) ?: '1' }}"></script>
-{{-- The chat's full-screen view: the window grows into the Jeyanco AI page
+{{-- The chat's full-screen view: the window grows into the Jeyanco Bot page
      over the page it was opened on, blurred behind it. --}}
 <script src="{{ asset('js/chatbot-full.js') }}?v={{ @filemtime(public_path('js/chatbot-full.js')) ?: '1' }}"></script>
 
@@ -769,7 +774,7 @@
                 <div class="cb-welcome">
                     <div class="cb-welcome-icon"><i class="fas fa-robot"></i></div>
                     <div class="cb-welcome-text">
-                        <p><strong>Mabuhay!</strong> I'm Jeyanco AI</p>
+                        <p><strong>Mabuhay!</strong> I'm Jeyanco Bot</p>
                         <p>Ask me about payroll, attendance, employees, and workforce data.</p>
                     </div>
                 </div>

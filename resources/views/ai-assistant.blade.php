@@ -1,6 +1,6 @@
 @extends('layouts')
 
-@section('page_title', 'Jeyanco AI')
+@section('page_title', 'Jeyanco Bot')
 
 @section('content')
 <div class="ai-page-wrapper">
@@ -41,7 +41,7 @@
                             <i data-lucide="bot" style="width:20px;height:20px;"></i>
                         </div>
                         <div class="bubble">
-                            <strong>{{ __('Mabuhay, Admin!') }}</strong> {{ __('I\'m Jeyanco AI — your intelligent assistant for payroll, attendance, and workforce analytics.') }}<br><br>
+                            <strong>{{ __('Mabuhay, Admin!') }}</strong> {{ __('I\'m Jeyanco Bot — your intelligent assistant for payroll, attendance, and workforce analytics.') }}<br><br>
                             Use the <strong>{{ __('Quick Actions') }}</strong> {{ __('panel on the left or type any question below.') }}
                         </div>
                     </div>

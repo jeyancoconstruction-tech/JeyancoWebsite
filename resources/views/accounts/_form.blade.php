@@ -278,7 +278,7 @@
                         </div>
                     @endforeach
                 </div>
-                <span class="ca-hint">{{ __('Dashboard, Attendance, Employees, Sites, Payroll Records, Analytics and Jeyanco AI are open to every role.') }}</span>
+                <span class="ca-hint">{{ __('Dashboard, Attendance, Employees, Sites, Payroll Records, Analytics and Jeyanco Bot are open to every role.') }}</span>
             </div>
         </aside>
     </div>

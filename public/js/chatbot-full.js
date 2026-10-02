@@ -1,8 +1,8 @@
 /* =========================================================================
  * chatbot-full.js — the floating chat, full screen.
  *
- * Jeyanco AI left the sidebar; the floating chat is how it is reached. Its
- * expand button grows the window into the Jeyanco AI page (quick prompts
+ * Jeyanco Bot left the sidebar; the floating chat is how it is reached. Its
+ * expand button grows the window into the Jeyanco Bot page (quick prompts
  * down the side, the same conversation beside them) over the page it was
  * opened on, which blurs behind it. The shrink button, Esc or a click on the
  * blurred page brings it back to its corner, conversation and all. Close

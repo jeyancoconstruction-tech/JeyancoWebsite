@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * Jeyanco AI does not tell HR what Users & Roles would not (2026-09-30):
+ * Jeyanco Bot does not tell HR what Users & Roles would not (2026-09-30):
  * the accounts, their emails and who holds admin rights. It used to list
  * every account to anybody who asked "list users". HR security test case:
  * the assistant declines a request beyond the role.

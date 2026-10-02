@@ -147,13 +147,13 @@ class AIController extends Controller
 
         // ===== SMALL TALK / IDENTITY =====
         if ($any('hello', 'hi ', 'hey', 'kumusta', 'kamusta', 'mabuhay', 'good morning', 'good afternoon', 'good evening') || $n === 'hi') {
-            return "Mabuhay! 👋 I'm Jeyanco AI. Ask me anything about your employees, payroll, attendance, sites or settings. Type 'help' for a list.";
+            return "Mabuhay! 👋 I'm Jeyanco Bot. Ask me anything about your employees, payroll, attendance, sites or settings. Type 'help' for a list.";
         }
         if ($any('thank', 'salamat', 'thanks')) {
             return "You're welcome! 😊 Anything else you'd like to know?";
         }
         if ($any('who are you', 'what are you', 'your name')) {
-            return "I'm Jeyanco AI — your workforce & payroll assistant. I read your system data and answer questions about employees, payroll, attendance, sites, users and settings.";
+            return "I'm Jeyanco Bot — your workforce & payroll assistant. I read your system data and answer questions about employees, payroll, attendance, sites, users and settings.";
         }
         if ($any('what can you', 'what do you', 'how to use', 'how do i use')) {
             return $this->helpText();
