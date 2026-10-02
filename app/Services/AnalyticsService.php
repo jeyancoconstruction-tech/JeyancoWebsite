@@ -22,6 +22,11 @@ use Carbon\CarbonPeriod;
  *
  * Pending registrations are left out throughout. They are not workforce until
  * the kiosk has their finger.
+ *
+ * A worker who was removed or deleted afterwards stays in every figure for
+ * the days they were still here (Michael, 2026-10-02): the days they worked,
+ * their hours and their pay are past facts, and they were due — and could be
+ * absent — up to the day they left. Only the headcount card is today's list.
  */
 class AnalyticsService
 {
@@ -114,11 +119,14 @@ class AnalyticsService
 
         // Everybody the status filter admits. Site and shift then narrow the
         // roster by where each worker is assigned; attendance is narrowed on
-        // its own, by where each clock was actually taken.
-        $people = Employee::registered()
-            ->when($f['status'] === 'active', fn ($q) => $q->where('status', Employee::STATUS_ACTIVE))
-            ->when($f['status'] === 'inactive', fn ($q) => $q->where('status', Employee::STATUS_ARCHIVED))
-            ->get(['id', 'status', 'site_id', 'shift_id', 'created_at', 'archived_at'])
+        // its own, by where each clock was actually taken. Removed and
+        // deleted workers are among them — their past days still happened —
+        // and count as inactive: Active is who is on the Employees list now.
+        $people = Employee::withTrashed()->registered()
+            ->when($f['status'] === 'active', fn ($q) => $q->whereNull('deleted_at')->where('status', Employee::STATUS_ACTIVE))
+            ->when($f['status'] === 'inactive', fn ($q) => $q->where(fn ($w) => $w
+                ->whereNotNull('deleted_at')->orWhere('status', Employee::STATUS_ARCHIVED)))
+            ->get(['id', 'status', 'site_id', 'shift_id', 'created_at', 'archived_at', 'deleted_at'])
             ->keyBy('id');
 
         $defaultShift = Shift::defaultForNewHire();
@@ -290,7 +298,9 @@ class AnalyticsService
 
         // ── The cards ──────────────────────────────────────────────────────
         $workingDays = count(array_filter($dates, fn ($d) => $expected[$d] > 0 || $present[$d] > 0));
-        $activeSites = $roster->where('status', Employee::STATUS_ACTIVE)->pluck('site_id')->filter()->unique()->count();
+        // The headcount is today's: whoever has since been removed is not in it.
+        $onList      = $roster->reject(fn (Employee $e) => $e->trashed());
+        $activeSites = $onList->where('status', Employee::STATUS_ACTIVE)->pluck('site_id')->filter()->unique()->count();
 
         $shiftName = $f['shift'] !== 'all' ? (string) ($shiftNames[$f['shift']] ?? '') : '';
         $scope     = implode(' · ', array_filter([
@@ -311,7 +321,7 @@ class AnalyticsService
                 'tag'   => $f['range'] === 'month' ? 'This month' : $f['range'] . '-day view',
             ],
             'cards' => [
-                'totalEmp' => $roster->count(),
+                'totalEmp' => $onList->count(),
                 'present'  => round(array_sum($present) / max(1, $workingDays), 1),
                 'absent'   => round(array_sum($absent) / max(1, $workingDays), 1),
                 'late'     => $totals['late'],
@@ -357,7 +367,7 @@ class AnalyticsService
 
     /**
      * Was this worker due on site that day? Not before they were taken on,
-     * not after they left, not on approved leave — and not on a shift that has
+     * not after they left or were removed, not on approved leave — and not on a shift that has
      * not started yet, or the night crew would read as absent every morning.
      */
     private function due(Employee $e, string $date, ?array $schedule, Carbon $now, array $leave): bool
@@ -366,6 +376,10 @@ class AnalyticsService
             return false;
         }
         if ($e->archived_at && $e->archived_at->toDateString() <= $date) {
+            return false;
+        }
+        // Removed or deleted: due until the day they were taken off the list.
+        if ($e->deleted_at && $e->deleted_at->toDateString() <= $date) {
             return false;
         }
         if (isset($leave[$e->id][$date])) {

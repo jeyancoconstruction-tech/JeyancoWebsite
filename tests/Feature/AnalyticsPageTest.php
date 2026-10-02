@@ -296,6 +296,72 @@ class AnalyticsPageTest extends TestCase
         $this->assertSame(0, $this->on($inactive['trend']['absent'], '2026-09-09'), 'nobody is absent after they have left');
     }
 
+    /**
+     * Michael, 2026-10-02: the page went empty once the workers were deleted.
+     * What they did while they were here is past data and stays on it.
+     */
+    public function test_removed_and_deleted_workers_keep_their_past_days(): void
+    {
+        $north = $this->site('North Yard');
+        $ana   = $this->worker('Ana', $north);
+        $rey   = $this->worker('Rey', $north);   // removed on the 9th
+        $gil   = $this->worker('Gil', $north);   // deleted for good on the 9th
+
+        $this->clocked($ana, $north, '2026-09-10', '2026-09-10 08:00:00', '2026-09-10 17:00:00');
+        $this->clocked($rey, $north, '2026-09-07', '2026-09-07 08:00:00', '2026-09-07 17:00:00');
+        $this->clocked($gil, $north, '2026-09-07', '2026-09-07 09:00:00', '2026-09-07 19:00:00');
+
+        $before = $this->figures();
+        $paid   = $this->paid($ana)['gross'] + $this->paid($rey)['gross'] + $this->paid($gil)['gross'];
+        $this->assertGreaterThan(0, $this->paid($gil)['late'], 'the fixture has to contain a late start');
+
+        $rey->delete();
+        $gil->deleteForGood();
+        foreach ([$rey, $gil] as $gone) {
+            Employee::withTrashed()->whereKey($gone->id)->update(['deleted_at' => '2026-09-09 10:00:00']);
+        }
+
+        $f = $this->figures();
+
+        // The days they worked, their hours and their pay are still there.
+        $this->assertSame(2, $this->on($f['trend']['present'], '2026-09-07'));
+        $this->assertSame(1, $this->on($f['trend']['late'], '2026-09-07'));
+        $this->assertEqualsWithDelta($paid, $f['cards']['payroll'], 0.01);
+        $this->assertEqualsWithDelta($paid, array_sum($f['payroll']['gross']), 0.01);
+        $this->assertSame($before['cards']['hours'], $f['cards']['hours']);
+        $this->assertSame($before['cards']['ot'], $f['cards']['ot']);
+        $this->assertSame($before['shiftHours'], $f['shiftHours']);
+
+        // They were due until the day they left, and not after it.
+        $this->assertSame(3, $this->on($f['trend']['absent'], '2026-09-08'), 'all three were due and none came');
+        $this->assertSame(1, $this->on($f['trend']['absent'], '2026-09-09'), 'only Ana is still due');
+        $this->assertSame(0, $this->on($f['trend']['absent'], '2026-09-10'));
+        foreach (['2026-09-04', '2026-09-05', '2026-09-07', '2026-09-08'] as $day) {
+            $this->assertSame($this->on($before['trend']['absent'], $day), $this->on($f['trend']['absent'], $day), "{$day} did not change");
+        }
+
+        // The headcount is today's list.
+        $this->assertSame(1, $f['cards']['totalEmp']);
+
+        // Active is who is on the list now; the ones who left are inactive.
+        $active = $this->figures(['status' => 'active']);
+        $this->assertSame(0, $this->on($active['trend']['present'], '2026-09-07'));
+        $this->assertSame(1, $this->on($active['trend']['present'], '2026-09-10'));
+
+        $inactive = $this->figures(['status' => 'inactive']);
+        $this->assertSame(2, $this->on($inactive['trend']['present'], '2026-09-07'));
+        $this->assertSame(0, $this->on($inactive['trend']['present'], '2026-09-10'));
+        $this->assertSame(0, $inactive['cards']['totalEmp']);
+
+        // With everybody gone, the page still shows what happened.
+        $ana->delete();
+        $empty = $this->figures();
+        $this->assertSame(0, $empty['cards']['totalEmp']);
+        $this->assertSame(2, $this->on($empty['trend']['present'], '2026-09-07'));
+        $this->assertSame(1, $this->on($empty['trend']['present'], '2026-09-10'));
+        $this->assertEqualsWithDelta($paid, $empty['cards']['payroll'], 0.01);
+    }
+
     public function test_this_month_runs_from_the_first(): void
     {
         $f = $this->figures(['range' => 'month']);
