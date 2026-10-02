@@ -93,7 +93,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->ensureStorageLink();
 
-        // Admins can have their alerts copied to email (System Settings → Notifications).
+        // Admins' alerts are copied to email while notify_email is on (see AlertEmail).
         \Illuminate\Support\Facades\Event::listen(
             \Illuminate\Notifications\Events\NotificationSent::class,
             fn ($event) => \App\Notifications\AlertEmail::copy($event)

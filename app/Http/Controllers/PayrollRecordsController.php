@@ -59,7 +59,8 @@ class PayrollRecordsController extends Controller
         $summary = $this->summarize($employees);
 
         // ── Notifications ──────────────────────────────────────────────────
-        // System Settings → Notifications → Payroll ready.
+        // Payroll ready: follows the saved notify_payroll value (its switch
+        // left System Settings on 2026-10-02).
         if (! empty($employees) && $search === '' && ! $siteId && \App\Models\SystemSetting::current()->enabled('notify_payroll')) {
             $user      = auth()->user();
             $net       = number_format($summary['net'] ?? 0, 2);

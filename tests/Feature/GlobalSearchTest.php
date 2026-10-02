@@ -93,10 +93,13 @@ class GlobalSearchTest extends TestCase
             'Payroll Settings', 'Multipliers & Deductions', 'Work Schedule', 'Labor Types', 'Holidays',
             'Analytics', 'Jeyanco Bot',
             'Users & Roles', 'Create account', 'Device Monitoring',
-            'System Settings', 'Company', 'Appearance', 'Security', 'Kiosk settings', 'Notifications', 'Audit logs',
+            'System Settings', 'Company', 'Appearance', 'Security', 'Kiosk settings', 'Audit logs',
         ] as $title) {
             $this->assertContains($title, $titles, "{$title} is not reachable from the search");
         }
+
+        // System Settings has no Notifications section since 2026-10-02.
+        $this->assertNotContains('Notifications', $titles);
 
         // Under the sidebar's own headings, in its order.
         $this->assertSame(

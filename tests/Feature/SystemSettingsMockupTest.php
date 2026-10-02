@@ -21,8 +21,11 @@ use Tests\TestCase;
  * Michael asked (2026-09-27) why System Settings did not follow
  * jeyanco-settings.html itself. It now has every row of it, and each one
  * does something: the TIN, the accent colour, table density, the sign-in
- * intro, Google sign-in, "sign out everyone", the kiosk rules and the
- * Notifications section. The page was checked in Chrome as well.
+ * intro, Google sign-in, "sign out everyone" and the kiosk rules. The page
+ * was checked in Chrome as well.
+ *
+ * The Notifications section was taken off the page on 2026-10-02 (Michael);
+ * the alerts it switched keep running on their saved values.
  */
 class SystemSettingsMockupTest extends TestCase
 {
@@ -64,15 +67,11 @@ class SystemSettingsMockupTest extends TestCase
             'Session length', 'Failed sign-in limit', 'Google sign-in', 'Sign out all sessions',
             // Kiosks
             'Scan mode', 'Worker picks', 'Kiosk opens before shift',
-            // Notifications
-            'Missing scans', 'Remittance reminders', 'Payroll ready', 'Also send by email',
             // Audit logs and the bar
             'Search activity', 'All areas', 'You have unsaved changes', 'Discard', 'Save changes',
         ] as $text) {
             $page->assertSee($text);
         }
-
-        $page->assertSee('data-s="notif"', false)->assertSee('data-sec="notif"', false);
     }
 
     // ── Company: the TIN reaches the remittance report ──────────────────────
@@ -254,7 +253,37 @@ class SystemSettingsMockupTest extends TestCase
         Cache::flush();
     }
 
-    // ── Notifications ───────────────────────────────────────────────────────
+    // ── Notifications: off the page, the alerts run on what was saved ───────
+
+    /**
+     * The Notifications section left the page on 2026-10-02 (Michael). Its
+     * old address opens the page, and a save cannot change the switches.
+     */
+    public function test_the_notifications_section_is_gone(): void
+    {
+        $this->set(['notify_missing_scans' => true, 'notify_email' => false]);
+
+        $this->actingAs($this->admin())->get(route('system-settings.about'))->assertOk()
+             ->assertDontSee('data-s="notif"', false)
+             ->assertDontSee('data-sec="notif"', false)
+             ->assertDontSee('Remittance reminders')
+             ->assertDontSee('Also send by email')
+             ->assertDontSee('What reaches the bell')
+             ->assertDontSee('name="notify_', false);
+
+        $this->get('/system-settings/notifications')->assertRedirect(route('system-settings.about'));
+        $this->get(route('system-settings.about', ['section' => 'notif']))->assertOk()->assertViewHas('section', 'company');
+
+        $this->put(route('system-settings.update-all'), [
+            'sections' => ['notif'], 'current' => 'notif',
+            'notify_missing_scans' => '0', 'notify_email' => '1',
+        ])->assertRedirect(route('system-settings.about', ['section' => 'company']))->assertSessionHasNoErrors();
+
+        SystemSetting::forget();
+        $this->assertTrue(SystemSetting::current()->enabled('notify_missing_scans'));
+        $this->assertFalse(SystemSetting::current()->enabled('notify_email'));
+        $this->assertSame(0, AuditLog::where('module', 'Settings')->count());
+    }
 
     public function test_remittance_reminders_reach_the_bell_once_and_can_be_switched_off(): void
     {
@@ -271,19 +300,6 @@ class SystemSettingsMockupTest extends TestCase
         session()->forget('remittance_reminded');
         $tracker->remind($admin, 3);
         $this->assertSame(1, $admin->notifications()->where('data->subtype', 'remittance_due')->count());
-    }
-
-    public function test_the_notification_switches_save_and_are_logged(): void
-    {
-        $this->actingAs($this->admin())->put(route('system-settings.update-all'), [
-            'sections' => ['notif'], 'current' => 'notif',
-            'notify_missing_scans' => '0', 'notify_remittances' => '1', 'notify_payroll' => '1', 'notify_email' => '1',
-        ])->assertRedirect(route('system-settings.about', ['section' => 'notif']))->assertSessionHasNoErrors();
-
-        SystemSetting::forget();
-        $this->assertFalse(SystemSetting::current()->enabled('notify_missing_scans'));
-        $this->assertTrue(SystemSetting::current()->enabled('notify_email'));
-        $this->assertTrue(AuditLog::where('description', 'Notifications: missing scans on → off, email copies off → on')->exists());
     }
 
     public function test_email_copies_go_to_admins_only_when_switched_on(): void

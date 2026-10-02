@@ -17,7 +17,7 @@ class PayrollNotification extends Notification
             'color' => '#d97706',
             'link'  => '/payroll-records',
         ],
-        // The Remittance Tracker's reminder week (System Settings → Notifications).
+        // The Remittance Tracker's reminder week (RemittanceTracker::remind).
         'remittance_due' => [
             'icon'  => 'fa-building-columns',
             'color' => '#b54708',

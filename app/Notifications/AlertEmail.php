@@ -8,8 +8,10 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * System Settings → Notifications → Also send by email (2026-09-27): a copy
- * of an admin's alert, sent to their own address.
+ * A copy of an admin's alert, sent to their own address, while notify_email
+ * is on. Its switch was System Settings → Notifications → Also send by email
+ * (2026-09-27); that section left the page on 2026-10-02 and the saved value
+ * stands.
  *
  * The bell keeps the alert either way. The copy goes out after the page has
  * been answered, so a slow mail server never holds up the screen that raised
@@ -37,7 +39,7 @@ class AlertEmail extends Notification
             ->greeting((string) ($this->alert['title'] ?? 'Alert'))
             ->line((string) ($this->alert['message'] ?? ''))
             ->action('Open Jeyanco Payroll', url($link))
-            ->line('You get these because email copies are on in System Settings → Notifications.')
+            ->line('You get these because you are an administrator. The same alert is in the bell at the top of the page.')
             ->salutation("— {$company}");
     }
 

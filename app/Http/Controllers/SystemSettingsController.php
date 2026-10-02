@@ -21,10 +21,14 @@ use Illuminate\Support\Str;
 
 /**
  * The settings that are not payroll: who the company says it is, how the
- * screens look, how strict the sign-in is, how the kiosk records and what
- * admins are told — and, since 2026-09-26, the Audit Log — as the sections of
- * one page built to Michael's jeyanco-settings.html, row for row. The
- * payroll page answers for pay.
+ * screens look, how strict the sign-in is and how the kiosk records — and,
+ * since 2026-09-26, the Audit Log — as the sections of one page built to
+ * Michael's jeyanco-settings.html, row for row. The payroll page answers
+ * for pay.
+ *
+ * The Notifications section left the page on 2026-10-02 (Michael). The
+ * alerts it switched still run on their saved notify_* values; nothing here
+ * writes them, and its old address opens the page.
  *
  * One row behind the sections. Each still has its own save action, which
  * validates only what it posts; the page's one save bar sends every edited
@@ -55,28 +59,20 @@ class SystemSettingsController extends Controller
         'signin_intro'               => ['intro animation', ''],
         'google_sign_in'             => ['Google sign-in', ''],
         'kiosk_location_check'       => ['reject scans out of range', ''],
-        'notify_missing_scans'       => ['missing scans', ''],
-        'notify_remittances'         => ['remittance reminders', ''],
-        'notify_payroll'             => ['payroll ready', ''],
-        'notify_email'               => ['email copies', ''],
     ];
 
     /** Switches: saved as true/false, written to the Audit Log as on/off. */
-    private const SWITCHES = [
-        'signin_intro', 'google_sign_in', 'kiosk_location_check',
-        'notify_missing_scans', 'notify_remittances', 'notify_payroll', 'notify_email',
-    ];
+    private const SWITCHES = ['signin_intro', 'google_sign_in', 'kiosk_location_check'];
 
     private const SECTIONS = [
         'system-settings.about'      => 'Company',
         'system-settings.security'   => 'Security',
         'system-settings.appearance' => 'Appearance',
         'system-settings.kiosk'      => 'Kiosk',
-        'system-settings.notifications' => 'Notifications',
     ];
 
     /** The sections, in the order the page lists them. */
-    public const SECTIONS_ON_PAGE = ['company', 'appearance', 'security', 'kiosk', 'notif', 'audit'];
+    public const SECTIONS_ON_PAGE = ['company', 'appearance', 'security', 'kiosk', 'audit'];
 
     // Each old address opens the one page on its own section.
     public function about(Request $request)
@@ -97,11 +93,6 @@ class SystemSettingsController extends Controller
     public function kiosk(Request $request)
     {
         return $this->page($request, 'kiosk');
-    }
-
-    public function notifications(Request $request)
-    {
-        return $this->page($request, 'notif');
     }
 
     /** The whole page: every section's data, opened on one of them. */
@@ -202,7 +193,6 @@ class SystemSettingsController extends Controller
             'appearance' => 'updateAppearance',
             'security'   => 'updateSecurity',
             'kiosk'      => 'updateKiosk',
-            'notif'      => 'updateNotifications',
         ];
         $dirty   = array_values(array_intersect(array_keys($save), (array) $request->input('sections', [])));
         $current = in_array($request->input('current'), self::SECTIONS_ON_PAGE, true) ? $request->input('current') : ($dirty[0] ?? 'company');
@@ -289,13 +279,6 @@ class SystemSettingsController extends Controller
                 'kiosk_attendance_mode.in'       => 'Choose Automatic or Worker picks.',
             ]],
 
-            'notif' => [[
-                'notify_missing_scans' => ['sometimes', 'boolean'],
-                'notify_remittances'   => ['sometimes', 'boolean'],
-                'notify_payroll'       => ['sometimes', 'boolean'],
-                'notify_email'         => ['sometimes', 'boolean'],
-            ], []],
-
             default => [[], []],
         };
     }
@@ -364,15 +347,6 @@ class SystemSettingsController extends Controller
         }
 
         return $this->save($settings, $data, 'system-settings.kiosk', $extra);
-    }
-
-    public function updateNotifications(Request $request)
-    {
-        $data = $this->switches($request->validate(...$this->rulesFor('notif')));
-
-        $settings = SystemSetting::first() ?? new SystemSetting(SystemSetting::DEFAULTS);
-
-        return $this->save($settings, $data, 'system-settings.notifications');
     }
 
     /**

@@ -8,7 +8,9 @@
      which the app has already. Rows the mockup has no place for (password
      length, lockout length, back to Attendance) keep their saved values and
      sit in the section they belong to, drawn the same way. Every field saves
-     through its section's own action (SystemSettingsController::updateAll). --}}
+     through its section's own action (SystemSettingsController::updateAll).
+     The Notifications section left the page on 2026-10-02 (Michael); the
+     alerts still run on their saved values. --}}
 
 @php
     use App\Models\SystemSetting;
@@ -62,7 +64,6 @@
             'appearance' => ['Appearance', '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18z" fill="currentColor"/>'],
             'security'   => ['Security', '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>'],
             'kiosk'      => ['Kiosks', '<path d="M12 11v3a8 8 0 01-1.5 4.7M8.5 7.2A5 5 0 0117 11v1.5M7 11a5 5 0 01.3-1.8M16.9 16a13 13 0 01-.9 3M5 16.5A12 12 0 006 11a6 6 0 011.2-3.6M12 3a8 8 0 018 8v1M4 11a8 8 0 012-5.3"/>'],
-            'notif'      => ['Notifications', '<path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"/>'],
             'audit'      => ['Audit logs', '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>'],
         ],
     ];
@@ -80,7 +81,7 @@
    the open section share one panel that reaches the bottom of the screen, and
    every section is split into its settings and a panel that shows what they
    do — the payslip, the app's look, the sign-in rules, the kiosk's own screen,
-   the alerts. Nothing floats in empty space. Colours are the app's tokens, so
+   the kiosks as they are now. Nothing floats in empty space. Colours are the app's tokens, so
    the page follows the theme and the accent like every other page. */
 .ss {
     --panel: var(--surface); --panel-2: var(--bg-subtle); --panel-3: #eaf0f8;
@@ -277,20 +278,6 @@ html[data-bs-theme] .ss .ss-inp select:focus { border-color: var(--accent) !impo
 .ss-danger small { font-size: 12px; color: var(--muted); line-height: 1.45; }
 .ss-danger .ss-btn { align-self: flex-start; }
 
-/* ── Notifications: the bell, showing what would reach it ──────────────── */
-.ss-bell { border: 1px solid var(--line-soft); border-radius: 10px; background: var(--panel); overflow: hidden; flex: 1; display: flex; flex-direction: column; }
-.ss-bell > header { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; font-weight: 700; }
-.ss-bell > header span { font-size: 11px; font-weight: 700; color: #fff; background: var(--danger); border-radius: 999px; padding: 0 7px; }
-.ss-bell .it { flex: 1; align-items: center; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); transition: opacity .2s; }
-.ss-bell .it:last-child { border-bottom: 0; }
-.ss-bell .it > span { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--c-soft); color: var(--c); }
-.ss-bell .it > span svg { width: 15px; height: 15px; }
-.ss-bell .it b { display: block; font-size: 12.5px; color: var(--text); }
-.ss-bell .it small { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
-.ss-bell .it em { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-left: 6px; }
-.ss-bell .it.is-off { opacity: .38; }
-.ss-bell .it.is-off b::after { content: " · off"; font-weight: 600; color: var(--faint); }
-
 /* ── Audit log: the list fills the section and scrolls inside it ───────── */
 .ss-audit { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .ss-tools { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid var(--line-soft); background: var(--panel-2); }
@@ -425,12 +412,10 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
     // What each item in the section list says beside its name.
     $kioskOn   = $kiosks->where('state', '!=', 'off')->count();
     $kioskDot  = $kiosks->isEmpty() ? '' : ($kiosks->contains('state', 'ok') ? 'ok' : ($kiosks->contains('state', 'late') ? 'late' : 'off'));
-    $notifOn   = collect(['notify_missing_scans', 'notify_remittances', 'notify_payroll', 'notify_email'])->filter(fn ($k) => $s->enabled($k))->count();
     $meta = [
         'appearance' => ['system' => 'System', 'light' => 'Light', 'dark' => 'Dark'][$savedTheme] ?? '',
         'security'   => $hours((int) $s->session_timeout_minutes),
         'kiosk'      => $kiosks->isEmpty() ? '' : '<i class="' . $kioskDot . '"></i>' . $kioskOn . '/' . $kiosks->count() . ' ' . __('on'),
-        'notif'      => $notifOn . '/4 ' . __('on'),
         'audit'      => number_format($A['logs']->total()),
     ];
     $accentHex = json_encode(collect(SystemSetting::ACCENTS)->map(fn ($a) => $a[2][0]));
@@ -440,11 +425,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
         'key'   => '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
         'shield'=> '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
         'g'     => '<path d="M20 12h-8M20 12a8 8 0 11-2.3-5.6"/>',
-        'bell'  => '<path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"/>',
         'scan'  => '<path d="M12 11v3a8 8 0 01-1.5 4.7M8.5 7.2A5 5 0 0117 11v1.5M7 11a5 5 0 01.3-1.8M16.9 16a13 13 0 01-.9 3M5 16.5A12 12 0 006 11a6 6 0 011.2-3.6M12 3a8 8 0 018 8v1M4 11a8 8 0 012-5.3"/>',
-        'peso'  => '<path d="M7 20V4h6a4 4 0 010 8H7M4 8h14M4 11h14"/>',
-        'cal'   => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-        'mail'  => '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
     ];
 @endphp
 <div class="ss">
@@ -472,7 +453,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
             @foreach($nav as $group => $items)
                 <h6>{{ __($group) }}</h6>
                 @foreach($items as $key => [$label, $path])
-                    <button type="button" class="ss-si {{ $section === $key ? 'on' : '' }}" data-s="{{ $key }}" @if($section === $key) aria-current="page" @endif>{!! $svg($path) !!}<span>{{ __($label) }}</span><span class="meta" @if($key === 'notif') data-notif-meta @endif>{!! $meta[$key] ?? '' !!}</span></button>
+                    <button type="button" class="ss-si {{ $section === $key ? 'on' : '' }}" data-s="{{ $key }}" @if($section === $key) aria-current="page" @endif>{!! $svg($path) !!}<span>{{ __($label) }}</span><span class="meta">{!! $meta[$key] ?? '' !!}</span></button>
                 @endforeach
             @endforeach
             <p class="hint">{{ __('Pay rates, shifts and holidays live in') }} <a href="{{ route('settings.index') }}">{{ __('Payroll Settings') }}</a>.</p>
@@ -714,37 +695,6 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                     <li><span><b>{{ __("Only inside the site's radius") }}</b>{{ __('Its current GPS position counts. With no signal, its last known position does — a kiosk carried away without a fix is refused until the GPS finds it at the new site.') }}</span></li>
                                 </ol>
                             </div>
-                        </aside>
-                    </div>
-                </section>
-
-                {{-- ── NOTIFICATIONS ───────────────────────────────────────── --}}
-                <section class="ss-sec" data-sec="notif" @if($section !== 'notif') hidden @endif>
-                    <header class="ss-sec-h"><div><h3>{{ __('Notifications') }} <small>{{ __('System') }}</small></h3><p>{{ __('What admins get notified about.') }}</p></div></header>
-                    <div class="ss-split">
-                        <div class="ss-grp">
-                            @foreach([
-                                'notify_missing_scans' => ['Missing scans', 'A worker clocked in and has no time out.'],
-                                'notify_remittances'   => ['Remittance reminders', 'In the last week of the month after, until it is marked paid.'],
-                                'notify_payroll'       => ['Payroll ready', "The week's payroll total, and any cash advance over ₱5,000."],
-                                'notify_email'         => ['Also send by email', "Copies of alerts to each admin's email."],
-                            ] as $key => [$title, $hint])
-                                <div class="ss-row"><div class="lb"><b>{{ __($title) }}</b><small>{{ __($hint) }}</small></div>
-                                    <div class="ss-tgrow"><input type="hidden" name="{{ $key }}" value="0"><label class="ss-tg"><input type="checkbox" name="{{ $key }}" value="1" @checked($isOn($key)) aria-label="{{ __($title) }}" data-track data-saved="{{ $sw($key) }}" data-label="{{ __($title) }}"><span></span></label><small></small></div></div>
-                            @endforeach
-                        </div>
-                        {{-- The bell as an admin would find it, one alert of each
-                             kind; the ones switched off are greyed. --}}
-                        <aside class="ss-side" aria-label="{{ __('What admins receive') }}">
-                            <h4>{!! $svg($ico['bell'], '2') !!}{{ __('What reaches the bell') }}</h4>
-                            <div class="ss-bell">
-                                <header>{{ __('Notifications') }} <span data-bell-count></span></header>
-                                <div class="it" data-bell="notify_missing_scans" style="--c:var(--warning);--c-soft:var(--warning-soft)"><span>{!! $svg($ico['clock'], '2') !!}</span><div><b>{{ __('Missing time out') }}<em data-bell-mail>{{ __('+ email') }}</em></b><small>{{ __('Jason Caridad timed in at 7:50 AM and has not timed out.') }}</small></div></div>
-                                <div class="it" data-bell="notify_remittances" style="--c:var(--brand);--c-soft:var(--brand-subtle)"><span>{!! $svg($ico['cal'], '2') !!}</span><div><b>{{ __('Remittance due') }}<em data-bell-mail>{{ __('+ email') }}</em></b><small>{{ __('SSS for August is due by Sep 30 and is not marked paid.') }}</small></div></div>
-                                <div class="it" data-bell="notify_payroll" style="--c:var(--success);--c-soft:var(--success-soft)"><span>{!! $svg($ico['peso'], '2') !!}</span><div><b>{{ __('Payroll ready') }}<em data-bell-mail>{{ __('+ email') }}</em></b><small>{{ __("This week's payroll is ready to review.") }}</small></div></div>
-                                <div class="it @unless($s->enabled('kiosk_unknown_alert')) is-off @endunless" style="--c:var(--danger);--c-soft:var(--danger-soft)"><span>{!! $svg($ico['scan'], '2') !!}</span><div><b>{{ __('Unknown fingerprint') }}<em data-bell-mail>{{ __('+ email') }}</em></b><small>{{ __('A finger that is not registered was scanned at Site A. Set under Kiosks.') }}</small></div></div>
-                            </div>
-                            <p class="note">{{ __('Examples only. Each admin gets these in the bell at the top of the page; with email on, a copy goes to their address too.') }}</p>
                         </aside>
                     </div>
                 </section>
@@ -1033,8 +983,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 (function () {
     const form = document.getElementById('ssForm');
     if (!form) return;
-    const $$ = s => [...document.querySelectorAll(s)];
-    const picked = n => form.querySelector('[name="' + n + '"]:checked');
+    const picked =n => form.querySelector('[name="' + n + '"]:checked');
     const on = n => { const c = form.querySelector('input[type=checkbox][name="' + n + '"]'); return !!(c && c.checked); };
     const text = sel => { const o = form.elements[sel]?.selectedOptions?.[0]; return o ? o.textContent.trim() : ''; };
 
@@ -1067,18 +1016,7 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
         rule('google',   on('google_sign_in') ? @json(__('Accounts can also')) + ' <b>' + @json(__('sign in with Google')) + '</b>.' : @json(__('Google sign-in is')) + ' <b>' + @json(__('off')) + '</b>; ' + @json(__('username and password only.')));
     }
 
-    // Notifications: the bell.
-    function bell() {
-        let n = 0;
-        $$('[data-bell]').forEach(it => { it.classList.toggle('is-off', !on(it.dataset.bell)); });
-        n = $$('.ss-bell .it:not(.is-off)').length;
-        $$('[data-bell-mail]').forEach(m => { m.hidden = !on('notify_email'); });
-        const c = document.querySelector('[data-bell-count]'); if (c) c.textContent = n;
-        const meta = document.querySelector('[data-notif-meta]');
-        if (meta) meta.textContent = ['notify_missing_scans', 'notify_remittances', 'notify_payroll', 'notify_email'].filter(on).length + '/4 ' + @json(__('on'));
-    }
-
-    const all = () => { appearance(); security(); bell(); };
+    const all = () => { appearance(); security(); };
     form.addEventListener('input', all);
     form.addEventListener('change', all);
     form.addEventListener('reset', () => setTimeout(all, 0));

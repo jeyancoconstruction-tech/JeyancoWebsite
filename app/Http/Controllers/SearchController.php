@@ -573,7 +573,7 @@ class SearchController extends Controller
                 'create add new account user login hr admin invite', self::ADMIN),
             $page('System', 'Device Monitoring', 'Kiosks: status, map and live scans', route('devices.index'), 'monitor-smartphone',
                 'device devices monitoring kiosk kiosks fingerprint scanner online offline live console', Modules::DEVICES),
-            $page('System', 'System Settings', 'Company, appearance, security, kiosk, notifications', route('system-settings.about'), 'sliders-horizontal',
+            $page('System', 'System Settings', 'Company, appearance, security, kiosk, audit logs', route('system-settings.about'), 'sliders-horizontal',
                 'system settings config configuration', self::ADMIN),
             $page('System', 'Company', 'System Settings · company name and details', $system('company'), 'building-2',
                 'system settings company name address logo about identity', self::ADMIN),
@@ -583,8 +583,6 @@ class SearchController extends Controller
                 'system settings security password session timeout failed sign-in login limit google sign out all sessions', self::ADMIN),
             $page('System', 'Kiosk settings', 'System Settings · kiosk rules, devices and their sites', $system('kiosk'), 'fingerprint',
                 'system settings kiosk device location check scan add remove site', self::ADMIN),
-            $page('System', 'Notifications', 'System Settings · what the admins are told', $system('notif'), 'bell',
-                'system settings notifications alerts email missing scans remittances payroll', self::ADMIN),
             $page('System', 'Audit logs', 'System Settings · who changed what, and when', $system('audit'), 'scroll-text',
                 'audit logs log activity history trail changes who export', self::ADMIN),
         ];

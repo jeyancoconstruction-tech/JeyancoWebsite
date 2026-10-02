@@ -381,10 +381,11 @@ final class RemittanceTracker
      * nothing rather than an error on every page.
      */
     /**
-     * System Settings → Notifications → Remittance reminders: while any
-     * contribution is in its reminder week and unpaid, the bell says so once
-     * a month for that count. Asked on every page, so the answer for this
-     * session is remembered rather than looked up each time.
+     * Remittance reminders: while any contribution is in its reminder week
+     * and unpaid, the bell says so once a month for that count. Asked on
+     * every page, so the answer for this session is remembered rather than
+     * looked up each time. Follows the saved notify_remittances value; its
+     * switch left System Settings on 2026-10-02.
      */
     public function remind(?\App\Models\User $user, int $due): void
     {
