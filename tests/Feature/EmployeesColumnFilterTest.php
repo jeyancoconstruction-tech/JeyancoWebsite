@@ -81,8 +81,9 @@ class EmployeesColumnFilterTest extends TestCase
 
         $this->assertStringContainsString('data-site="Site A" data-labor="Welder"', $this->pane($html, 'active'));
         $this->assertStringContainsString('data-site="" data-labor=""', $this->pane($html, 'active'), 'blank is "No site" / "No labor type"');
-        $this->assertStringContainsString('<tr data-site="Site A" data-labor="Welder">', $this->pane($html, 'removed'));
-        $this->assertStringContainsString('<tr data-site="Site A">', $this->pane($html, 'pending'));
+        // Each row also carries the key a live patch finds it by.
+        $this->assertMatchesRegularExpression('/<tr data-live-key="emp-\d+" data-site="Site A" data-labor="Welder">/', $this->pane($html, 'removed'));
+        $this->assertMatchesRegularExpression('/<tr data-live-key="emp-\d+" data-site="Site A">/', $this->pane($html, 'pending'));
     }
 
     public function test_a_hidden_row_is_never_selected(): void

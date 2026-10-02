@@ -25,9 +25,9 @@
         // admin has nothing to complete — the kiosk does the next step.
         $awaitingFingerprint = empty($e->fingerprint_id);
     @endphp
-    <tr data-site="{{ $e->site?->name }}">
-        {{-- Also rendered by the 5-second live refresh, so a row that arrives
-             from the kiosk is selectable the moment it appears. --}}
+    {{-- data-live-key: the row is found again by it when the list is patched
+         live, so a worker who arrives, changes or leaves moves only their own row. --}}
+    <tr data-live-key="emp-{{ $e->id }}" data-site="{{ $e->site?->name }}">
         <td class="rmx-check-col">
             <input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}">
         </td>

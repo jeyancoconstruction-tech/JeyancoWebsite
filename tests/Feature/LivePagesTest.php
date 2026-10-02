@@ -92,6 +92,13 @@ class LivePagesTest extends TestCase
                 'attHistoryPager' => ['attendance'],
                 'attHistCount'    => ['attendance'],
             ],
+            // All three lists, not the Pending rows alone (2026-10-02): a
+            // finger enrolled at the kiosk has to land the worker in Active.
+            '/employees/register' => [
+                'rmActiveBody'  => ['employees', 'attendance', 'sites'],
+                'rmPendingBody' => ['employees', 'attendance', 'sites'],
+                'rmRemovedBody' => ['employees', 'attendance', 'sites'],
+            ],
             '/payroll-records' => [
                 'prSummary'   => ['payroll', 'attendance'],
                 'prBreakdown' => ['payroll', 'attendance'],
@@ -183,5 +190,60 @@ class LivePagesTest extends TestCase
             'setInterval(pollBadge, 60000)',
             $this->actingAs($this->admin)->get('/dashboard')->getContent()
         );
+    }
+
+    /**
+     * Michael, 2026-10-02: "pls make realtime". Only the Pending rows were
+     * refreshed, so a worker who enrolled a finger left Pending, the cards
+     * moved, and the Active list still did not have them until a reload.
+     *
+     * The three lists are regions now, and every row carries the key it is
+     * found again by, so a patch moves one worker's row and nothing else.
+     */
+    public function test_every_employee_row_can_be_found_again_by_a_live_patch(): void
+    {
+        $pending = Employee::create(['name' => 'Rodel Santos Manalo', 'status' => Employee::STATUS_PENDING, 'rate_per_hour' => 100]);
+        $removed = Employee::create(['name' => 'Left Last Week', 'status' => Employee::STATUS_ACTIVE, 'rate_per_hour' => 100, 'fingerprint_id' => '9']);
+        $removed->delete();
+        $active = Employee::where('name', 'Juan Dela Cruz')->firstOrFail();
+
+        $html = $this->actingAs($this->admin)->get('/employees/register')->assertOk()->getContent();
+
+        foreach (['rmActiveBody' => $active, 'rmPendingBody' => $pending, 'rmRemovedBody' => $removed] as $id => $worker) {
+            $this->assertMatchesRegularExpression(
+                '/<tbody id="' . $id . '" data-live="[^"]*">(?:(?!<\/tbody>).)*data-live-key="emp-' . $worker->id . '"/s',
+                $html,
+                "{$worker->name} has no keyed row in #{$id}"
+            );
+        }
+
+        // The page no longer swaps the Pending rows in by hand.
+        $this->assertStringNotContainsString('pending_html', $html);
+        $this->assertStringNotContainsString('innerHTML = d.', $html);
+
+        // A selection is not patched under: the pane asks live.js to wait.
+        $this->assertStringContainsString("pane.classList.toggle('live-busy', on)", $html);
+    }
+
+    /**
+     * The Pending count beside Employees is in the sidebar of every page. It
+     * is always drawn — hidden at nought — so it can be switched on when the
+     * first worker registers, and it is told the count by the feed below.
+     */
+    public function test_the_pending_badge_is_on_every_page_and_has_a_count_to_ask_for(): void
+    {
+        $this->actingAs($this->admin)->get('/dashboard')->assertOk()
+             ->assertSee('id="navPendingBadge"', false)
+             ->assertSee('style="display:none"', false)
+             ->assertSee("Live.on('employees'", false);
+
+        Employee::create(['name' => 'Jeffrey Cruz Alcantara', 'status' => Employee::STATUS_PENDING, 'rate_per_hour' => 100]);
+
+        $html = $this->actingAs($this->admin)->get('/dashboard')->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/id="navPendingBadge"[^>]*>1<\/span>/', $html);
+        $this->assertDoesNotMatchRegularExpression('/id="navPendingBadge"[^>]*display:none/', $html);
+
+        $this->getJson(route('employees.register.live'))->assertOk()
+             ->assertExactJson(['counts' => ['pending' => 1, 'active' => 1, 'archived' => 0, 'removed' => 0]]);
     }
 }

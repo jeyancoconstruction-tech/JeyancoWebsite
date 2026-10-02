@@ -50,6 +50,8 @@
     var stopped    = false;             // signed out: say nothing more
     var streamOff  = cfg.stream === false;
     var inFlight   = {};                // url -> true while it is being re-read
+    var again      = {};                // url -> regions that changed again meanwhile
+    var busy       = [];                // regions passed over while somebody was using them
     var waiting    = false;             // a patch held back by the screen
     var hiddenAt   = 0;
     var lastHeard  = Date.now();
@@ -253,14 +255,31 @@
 
     // ── Re-reading a page and patching in the difference ────────────────────
 
-    function reread(url, els) {
-        if (inFlight[url] || stopped) { return; }
+    function reread(url, els, tries) {
+        if (stopped) { return; }
+
+        // Something else changed while this page was already being re-read.
+        // The copy on its way may have been drawn before that change, so the
+        // page is asked for once more when it lands. Letting it go instead is
+        // how the last scan of a busy minute stayed off the screen until the
+        // next thing happened.
+        if (inFlight[url]) {
+            again[url] = (again[url] || []).concat(els);
+            return;
+        }
 
         // Nothing is patched while a dialog is open: what it is about could be
         // the very row being replaced. The change is not dropped — the page is
         // re-read once the screen is free, so what lands is current then
         // rather than current now.
         if (held()) { hold(); return; }
+
+        // A region somebody is in the middle of is left as it is, and nothing
+        // is fetched on its account: it is re-read once they are done with it.
+        // The others on the same page are not made to wait for it.
+        var free = els.filter(function (el) { return !inUse(el); });
+        if (free.length < els.length) { wait(els); }
+        if (!free.length) { return; }
 
         inFlight[url] = true;
 
@@ -272,24 +291,51 @@
             return res.text();
         }).then(function (html) {
             delete inFlight[url];
-            if (html === null || html === undefined) { return; }
-            if (held()) { hold(); return; }
+            if (html === null || html === undefined) { retry(url, els, tries); return; }
+            if (held()) { delete again[url]; hold(); return; }
 
             var fresh = new DOMParser().parseFromString(html, 'text/html');
-            var later = false;
 
             els.forEach(function (el) {
-                // A region somebody is typing in is left as it is; the others
-                // on the same page are not made to wait for it.
-                if (inUse(el)) { later = true; return; }
+                if (!el.isConnected || inUse(el)) { return; }
 
                 var to = el.id ? fresh.getElementById(el.id) : null;
                 if (to) { patch(el, to); }
             });
 
-            if (later) { hold(); }
+            wait(els);
+
+            var more = again[url];
+            delete again[url];
+            if (more) { reread(url, unique(more)); }
         }).catch(function () {
             delete inFlight[url];
+            retry(url, els, tries);
+        });
+    }
+
+    /**
+     * The page could not be read — the connection blinked, or the server was
+     * busy for a moment. The change it was read for is still owed, so it is
+     * asked for again, twice at most, rather than left until something else
+     * happens to change.
+     */
+    function retry(url, els, tries) {
+        var queued = again[url] || [];
+        delete again[url];
+        tries = tries || 0;
+
+        if (stopped || tries >= 2) { return; }
+
+        setTimeout(function () {
+            reread(url, unique(els.concat(queued)), tries + 1);
+        }, 3000);
+    }
+
+    /** The regions still on the page, each once. */
+    function unique(els) {
+        return els.filter(function (el, i) {
+            return el.isConnected && els.indexOf(el) === i;
         });
     }
 
@@ -367,6 +413,23 @@
                   el.contains(selection.anchorNode));
     }
 
+    /** Remember the regions somebody is using, and come back when they are free. */
+    function wait(els) {
+        var any = false;
+
+        els.forEach(function (el) {
+            if (!el.isConnected || !inUse(el)) { return; }
+            any = true;
+            if (busy.indexOf(el) === -1) { busy.push(el); }
+        });
+
+        if (any) { hold(); }
+    }
+
+    function stillInUse() {
+        return busy.some(function (el) { return el.isConnected && inUse(el); });
+    }
+
     /** Try again shortly; the screen is usually free within a moment. */
     function hold() {
         if (waiting) { return; }
@@ -377,15 +440,18 @@
             if (stopped || ++tries > 600) {          // ten minutes, then let it be
                 clearInterval(timer);
                 waiting = false;
+                busy = [];
                 return;
             }
-            // Only the whole-page holds are waited out here. A single region
-            // somebody is typing in is skipped again by the re-read itself,
-            // and the rest of the page is not kept waiting for it.
-            if (held()) { return; }
+            // The page is looked at once a second and asked for only when it
+            // is free: an open dialog, a ticked row, a field being typed in.
+            // Asking each second while one of those lasted fetched the whole
+            // page over and over for nothing.
+            if (held() || stillInUse()) { return; }
 
             clearInterval(timer);
             waiting = false;
+            busy = [];
             act(Object.keys(revisions));             // re-read as it stands now
         }, 1000);
     }
@@ -415,6 +481,16 @@
         if (touched.length) {
             flash(touched);
         }
+
+        // A photo whose file is gone was swapped for an icon by its own
+        // onerror, and the patch has just put the markup back as the server
+        // wrote it — the broken image showing again. The image will not fail
+        // a second time by itself, so it is told to.
+        each(from.querySelectorAll('img[onerror]'), function (img) {
+            if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) {
+                try { img.dispatchEvent(new Event('error')); } catch (e) {}
+            }
+        });
 
         // Icons and anything else a page draws for itself.
         if (window.lucide && window.lucide.createIcons) {

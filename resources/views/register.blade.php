@@ -499,7 +499,7 @@ tr.rmx-row-card { cursor: pointer; }
                             <th class="rmx-num">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="rmActiveBody" data-live="employees attendance sites settings">
                     @forelse($active as $e)
                         @php
                             // What the card a click on the name opens shows: the
@@ -533,7 +533,7 @@ tr.rmx-row-card { cursor: pointer; }
                                 'profile'  => route('employees.show', $e->id),
                             ];
                         @endphp
-                        <tr class="rmx-row-card" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}" data-shift="{{ $e->shift?->name }}">
+                        <tr class="rmx-row-card" data-live-key="emp-{{ $e->id }}" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}" data-shift="{{ $e->shift?->name }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td><button type="button" class="rmx-open" aria-haspopup="dialog" aria-label="{{ __('Details of :name', ['name' => $e->name]) }}">@include('employees._person', ['e' => $e, 'displayName' => $e->name])</button></td>
                             <td>@include('employees._site', ['e' => $e])</td>
@@ -623,7 +623,7 @@ tr.rmx-row-card { cursor: pointer; }
                             <th class="rmx-num">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
-                    <tbody id="rmPendingBody">
+                    <tbody id="rmPendingBody" data-live="employees attendance sites settings">
                         @include('employees._rows_pending', ['pending' => $pending])
                     </tbody>
                 </table>
@@ -658,9 +658,9 @@ tr.rmx-row-card { cursor: pointer; }
                             <th class="rmx-num">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="rmRemovedBody" data-live="employees attendance sites settings">
                     @forelse($removed as $e)
-                        <tr data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}">
+                        <tr data-live-key="emp-{{ $e->id }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td>@include('employees._person', ['e' => $e, 'displayName' => $e->name])</td>
                             <td>@include('employees._site', ['e' => $e])</td>
@@ -1189,49 +1189,60 @@ tr.rmx-row-card { cursor: pointer; }
         });
     @endif
 
-    // ── Realtime: auto-refresh kiosk-detected (pending) workers ──────────────
-    // Polls a lightweight feed every few seconds so new fingerprint scans on
-    // the kiosk appear here without the admin having to refresh the page.
+    // ── Realtime: the three lists keep themselves current ────────────────────
+    // Active, Pending and Removed are live regions (their tbody carries
+    // data-live), so live.js re-reads this page when a worker, a scan or a
+    // site changes and patches in the rows that differ: a finger enrolled on
+    // the kiosk takes the worker out of Pending and puts them in Active here,
+    // with nothing reloaded. Only the Pending rows used to be refreshed, so
+    // the cards said one thing and the lists another until the next reload.
+    //
+    // What is left to this page is what the rows do not carry: the numbers on
+    // the cards — counted from the rows themselves, so the two cannot differ —
+    // and saying who has arrived.
     (function () {
-        const liveUrl = "{{ route('employees.register.live') }}";
-        const body    = document.getElementById('rmPendingBody');
-        let lastSig     = @json($liveSignature ?? null);
-        let prevPending = {{ $pending->count() }};
+        const rowsOf = k => Array.from(document.querySelectorAll('.rm-pane[data-pane="' + k + '"] tbody > tr[data-live-key]'));
+        const keysOf = k => rowsOf(k).map(tr => tr.dataset.liveKey);
+        const nameOf = tr => (tr.querySelector('.rmx-name')?.textContent || '').trim();
+        const set    = (sel, val) => { const el = document.querySelector(sel); if (el) el.textContent = val; };
 
-        function setCount(sel, val) { const el = document.querySelector(sel); if (el) el.textContent = val; }
-        function updateCounts(c) {
-            ['pending', 'active', 'removed'].forEach(k => {
-                setCount('.rmx-stat-' + k + ' .rmx-stat-num', c[k]);
-                setCount('.rmx-tab[data-tab="' + k + '"] .rmx-count', c[k]);
-                if (document.querySelector('.rmx-stat.is-on')?.dataset.tab === k) setCount('#rmxShowing .rmx-count', c[k]);
+        function counts() {
+            ['active', 'pending', 'removed'].forEach(k => {
+                const n = rowsOf(k).length;
+                set('.rmx-stat-' + k + ' .rmx-stat-num', n);
+                if (document.querySelector('.rmx-stat.is-on')?.dataset.tab === k) set('#rmxShowing .rmx-count', n);
             });
-            const badge = document.querySelector('.nav-pending-badge');
-            if (badge) {
-                badge.textContent = c.pending;
-                badge.style.display = c.pending > 0 ? '' : 'none';
-            }
         }
 
-        async function poll() {
-            try {
-                const res = await fetch(liveUrl, { headers: { 'Accept': 'application/json' } });
-                if (!res.ok) return;
-                const d = await res.json();
-                if (!d || d.signature === lastSig) return;   // nothing changed
-                lastSig = d.signature;
-                if (body) body.innerHTML = d.pending_html;
-                updateCounts(d.counts);
-                if (d.counts.pending > prevPending) {
-                    const n = d.counts.pending - prevPending;
-                    Notify.info(n + ' new worker' + (n > 1 ? 's' : '') + ' detected from the kiosk');
-                }
-                prevPending = d.counts.pending;
-            } catch (e) { /* offline / transient — try again next tick */ }
+        let before = { active: keysOf('active'), pending: keysOf('pending') };
+
+        function news() {
+            const now = { active: keysOf('active'), pending: keysOf('pending') };
+            if (!window.Notify) { before = now; return; }
+
+            // Out of Pending and into Active: their finger was enrolled, or
+            // their details were confirmed at another desk.
+            const joined = rowsOf('active').filter(tr => before.pending.includes(tr.dataset.liveKey));
+            if (joined.length === 1) Notify.success(@json(__(':name is now active')).replace(':name', nameOf(joined[0])));
+            else if (joined.length > 1) Notify.success(@json(__(':n workers are now active')).replace(':n', joined.length));
+
+            const fresh = now.pending.filter(k => !before.pending.includes(k) && !before.active.includes(k)).length;
+            if (fresh === 1) Notify.info(@json(__('1 new worker is waiting in Pending')));
+            else if (fresh > 1) Notify.info(@json(__(':n new workers are waiting in Pending')).replace(':n', fresh));
+
+            before = now;
         }
-        // The kiosk says when somebody has been enrolled, so the five-second
-        // question is gone. The poll itself is kept: it is what fetches the
-        // fresh list, and it now runs when there is news.
-        Live.on('employees attendance devices', poll);
+
+        // Each list says when it has been patched. The counts follow at once;
+        // the news waits until all three have landed, so a worker moving from
+        // one list to another is told as one thing.
+        let told = null;
+        document.addEventListener('live:updated', function (e) {
+            if (!e.target.closest || !e.target.closest('.rm-pane')) return;
+            counts();
+            clearTimeout(told);
+            told = setTimeout(news, 0);
+        });
     })();
 })();
 
@@ -1295,6 +1306,9 @@ tr.rmx-row-card { cursor: pointer; }
     function setSelecting(pane, on) {
         if (!pane) return;
         pane.classList.toggle('selecting', on);
+        // The ticks are theirs: the lists are not patched under a selection
+        // (live.js waits on .live-busy) and catch up when Done is pressed.
+        pane.classList.toggle('live-busy', on);
         if (!on) {
             boxesIn(pane).forEach(b => { b.checked = false; });
             const all = pane.querySelector('.rmx-check-all');
@@ -1397,13 +1411,8 @@ tr.rmx-row-card { cursor: pointer; }
         sync(pane);
     });
 
-    // The pending rows are swapped out wholesale by the 5-second live refresh,
-    // which fires no change event — without this the count would keep showing a
-    // selection whose rows are already gone.
-    const pendingBody = document.getElementById('rmPendingBody');
-    if (pendingBody) {
-        new MutationObserver(() => sync(paneOf(pendingBody))).observe(pendingBody, { childList: true });
-    }
+    // A list patched live fires no change event; the filter module re-applies
+    // itself then and announces rmx:filtered, which is listened for above.
 
     document.querySelectorAll('.rm-pane').forEach(sync);
     syncToggle();
@@ -1575,10 +1584,12 @@ tr.rmx-row-card { cursor: pointer; }
         if (pane) apply(pane);
     });
 
-    // The pending rows are replaced by the live refresh; the filter holds.
-    document.querySelectorAll('.rm-pane').forEach(pane => {
-        const body = pane.querySelector('tbody');
-        if (body) new MutationObserver(() => apply(pane)).observe(body, { childList: true });
+    // The lists are patched live, and a patch writes each row as the server
+    // drew it — every one of them showing. The filter is put back in the same
+    // breath, before the screen is drawn, so a hidden row never blinks back.
+    document.addEventListener('live:updated', function (e) {
+        const pane = e.target.closest && e.target.closest('.rm-pane');
+        if (pane) apply(pane);
     });
 })();
 

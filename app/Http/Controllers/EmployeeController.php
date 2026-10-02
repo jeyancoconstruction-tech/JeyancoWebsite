@@ -702,52 +702,31 @@ class EmployeeController extends Controller
         $this->alertMissingSetup();
         [$bonuses, $bonusPeriod] = $this->bonusesThisPeriod();
 
-        $liveSignature = $this->registerSignature($pending, [
-            'pending'  => $pending->count(),
-            'active'   => $active->count(),
-            'archived' => $archived->count(),
-            'removed'  => $removed->count(),
-        ]);
-
         return view('register', compact(
             'pending', 'active', 'archived', 'removed',
-            'laborTypes', 'sites', 'shifts', 'nextFingerprintId', 'liveSignature',
+            'laborTypes', 'sites', 'shifts', 'nextFingerprintId',
             'bonuses', 'bonusPeriod'
         ));
     }
 
     /**
-     * Lightweight JSON feed the Register & Manage page polls so kiosk-detected
-     * workers appear in realtime without a manual refresh. Returns the current
-     * counts, a change signature, and the freshly-rendered pending rows.
+     * How many workers are in each list, as JSON. The sidebar's Pending badge
+     * asks for it on every page when the workforce changes (layouts.blade.php).
+     *
+     * It used to carry the Pending rows as well, for the Employees page to
+     * swap in. That page's three lists are live regions now and re-read
+     * themselves (register.blade.php), so the counts are all that is left.
      */
     public function registerLive()
     {
-        $pending = Employee::pending()->with(['laborType', 'site', 'kiosk'])
-                        ->withCount('attendances')
-                        ->orderByDesc('created_at')->get();
-
-        $counts = [
-            'pending'  => $pending->count(),
-            'active'   => Employee::active()->count(),
-            'archived' => Employee::archived()->count(),
-            'removed'  => Employee::removed()->count(),
-        ];
-
         return response()->json([
-            'signature'    => $this->registerSignature($pending, $counts),
-            'counts'       => $counts,
-            'pending_html' => view('employees._rows_pending', ['pending' => $pending])->render(),
-        ]);
-    }
-
-    /** Stable hash of the pending set + all tab counts — changes whenever anything does. */
-    private function registerSignature($pending, array $counts): string
-    {
-        return md5(
-            $pending->map(fn ($e) => $e->id . ':' . $e->updated_at?->timestamp)->implode(',')
-            . '|' . implode(',', $counts)
-        );
+            'counts' => [
+                'pending'  => Employee::pending()->count(),
+                'active'   => Employee::active()->count(),
+                'archived' => Employee::archived()->count(),
+                'removed'  => Employee::removed()->count(),
+            ],
+        ])->header('Cache-Control', 'no-store');
     }
 
     /**

@@ -34,7 +34,9 @@ return [
     // all four holding streams open.
     'max_streams' => (int) env('LIVE_MAX_STREAMS', 4),
 
-    // How often a tab without a stream asks what has changed.
-    'poll_ms' => (int) env('LIVE_POLL_MS', 8000),
+    // How often a tab without a stream asks what has changed. One short
+    // query each time. It was 8 seconds, which is how long a tab past the
+    // stream cap sat behind the others; 3 keeps it close to them.
+    'poll_ms' => (int) env('LIVE_POLL_MS', 3000),
 
 ];

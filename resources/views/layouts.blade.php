@@ -269,9 +269,12 @@
             @endphp
             <a class="nav-link {{ $onRegisterHub ? 'active' : '' }}" href="{{ route('employees.register') }}">
                 <i data-lucide="users"></i> <span>{{ __('Employees') }}</span>
-                @if($pendingKiosk > 0)
-                    <span class="nav-pending-badge" title="{{ $pendingKiosk }} worker(s) detected by the kiosk awaiting registration">{{ $pendingKiosk }}</span>
-                @endif
+                {{-- Always in the page, shown while anybody is pending: the
+                     number follows the workforce live on every page (see the
+                     Live.on('employees') beside the bell's script), and a
+                     badge that was not drawn could not be switched on. --}}
+                <span class="nav-pending-badge" id="navPendingBadge" data-count-url="{{ route('employees.register.live') }}"
+                      title="{{ __('Workers waiting in Pending') }}" @if($pendingKiosk < 1) style="display:none" @endif>{{ $pendingKiosk }}</span>
             </a>
 
             {{-- Leave & Advances holds its two sections as sub-items, set up
@@ -1275,6 +1278,26 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;')
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+})();
+
+// ── The Pending count beside Employees ──────────────────────────────────────
+// Asked for when the workforce changes, on whatever page is open: a worker
+// who registers or enrols a finger at the site moves the number in the office
+// without anybody having to open Employees first.
+(function () {
+    const badge = document.getElementById('navPendingBadge');
+    if (!badge || !window.Live) return;
+
+    Live.on('employees', function () {
+        fetch(badge.dataset.countUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Live': '1' } })
+            .then(res => res.ok ? res.json() : null)
+            .then(function (data) {
+                if (!data || !data.counts) return;
+                badge.textContent = data.counts.pending;
+                badge.style.display = data.counts.pending > 0 ? '' : 'none';
+            })
+            .catch(function () { /* the next change asks again */ });
+    });
 })();
 </script>
 
