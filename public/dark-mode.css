@@ -516,21 +516,7 @@ html[data-bs-theme="dark"] {
     border-color: #283449 !important;
 }
 
-/* ------------------------------------------------------------
-   GLOBAL SEARCH SUGGESTIONS (JS-injected inline styles)
-   !important beats inline non-important styles
-   ------------------------------------------------------------ */
-[data-bs-theme="dark"] #search-suggestions > div {
-    background: #151d2e !important;
-    border-color: #283449 !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
-}
-[data-bs-theme="dark"] #search-suggestions a { color: #cdd7e5 !important; }
-[data-bs-theme="dark"] #search-suggestions a:hover { background: #1c2740 !important; }
-[data-bs-theme="dark"] #search-suggestions div[style*="f8fafc"] {
-    background: #11192a !important;
-    color: #9fb0c7 !important;
-}
+/* The global search's list is drawn from theme tokens: global-search.css. */
 
 /* ------------------------------------------------------------
    BOOTSTRAP .bg-white SURFACES

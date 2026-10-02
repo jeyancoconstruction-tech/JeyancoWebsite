@@ -12,31 +12,32 @@
     </x-page-header>
 
     @if($results['total'] == 0)
-        <div class="alert d-flex align-items-center" style="background: #dbeafe; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 10px;">
-            <i data-lucide="search" class="me-3" style="width: 22px; height: 22px;"></i>
+        <div class="sr-none">
+            <i data-lucide="search"></i>
             <div>
-                No results found for "<strong>{{ $query }}</strong>{{ __('". Try a name, Employee ID (e.g.') }} <code>12</code>),
-                a date, or a module (e.g. <code>{{ __('payroll') }}</code>, <code>{{ __('attendance') }}</code>, <code>{{ __('settings') }}</code>).
+                {{ __('No results found for') }} "<strong>{{ $query }}</strong>".
+                {{ __('Try a name, an Employee ID (e.g.') }} <code>12</code>), {{ __('a date (e.g.') }} <code>09/15/2026</code>),
+                {{ __('a site, or a page (e.g.') }} <code>{{ __('payroll') }}</code>, <code>{{ __('attendance') }}</code>, <code>{{ __('settings') }}</code>).
             </div>
         </div>
     @else
         @foreach($results['categories'] as $cat)
         <div class="mb-4">
-            <div class="d-flex align-items-center mb-3">
-                <i data-lucide="{{ $cat['icon'] }}" class="me-2" style="width: 20px; height: 20px; color: #1e3a8a;"></i>
-                <h5 class="mb-0 fw-bold">{{ $cat['label'] }} <span class="text-muted fw-normal">({{ count($cat['items']) }})</span></h5>
+            <div class="d-flex align-items-center mb-3 sr-cat">
+                <i data-lucide="{{ $cat['icon'] }}" class="me-2"></i>
+                <h5 class="mb-0 fw-bold">{{ $cat['label'] }} <span class="sr-count">({{ count($cat['items']) }})</span></h5>
             </div>
             <div class="row g-3">
                 @foreach($cat['items'] as $item)
                 <div class="col-md-6 col-lg-4">
                     <a href="{{ $item['url'] }}" class="text-decoration-none">
-                        <div class="card h-100 border-0 shadow-sm result-card">
+                        <div class="card h-100 result-card">
                             <div class="card-body d-flex align-items-start justify-content-between">
-                                <div class="pe-2">
-                                    <h6 class="mb-1" style="color: #1e3a8a; font-weight: 600;">{{ $item['title'] }}</h6>
-                                    <p class="small text-muted mb-0">{{ $item['subtitle'] }}</p>
+                                <div class="pe-2" style="min-width: 0;">
+                                    <h6 class="mb-1 sr-title">{{ $item['title'] }}</h6>
+                                    <p class="small mb-0 sr-sub">{{ $item['subtitle'] }}</p>
                                 </div>
-                                <i data-lucide="arrow-right" style="width: 18px; height: 18px; color: #1e3a8a; opacity: 0.6;"></i>
+                                <i data-lucide="arrow-right" class="sr-go"></i>
                             </div>
                         </div>
                     </a>
@@ -54,10 +55,20 @@
     </div>
 </div>
 
+{{-- Theme tokens throughout: the titles were a navy that all but vanished
+     on the dark theme's cards. --}}
 <style>
-    .result-card { border: 1px solid #e2e8f0 !important; background: #ffffff; transition: all 0.2s ease; }
-    .result-card:hover { box-shadow: 0 10px 22px rgba(30,58,138,0.12) !important; transform: translateY(-2px); border-color: #bfdbfe !important; }
-    [data-bs-theme="dark"] .result-card { background: #151d2e; border-color: #283449 !important; }
+    .sr-cat svg, .sr-cat i[data-lucide] { width: 20px; height: 20px; color: var(--brand); }
+    .sr-cat h5 { color: var(--text-primary); }
+    .sr-count { color: var(--text-muted); font-weight: 400; }
+    .result-card { border: 1px solid var(--border) !important; background: var(--surface); box-shadow: var(--shadow-xs); transition: var(--transition); }
+    .result-card:hover { box-shadow: var(--shadow-md) !important; transform: translateY(-2px); border-color: var(--brand) !important; }
+    .sr-title { color: var(--brand); font-weight: 600; overflow-wrap: anywhere; }
+    .sr-sub { color: var(--text-muted); overflow-wrap: anywhere; }
+    .sr-go { flex: none; width: 18px; height: 18px; color: var(--brand); opacity: 0.6; }
+    .sr-none { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--radius-md);
+               background: var(--brand-subtle); border: 1px solid var(--border); color: var(--text-secondary); }
+    .sr-none svg, .sr-none i[data-lucide] { flex: none; width: 22px; height: 22px; color: var(--brand); }
 </style>
 
 <script>

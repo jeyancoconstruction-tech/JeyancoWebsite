@@ -189,13 +189,6 @@ html[data-bs-theme="dark"] .search-container kbd {
     background: rgba(255,255,255,0.05); border: 1px solid var(--border);
     color: var(--text-muted); border-radius: 6px; padding: 1px 6px; font-size: 11px;
 }
-html[data-bs-theme="dark"] .search-suggestions-dropdown > div {
-    background: var(--bg-elevated) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius-md) !important;
-    box-shadow: var(--shadow-lg) !important;
-    overflow: hidden;
-}
 
 /* Theme switch + profile */
 html[data-bs-theme="dark"] .theme-switch { border-color: var(--border); }

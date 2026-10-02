@@ -117,6 +117,9 @@
     {{-- The floating chat's full-screen view (js/chatbot-full.js). --}}
     <link rel="stylesheet" href="{{ $cssv('chatbot-full.css') }}">
 
+    {{-- The list under the top bar's search (js/global-search.js). --}}
+    <link rel="stylesheet" href="{{ $cssv('global-search.css') }}">
+
     {{-- The loading screen the site opens on. In the head because the check
          inside it has to stamp <html> before the styles below it are read;
          the overlay itself is the first thing in the body. --}}
@@ -513,10 +516,19 @@
         </div>
 
         <div class="d-flex align-items-center gap-4">
+            {{-- Everything is reachable from here (Michael, 2026-10-02): clicked,
+                 it lists every page and section this account can open; typed
+                 into, it searches the records too. See js/global-search.js
+                 and SearchController. --}}
             <div class="search-container d-none d-md-flex" style="position: relative;">
                 <i data-lucide="search"></i>
-                <input type="text" id="global-search-input" placeholder="{{ __('Search data...') }}" autocomplete="off">
-                <div id="search-suggestions" class="search-suggestions-dropdown"></div>
+                <input type="text" id="global-search-input" placeholder="{{ __('Search anything...') }}" autocomplete="off"
+                       role="combobox" aria-expanded="false" aria-controls="search-suggestions" aria-label="{{ __('Search pages and records') }}"
+                       data-suggest-url="{{ route('search.suggestions') }}" data-search-url="{{ route('search') }}">
+                <div id="search-suggestions" class="search-suggestions-dropdown"
+                     data-all="{{ __('View all results') }}"
+                     data-none="{{ __('Nothing found for') }}"
+                     data-hint="{{ __('Type a name, a date or a page') }}"></div>
                 <kbd>⌘ K</kbd>
             </div>
 
@@ -676,6 +688,8 @@
 {{-- The chat's full-screen view: the window grows into the Jeyanco Bot page
      over the page it was opened on, blurred behind it. --}}
 <script src="{{ asset('js/chatbot-full.js') }}?v={{ @filemtime(public_path('js/chatbot-full.js')) ?: '1' }}"></script>
+{{-- The top bar's search: every page, section and record, from one box. --}}
+<script src="{{ asset('js/global-search.js') }}?v={{ @filemtime(public_path('js/global-search.js')) ?: '1' }}"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -832,123 +846,7 @@
         console.error('Chatbot initialization error:', error);
     }
 
-    // ===== GLOBAL SEARCH FUNCTIONALITY =====
-    const globalSearchInput = document.getElementById('global-search-input');
-    const suggestionsDropdown = document.getElementById('search-suggestions');
-    let searchTimeout;
-
-    if (globalSearchInput) {
-        // Show suggestions on input
-        globalSearchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            
-            clearTimeout(searchTimeout);
-            
-            if (query.length < 2) {
-                suggestionsDropdown.innerHTML = '';
-                suggestionsDropdown.style.display = 'none';
-                return;
-            }
-
-            searchTimeout = setTimeout(() => {
-                fetch(`/search/suggestions?q=${encodeURIComponent(query)}`)
-                   .then(async response => {
-                        const data = await response.json();
-
-                        if (!response.ok) {
-                            throw new Error(data.reply || 'Server error');
-                        }
-
-                        return data;
-                    })
-                    .then(data => {
-                        if (data.length > 0) {
-                            let html = '<div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 400px; overflow-y: auto; z-index: 1000;">';
-                            
-                            let currentCategory = '';
-                            data.forEach(item => {
-                                if (item.category !== currentCategory) {
-                                    if (currentCategory !== '') {
-                                        html += '<div style="border-top: 1px solid #f0f0f0;"></div>';
-                                    }
-                                    html += `<div style="padding: 8px 12px; font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; background: #f8fafc;">${item.category}</div>`;
-                                    currentCategory = item.category;
-                                }
-                                
-                                html += `<a href="${item.url}" style="display: block; padding: 10px 12px; color: inherit; text-decoration: none; transition: background 0.2s;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <i data-lucide="${item.icon}" style="width: 16px; height: 16px; color: #1e3a8a;"></i>
-                                        <span>${item.text}</span>
-                                    </div>
-                                </a>`;
-                            });
-                            
-                            html += `<div style="border-top: 1px solid #f0f0f0; padding: 8px 12px;">
-                                <a href="/search?q=${encodeURIComponent(query)}" style="display: block; color: #1e3a8a; text-decoration: none; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-                                    <i data-lucide="arrow-right" style="width: 14px; height: 14px; display: inline; margin-right: 6px;"></i>View All Results
-                                </a>
-                            </div>`;
-                            
-                            html += '</div>';
-                            
-                            suggestionsDropdown.innerHTML = html;
-                            suggestionsDropdown.style.display = 'block';
-                            if (typeof lucide !== 'undefined') {
-                                lucide.createIcons();
-                            }
-                        } else {
-                            suggestionsDropdown.innerHTML = '<div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; text-align: center; color: #999;">No results found</div>';
-                            suggestionsDropdown.style.display = 'block';
-                        }
-                    })
-                    .catch(error => console.error('Search error:', error));
-            }, 300);
-        });
-
-        // Submit search on Enter
-        globalSearchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                const query = this.value.trim();
-                if (query.length >= 2) {
-                    window.location.href = `/search?q=${encodeURIComponent(query)}`;
-                }
-            }
-        });
-
-        // Close suggestions when clicking outside
-        document.addEventListener('click', function(e) {
-            if (e.target !== globalSearchInput && !globalSearchInput.contains(e.target)) {
-                suggestionsDropdown.style.display = 'none';
-            }
-        });
-
-        // Focus search with "/" key
-        document.addEventListener('keydown', function(e) {
-            if ((e.key === '/' || e.key === 'k') && (e.ctrlKey || e.metaKey) && !globalSearchInput.matches(':focus')) {
-                e.preventDefault();
-                globalSearchInput.focus();
-            }
-        });
-    }
-
-    // Add CSS for search suggestions
-    const searchStyle = document.createElement('style');
-    searchStyle.textContent = `
-        .search-suggestions-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            margin-top: 4px;
-            display: none;
-            z-index: 1000;
-        }
-
-        .search-suggestions-dropdown a {
-            cursor: pointer;
-        }
-    `;
-    document.head.appendChild(searchStyle);
+    // The top bar's search lives in js/global-search.js.
 
     // Ensure lucide icons are always rendered at the end
     document.addEventListener('DOMContentLoaded', function() {
