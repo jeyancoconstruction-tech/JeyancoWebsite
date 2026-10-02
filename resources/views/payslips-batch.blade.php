@@ -53,12 +53,14 @@
     .slip-emp .meta { color: #64748b; }
 
     .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    /* Gross and Total sit level, whichever side has the more lines. */
+    .cols > div { display: flex; flex-direction: column; }
     .cols h6 { margin: 0 0 3px; font-size: 8.5px; text-transform: uppercase; letter-spacing: .5px;
         color: #64748b; font-weight: 800; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; }
     .ln { display: flex; justify-content: space-between; font-size: 9.5px; padding: 1.5px 0;
         font-variant-numeric: tabular-nums; }
     .ln .k { color: #475569; } .ln .v { color: #0f172a; font-weight: 600; }
-    .ln.sum { border-top: 1px solid #cbd5e1; margin-top: 2px; padding-top: 3px; font-weight: 800; }
+    .ln.sum { border-top: 1px solid #cbd5e1; margin-top: auto; padding-top: 3px; font-weight: 800; }
 
     .net { display: flex; justify-content: space-between; align-items: center; margin-top: 7px;
         border: 1.5px solid #1E5C9B; border-radius: 5px; padding: 5px 9px; }
@@ -72,30 +74,69 @@
 
     .empty { grid-column: 1 / -1; text-align: center; padding: 40px; color: #64748b; }
 
+    /* ── One payslip: the sheet is its own ────────────────────────────────
+       A lone slip used to print as the same cut-out, small in the corner of
+       an empty page. On its own it takes the full width of the paper, with
+       type about twice the size and room to sign. Its height is its
+       content's — about 240mm — so it fills the sheet without running onto
+       a second one, on A4 and on short bond paper alike. */
+    .slips.one { display: block; }
+    .slips.one .slip { border: 0; padding: 0; }
+    .slips.one .slip::before { content: none; }
+    .slips.one .slip-head { gap: 16px; border-bottom-width: 3px; padding-bottom: 14px; margin-bottom: 16px; }
+    .slips.one .slip-logo { width: 68px; height: 68px; }
+    .slips.one .slip-co .name { font-size: 25px; letter-spacing: .4px; }
+    .slips.one .slip-co .sub  { font-size: 13.5px; margin-top: 2px; }
+    .slips.one .slip-doc .lbl { font-size: 22px; letter-spacing: 3px; }
+    .slips.one .slip-doc .per { font-size: 13.5px; margin-top: 3px; }
+    .slips.one .slip-emp { align-items: baseline; gap: 16px; font-size: 14.5px; margin-bottom: 18px;
+        padding: 14px 18px; background: #f1f5f9; border-radius: 8px; }
+    .slips.one .slip-emp .who { font-size: 21px; }
+    .slips.one .cols { gap: 34px; }
+    .slips.one .cols h6 { margin: 0; font-size: 13px; letter-spacing: 1px; border-bottom-width: 1.5px; padding-bottom: 8px; }
+    .slips.one .ln { align-items: center; height: 17mm; padding: 0; font-size: 19px; border-bottom: 1px dotted #cbd5e1; }
+    .slips.one .ln.sum { border-top: 2px solid #334155; border-bottom: 0; padding-top: 0; font-size: 20px; }
+    .slips.one .net { margin-top: 20px; border-width: 3px; border-radius: 10px; padding: 18px 24px; }
+    .slips.one .net .k { font-size: 19px; letter-spacing: 1px; }
+    .slips.one .net .v { font-size: 33px; }
+    .slips.one .sign { gap: 44px; margin-top: 12px; }
+    .slips.one .sign .line { border-top-width: 1.5px; margin-top: 30mm; padding-top: 6px; font-size: 12px; letter-spacing: .8px; }
+    @media screen {
+        /* In a tab it reads as the sheet it will print on. */
+        .slips.one .slip { padding: 8mm; box-shadow: 0 8px 24px rgba(15, 23, 42, .12); }
+    }
+
     @media print {
         html, body { background: #fff; }
         .toolbar, .hint { display: none !important; }
         .sheet { margin: 0; width: auto; }
         .slip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .slips.one .slip { break-inside: auto; page-break-inside: auto; }
     }
 </style>
 </head>
 <body>
+@php $one = count($slips) === 1; @endphp
 
     <div class="toolbar">
         <div>
             <div class="t-title">Payslips — {{ $periodLabel }}</div>
-            <div class="t-sub">{{ count($slips) }} employee(s) &middot; A4 &middot; cut along the dashed line (&#9986;)</div>
+            <div class="t-sub">{{ count($slips) }} employee(s) &middot; @if($one){{ __('one payslip, the full page') }}@else A4 &middot; cut along the dashed line (&#9986;)@endif</div>
         </div>
         <div style="display:flex;gap:8px;">
             <a href="javascript:history.back()" class="btn btn-back">{{ __('← Back') }}</a>
-            <button class="btn btn-print" onclick="window.print()">{{ __('🖨 Print A4') }}</button>
+            <button class="btn btn-print" onclick="window.print()">{{ $one ? __('🖨 Print') : __('🖨 Print A4') }}</button>
         </div>
     </div>
-    <div class="hint">{{ __('Tip: choose') }} <b>A4</b> {{ __('in the print dialog and turn off "Headers and footers" for a clean cut.') }}</div>
+    @if($one)
+        <div class="hint">{{ __('Tip: turn off "Headers and footers" in the print dialog for a clean page.') }}</div>
+    @else
+        <div class="hint">{{ __('Tip: choose') }} <b>A4</b> {{ __('in the print dialog and turn off "Headers and footers" for a clean cut.') }}</div>
+    @endif
 
     <div class="sheet">
-        <div class="slips">
+        {{-- One slip is the whole sheet; several are cut-outs, two across. --}}
+        <div class="slips{{ $one ? ' one' : '' }}">
             @forelse($slips as $s)
                 <div class="slip">
                     <div class="slip-head">
@@ -123,6 +164,11 @@
                             <h6>{{ __('Earnings') }}</h6>
                             <div class="ln"><span class="k">{{ __('Regular') }}</span><span class="v">&#8369;{{ number_format($s['regular'], 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('Overtime') }}</span><span class="v">&#8369;{{ number_format($s['overtime'], 2) }}</span></div>
+                            {{-- Night work is inside the gross, so without its
+                                 own line the earnings did not add up to it. --}}
+                            @if(($s['nightDiffPay'] ?? 0) > 0)
+                                <div class="ln"><span class="k">{{ __('Night Diff') }}</span><span class="v">&#8369;{{ number_format($s['nightDiffPay'], 2) }}</span></div>
+                            @endif
                             <div class="ln"><span class="k">{{ __('Holiday') }}</span><span class="v">&#8369;{{ number_format($s['holidayPay'], 2) }}</span></div>
                             <div class="ln"><span class="k">{{ __('Rest Day') }}</span><span class="v">&#8369;{{ number_format($s['restDayPay'], 2) }}</span></div>
                             {{-- A day off that was signed off as paid. Its own
