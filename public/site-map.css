@@ -1,6 +1,7 @@
 /*
  * Sites and kiosks on a map: the red site pin with its name and range, the
- * kiosk badge in the colour of where it stands, the key and the popups.
+ * kiosk badge green in range or red out of it, the dashed red line from a
+ * kiosk out of range to its site, the key and the popups.
  * Drawn by public/js/site-map.js on the dashboard's Project Sites map and on
  * the Sites page.
  */
@@ -41,14 +42,16 @@
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--dm-c) 22%, transparent), 0 2px 6px rgba(0,0,0,.3);
 }
 .dm-kiosk .dm-chip small { color: var(--dm-c); }
-:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-in        { --dm-c: var(--success); }
-:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot):is(.is-out, .is-elsewhere) { --dm-c: var(--danger); }
-:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-nogps     { --dm-c: var(--warning); }
-:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-offline   { --dm-c: var(--text-muted); }
+/* Two colours: in range and out of it (Michael, 2026-10-03). */
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-in  { --dm-c: var(--success); }
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-out { --dm-c: var(--danger); }
 /* The header's dot. Not Bootstrap's text-* colours, which the dark theme
-   turns all to one colour. */
-.dm-dot { display: inline-block; width: 8px; height: 8px; margin-right: 3px; border-radius: 50%; background: var(--dm-c); vertical-align: 1px; }
-.dm-kiosk.is-offline .dm-av { opacity: .75; }
+   turns all to one colour. Grey while there is nothing to measure. */
+.dm-dot { --dm-c: var(--text-muted); display: inline-block; width: 8px; height: 8px; margin-right: 3px; border-radius: 50%; background: var(--dm-c); vertical-align: 1px; }
+
+/* A kiosk out of range: dashed red to the site it is set to. The colour is
+   here, not in the script, so it follows the theme. */
+.dm-way { stroke: var(--danger); stroke-opacity: .9; }
 
 /* The key, bottom left, and the way to the Sites page. */
 .dm-legend {
@@ -60,6 +63,7 @@
 .dm-legend-keys { display: flex; flex-wrap: wrap; gap: 2px 10px; }
 .dm-legend-keys span { display: inline-flex; align-items: center; gap: 5px; }
 .dm-legend-keys i { width: 8px; height: 8px; border-radius: 50%; background: var(--dm-c); }
+.dm-legend-way i { width: 16px; height: 0; border-radius: 0; background: none; border-top: 2px dashed var(--dm-c); }
 .dm-legend-note { margin-top: 3px; color: var(--text-muted); }
 .dm-legend a { display: inline-block; margin-top: 3px; font-weight: 600; color: var(--brand); text-decoration: none; }
 .dm-legend a i { font-size: 9px; }

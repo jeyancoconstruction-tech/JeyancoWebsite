@@ -101,6 +101,66 @@ class DashboardMapTest extends TestCase
 
         $this->assertSame('offline', $k['NEVER']['state']);
         $this->assertNull($k['NEVER']['seen_ago']);
+
+        // What the map colours by: in its own site's range or out of it.
+        $this->assertSame('in', $k['IN']['range']);
+        $this->assertSame('out', $k['AWAY']['range'], "in another site's range is still out of its own");
+        $this->assertSame('out', $k['OUT']['range']);
+        $this->assertSame('in', $k['QUIET']['range'], 'one gone quiet is coloured by where it last was');
+        $this->assertNull($k['NOSAT']['range'], 'no position, nothing to colour');
+        $this->assertNull($k['NEVER']['range']);
+    }
+
+    /** A heartbeat without a fix keeps the last good position, and the map still measures it. */
+    public function test_a_kiosk_without_a_fix_is_coloured_by_its_last_position(): void
+    {
+        $this->kiosk('LOST', $this->bypass);
+        $this->heard('LOST', 13.5925, 123.2741, 'no_fix');        // ~1 km north of Site B
+
+        $k = $this->map()['LOST'];
+        $this->assertSame('nogps', $k['state']);
+        $this->assertSame('stale', $k['gps']);
+        $this->assertSame('out', $k['range']);
+        $this->assertEqualsWithDelta(1067, $k['distance_m'], 10);
+    }
+
+    /** With no site of its own, it is in range only inside some site's range. */
+    public function test_a_kiosk_with_no_site_is_in_range_only_inside_one(): void
+    {
+        $this->kiosk('FREE', null);
+        $this->kiosk('ROAM', null);
+        $this->heard('FREE', 13.6219, 123.1949);                  // at Site A
+        $this->heard('ROAM', 13.70, 123.10);                      // nowhere near a site
+
+        $k = $this->map();
+        $this->assertSame('in', $k['FREE']['range']);
+        $this->assertSame('out', $k['ROAM']['range']);
+        $this->assertNull($k['ROAM']['site_id'], 'no site of its own, so no line to draw');
+    }
+
+    /**
+     * The map draws two colours, in range and out of range (Michael,
+     * 2026-10-03), and a kiosk out of range gets a dashed red line to the
+     * site it is set to. Both maps draw from js/site-map.js.
+     */
+    public function test_the_map_has_two_colours_and_a_line_to_the_site(): void
+    {
+        $js  = file_get_contents(public_path('js/site-map.js'));
+        $css = file_get_contents(public_path('site-map.css'));
+
+        $this->assertStringContainsString('<span class="is-in"><i></i>In range</span>', $js);
+        $this->assertStringContainsString('<span class="is-out"><i></i>Out of range</span>', $js);
+        foreach (['No GPS<', 'Offline<', 'is-nogps', 'is-offline', 'is-elsewhere'] as $gone) {
+            $this->assertStringNotContainsString($gone, $js);
+            $this->assertStringNotContainsString($gone, $css);
+        }
+        $this->assertStringContainsString('class="dm-kiosk is-${k.range}"', $js, 'the badge is coloured by range');
+        $this->assertStringNotContainsString('--warning', $css);
+
+        $this->assertStringContainsString("k.range === 'out' && siteMarks[k.site_id]", $js);
+        $this->assertStringContainsString("L.polyline(way, { className: 'dm-way'", $js);
+        $this->assertStringContainsString("dashArray: '8 7'", $js);
+        $this->assertStringContainsString('.dm-way { stroke: var(--danger);', $css);
     }
 
     public function test_the_edge_of_the_range_is_inside(): void
@@ -123,6 +183,7 @@ class DashboardMapTest extends TestCase
 
         $k = $this->map()['LOOSE'];
         $this->assertSame('in', $k['state']);
+        $this->assertSame('in', $k['range']);
         $this->assertSame('Site A', $k['at_site']);
         $this->assertNull($k['distance_m'], 'nothing to measure against on its own site');
     }

@@ -7,8 +7,11 @@
  * where each kiosk's GPS last put it look the same wherever they are shown.
  *
  * A site is the red pin with its name and range beside it, and its range as a
- * dashed ring. A kiosk is a round badge in the colour of where it stands — in
- * its site's range, out of it, without a GPS fix, or offline.
+ * dashed ring. A kiosk is a round badge, green in its site's range and red out
+ * of it — two colours and no more (Michael, 2026-10-03: "in range and out of
+ * range nalang ang kulay"). One gone quiet or without a fix is coloured by
+ * where it last was. A kiosk out of range has a dashed red line to the site
+ * it is set to ("putol na redline papunta sa designated site").
  *
  *   const layer = JeyancoSiteMap(map, {
  *       mapUrl:   '/dashboard/map',
@@ -38,13 +41,8 @@
 
     // The line under a kiosk's name, and the first line of its popup.
     function kioskLine(k) {
-        switch (k.state) {
-            case 'in':        return k.distance_m != null ? `In range · ${far(k.distance_m)}` : `In range of ${k.at_site}`;
-            case 'elsewhere': return `At ${k.at_site} · set to ${k.site}`;
-            case 'out':       return k.distance_m != null ? `Out of range · ${far(k.distance_m)}` : 'Out of range';
-            case 'nogps':     return 'No GPS signal';
-            default:          return 'Offline · ' + ago(k.seen_ago);
-        }
+        if (k.range === 'in') return k.distance_m != null ? `In range · ${far(k.distance_m)}` : `In range of ${k.at_site}`;
+        return k.distance_m != null ? `Out of range · ${far(k.distance_m)}` : 'Out of range';
     }
 
     const siteIcon = s => L.divIcon({
@@ -55,7 +53,7 @@
 
     const kioskIcon = k => L.divIcon({
         className: 'dm-mark', iconSize: null, iconAnchor: [16, 16], popupAnchor: [0, -14],
-        html: `<div class="dm-kiosk is-${k.state}" data-state="${k.state}"><span class="dm-av"><i class="fas fa-fingerprint"></i></span>` +
+        html: `<div class="dm-kiosk is-${k.range}" data-range="${k.range}"><span class="dm-av"><i class="fas fa-fingerprint"></i></span>` +
               `<span class="dm-chip"><b>${esc(k.name)}</b><small>${esc(kioskLine(k))}</small></span></div>`,
     });
 
@@ -65,7 +63,9 @@
             (s.location ? `<div class="dm-pop-sub">${esc(s.location)}</div>` : '') +
             `<div>Range: ${s.radius_m} m from the pin</div>` +
             (here.length
-                ? here.map(k => `<div class="dm-pop-k is-${k.state}"><i class="fas fa-fingerprint"></i> ${esc(k.name)} · ${esc(kioskLine(k))}</div>`).join('')
+                ? here.map(k => k.range
+                    ? `<div class="dm-pop-k is-${k.range}"><i class="fas fa-fingerprint"></i> ${esc(k.name)} · ${esc(kioskLine(k))}</div>`
+                    : `<div class="dm-pop-sub"><i class="fas fa-fingerprint"></i> ${esc(k.name)} · no position yet</div>`).join('')
                 : '<div class="dm-pop-sub">No kiosk is set to this site.</div>') +
             '</div>';
     }
@@ -73,8 +73,9 @@
     function kioskPopup(k) {
         const gps = { fix: 'GPS fix', stale: 'Last known position', none: 'No position yet' }[k.gps];
         return `<div class="dm-pop"><b>${esc(k.name)}</b> <span class="dm-pop-sub">${esc(k.code)}</span>` +
-            `<div class="dm-pop-k is-${k.state}">${esc(kioskLine(k))}</div>` +
+            `<div class="dm-pop-k is-${k.range}">${esc(kioskLine(k))}</div>` +
             `<div>Set to ${k.site ? '<b>' + esc(k.site) + '</b>' + (k.radius_m ? ` · ${k.radius_m} m range` : ' · not pinned') : 'no site'}</div>` +
+            (k.at_site && k.at_site !== k.site ? `<div class="dm-pop-sub">Standing in ${esc(k.at_site)}'s range</div>` : '') +
             `<div class="dm-pop-sub">${gps} · heard ${ago(k.seen_ago)}</div></div>`;
     }
 
@@ -82,7 +83,7 @@
     // usual side, then the others; one with no free side steps back
     // until hovered. A kiosk out of range is placed first, a site last.
     // Every badge and pin stays, and no name is put over one.
-    const URGENCY = { out: 0, elsewhere: 0, nogps: 1, offline: 2, in: 3 };
+    const URGENCY = { out: 0, in: 1 };
     const SIDES = { kiosk: ['', 'at-left'], site: ['', 'at-below', 'at-right', 'at-left'] };
 
     window.JeyancoSiteMap = function (map, opts) {
@@ -112,8 +113,7 @@
                 '<div class="dm-legend-keys">' +
                     '<span class="is-in"><i></i>In range</span>' +
                     '<span class="is-out"><i></i>Out of range</span>' +
-                    '<span class="is-nogps"><i></i>No GPS</span>' +
-                    '<span class="is-offline"><i></i>Offline</span>' +
+                    (Object.keys(strays).length ? '<span class="is-out dm-legend-way"><i></i>Line to its site</span>' : '') +
                 '</div>' +
                 (missing ? `<div class="dm-legend-note">Not on the map: ${missing}</div>` : '') +
                 (opts.sitesUrl ? `<a href="${opts.sitesUrl}">Pins are set on the Sites page <i class="fas fa-arrow-right"></i></a>` : '');
@@ -121,7 +121,7 @@
 
         // One marker per site and per kiosk, kept between refreshes and moved,
         // so a popup somebody has open does not close on every heartbeat.
-        const siteMarks = {}, kioskMarks = {};
+        const siteMarks = {}, kioskMarks = {}, strays = {};
         let fitted = false, hidden = null, last = { sites: [], kiosks: [] };
 
         function draw(sites, kiosks) {
@@ -166,6 +166,21 @@
                 delete kioskMarks[id];
             });
 
+            // A kiosk out of range: a dashed red line from it to the pin of
+            // the site it is set to, where that pin is on the map.
+            const astray = new Set();
+            kiosks.filter(k => k.range === 'out' && siteMarks[k.site_id]).forEach(k => {
+                astray.add(k.id);
+                const way = [[k.lat, k.lng], siteMarks[k.site_id].pin.getLatLng()];
+                if (strays[k.id]) strays[k.id].setLatLngs(way);
+                else strays[k.id] = L.polyline(way, { className: 'dm-way', weight: 2.5, dashArray: '8 7', interactive: false }).addTo(map);
+            });
+            Object.keys(strays).forEach(id => {
+                if (astray.has(+id)) return;
+                map.removeLayer(strays[id]);
+                delete strays[id];
+            });
+
             drawLegend(sites, kiosks);
             drawStatus(kiosks);
 
@@ -183,7 +198,7 @@
             const kiosks = Object.values(kioskMarks)
                 .map(m => m.getElement()?.querySelector('.dm-kiosk'))
                 .filter(Boolean)
-                .sort((a, b) => URGENCY[a.dataset.state] - URGENCY[b.dataset.state]);
+                .sort((a, b) => URGENCY[a.dataset.range] - URGENCY[b.dataset.range]);
             const sites = Object.values(siteMarks).map(m => m.pin.getElement()?.querySelector('.dm-site')).filter(Boolean);
             // The map's own controls — zoom, the key, the credit — are in the way too.
             const taken = kiosks.map(k => k.querySelector('.dm-av').getBoundingClientRect())
@@ -220,21 +235,20 @@
             else if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: FIT_ZOOM });
         }
 
-        // The header says how the kiosks stand, worst news first.
+        // The header says how the kiosks stand: in range or out of it.
         function drawStatus(kiosks) {
             if (!statusEl) return;
             if (!kiosks.length) {
-                statusEl.innerHTML = '<i class="dm-dot is-offline"></i> No kiosks registered';
+                statusEl.innerHTML = '<i class="dm-dot"></i> No kiosks registered';
                 return;
             }
-            const n = s => kiosks.filter(k => s.includes(k.state)).length;
-            const out = n(['out', 'elsewhere']), inn = n(['in']), nogps = n(['nogps']), off = n(['offline']);
-            const tone = out ? 'is-out' : (nogps || off) ? 'is-nogps' : 'is-in';
+            const n = r => kiosks.filter(k => k.range === r).length;
+            const inn = n('in'), out = n('out'), none = n(null);
+            const tone = out ? 'is-out' : inn ? 'is-in' : '';
             const parts = [
                 inn ? `${inn} in range` : '',
                 out ? `${out} out of range` : '',
-                nogps ? `${nogps} no GPS` : '',
-                off ? `${off} offline` : '',
+                none ? `${none} with no position` : '',
             ].filter(Boolean).join(' · ');
             statusEl.innerHTML = `<i class="dm-dot ${tone}"></i> ${plural(kiosks.length, 'kiosk')}: ${parts}`;
         }
@@ -249,7 +263,7 @@
                 const d = await res.json();
                 draw(d.sites || [], d.kiosks || []);
             } catch (e) {
-                if (statusEl) statusEl.innerHTML = '<i class="dm-dot is-offline"></i> Could not load the map';
+                if (statusEl) statusEl.innerHTML = '<i class="dm-dot"></i> Could not load the map';
             } finally {
                 busy = false;
             }

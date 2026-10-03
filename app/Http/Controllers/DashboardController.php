@@ -170,6 +170,17 @@ class DashboardController extends Controller
                 default                                    => 'out',
             };
 
+            // What the map colours by: in range or out of it, and nothing else
+            // (Michael, 2026-10-03). Measured from wherever the kiosk last was,
+            // so one gone quiet or without a fix is still green or red. Out of
+            // the range of the site it is set to is out, even standing in
+            // another site's range.
+            $range = match (true) {
+                ! $located => null,
+                (bool) $set => $set->holds($lat, $lng) ? 'in' : 'out',
+                default    => $at ? 'in' : 'out',
+            };
+
             return [
                 'id'         => $kiosk->id,
                 'name'       => $kiosk->name,
@@ -179,6 +190,7 @@ class DashboardController extends Controller
                 'lat'        => $lat,
                 'lng'        => $lng,
                 'state'      => $state,
+                'range'      => $range,
                 'gps'        => $gps,
                 'seen_ago'   => $ago,
                 'distance_m' => $distance !== null ? (int) round($distance) : null,
