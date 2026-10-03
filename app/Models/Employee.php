@@ -22,8 +22,8 @@ class Employee extends Model
     /** Paid for each day actually worked — what every worker is today. */
     public const EMPLOYMENT_DAILY = 'daily';
 
-    /** Engaged on a contract. Recorded so the office can tell them apart; the
-     *  payroll computation does NOT yet treat them differently. */
+    /** Engaged on a contract. Attendance is kept, but payroll computes no
+     *  wages or deductions for them — see isExcludedFromPayroll(). */
     public const EMPLOYMENT_CONTRACTUAL = 'contractual';
 
     public const EMPLOYMENT_TYPES = [

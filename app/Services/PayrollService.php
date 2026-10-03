@@ -562,10 +562,19 @@ class PayrollService
      * it, and the stored hourly rate over a standard day only when there is
      * no labour type at all.
      *
+     * A contractual worker has no day rate at all: they are settled against
+     * their contract, so a day off is worth nothing here, just as a day worked
+     * is. Without this a paid leave reached them at the labour type they used
+     * to have, or the wage floor.
+     *
      * @param  float  $priced  the rate the week already priced a day at, or 0
      */
     private function dayRateOf($employee, array $rates, float $priced = 0.0): float
     {
+        if ($employee->isExcludedFromPayroll()) {
+            return 0.0;
+        }
+
         if ($priced > 0) {
             return $priced;
         }

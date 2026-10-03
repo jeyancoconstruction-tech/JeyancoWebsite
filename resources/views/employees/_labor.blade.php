@@ -24,5 +24,5 @@
 {{-- Contractual is the exception, so only it is called out; leaving every
      daily worker tagged would be noise on a list where nearly all are daily. --}}
 @if($e->isContractual())
-    <span class="rmx-pill rmx-pill-warn" title="{{ __('Contractual — the pay computation is still the same for now') }}">{{ __('Contractual') }}</span>
+    <span class="rmx-pill rmx-pill-warn" title="{{ __('Contractual — settled against the contract; payroll computes no wages') }}">{{ __('Contractual') }}</span>
 @endif
