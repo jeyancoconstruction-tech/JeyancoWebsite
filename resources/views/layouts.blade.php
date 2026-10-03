@@ -144,6 +144,161 @@
         <style id="accentTokens">{!! $accentCss !!}</style>
     @endif
 
+    {{-- The bell, the letter avatar and the sidebar badge. Here in the head,
+         after every stylesheet, so it keeps winning the same ties it always
+         did — and is read before anything is drawn. It used to sit at the end
+         of the body, behind the scripts, so a refresh drew the page while the
+         browser waited on them: the bell's menu ("Mark all read · Delete all ·
+         Loading…") showed open and unstyled until the rest arrived. --}}
+    <style>
+        /* Initials avatar, drawn instead of downloaded. */
+        .avatar-letter {
+            display: flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; flex: none;
+            background: var(--brand); color: #fff;
+            font-size: 14px; font-weight: 700; line-height: 1;
+        }
+
+/* Wrapper — position context for dropdown */
+.notif-wrapper {
+    position: relative;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid #e2e8f0; background: #f8fafc;
+    color: #475569; transition: background .15s, border-color .15s;
+    flex-shrink: 0;
+}
+.notif-wrapper:hover,
+.notif-wrapper.open { background: #f1f5f9; border-color: #cbd5e1; }
+.notif-wrapper.open { color: #1e3a8a; border-color: #bfdbfe; background: #eff6ff; }
+
+.notif-badge {
+    position: absolute; top: 5px; right: 5px;
+    min-width: 16px; height: 16px; border-radius: 8px;
+    background: #dc2626; color: #fff;
+    font-size: 10px; font-weight: 700; line-height: 16px;
+    text-align: center; padding: 0 4px;
+    border: 2px solid #fff;
+    animation: notifPop .25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Dropdown panel */
+.notif-dropdown {
+    display: none; position: absolute;
+    top: calc(100% + 10px); right: 0;
+    width: 340px; max-height: 480px;
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,.13);
+    z-index: 9000; overflow: hidden;
+    flex-direction: column;
+}
+.notif-wrapper.open .notif-dropdown { display: flex; }
+
+.notif-dd-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 12px; border-bottom: 1px solid #f1f5f9;
+    flex-shrink: 0;
+}
+.notif-dd-title {
+    font-size: 13px; font-weight: 700; color: #0f172a;
+}
+.notif-dd-actions { display: flex; align-items: center; gap: 10px; }
+.notif-dd-mark-all {
+    font-size: 11px; font-weight: 600; color: #1e40af;
+    background: none; border: none; cursor: pointer; padding: 0;
+    transition: color .15s;
+}
+.notif-dd-mark-all:hover { color: #1e3a8a; }
+.notif-dd-delete-all {
+    font-size: 11px; font-weight: 600; color: #dc2626;
+    background: none; border: none; cursor: pointer; padding: 0;
+    transition: color .15s;
+}
+.notif-dd-delete-all:hover { color: #b91c1c; }
+
+.notif-dd-list {
+    overflow-y: auto; flex: 1;
+}
+.notif-dd-list::-webkit-scrollbar { width: 4px; }
+.notif-dd-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+
+/* Notification item */
+.notif-item {
+    display: flex; align-items: flex-start; gap: 11px;
+    padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f8fafc;
+    transition: background .1s; text-decoration: none;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-item:hover { background: #f8fafc; }
+.notif-item.unread { background: #fafbff; }
+.notif-item.unread:hover { background: #f0f4ff; }
+
+.notif-icon-wrap {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 14px; color: #fff;
+}
+.notif-item-body { flex: 1; min-width: 0; }
+.notif-item-title {
+    font-size: 13px; font-weight: 600; color: #0f172a;
+    margin: 0 0 2px; line-height: 1.3;
+}
+.notif-item-msg {
+    font-size: 12px; color: #64748b; margin: 0 0 4px;
+    white-space: normal; line-height: 1.4;
+}
+.notif-item-time { font-size: 11px; color: #94a3b8; }
+.notif-unread-dot {
+    width: 7px; height: 7px; background: #3b82f6;
+    border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+}
+
+/* Empty / loading states */
+.notif-dd-empty {
+    padding: 32px 16px; text-align: center;
+    font-size: 13px; color: #94a3b8;
+}
+
+/* Dark mode */
+[data-bs-theme="dark"] .notif-wrapper {
+    background: #151d2e; border-color: #283449; color: #9fb0c7;
+}
+[data-bs-theme="dark"] .notif-wrapper:hover,
+[data-bs-theme="dark"] .notif-wrapper.open {
+    background: #1c2740; border-color: #38465e; color: #e8edf5;
+}
+[data-bs-theme="dark"] .notif-badge { border-color: #151d2e; }
+[data-bs-theme="dark"] .notif-dropdown {
+    background: #151d2e; border-color: #283449;
+    box-shadow: 0 16px 48px rgba(0,0,0,.45);
+}
+[data-bs-theme="dark"] .notif-dd-header { border-bottom-color: #1c2740; }
+[data-bs-theme="dark"] .notif-dd-title  { color: #e8edf5; }
+[data-bs-theme="dark"] .notif-item      { border-bottom-color: #1a2336; }
+[data-bs-theme="dark"] .notif-item:hover { background: #1c2740; }
+[data-bs-theme="dark"] .notif-item.unread { background: #172554; }
+[data-bs-theme="dark"] .notif-item.unread:hover { background: #1e3a8a22; }
+[data-bs-theme="dark"] .notif-item-title { color: #e8edf5; }
+[data-bs-theme="dark"] .notif-item-msg  { color: #9fb0c7; }
+[data-bs-theme="dark"] .notif-item-time { color: #6b7d96; }
+[data-bs-theme="dark"] .notif-dd-empty  { color: #475569; }
+[data-bs-theme="dark"] .notif-dd-list::-webkit-scrollbar-thumb { background: #283449; }
+
+@keyframes notifPop {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
+/* Sidebar pending-kiosk badge */
+.nav-pending-badge {
+    margin-left: auto;
+    min-width: 20px; height: 20px; padding: 0 6px;
+    border-radius: 10px; background: #f59e0b; color: #fff;
+    font-size: 11px; font-weight: 700; line-height: 20px; text-align: center;
+}
+</style>
+
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- Live.on() before live.js has loaded. A page's own script runs while
@@ -685,6 +840,12 @@
     </div>{{-- .chatbot-body --}}
 </div>
 
+{{-- The icons, drawn now. lucide is loaded in the head, and the scripts below
+     each make the browser wait, so a refresh drew the sidebar, the theme
+     switch and the bell as blank boxes until all of them had arrived. The
+     call further down still draws anything added after this point. --}}
+<script>if (typeof lucide !== 'undefined') lucide.createIcons();</script>
+
 {{-- The button can be dragged out of the way while the page is open; every
      page load puts it back in its corner. --}}
 <script src="{{ asset('js/chatbot-move.js') }}?v={{ @filemtime(public_path('js/chatbot-move.js')) ?: '1' }}"></script>
@@ -999,155 +1160,6 @@
 </script>
 <script src="{{ asset('js/live.js') }}?v={{ @filemtime(public_path('js/live.js')) ?: '1' }}"></script>
 
-{{-- ── Notification Bell — CSS ─────────────────────────────────────────────── --}}
-<style>
-        /* Initials avatar, drawn instead of downloaded. */
-        .avatar-letter {
-            display: flex; align-items: center; justify-content: center;
-            width: 36px; height: 36px; flex: none;
-            background: var(--brand); color: #fff;
-            font-size: 14px; font-weight: 700; line-height: 1;
-        }
-
-/* Wrapper — position context for dropdown */
-.notif-wrapper {
-    position: relative;
-    width: 38px; height: 38px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 10px; cursor: pointer;
-    border: 1px solid #e2e8f0; background: #f8fafc;
-    color: #475569; transition: background .15s, border-color .15s;
-    flex-shrink: 0;
-}
-.notif-wrapper:hover,
-.notif-wrapper.open { background: #f1f5f9; border-color: #cbd5e1; }
-.notif-wrapper.open { color: #1e3a8a; border-color: #bfdbfe; background: #eff6ff; }
-
-.notif-badge {
-    position: absolute; top: 5px; right: 5px;
-    min-width: 16px; height: 16px; border-radius: 8px;
-    background: #dc2626; color: #fff;
-    font-size: 10px; font-weight: 700; line-height: 16px;
-    text-align: center; padding: 0 4px;
-    border: 2px solid #fff;
-    animation: notifPop .25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-/* Dropdown panel */
-.notif-dropdown {
-    display: none; position: absolute;
-    top: calc(100% + 10px); right: 0;
-    width: 340px; max-height: 480px;
-    background: #fff; border: 1px solid #e2e8f0;
-    border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,.13);
-    z-index: 9000; overflow: hidden;
-    flex-direction: column;
-}
-.notif-wrapper.open .notif-dropdown { display: flex; }
-
-.notif-dd-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 16px 12px; border-bottom: 1px solid #f1f5f9;
-    flex-shrink: 0;
-}
-.notif-dd-title {
-    font-size: 13px; font-weight: 700; color: #0f172a;
-}
-.notif-dd-actions { display: flex; align-items: center; gap: 10px; }
-.notif-dd-mark-all {
-    font-size: 11px; font-weight: 600; color: #1e40af;
-    background: none; border: none; cursor: pointer; padding: 0;
-    transition: color .15s;
-}
-.notif-dd-mark-all:hover { color: #1e3a8a; }
-.notif-dd-delete-all {
-    font-size: 11px; font-weight: 600; color: #dc2626;
-    background: none; border: none; cursor: pointer; padding: 0;
-    transition: color .15s;
-}
-.notif-dd-delete-all:hover { color: #b91c1c; }
-
-.notif-dd-list {
-    overflow-y: auto; flex: 1;
-}
-.notif-dd-list::-webkit-scrollbar { width: 4px; }
-.notif-dd-list::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
-
-/* Notification item */
-.notif-item {
-    display: flex; align-items: flex-start; gap: 11px;
-    padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f8fafc;
-    transition: background .1s; text-decoration: none;
-}
-.notif-item:last-child { border-bottom: none; }
-.notif-item:hover { background: #f8fafc; }
-.notif-item.unread { background: #fafbff; }
-.notif-item.unread:hover { background: #f0f4ff; }
-
-.notif-icon-wrap {
-    width: 36px; height: 36px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; font-size: 14px; color: #fff;
-}
-.notif-item-body { flex: 1; min-width: 0; }
-.notif-item-title {
-    font-size: 13px; font-weight: 600; color: #0f172a;
-    margin: 0 0 2px; line-height: 1.3;
-}
-.notif-item-msg {
-    font-size: 12px; color: #64748b; margin: 0 0 4px;
-    white-space: normal; line-height: 1.4;
-}
-.notif-item-time { font-size: 11px; color: #94a3b8; }
-.notif-unread-dot {
-    width: 7px; height: 7px; background: #3b82f6;
-    border-radius: 50%; flex-shrink: 0; margin-top: 5px;
-}
-
-/* Empty / loading states */
-.notif-dd-empty {
-    padding: 32px 16px; text-align: center;
-    font-size: 13px; color: #94a3b8;
-}
-
-/* Dark mode */
-[data-bs-theme="dark"] .notif-wrapper {
-    background: #151d2e; border-color: #283449; color: #9fb0c7;
-}
-[data-bs-theme="dark"] .notif-wrapper:hover,
-[data-bs-theme="dark"] .notif-wrapper.open {
-    background: #1c2740; border-color: #38465e; color: #e8edf5;
-}
-[data-bs-theme="dark"] .notif-badge { border-color: #151d2e; }
-[data-bs-theme="dark"] .notif-dropdown {
-    background: #151d2e; border-color: #283449;
-    box-shadow: 0 16px 48px rgba(0,0,0,.45);
-}
-[data-bs-theme="dark"] .notif-dd-header { border-bottom-color: #1c2740; }
-[data-bs-theme="dark"] .notif-dd-title  { color: #e8edf5; }
-[data-bs-theme="dark"] .notif-item      { border-bottom-color: #1a2336; }
-[data-bs-theme="dark"] .notif-item:hover { background: #1c2740; }
-[data-bs-theme="dark"] .notif-item.unread { background: #172554; }
-[data-bs-theme="dark"] .notif-item.unread:hover { background: #1e3a8a22; }
-[data-bs-theme="dark"] .notif-item-title { color: #e8edf5; }
-[data-bs-theme="dark"] .notif-item-msg  { color: #9fb0c7; }
-[data-bs-theme="dark"] .notif-item-time { color: #6b7d96; }
-[data-bs-theme="dark"] .notif-dd-empty  { color: #475569; }
-[data-bs-theme="dark"] .notif-dd-list::-webkit-scrollbar-thumb { background: #283449; }
-
-@keyframes notifPop {
-    from { transform: scale(0); opacity: 0; }
-    to   { transform: scale(1); opacity: 1; }
-}
-
-/* Sidebar pending-kiosk badge */
-.nav-pending-badge {
-    margin-left: auto;
-    min-width: 20px; height: 20px; padding: 0 6px;
-    border-radius: 10px; background: #f59e0b; color: #fff;
-    font-size: 11px; font-weight: 700; line-height: 20px; text-align: center;
-}
-</style>
 
 {{-- ── Notification Bell — JS ───────────────────────────────────────────────── --}}
 <script>
