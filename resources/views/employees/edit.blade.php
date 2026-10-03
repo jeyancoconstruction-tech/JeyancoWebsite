@@ -115,29 +115,13 @@
                             @error('name_suffix')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
 
-                        {{-- Employee type drives the fields below it. --}}
-                        <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="employment_type">{{ __('Employee Type') }} <span class="ep-req">*</span></label>
-                            <select name="employment_type" id="employment_type" required
-                                    class="form-select @error('employment_type') is-invalid @enderror">
-                                @foreach(\App\Models\Employee::EMPLOYMENT_TYPES as $val => $label)
-                                    <option value="{{ $val }}"
-                                        {{ old('employment_type', $employee->employment_type) === $val ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('employment_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-
-                        {{-- ── Regular only ──
-                             Labor Type comes before Position because it answers it:
-                             the position IS the labor type for a regular worker, and
-                             `position` — the column payroll reads — is derived from
-                             it on save either way. --}}
-                        <div class="col-md-6 col-lg-4 js-regular-only">
+                        {{-- Labor Type comes before Position because it answers it:
+                             the position IS the labor type, and `position` — the
+                             column payroll reads — is derived from it on save
+                             either way. --}}
+                        <div class="col-md-6 col-lg-4">
                             <label class="ep-label" for="labor_type_select">{{ __('Labor Type') }} <span class="ep-req">*</span></label>
-                            <select id="labor_type_select" name="labor_type_id" class="form-select">
+                            <select id="labor_type_select" name="labor_type_id" class="form-select" required>
                                 <option value="">{{ __('— Select Labor Type —') }}</option>
                                 @foreach($laborTypes as $labor)
                                     <option value="{{ $labor->id }}"
@@ -155,7 +139,7 @@
                              tomorrow; every day already worked keeps the shift
                              it was worked under, so last month's lateness does
                              not move with them. --}}
-                        <div class="col-md-6 col-lg-3 js-regular-only">
+                        <div class="col-md-6 col-lg-3">
                             <label class="ep-label" for="shift_select">{{ __('Shift') }}</label>
                             <select id="shift_select" name="shift_id" class="form-select">
                                 <option value="">{{ __('— Select —') }}</option>
@@ -168,17 +152,16 @@
                             <span class="ep-hint">{{ __('Applies from the next day worked.') }}</span>
                         </div>
 
-                        <div class="col-md-6 col-lg-2 js-regular-only">
+                        <div class="col-md-6 col-lg-2">
                             <label class="ep-label" for="rate_per_hour">{{ __('Rate Per Hour') }} <span class="ep-req">*</span></label>
                             <input type="number" step="0.01" id="rate_per_hour" name="rate_per_hour"
                                    value="{{ $employee->rate_per_hour }}"
-                                   class="form-control" style="cursor:not-allowed;" readonly>
+                                   class="form-control" style="cursor:not-allowed;" readonly required>
                             <span class="ep-hint">{{ __('Calculated from Labor Type (Daily ÷ 8).') }}</span>
                         </div>
 
-                        {{-- Filled from the labor type and locked for a regular
-                             worker, typed by hand for a contractual one, who has no
-                             labor type to take it from. The toggle owns that switch. --}}
+                        {{-- Filled from the labor type and locked
+                             (_position_from_labor.blade.php). --}}
                         <div class="col-md-6 col-lg-3">
                             <label class="ep-label" for="job_title">{{ __('Position / Job Title') }} <span class="ep-req">*</span></label>
                             <input type="text" id="job_title" name="job_title" required
@@ -195,33 +178,6 @@
                                    value="{{ old('date_hired', $employee->date_hired?->format('Y-m-d')) }}"
                                    class="form-control @error('date_hired') is-invalid @enderror">
                             @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-
-                        {{-- ── Contractual only ── --}}
-                        <div class="col-md-6 col-lg-3 js-contract-only" hidden>
-                            <label class="ep-label" for="contract_rate">{{ __('Contract Amount') }} <span class="ep-req">*</span></label>
-                            <input type="number" step="0.01" min="0" name="contract_rate" id="contract_rate"
-                                   class="form-control @error('contract_rate') is-invalid @enderror"
-                                   value="{{ old('contract_rate', $employee->contract_rate) }}"
-                                   placeholder="300000.00">
-                            @error('contract_rate')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <span class="ep-hint">{{ __('Total for the whole project.') }}</span>
-                        </div>
-
-                        <div class="col-md-6 col-lg-3 js-contract-only" hidden>
-                            <label class="ep-label" for="end_of_contract">{{ __('End of Contract') }} <span class="ep-req">*</span></label>
-                            <input type="date" id="end_of_contract" name="end_of_contract"
-                                   value="{{ old('end_of_contract', $employee->end_of_contract?->format('Y-m-d')) }}"
-                                   class="form-control @error('end_of_contract') is-invalid @enderror">
-                            @error('end_of_contract')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-
-                        <div class="col-12 js-contract-only" hidden>
-                            <p class="ep-note">
-                                <i class="fas fa-circle-info"></i>
-                                Contractual workers are settled against their contract, so this payroll
-                                computes no wages for them. Their attendance and hours are still recorded.
-                            </p>
                         </div>
 
                         {{-- Site Assignment --}}
@@ -308,7 +264,7 @@
 })();
 </script>
 
-@include('employees._employment_type_toggle')
+@include('employees._position_from_labor')
 @include('employees._register_progress')
 
 @endsection

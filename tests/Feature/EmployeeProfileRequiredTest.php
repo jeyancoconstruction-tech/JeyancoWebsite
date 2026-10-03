@@ -12,8 +12,9 @@ use Tests\TestCase;
 
 /**
  * On Register Employee and Edit Employee only Employment & Pay is required
- * (Michael, 2026-09-30): the first and last name, the employee type, the
- * labor type and rate (or the contract), the position and the site. The
+ * (Michael, 2026-09-30): the first and last name, the labor type and rate,
+ * the position and the site. (There was an employee type too, and a
+ * contract in place of the labor type; Contractual went on 2026-10-03.) The
  * middle name and the date hired are optional (the same day). Personal
  * Information, Address, Contact Information and Government IDs may be left
  * blank and filled in later. Until then the first three were required too.
@@ -67,7 +68,6 @@ class EmployeeProfileRequiredTest extends TestCase
             'last_name'       => 'Dela Cruz',
             'job_title'       => 'Mason',
             'date_hired'      => '2026-01-15',
-            'employment_type' => Employee::EMPLOYMENT_DAILY,
             'labor_type_id'   => $this->laborType()->id,
             'rate_per_hour'   => 100,
             'site_id'         => $this->site()->id,
@@ -164,10 +164,54 @@ class EmployeeProfileRequiredTest extends TestCase
         foreach (['middle_name', 'date_hired', 'birth_date', 'gender', 'phone', 'emergency_contact_name', 'address_province', 'address_postal'] as $field) {
             $this->assertDoesNotMatchRegularExpression('/<(input|select)[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is optional");
         }
-        foreach (['first_name', 'last_name', 'job_title'] as $field) {
+        foreach (['first_name', 'last_name', 'job_title', 'rate_per_hour'] as $field) {
             $this->assertMatchesRegularExpression('/<input[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is required");
         }
+        foreach (['labor_type_id', 'site_id'] as $field) {
+            $this->assertMatchesRegularExpression('/<select[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is required");
+        }
         $this->assertStringContainsString('Only Employment &amp; Pay is required', $html);
+    }
+
+    /**
+     * Contractual was removed (Michael, 2026-10-03). Neither form offers an
+     * employee type or a contract any more, and the labor type and rate are
+     * marked required in the markup itself, since no script switches them.
+     */
+    public function test_neither_form_offers_an_employee_type_or_a_contract(): void
+    {
+        $employee = Employee::create([
+            'name'          => 'Ana Reyes',
+            'position'      => 'Mason',
+            'labor_type_id' => $this->laborType()->id,
+            'rate_per_hour' => 100,
+            'status'        => Employee::STATUS_ACTIVE,
+        ]);
+
+        foreach ([route('employees.create'), route('employees.edit', $employee->id)] as $url) {
+            $html = $this->actingAs($this->admin())->get($url)->assertOk()->getContent();
+
+            foreach (['name="employment_type"', 'name="contract_rate"', 'name="end_of_contract"', 'Contractual', 'Employee Type'] as $gone) {
+                $this->assertStringNotContainsString($gone, $html, "{$url} still shows {$gone}");
+            }
+            $this->assertMatchesRegularExpression('/<select[^>]*name="labor_type_id"[^>]*\srequired[\s>]/', $html);
+        }
+    }
+
+    /** A post that still says contractual is held to the labor type and rate. */
+    public function test_a_contractual_post_still_needs_a_labor_type_and_rate(): void
+    {
+        $this->actingAs($this->admin())
+             ->post(route('employees.store'), $this->completeProfile([
+                 'employment_type' => 'contractual',
+                 'labor_type_id'   => null,
+                 'rate_per_hour'   => null,
+                 'contract_rate'   => 300000,
+                 'end_of_contract' => '2026-12-31',
+             ]))
+             ->assertSessionHasErrors(['labor_type_id', 'rate_per_hour']);
+
+        $this->assertSame(0, Employee::count());
     }
 
     /**
@@ -188,7 +232,6 @@ class EmployeeProfileRequiredTest extends TestCase
         $this->actingAs($this->admin())
              ->put(route('employees.update', $employee->id), [
                  'profile_form'  => 1,
-                 'employment_type' => Employee::EMPLOYMENT_DAILY,
                  'first_name'    => 'Blank',
                  'middle_name'   => 'X',
                  'last_name'     => 'Profile',
@@ -253,32 +296,7 @@ class EmployeeProfileRequiredTest extends TestCase
     }
 
     /**
-     * A contractual worker has no labor type or hourly rate, and the form
-     * hides both — so the contract fields take their place as required.
-     */
-    public function test_a_contractual_worker_must_supply_the_contract_instead(): void
-    {
-        $contractual = $this->completeProfile([
-            'employment_type' => Employee::EMPLOYMENT_CONTRACTUAL,
-            'labor_type_id'   => null,
-            'rate_per_hour'   => null,
-            'contract_rate'   => 300000,
-            'end_of_contract' => '2026-12-31',
-        ]);
-
-        $this->actingAs($this->admin())
-             ->post(route('employees.store'), $contractual)
-             ->assertSessionHasNoErrors();
-
-        foreach (['contract_rate', 'end_of_contract'] as $field) {
-            $this->actingAs($this->admin())
-                 ->post(route('employees.store'), array_merge($contractual, [$field => '']))
-                 ->assertSessionHasErrors($field);
-        }
-    }
-
-    /**
-     * Position follows Labor Type for a regular worker. The form fills it and
+     * Position follows Labor Type. The form fills it and
      * locks it, so this is about the other door: a post that went around the
      * browser must not be able to store a title the labor type denies.
      */
@@ -294,23 +312,6 @@ class EmployeeProfileRequiredTest extends TestCase
 
         $this->assertSame('Mason', $employee->job_title);
         $this->assertSame('Mason', $employee->position, 'position and job title must agree');
-    }
-
-    /** A contractual worker has no labor type, so their title is their own. */
-    public function test_a_contractual_workers_position_is_left_as_typed(): void
-    {
-        $this->actingAs($this->admin())
-             ->post(route('employees.store'), $this->completeProfile([
-                 'employment_type' => Employee::EMPLOYMENT_CONTRACTUAL,
-                 'labor_type_id'   => null,
-                 'rate_per_hour'   => null,
-                 'contract_rate'   => 300000,
-                 'end_of_contract' => '2026-12-31',
-                 'job_title'       => 'Project Foreman',
-             ]))
-             ->assertSessionHasNoErrors();
-
-        $this->assertSame('Project Foreman', Employee::firstOrFail()->job_title);
     }
 
     /**

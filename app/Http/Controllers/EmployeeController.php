@@ -182,7 +182,7 @@ class EmployeeController extends Controller
 
         $filename = 'employee-directory_' . now()->format('Y-m-d') . '.csv';
         $columns  = ['Employee ID', 'Name', 'Site', 'Position / Labor Type',
-                     'Employment Type', 'Rate per Hour', 'Vale Balance', 'Fingerprint'];
+                     'Rate per Hour', 'Vale Balance', 'Fingerprint'];
 
         return response()->streamDownload(function () use ($employees, $columns) {
             $out = fopen('php://output', 'w');
@@ -202,7 +202,6 @@ class EmployeeController extends Controller
                     $e->name,
                     $e->site->name ?? '',
                     $e->position ?: ($e->laborType->name ?? ''),
-                    $e->employment_label,
                     number_format((float) $e->rate_per_hour, 2, '.', ''),
                     number_format((float) ($e->vale ?? 0), 2, '.', ''),
                     $e->fingerprint_id ? 'Enrolled (#' . $e->fingerprint_id . ')' : 'Not enrolled',
@@ -299,11 +298,8 @@ class EmployeeController extends Controller
         }
 
         $employee = Employee::create(Employee::withoutMissingColumns(array_merge([
-            // A contractual worker has no labor type to take a position from,
-            // so their job title stands in.
-            'position'       => $laborType?->name ?: ($request->input('job_title') ?: 'Contractual'),
-            'employment_type' => $request->input('employment_type', Employee::EMPLOYMENT_DAILY),
-            'contract_rate'  => $request->filled('contract_rate') ? (float) $request->contract_rate : null,
+            'position'       => $laborType?->name ?: $request->input('job_title'),
+            'employment_type' => Employee::EMPLOYMENT_DAILY,
             'rate_per_hour'  => $request->rate_per_hour ?: 0,
             'labor_type_id'  => $request->labor_type_id ?: null,
             'shift_id'       => $request->shift_id ?: Shift::defaultForNewHire(),
@@ -373,8 +369,6 @@ class EmployeeController extends Controller
 
         $updateData = array_merge([
             'position'       => $laborType?->name ?: ($request->input('job_title') ?: $employee->position),
-            'employment_type' => $request->input('employment_type', $employee->employment_type ?: Employee::EMPLOYMENT_DAILY),
-            'contract_rate'  => $request->filled('contract_rate') ? (float) $request->contract_rate : $employee->contract_rate,
             'rate_per_hour'  => $request->rate_per_hour ?: $employee->rate_per_hour,
             'labor_type_id'  => $request->labor_type_id ?: $employee->labor_type_id,
             'shift_id'       => $request->has('shift_id') ? ($request->shift_id ?: null) : $employee->shift_id,
@@ -400,25 +394,18 @@ class EmployeeController extends Controller
     // ── Worker profile (Register Employee form) ───────────────────────────────
 
     /**
-     * Rules shared by the forms that can post name parts and a contract.
+     * Rules shared by the forms that can post name parts.
      *
      * Two forms reach store()/update(): the full page, which posts
      * first/middle/last, and the quick-edit modal on Register & Manage, which
      * posts a single `name`. Either is acceptable, neither is required on its
      * own — hence required_without on both sides.
      *
-     * Labor type and hourly rate are required only for a worker this payroll
-     * actually pays. A contractual worker has neither: they are settled
-     * against a contract total, so the form hides both fields and there is
-     * nothing to validate.
+     * Every worker is paid by the day off a labor type, so both forms must
+     * name one and the rate that goes with it.
      */
     private function identityRules(Request $request): array
     {
-        $contractual = $request->input('employment_type') === Employee::EMPLOYMENT_CONTRACTUAL;
-        // See profileRules(): only the two full forms are held to filling
-        // everything in, and they are the ones that post this flag.
-        $full = $request->boolean('profile_form');
-
         return [
             'name'        => 'required_without:first_name|nullable|string|max:255',
             'first_name'  => 'required_without:name|nullable|string|max:100',
@@ -427,25 +414,13 @@ class EmployeeController extends Controller
             'last_name'   => 'required_with:first_name|nullable|string|max:100',
             'name_suffix' => ['nullable', Rule::in(Employee::SUFFIXES)],
 
-            'labor_type_id' => $contractual
-                ? 'nullable|exists:labor_types,id'
-                : 'required|exists:labor_types,id',
-            'rate_per_hour' => $contractual
-                ? 'nullable|numeric|min:0'
-                : 'required|numeric|min:0.01',
-
-            'employment_type' => [$full ? 'required' : 'nullable', Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
-
-            // Only demanded of a contractual worker, and only on a full form.
-            // The employment-type toggle disables whichever pay group is off
-            // screen, so a Regular worker never posts these at all.
-            'contract_rate'   => [$full && $contractual ? 'required' : 'nullable', 'numeric', 'min:0'],
-            'end_of_contract' => [$full && $contractual ? 'required' : 'nullable', 'date'],
+            'labor_type_id' => 'required|exists:labor_types,id',
+            'rate_per_hour' => 'required|numeric|min:0.01',
         ];
     }
 
     /**
-     * Name, name parts, and the pay fields that depend on employment type.
+     * Name and name parts.
      *
      * `name` stays the single value the rest of the app reads, so it is
      * composed from the parts whenever they are posted and left untouched
@@ -453,9 +428,6 @@ class EmployeeController extends Controller
      */
     private function identityData(Request $request, ?Employee $employee = null): array
     {
-        $contractual = $request->input('employment_type', $employee?->employment_type)
-            === Employee::EMPLOYMENT_CONTRACTUAL;
-
         $data = [];
 
         if ($request->filled('first_name')) {
@@ -471,27 +443,6 @@ class EmployeeController extends Controller
             );
         } elseif ($request->filled('name')) {
             $data['name'] = trim($request->input('name'));
-        }
-
-        if ($contractual) {
-            // No labor type and no hourly rate: the form does not offer them,
-            // and payroll does not pay this worker by the hour.
-            $data['labor_type_id'] = null;
-            $data['rate_per_hour'] = 0;
-
-            // Only what this form actually submitted. The quick-edit modal on
-            // Register & Manage posts neither, and must not clear a worker's
-            // agreed contract as a side effect of correcting something else.
-            if ($request->has('contract_rate')) {
-                $data['contract_rate'] = $request->filled('contract_rate') ? (float) $request->contract_rate : null;
-            }
-            if ($request->has('end_of_contract')) {
-                $data['end_of_contract'] = $request->input('end_of_contract') ?: null;
-            }
-        } elseif ($request->has('employment_type')) {
-            // Switched to Regular on a form that offers the choice — the
-            // contract no longer applies.
-            $data['end_of_contract'] = null;
         }
 
         return $data;
@@ -636,7 +587,7 @@ class EmployeeController extends Controller
             $data['skills'] = $skills ?: null;
         }
 
-        // Last word on Position for a regular worker: it is their labor type.
+        // Last word on Position: it is the worker's labor type.
         // `position`, the column payroll actually reads, is derived from the
         // labor type on save whatever the Position box said, so leaving the two
         // free to disagree only ever produced a record that contradicted
@@ -646,8 +597,7 @@ class EmployeeController extends Controller
         // Held only against the full forms, and only when a labor type came
         // with them — the quick-edit modal has no Position field to keep in
         // step, and must not have one invented for it.
-        $contractual = $request->input('employment_type') === Employee::EMPLOYMENT_CONTRACTUAL;
-        if ($laborType && ! $contractual && $request->boolean('profile_form')) {
+        if ($laborType && $request->boolean('profile_form')) {
             $data['job_title'] = $laborType->name;
         }
 
@@ -747,8 +697,6 @@ class EmployeeController extends Controller
             'last_name'      => 'required_with:first_name|nullable|string|max:100',
             'rate_per_hour'  => 'required|numeric|min:0.01',
             'labor_type_id'  => 'required|exists:labor_types,id',
-            'employment_type' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(Employee::EMPLOYMENT_TYPES))],
-            'contract_rate'   => ['nullable', 'numeric', 'min:0'],
             'site_id'        => 'nullable|exists:sites,id',
             'shift_id'       => 'nullable|exists:shifts,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
@@ -786,8 +734,6 @@ class EmployeeController extends Controller
 
         $data = $named + [
             'position'       => $laborType->name,
-            'employment_type' => $request->input('employment_type', $employee->employment_type ?: Employee::EMPLOYMENT_DAILY),
-            'contract_rate'  => $request->filled('contract_rate') ? (float) $request->contract_rate : $employee->contract_rate,
             'rate_per_hour'  => $request->rate_per_hour,
             'labor_type_id'  => $request->labor_type_id,
             'site_id'        => $request->site_id ?: null,

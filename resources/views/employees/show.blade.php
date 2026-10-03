@@ -57,11 +57,6 @@
                         <span class="ep-value {{ $employee->last_name ? '' : 'is-empty' }}">{{ $employee->last_name ?: __('Not recorded') }}</span>
                     </div>
                     <div class="col-md-6 col-lg-3">
-                        <span class="ep-label">{{ __('Employee Type') }}</span>
-                        <span class="ep-value">{{ $employee->employment_label }}</span>
-                    </div>
-
-                    <div class="col-md-6 col-lg-3">
                         <span class="ep-label">{{ __('Labor Type') }}</span>
                         <span class="ep-value {{ $employee->laborType ? '' : 'is-empty' }}">{{ $employee->laborType->name ?? '—' }}</span>
                     </div>
@@ -79,24 +74,10 @@
                             @endif
                         </span>
                     </div>
-                    @if($employee->isContractual())
-                        <div class="col-md-6 col-lg-3">
-                            <span class="ep-label">{{ __('Contract Amount') }}</span>
-                            <span class="ep-value ep-mono">₱{{ number_format($employee->contract_rate ?? 0, 2) }}
-                                <span class="ep-aside">{{ __('whole project') }}</span></span>
-                        </div>
-                        <div class="col-md-6 col-lg-3">
-                            <span class="ep-label">{{ __('End of Contract') }}</span>
-                            <span class="ep-value {{ $employee->end_of_contract ? '' : 'is-empty' }}">
-                                {{ $employee->end_of_contract?->format('M d, Y') ?: __('Not recorded') }}
-                            </span>
-                        </div>
-                    @else
-                        <div class="col-md-6 col-lg-3">
-                            <span class="ep-label">{{ __('Rate Per Hour') }}</span>
-                            <span class="ep-value ep-mono">₱{{ number_format($employee->rate_per_hour, 2) }}</span>
-                        </div>
-                    @endif
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Rate Per Hour') }}</span>
+                        <span class="ep-value ep-mono">₱{{ number_format($employee->rate_per_hour, 2) }}</span>
+                    </div>
                     <div class="col-md-6 col-lg-3">
                         <span class="ep-label">{{ __('Position / Job Title') }}</span>
                         {{-- The form posts job_title; the controller also derives

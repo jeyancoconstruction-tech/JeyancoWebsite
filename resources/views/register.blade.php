@@ -508,7 +508,6 @@ tr.rmx-row-card { cursor: pointer; }
                                 'id'       => '#' . str_pad($e->id, 4, '0', STR_PAD_LEFT),
                                 'name'     => $e->name,
                                 'role'     => $e->laborType?->name ?: ($e->job_title ?: $e->position),
-                                'type'     => $e->employment_label,
                                 'site'     => $e->site?->name,
                                 'rate'     => '₱' . number_format((float) $e->rate_per_hour, 2) . ' / hr',
                                 'daily'    => $e->laborType ? '₱' . number_format((float) $e->laborType->daily_rate, 2) . ' / day' : null,
@@ -525,8 +524,6 @@ tr.rmx-row-card { cursor: pointer; }
                                 'nation'   => $e->nationality,
                                 'blood'    => $e->blood_type,
                                 'shift'    => $e->shift ? $e->shift->name . ' · ' . \Carbon\Carbon::parse($e->shift->starts_at)->format('g:i A') : null,
-                                'contract' => $e->employment_type === 'contractual' && $e->contract_rate ? '₱' . number_format((float) $e->contract_rate, 2) : null,
-                                'ends'     => $e->end_of_contract?->format('M j, Y'),
                                 'ice'      => collect([$e->emergency_contact_name, $e->emergency_contact_relation ? '(' . $e->emergency_contact_relation . ')' : null])->filter()->implode(' ') ?: null,
                                 'icePhone' => $e->emergency_contact_phone,
                                 'edit'     => route('employees.edit', $e->id),
@@ -1616,7 +1613,6 @@ tr.rmx-row-card { cursor: pointer; }
         $('wmTitle').textContent = d.name;
         $('wmSub').innerHTML = (d.id ? `<span class="wm-id">${esc(d.id)}</span>` : '') + esc([d.role, d.site].filter(Boolean).join(' · '));
         $('wmChips').innerHTML = [
-            d.type ? `<span class="wm-chip">${esc(d.type)}</span>` : '',
             d.fp ? `<span class="wm-chip ok"><i class="fas fa-fingerprint"></i>${esc(d.fp)}</span>`
                  : `<span class="wm-chip warn"><i class="fas fa-fingerprint"></i>No fingerprint yet</span>`,
         ].join('');
@@ -1634,8 +1630,7 @@ tr.rmx-row-card { cursor: pointer; }
             group('In case of emergency',
                 fact('Contact', d.ice) + fact('Phone', d.icePhone)) +
             group('Work',
-                fact('Hired', d.hired) + fact('Shift', d.shift) +
-                (d.contract ? fact('Contract', d.contract) + fact('Ends', d.ends) : ''));
+                fact('Hired', d.hired) + fact('Shift', d.shift));
         $('wmProfile').href = d.profile;
         $('wmEdit').href = d.edit;
         modal.show();

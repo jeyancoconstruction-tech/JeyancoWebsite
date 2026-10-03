@@ -10,13 +10,12 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * A worker is split by how they are PAID, not by how they clock in. A
- * contractual worker is settled against their contract total and never lands
- * on a payslip; only their attendance is tracked.
+ * The worker's profile page (View Details).
  *
- * The Employee Directory that showed the split as tabs was retired for
- * Register & Manage. What is left here is the worker's profile page, which
- * still labels the two apart, and the payroll rule behind the split.
+ * The file is named for the Regular / Contractual split the old Employee
+ * Directory showed as tabs. The directory was retired, and Contractual was
+ * removed on 2026-10-03 (Michael): every worker is paid by the day now, so
+ * the profile shows no employee type and no contract.
  */
 class EmployeeDirectorySplitTest extends TestCase
 {
@@ -47,20 +46,6 @@ class EmployeeDirectorySplitTest extends TestCase
             'employment_type' => Employee::EMPLOYMENT_DAILY,
             'labor_type_id'   => $labor->id,
             'rate_per_hour'   => 100,
-        ]);
-    }
-
-    private function contractual(string $name, float $contractTotal = 50000): Employee
-    {
-        return Employee::create([
-            'name'            => $name,
-            'status'          => Employee::STATUS_ACTIVE,
-            'employment_type' => Employee::EMPLOYMENT_CONTRACTUAL,
-            'contract_rate'   => $contractTotal,
-            // The column is NOT NULL and the form leaves the hourly rate blank
-            // for contract work, so a real contractual row stores zero here.
-            // That zero is exactly what the directory must not print as a rate.
-            'rate_per_hour'   => 0,
         ]);
     }
 
@@ -146,27 +131,42 @@ class EmployeeDirectorySplitTest extends TestCase
         $this->assertStringContainsString('Not issued yet', $html);
     }
 
-    public function test_a_contract_amount_is_labelled_as_the_project_total_not_a_daily_rate(): void
+    /** Contractual is gone: the profile names no employee type or contract. */
+    public function test_the_profile_shows_no_employee_type_or_contract(): void
     {
-        $employee = $this->contractual('Carlo Diaz', 50000);
+        $employee = $this->regular('Ana Reyes');
 
-        // The form asks for "Contract Amount — Total for the whole project".
-        // The details page used to print that same number as "kada araw",
-        // which reads as ₱50,000 a day against a ₱50,000 contract.
         $this->actingAs($this->admin())
             ->get(route('employees.show', $employee->id))
             ->assertOk()
-            ->assertSee('Contract Amount')
-            ->assertSee('whole project')
-            ->assertDontSee('kada araw')
-            ->assertDontSee('per day');
+            ->assertSee('Rate Per Hour')
+            ->assertDontSee('Employee Type')
+            ->assertDontSee('Contractual')
+            ->assertDontSee('Contract Amount')
+            ->assertDontSee('End of Contract');
     }
 
-    public function test_the_payroll_rule_behind_the_split_still_holds(): void
+    /**
+     * A row still marked contractual from before the removal is an ordinary
+     * worker now: paid off its labor type like everybody else.
+     */
+    public function test_a_leftover_contractual_row_is_paid_like_everybody(): void
     {
-        // The whole reason the directory separates them: contract work earns
-        // nothing through payroll.
-        $this->assertTrue($this->contractual('Carlo Diaz')->isExcludedFromPayroll());
-        $this->assertFalse($this->regular('Ana Reyes')->isExcludedFromPayroll());
+        $employee = $this->regular('Old Contract');
+        $employee->forceFill(['employment_type' => 'contractual', 'contract_rate' => 50000])->save();
+
+        \App\Models\PayrollRate::create(array_merge(\App\Models\PayrollRate::DEFAULTS, [
+            'effective_from' => '2026-01-01', 'created_by' => 'test',
+        ]));
+        \App\Models\Attendance::create([
+            'employee_id' => $employee->id, 'date' => '2026-09-09', 'session' => 'AM',
+            'time_in' => '2026-09-09 08:00:00', 'time_out' => '2026-09-09 17:00:00',
+        ]);
+
+        $row = collect(app(\App\Services\PayrollService::class)
+            ->computeForRange('2026-09-07', '2026-09-13')['employees'])
+            ->firstWhere('employee_id', $employee->id);
+
+        $this->assertGreaterThan(0, $row['totals']['gross'] ?? 0, 'the day is paid');
     }
 }

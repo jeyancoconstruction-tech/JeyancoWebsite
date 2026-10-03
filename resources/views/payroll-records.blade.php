@@ -1016,8 +1016,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         ].filter(l => l[2] || num(l[1]) !== 0);
     }
     function hourly(s) {
-        // Zero is a real answer — a contractual worker is settled against
-        // their contract — so this tests for a missing figure, not a falsy one.
+        // Tests for a missing figure, not a falsy one: zero is a real answer.
         return (s.rate === undefined || s.rate === null) ? num(s.dailyRate) / PAID_HOURS : num(s.rate);
     }
     function meta(s) {

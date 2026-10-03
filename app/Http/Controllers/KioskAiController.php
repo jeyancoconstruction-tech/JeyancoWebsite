@@ -99,10 +99,6 @@ class KioskAiController extends Controller
                 'id'       => $employee->id,
                 'name'     => $employee->name,
                 'position' => $employee->position ?: ($employee->laborType->name ?? 'Worker'),
-                // Recorded only — the figures below are computed the same way
-                // for daily and contractual workers until that rule is settled.
-                'employment_type'  => $employee->employment_type,
-                'employment_label' => $employee->employment_label,
                 // Where they are posted, per the office record. The kiosk knows
                 // which site it is standing at; only the web knows where this
                 // person was actually assigned, and they are not always the same.
@@ -125,8 +121,6 @@ class KioskAiController extends Controller
                 ),
                 'daily_rate'       => $employee->laborType?->daily_rate !== null
                     ? round((float) $employee->laborType->daily_rate, 2) : null,
-                'contract_rate'    => $employee->contract_rate !== null
-                    ? round((float) $employee->contract_rate, 2) : null,
                 'fingerprint_id'   => $employee->fingerprint_id,
             ],
             'period' => [

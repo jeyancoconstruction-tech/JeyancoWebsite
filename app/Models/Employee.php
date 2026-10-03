@@ -19,24 +19,21 @@ class Employee extends Model
     public const STATUS_ARCHIVED = 'archived';   // left the company, records preserved
     public const STATUS_DELETED  = 'deleted';    // deleted for good: off every list, history kept — see deleteForGood()
 
-    /** Paid for each day actually worked — what every worker is today. */
+    /**
+     * Paid for each day actually worked — what every worker is.
+     *
+     * There used to be a second type, Contractual, settled against a contract
+     * total and left out of payroll. Michael had it removed on 2026-10-03.
+     * The `employment_type`, `contract_rate` and `end_of_contract` columns
+     * stay in the table, but nothing reads or writes them now.
+     */
     public const EMPLOYMENT_DAILY = 'daily';
-
-    /** Engaged on a contract. Attendance is kept, but payroll computes no
-     *  wages or deductions for them — see isExcludedFromPayroll(). */
-    public const EMPLOYMENT_CONTRACTUAL = 'contractual';
-
-    public const EMPLOYMENT_TYPES = [
-        self::EMPLOYMENT_DAILY        => 'Regular',
-        self::EMPLOYMENT_CONTRACTUAL  => 'Contractual',
-    ];
 
     /**
      * Columns the controller writes through identityData() rather than the
-     * generic profile mapping — `name` is composed from the parts, and the
-     * contract end date depends on the employment type.
+     * generic profile mapping — `name` is composed from the parts.
      */
-    public const IDENTITY_FIELDS = ['first_name', 'middle_name', 'last_name', 'name_suffix', 'end_of_contract'];
+    public const IDENTITY_FIELDS = ['first_name', 'middle_name', 'last_name', 'name_suffix'];
 
     /** What may follow the last name. */
     public const SUFFIXES = ['Jr.', 'Sr.', 'II', 'III', 'IV'];
@@ -55,7 +52,7 @@ class Employee extends Model
     public const CIVIL_STATUSES = ['Single', 'Married', 'Widowed', 'Separated'];
 
     protected $fillable = [
-        'name', 'rate_per_hour', 'position', 'employment_type', 'contract_rate', 'project_id', 'labor_type_id', 'shift_id',
+        'name', 'rate_per_hour', 'position', 'employment_type', 'project_id', 'labor_type_id', 'shift_id',
         'site_id', 'kiosk_id', 'status', 'vale', 'fingerprint_id', 'photo', 'archived_at',
         ...self::PROFILE_FIELDS,
         ...self::IDENTITY_FIELDS,
@@ -63,14 +60,12 @@ class Employee extends Model
 
     protected $casts = [
         'rate_per_hour' => 'float',
-        'contract_rate' => 'float',
         'vale'          => 'float',
         'archived_at'   => 'datetime',
         'created_at'    => 'datetime',
         'updated_at'    => 'datetime',
         'birth_date'      => 'date',
         'date_hired'      => 'date',
-        'end_of_contract' => 'date',
         // Stored as JSON so a worker can carry several of each without
         // needing a child table per list.
         'education'       => 'array',
@@ -296,7 +291,7 @@ class Employee extends Model
     public static function withoutMissingColumns(array $attributes): array
     {
         $guarded = array_merge(
-            ['employment_type', 'contract_rate'],
+            ['employment_type'],
             self::PROFILE_FIELDS,
             self::IDENTITY_FIELDS
         );
@@ -347,35 +342,6 @@ class Employee extends Model
     public function getAgeAttribute(): ?int
     {
         return $this->birth_date?->age;
-    }
-
-    /** Human label for the employment type. */
-    public function getEmploymentLabelAttribute(): string
-    {
-        return self::EMPLOYMENT_TYPES[$this->employment_type] ?? self::EMPLOYMENT_TYPES[self::EMPLOYMENT_DAILY];
-    }
-
-    /** True when the worker is engaged on a contract rather than paid per day. */
-    public function isContractual(): bool
-    {
-        return $this->employment_type === self::EMPLOYMENT_CONTRACTUAL;
-    }
-
-    /**
-     * Contractual workers are not paid through this payroll.
-     *
-     * `contract_rate` is the agreed total for the whole project, not a rate per
-     * day, so there is no per-day figure to derive from it — and deriving one
-     * would be dangerous. This used to return `contract_rate` as the pay for
-     * each day present, which meant that once the field held a project total,
-     * a worker earned the entire contract again on every day they clocked in.
-     *
-     * Their attendance is still recorded and their hours still reported; only
-     * the money is left out, to be settled against the contract separately.
-     */
-    public function isExcludedFromPayroll(): bool
-    {
-        return $this->isContractual();
     }
 
     /** The full name, composed from the parts when they are on file. */

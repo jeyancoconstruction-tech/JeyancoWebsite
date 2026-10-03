@@ -5,9 +5,7 @@
      with the name fields.
 
      Display only. It reads the form and changes nothing in it; it counts the
-     fields that are required right now, so a contractual worker's hidden
-     labor type and rate drop out and their contract fields come in, exactly
-     as _employment_type_toggle.blade.php switches them. --}}
+     fields marked required. --}}
 <script>
 (function () {
     const form = document.getElementById('rgxForm');

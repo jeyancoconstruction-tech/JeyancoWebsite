@@ -203,22 +203,4 @@ class PayrollDoleRatesTest extends TestCase
         $this->assertSame(1050.0, round($out['gross'], 2));
         $this->assertSame(0.0, $out['restDayPay']);
     }
-
-    /** A contractual worker is settled against their contract, not here. */
-    public function test_a_contractual_worker_still_earns_nothing(): void
-    {
-        $rec = $this->record('2026-09-06', 10);
-        $rec->employee->update([
-            'employment_type' => Employee::EMPLOYMENT_CONTRACTUAL,
-            'labor_type_id'   => null,
-            'rate_per_hour'   => 0,
-        ]);
-        $rec->load('employee.laborType');
-
-        $cfg = $this->cfg(['holidayTypeMap' => ['2026-09-06' => 'regular']]);
-        $out = $this->compute($rec, $cfg);
-
-        $this->assertSame(0.0, round($out['gross'], 2));
-        $this->assertSame(0.0, $out['holidayPay']);
-    }
 }

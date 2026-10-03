@@ -525,11 +525,11 @@ class PayrollService
      *
      * @return array{sss: float, philhealth: float, pagibig: float, tax: float, total: float}
      */
-    private function leaveDeductions(float $dayRate, float $paidDays, array $rates, bool $onContract): array
+    private function leaveDeductions(float $dayRate, float $paidDays, array $rates): array
     {
         $zero = ['sss' => 0.0, 'philhealth' => 0.0, 'pagibig' => 0.0, 'tax' => 0.0, 'total' => 0.0];
 
-        if ($onContract || $dayRate <= 0 || $paidDays <= 0) {
+        if ($dayRate <= 0 || $paidDays <= 0) {
             return $zero;
         }
 
@@ -562,19 +562,10 @@ class PayrollService
      * it, and the stored hourly rate over a standard day only when there is
      * no labour type at all.
      *
-     * A contractual worker has no day rate at all: they are settled against
-     * their contract, so a day off is worth nothing here, just as a day worked
-     * is. Without this a paid leave reached them at the labour type they used
-     * to have, or the wage floor.
-     *
      * @param  float  $priced  the rate the week already priced a day at, or 0
      */
     private function dayRateOf($employee, array $rates, float $priced = 0.0): float
     {
-        if ($employee->isExcludedFromPayroll()) {
-            return 0.0;
-        }
-
         if ($priced > 0) {
             return $priced;
         }
@@ -755,22 +746,8 @@ class PayrollService
         $rate    = $dailyRate / $paidStandard;
         $ot_rate = $rate * $rates['ot_multiplier'];
 
-        // Contractual workers are settled against their contract, not through
-        // this payroll. Their hours are still measured and reported — the
-        // office wants to see who was on site — but no money is computed for
-        // them here, and no rate is implied. Everything below multiplies out
-        // to zero from these.
-        $onContract = (bool) $employee?->isExcludedFromPayroll();
-
-        if ($onContract) {
-            $rate     = 0.0;
-            $ot_rate  = 0.0;
-            $basicPay = 0.0;
-            $otPay    = 0.0;
-        } else {
-            $basicPay = $regular_hours * $rate;
-            $otPay    = $ot_hours * $ot_rate;
-        }
+        $basicPay = $regular_hours * $rate;
+        $otPay    = $ot_hours * $ot_rate;
 
         // What the day would pay if it were an ordinary working day. Everything
         // above this is premium, and is reported separately on the payslip.
@@ -804,8 +781,7 @@ class PayrollService
         // computed once and then attributed, rather than added up from parts
         // that would double-count. The holiday is named as the cause when there
         // is one, because that is the rate being applied.
-        $doleGross = $onContract ? 0.0
-            : ($regular_hours * $rate * $hMultiplier) + ($ot_hours * $rate * $otFactor);
+        $doleGross = ($regular_hours * $rate * $hMultiplier) + ($ot_hours * $rate * $otFactor);
         $premium   = $doleGross - $dayEarnings;
 
         $holidayPay = $isHoliday ? $premium : 0.0;
@@ -815,18 +791,16 @@ class PayrollService
         // earns, so an overtime hour at 1 AM on a holiday is uplifted from its
         // own rate rather than from the plain one. It stacks with everything
         // above rather than replacing any of it.
-        $nightDiffPay = $onContract ? 0.0 : (
+        $nightDiffPay = (
             ($nightRegularHours * $rate * $hMultiplier) + ($nightOtHours * $rate * $otFactor)
         ) * ($rates['night_diff_multiplier'] - 1);
 
         $gross       = $dayEarnings + $holidayPay + $restDayPay + $nightDiffPay;
 
-        // Statutory deductions are computed on GROSS pay (not the daily rate),
-        // and do not apply to contract work. Vale and manual deductions still
-        // do — those are advances and adjustments, not statutory contributions.
-        $sssDeduction        = $onContract ? 0.0 : ($gross * $rates['sss_rate']) / 100;
-        $philhealthDeduction = $onContract ? 0.0 : ($gross * $rates['philhealth_rate']) / 100;
-        $pagibigDeduction    = $onContract ? 0.0 : ($gross * $rates['pagibig_rate']) / 100;
+        // Statutory deductions are computed on GROSS pay (not the daily rate).
+        $sssDeduction        = ($gross * $rates['sss_rate']) / 100;
+        $philhealthDeduction = ($gross * $rates['philhealth_rate']) / 100;
+        $pagibigDeduction    = ($gross * $rates['pagibig_rate']) / 100;
         $contributions       = $sssDeduction + $philhealthDeduction + $pagibigDeduction;
 
         // Withholding tax is not a rate anyone sets: it is the BIR graduated
@@ -837,17 +811,14 @@ class PayrollService
         // Whether to withhold at all is a decision, and it is dated like the
         // rest: switching it off does not go back and un-withhold a period
         // already paid and already remitted.
-        $withholdingTax = ($onContract || ! ($rates['withholding_tax'] ?? true))
+        $withholdingTax = ! ($rates['withholding_tax'] ?? true)
             ? 0.0
             : $this->withholdingTaxOn($gross - $contributions);
 
         $autoDeductions = $contributions + $withholdingTax;
 
-        // An excluded worker earns nothing here, so deducting an advance from
-        // it would report a negative net for someone this payroll does not pay.
-        // Advances against a contract are settled with the contract.
-        $vale             = $onContract ? 0 : (is_numeric($rec->vale) ? $rec->vale : 0);
-        $manualDeductions = $onContract ? 0 : (is_numeric($rec->deductions) ? $rec->deductions : 0);
+        $vale             = is_numeric($rec->vale) ? $rec->vale : 0;
+        $manualDeductions = is_numeric($rec->deductions) ? $rec->deductions : 0;
 
         // A vale is a loan against wages, and taking all of it can send a
         // worker home with nothing. The ceiling caps what one period may
@@ -1249,10 +1220,7 @@ class PayrollService
                     // withheld on exactly as a day worked is, so the leave
                     // carries its own share of SSS, PhilHealth, Pag-IBIG and
                     // tax rather than reaching the worker whole.
-                    $leaveDed = $this->leaveDeductions(
-                        $leaveRate, $paidLeaveDays, $weekRates,
-                        (bool) $employee->isExcludedFromPayroll()
-                    );
+                    $leaveDed = $this->leaveDeductions($leaveRate, $paidLeaveDays, $weekRates);
 
                     $sumSss     += $leaveDed['sss'];
                     $sumPhil    += $leaveDed['philhealth'];
@@ -1371,10 +1339,7 @@ class PayrollService
 
                 // The same contributions a worked week would carry: the week
                 // pays them, so the week deducts on it.
-                $ded = $this->leaveDeductions(
-                    $dayRate, $paidDays, $weekRates,
-                    (bool) $onLeave->isExcludedFromPayroll()
-                );
+                $ded = $this->leaveDeductions($dayRate, $paidDays, $weekRates);
 
                 // A cash advance is collected from a week of leave the same as
                 // from a week worked. It was not: this row carried the advance
@@ -1612,7 +1577,7 @@ class PayrollService
         $paid  = $filed->is_paid ? $days : 0.0;
         $pay   = round($paid * $rate, 2);
 
-        $ded = $this->leaveDeductions($rate, $paid, $rates, (bool) $employee->isExcludedFromPayroll());
+        $ded = $this->leaveDeductions($rate, $paid, $rates);
 
         // The hourly the day rate works out at over this shift. Zero would be
         // a lie the receipt repeats: it reads the hourly off whichever row it

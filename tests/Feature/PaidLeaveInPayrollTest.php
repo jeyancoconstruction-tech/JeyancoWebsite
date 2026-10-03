@@ -334,49 +334,6 @@ class PaidLeaveInPayrollTest extends TestCase
         $this->assertLessThan(2400.0, $t['net']);
     }
 
-    /** Contract workers are outside the statutory scheme, on leave as at work. */
-    public function test_a_contract_worker_on_leave_contributes_nothing(): void
-    {
-        $e = $this->worker(['2026-09-10'], 'On Contract');
-        $e->forceFill(['employment_type' => Employee::EMPLOYMENT_CONTRACTUAL])->save();
-
-        $before = $this->totals($e, ...self::WEEK);
-        $this->leave($e, '2026-09-08', '2026-09-09');
-        $t = $this->totals($e, ...self::WEEK);
-
-        $this->assertEqualsWithDelta($before['totalDeductions'], $t['totalDeductions'], 0.001);
-    }
-
-    /**
-     * Nor are they paid for it. The leave was credited at the labour type
-     * they kept, so a contract worker this payroll pays nothing for a day
-     * worked was paid in full for a day off.
-     */
-    public function test_a_contract_worker_on_leave_is_paid_nothing_here(): void
-    {
-        $e = $this->worker(['2026-09-10'], 'On Contract Pay');
-        $e->forceFill(['employment_type' => Employee::EMPLOYMENT_CONTRACTUAL])->save();
-
-        $this->leave($e, '2026-09-08', '2026-09-09');
-        $t = $this->totals($e, ...self::WEEK);
-
-        $this->assertEqualsWithDelta(0.0, $t['gross'], 0.001);
-        $this->assertEqualsWithDelta(0.0, $t['net'], 0.001);
-    }
-
-    /** A week of nothing but leave takes the other road, and must agree. */
-    public function test_a_contract_worker_on_leave_all_week_is_paid_nothing_here(): void
-    {
-        $e = $this->worker([], 'On Contract Away');
-        $e->forceFill(['employment_type' => Employee::EMPLOYMENT_CONTRACTUAL])->save();
-
-        $this->leave($e, '2026-09-07', '2026-09-11');
-        $t = $this->totals($e, ...self::WEEK);
-
-        $this->assertEqualsWithDelta(0.0, $t['gross'] ?? 0.0, 0.001);
-        $this->assertEqualsWithDelta(0.0, $t['net'] ?? 0.0, 0.001);
-    }
-
     // ── A week that is nothing but leave ─────────────────────────────────
 
     /**

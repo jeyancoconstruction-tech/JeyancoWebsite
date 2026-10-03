@@ -206,21 +206,6 @@ class PayrollDeductionsTest extends TestCase
         $this->assertSame(222.45, round($out['withholdingTax'], 2));
     }
 
-    public function test_a_contractual_worker_is_not_deducted_from(): void
-    {
-        $this->rate('2026-01-01', ['sss_rate' => 5.00]);
-
-        $rec = $this->record('2026-03-04', 2000);
-        $rec->employee->update(['employment_type' => Employee::EMPLOYMENT_CONTRACTUAL]);
-        $rec->load('employee.laborType');
-
-        $out = $this->compute($rec);
-
-        $this->assertSame(0.0, round($out['gross'], 2));
-        $this->assertSame(0.0, round($out['sssDeduction'], 2));
-        $this->assertSame(0.0, round($out['withholdingTax'], 2));
-    }
-
     public function test_a_zero_floor_is_no_floor(): void
     {
         // The opening row is seeded from a settings table whose daily_rate

@@ -305,8 +305,6 @@ class KioskController extends Controller
                 'id'               => $e->id,
                 'name'             => $e->name,
                 'position'         => $e->position ?: ($e->laborType->name ?? 'Worker'),
-                'employment_type'  => $e->employment_type,
-                'employment_label' => $e->employment_label,
                 'shift'            => $this->shiftPayload($e),
                 'fingerprint_id'   => $e->fingerprint_id,
                 'enrolled'         => $enrolled,

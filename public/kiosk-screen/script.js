@@ -106,7 +106,7 @@ const I18N = {
         'enr.s1': 'Touch', 'enr.s2': 'Lift', 'enr.s3': 'Again', 'enr.s4': 'Done', 'enr.start': 'START SCAN',
         'enr.workers': 'WORKERS AT THIS SITE', 'enr.nofinger': 'No fingerprint yet', 'enr.hasfinger': 'Fingerprint on file',
         'enr.loading': 'Loading the list…',
-        'enr.note': 'New name? Add it in the web system first — position, rate and Arawan/Contractual are set there. It appears here on its own.',
+        'enr.note': 'New name? Add it in the web system first — position and rate are set there. It appears here on its own.',
         'enr.empty': 'No workers at this site yet.', 'enr.emptysub': 'Add them in the web system first.',
         'enr.failed': 'Could not load the list.', 'enr.new': 'NEW', 'enr.hasfp': 'HAS FINGERPRINT', 'enr.needsfp': 'NEEDS FINGERPRINT',
         'enr.alldone': 'Everyone here has a fingerprint.', 'enr.alldonesub': 'To enrol a finger again, clear it on the web first (Employees → Edit).',
@@ -253,7 +253,7 @@ const I18N = {
         'enr.s1': 'Dampi', 'enr.s2': 'Alis', 'enr.s3': 'Ulit', 'enr.s4': 'Tapos', 'enr.start': 'SIMULAN ANG SCAN',
         'enr.workers': 'MGA MANGGAGAWA DITO', 'enr.nofinger': 'Wala pang daliri', 'enr.hasfinger': 'May daliri na',
         'enr.loading': 'Kinukuha ang listahan…',
-        'enr.note': 'Bagong pangalan? Idagdag muna ito sa web system — doon inilalagay ang posisyon, rate, at kung Arawan o Contractual. Kusang lalabas dito.',
+        'enr.note': 'Bagong pangalan? Idagdag muna ito sa web system — doon inilalagay ang posisyon at rate. Kusang lalabas dito.',
         'enr.empty': 'Wala pang manggagawa sa site na ito.', 'enr.emptysub': 'Idagdag muna sila sa web system.',
         'enr.failed': 'Hindi makuha ang listahan.', 'enr.new': 'BAGO', 'enr.hasfp': 'MAY DALIRI NA', 'enr.needsfp': 'WALA PANG DALIRI',
         'enr.alldone': 'May daliri na ang lahat dito.', 'enr.alldonesub': 'Para kumuha ulit ng daliri, burahin muna ito sa web (Employees → Edit).',
@@ -1257,7 +1257,7 @@ function renderRoster() {
             <div class="roster-main">
                 <div class="roster-name">${escapeHtml(e.name)}
                     ${isNew ? `<span class="rnew">${escapeHtml(t('enr.new'))}</span>` : ''}</div>
-                <div class="roster-sub">${escapeHtml(e.position || t('worker'))} &middot; ${escapeHtml(e.employment_label || '')}${shift}</div>
+                <div class="roster-sub">${escapeHtml(e.position || t('worker'))}${shift}</div>
             </div>
             ${badge}
         </button>`;
@@ -1290,7 +1290,7 @@ function renderPick() {
     if (who) {
         who.innerHTML = `
             <div class="who-name">${escapeHtml(emp.name)}</div>
-            <div class="who-sub">${escapeHtml(emp.position || t('worker'))} &middot; ${escapeHtml(emp.employment_label || '')}</div>
+            <div class="who-sub">${escapeHtml(emp.position || t('worker'))}</div>
             ${emp.enrolled ? `<div class="who-warn"><i class="fas fa-triangle-exclamation"></i>
                  ${escapeHtml(emp.name)} ${escapeHtml(t('enr.already'))}${escapeHtml(String(emp.fingerprint_id))}.
                  ${escapeHtml(t('enr.willreplace'))}</div>` : ''}`;

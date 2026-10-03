@@ -7,8 +7,8 @@
                           │ Address              │ Contact Information
 
      Employment & Pay, the one required section, uses its whole column:
-     First │ Middle, Last + Suffix, Type │ Shift, Labor Type, Rate │
-     Position, Date Hired │ Site.
+     First │ Middle, Last + Suffix, Labor Type, Shift │ Rate,
+     Position │ Date Hired, Site.
          ───────────── progress · Cancel · Register ─────────────
 
      Only the arrangement changes. The fields, their names, their order in
@@ -95,18 +95,14 @@
     .rgx .ep-hint { display: none; }
     .rgx .ep-hint.js-position-hint:not(:empty) { display: block; font-size: .7rem; margin-top: 3px; }
 
-    /* Employment & Pay: Date Hired beside Site, the contract pair after. */
-    .rgx .js-contract-only { order: 2; }
-
     /* Employment & Pay is the tallest column's neighbour and was left with
        empty space under Site while Last Name shared half a row with the
        Suffix. The surname and the labor type (its options carry the day
-       rate) get whole rows; Shift fills the gap beside Employee Type
-       (dense), so Labor Type sits right above the Rate and Position it
-       fills. Tab order stays the markup's. */
+       rate) get whole rows. Tab order stays the markup's. */
     .rgx .ep-section:has(#first_name) .row.g-3 { grid-auto-flow: row dense; row-gap: 14px; }
     .rgx .ep-section .row.g-3 > :has(#last_name),
-    .rgx .ep-section .row.g-3 > :has(select[name="labor_type_id"]) { grid-column: 1 / -1; }
+    .rgx .ep-section .row.g-3 > :has(select[name="labor_type_id"]),
+    .rgx .ep-section .row.g-3 > :has(#site_select) { grid-column: 1 / -1; }
 
     /* Personal: Nationality beside the short Blood box. */
     .rgx .ep-section .row.g-3 > :has(#blood_type) { order: 2; }
