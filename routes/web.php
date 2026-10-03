@@ -146,6 +146,9 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get   ('/attendance',                     [AttendanceController::class, 'index'])->name('attendance');
     Route::delete('/attendance/history/bulk-delete', [AttendanceController::class, 'bulkDeleteHistory'])->name('attendance.history.bulk-delete');
     Route::patch ('/attendance/{attendance}/time-out', [AttendanceController::class, 'setTimeOut'])->name('attendance.time-out');
+    // Undo a settled time out, or delete a day still in Needs review (2026-10-03).
+    Route::patch ('/attendance/{attendance}/time-out/undo', [AttendanceController::class, 'undoTimeOut'])->name('attendance.time-out.undo');
+    Route::delete('/attendance/{attendance}/day',      [AttendanceController::class, 'destroyDay'])->name('attendance.day.destroy');
     // A day with no break scans: accepted as worked straight through, declined as Not recorded, or undone (2026-09-27).
     Route::patch ('/attendance/{attendance}/break',    [AttendanceController::class, 'setBreak'])->name('attendance.break');
 

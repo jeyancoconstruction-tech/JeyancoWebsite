@@ -172,7 +172,21 @@
         @endif
 
         <div class="atm-dgrid">
-            @php $fixes = $d->fixes(); @endphp
+            @php $fixes = $d->fixes(); $settled = $d->settled(); @endphp
+            {{-- A time out the office set from Fix missing scans can be undone (2026-10-03). --}}
+            @if(count($settled))
+                <div class="atm-dbox">
+                    <h4>{{ __('Set by the office') }}</h4>
+                    @foreach($settled as $s)
+                        <form class="atm-decided" data-undo-out="{{ route('attendance.time-out.undo', $s['row']) }}">
+                            <span>{{ __(':slot set to :time.', ['slot' => $s['label'], 'time' => WorkSchedule::label($s['at'])]) }}
+                                @if($s['by'] || $s['when'])<small>{{ $s['by'] ? __('By :name', ['name' => $s['by']]) : '' }}{{ $s['by'] && $s['when'] ? ' · ' : '' }}{{ $s['when']?->format('m/d/Y g:i A') }}</small>@endif</span>
+                            <button type="submit" class="atm-btn"><i class="fas fa-rotate-left me-1"></i>{{ __('Undo') }}</button>
+                        </form>
+                    @endforeach
+                    <p class="atm-note">{{ __('Undo takes the day back to Needs review, with the time the system had before.') }}</p>
+                </div>
+            @endif
             @if(count($fixes))
                 <div class="atm-dbox">
                     <h4>{{ __('Fix missing scans') }}</h4>
@@ -211,6 +225,12 @@
                     <p class="atm-note">{{ collect($fixes)->every(fn ($f) => $f['kind'] === 'break')
                         ? __('Your choice is written to the audit log.')
                         : __('A saved time is marked as edited and written to the audit log.') }}</p>
+                    {{-- Or the whole day goes: scanned by mistake, or not wanted at all (2026-10-03). --}}
+                    <form class="atm-del" data-delete-day="{{ route('attendance.day.destroy', $fixes[0]['row']) }}"
+                          data-who="{{ $name }}" data-day="{{ $day->date()->format('m/d/Y') }}">
+                        <span>{{ __('Scanned by mistake? Delete every scan of this day instead.') }}</span>
+                        <button type="submit" class="atm-btn danger"><i class="fas fa-trash-can me-1"></i>{{ __('Delete this day') }}</button>
+                    </form>
                 </div>
             @elseif($decided && $decided['kind'] === 'declined')
                 <div class="atm-dbox">

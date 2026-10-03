@@ -342,6 +342,11 @@ tr.atm-dayhead td {
 }
 .atm-decided > span { flex:1; min-width:0; }
 .atm-decided small { display:block; font-size:12px; color:var(--atm-mute); margin-top:2px; }
+.atm-del {
+    display:flex; align-items:center; gap:10px; margin:0; padding-top:10px;
+    border-top:1px solid var(--border); font-size:12px; color:var(--atm-mute);
+}
+.atm-del > span { flex:1; min-width:0; }
 .atm-sum { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }
 .atm-sum > div { display:flex; flex-direction:column; gap:2px; }
 .atm-sum span { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--atm-mute); }
@@ -1065,6 +1070,55 @@ tr.atm-dayhead td {
             Notify.error(@json(__('Request failed:')) + ' ' + err.message);
             f.querySelectorAll('button').forEach(b => b.disabled = false);
         }
+    });
+
+    // ── Undoing a time out the office set, deleting a day in review ────────
+    // Undo goes straight through: it only puts the day back in Needs review.
+    // Deleting cannot be taken back, so it is asked about first, by name.
+    async function send(f, url, method, fallback) {
+        f.querySelectorAll('button').forEach(b => b.disabled = true);
+        try {
+            const res  = await fetch(url, {
+                method,
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
+                Notify.success(data.message);
+                await reload(location.href);
+            } else {
+                Notify.error(data.message || fallback);
+                f.querySelectorAll('button').forEach(b => b.disabled = false);
+            }
+        } catch (err) {
+            Notify.error(@json(__('Request failed:')) + ' ' + err.message);
+            f.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+    }
+
+    document.addEventListener('submit', async e => {
+        const undo = e.target.closest('form[data-undo-out]');
+        const del  = e.target.closest('form[data-delete-day]');
+        if (!undo && !del) return;
+        e.preventDefault();
+
+        if (undo) {
+            await send(undo, undo.dataset.undoOut, 'PATCH', @json(__('That could not be undone.')));
+            return;
+        }
+
+        const ok = await Notify.confirm({
+            title:        @json(__('Delete this day?')),
+            message:      @json(__(':name — :day. Every scan of this day is deleted, and it cannot be undone. The audit log keeps the times.'))
+                              .replace(':name', del.dataset.who).replace(':day', del.dataset.day),
+            confirmLabel: @json(__('Delete this day')),
+            cancelLabel:  @json(__('Cancel')),
+            tone:         'danger',
+        });
+        if (!ok) return;
+
+        await send(del, del.dataset.deleteDay, 'DELETE', @json(__('The day could not be deleted.')));
     });
 
     // ── Keeping "now" current ───────────────────────────────────────────────

@@ -495,16 +495,7 @@ class AttendanceController extends Controller
         }
 
         // Nor may it run into the worker's next stretch of the same day.
-        $next = Attendance::where('employee_id', $attendance->employee_id)
-            ->where('date', $attendance->date)
-            ->whereKeyNot($attendance->id)
-            ->whereNotNull('time_in')
-            ->with('shift')
-            ->get()
-            ->map(fn (Attendance $r) => AttendanceDay::momentIn($r))
-            ->filter(fn (Carbon $t) => $t->greaterThan($in))
-            ->sort()
-            ->first();
+        $next = $this->nextTimeIn($attendance, $in);
 
         if ($next && $out->greaterThan($next)) {
             return response()->json(['success' => false, 'message' => __('The time out has to come before the next time in (:next).',
@@ -517,6 +508,14 @@ class AttendanceController extends Controller
             'needs_review' => false,
             'reviewed_by'  => auth()->id(),
             'reviewed_at'  => $now,
+            // What this replaced, so Undo can put it back exactly: the time
+            // the system guessed, or no time out at all.
+            'settled_from' => [
+                'time_out'     => $attendance->getRawOriginal('time_out'),
+                'close_type'   => $attendance->getRawOriginal('close_type'),
+                'needs_review' => (bool) $attendance->getRawOriginal('needs_review'),
+                'close_reason' => $attendance->getRawOriginal('close_reason'),
+            ],
         ])->save();
 
         $name = $attendance->employee?->name ?? __('Unknown');
@@ -529,6 +528,154 @@ class AttendanceController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('Time out saved for :name: :time.', ['name' => $name, 'time' => WorkSchedule::label($out)]),
+        ]);
+    }
+
+    /** The worker's next time in on the same day after this one, if any. */
+    private function nextTimeIn(Attendance $attendance, Carbon $in): ?Carbon
+    {
+        return Attendance::where('employee_id', $attendance->employee_id)
+            ->where('date', $attendance->date)
+            ->whereKeyNot($attendance->id)
+            ->whereNotNull('time_in')
+            ->with('shift')
+            ->get()
+            ->map(fn (Attendance $r) => AttendanceDay::momentIn($r))
+            ->filter(fn (Carbon $t) => $t->greaterThan($in))
+            ->sort()
+            ->first();
+    }
+
+    /**
+     * Undo a time out the office settled (Michael, 2026-10-03). The stretch
+     * goes back to what it was before: closed by the system at its guess and
+     * waiting in Needs review, or with no time out at all.
+     *
+     * A time out settled before settled_from was kept has nothing stored to
+     * go back to, so the system's guess is made again, the way closeStale()
+     * makes it: the end of the session, never past the worker's next time in.
+     */
+    public function undoTimeOut(Attendance $attendance)
+    {
+        if (! $attendance->settledByOffice()) {
+            return response()->json(['success' => false, 'message' => __('There is no time out set by the office to undo.')], 422);
+        }
+
+        $was = $attendance->settled_from ?: $this->guessFor($attendance);
+
+        if (! $was) {
+            return response()->json(['success' => false, 'message' => __('This time out was set before Undo was possible, and its shift has no schedule to go back to.')], 422);
+        }
+
+        $set = WorkSchedule::label(AttendanceDay::momentOut($attendance));
+
+        $attendance->forceFill([
+            'time_out'     => $was['time_out'] ?? null,
+            'close_type'   => $was['close_type'] ?? null,
+            'needs_review' => (bool) ($was['needs_review'] ?? false),
+            'close_reason' => $was['close_reason'] ?? null,
+            'reviewed_by'  => null,
+            'reviewed_at'  => null,
+            'settled_from' => null,
+        ])->save();
+
+        $name = $attendance->employee?->name ?? __('Unknown');
+        $date = Carbon::parse($attendance->date)->format('m/d/Y');
+
+        AuditLog::record('Attendance', 'updated',
+            "Undid the time out set for {$name} on {$date} ({$set}): back to "
+                . (empty($attendance->time_out) ? 'no time out' : 'Needs review'),
+            $attendance
+        );
+
+        $waiting = $attendance->needs_review || $attendance->signOutOverdue();
+
+        return response()->json([
+            'success' => true,
+            'message' => $waiting
+                ? __(':name — :date is back in Needs review.', ['name' => $name, 'date' => $date])
+                : __(':name — :date has no time out again.', ['name' => $name, 'date' => $date]),
+        ]);
+    }
+
+    /**
+     * The state the system would have left an unclosed stretch in, for a
+     * time out settled before settled_from existed.
+     *
+     * @return array{time_out: string, close_type: string, needs_review: bool, close_reason: string}|null
+     */
+    private function guessFor(Attendance $row): ?array
+    {
+        $s = $row->shift?->schedule();
+        if (! WorkSchedule::has($s)) {
+            return null;
+        }
+
+        $in      = AttendanceDay::momentIn($row);
+        $day     = WorkSchedule::shiftDayFor($s, $in);
+        $session = in_array($row->session, ['AM', 'PM'], true) ? $row->session : WorkSchedule::sessionAt($s, $in);
+        $at      = WorkSchedule::sessionEnd($s, $session, $day);
+
+        $next = $this->nextTimeIn($row, $in);
+        if ($next && $at->greaterThan($next)) {
+            $at = $next;
+        }
+        if ($at->lessThan($in)) {
+            $at = $in->copy();
+        }
+
+        return [
+            'time_out'     => $at->format('Y-m-d H:i:s'),
+            'close_type'   => 'auto',
+            'needs_review' => true,
+            'close_reason' => $row->close_reason ?: 'No time-out — closed at the end of the session',
+        ];
+    }
+
+    /**
+     * Delete a day waiting in Needs review (Michael, 2026-10-03): every
+     * stretch of that worker's workday goes, for a day scanned by mistake or
+     * one nobody wants kept. The page asks first; the audit log keeps the
+     * times, so the day can be entered again by hand.
+     *
+     * Only a day still waiting on the office. A settled day is undone first.
+     */
+    public function destroyDay(Attendance $attendance)
+    {
+        $now  = Carbon::now();
+        $rows = Attendance::where('employee_id', $attendance->employee_id)
+            ->whereDate('date', Carbon::parse($attendance->date)->toDateString())
+            ->with('shift')
+            ->get()
+            ->sortBy(fn (Attendance $r) => $r->time_in ? AttendanceDay::momentIn($r)->timestamp : 0)
+            ->values();
+
+        if (! $rows->contains(fn (Attendance $r) => $r->needs_review || $r->signOutOverdue($now))) {
+            return response()->json(['success' => false, 'message' => __('Only a day waiting in Needs review can be deleted.')], 422);
+        }
+
+        $times = $rows->map(function (Attendance $r) {
+            $in  = $r->time_in ? WorkSchedule::label(AttendanceDay::momentIn($r)) : 'no time in';
+            $out = $r->time_out
+                ? WorkSchedule::label(AttendanceDay::momentOut($r)) . ($r->guessedOut() ? ' (guessed)' : '')
+                : 'no time out';
+
+            return "{$in} – {$out}";
+        })->implode(', ');
+
+        $name = $attendance->employee?->name ?? __('Unknown');
+        $date = Carbon::parse($attendance->date)->format('m/d/Y');
+
+        // One at a time, so each delete is announced to the open pages.
+        foreach ($rows as $row) {
+            $row->delete();
+        }
+
+        AuditLog::record('Attendance', 'deleted', "Deleted {$name}'s {$date} from Needs review ({$times})", $attendance);
+
+        return response()->json([
+            'success' => true,
+            'message' => __(':name — :date was deleted.', ['name' => $name, 'date' => $date]),
         ]);
     }
 

@@ -691,6 +691,32 @@ final class AttendanceDayView
     }
 
     /**
+     * Time outs the office set from "Fix missing scans", so each can be
+     * undone (Michael, 2026-10-03): which one, what it was set to, by whom.
+     *
+     * @return list<array{row: Attendance, label: string, at: Carbon, by: ?string, when: ?Carbon}>
+     */
+    public function settled(): array
+    {
+        return $this->day->stretches()
+            ->filter(fn (Attendance $r) => $r->settledByOffice())
+            ->map(function (Attendance $row) {
+                $inFirst = $this->sessionOf($row) === 'AM';
+
+                return [
+                    'row'   => $row,
+                    'label' => ! $inFirst ? __('2nd session time out')
+                             : ($this->second->isNotEmpty() ? __('1st session time out') : __('Time out')),
+                    'at'    => AttendanceDay::momentOut($row),
+                    'by'    => $row->reviewer?->name,
+                    'when'  => $row->reviewed_at ? Carbon::parse($row->reviewed_at) : null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * The time outs the office can settle from the row: each stretch waiting
      * on one, with what the shift says it should have been and, when the
      * system already closed it, the time it guessed.

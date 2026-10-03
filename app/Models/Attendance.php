@@ -36,6 +36,8 @@ class Attendance extends Model
         'needs_review' => 'boolean',
         'not_recorded' => 'boolean',
         'reviewed_at' => 'datetime',
+        // What a time out the office settled replaced, for Undo.
+        'settled_from' => 'array',
     ];
 
     /** A day left open this long past its shift's end was forgotten, not still being worked. */
@@ -507,6 +509,12 @@ class Attendance extends Model
     public function guessedOut(): bool
     {
         return (bool) $this->needs_review && $this->close_type === 'auto';
+    }
+
+    /** A time out the office set from the Attendance page, which it can undo. */
+    public function settledByOffice(): bool
+    {
+        return $this->close_type === 'admin' && ! empty($this->time_out);
     }
 
     /** A first session scanned in and out with the break inside it unscanned, still waiting on the office. */
