@@ -60,6 +60,40 @@ class SiteManagementTest extends TestCase
         $this->assertStringNotContainsString('maps.googleapis.com', $html);
     }
 
+    /**
+     * The map shows every site and kiosk, as the dashboard's does (Michael,
+     * 2026-10-03), with the very same layer and the very same data. It no
+     * longer hides behind "Add a project name to open the map"; a tap still
+     * places a pin only once the new site has a name.
+     */
+    public function test_the_map_shows_every_site_and_kiosk_like_the_dashboard(): void
+    {
+        $html = $this->actingAs($this->admin())->get(route('sites.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('js/site-map.js', $html);
+        $this->assertStringContainsString('site-map.css', $html);
+        $this->assertStringContainsString('JeyancoSiteMap(map', $html);
+        $this->assertStringContainsString(json_encode(route('dashboard.map')), $html, 'the dashboard map\'s own data');
+        $this->assertStringContainsString('id="smKiosks"', $html, 'the kiosks\' standing in the map bar');
+
+        $this->assertStringNotContainsString('Add a project name to open the map', $html);
+        $this->assertStringNotContainsString('id="smVeil"', $html);
+        $this->assertStringContainsString('if (!S.opened) {', $html, 'an unnamed site is not pinned by a stray tap');
+    }
+
+    /** What the Sites page draws, and who may read it: anyone who opens the page. */
+    public function test_the_map_data_carries_the_sites_and_the_kiosks(): void
+    {
+        $site  = $this->site(['geofence_radius' => 300]);
+        $kiosk = Kiosk::firstOrCreate(['code' => 'SITE_A'], ['name' => 'Site A Kiosk', 'site_id' => $site->id]);
+        $kiosk->forceFill(['site_id' => $site->id])->save();
+
+        $map = $this->actingAs($this->admin())->getJson(route('dashboard.map'))->assertOk()->json();
+
+        $this->assertSame(300, collect($map['sites'])->firstWhere('id', $site->id)['radius_m']);
+        $this->assertSame($site->id, collect($map['kiosks'])->firstWhere('id', $kiosk->id)['site_id']);
+    }
+
     // ── Saving a site ────────────────────────────────────────────────────
 
     public function test_a_site_is_added_with_its_pin_and_its_radius(): void

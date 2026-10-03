@@ -123,10 +123,15 @@ class DashboardLayoutTest extends TestCase
         $this->assertStringContainsString('data-sites-url="' . route('sites.index') . '"', $html, 'the key points to the Sites page');
 
         // It opens a step back from street level, so the site sits in its
-        // neighbourhood rather than filling the card.
-        $this->assertStringContainsString('const FIT_ZOOM = 15;', $html);
-        $this->assertStringContainsString('map.setView(points[0], FIT_ZOOM)', $html);
-        $this->assertStringContainsString('maxZoom: FIT_ZOOM', $html);
+        // neighbourhood rather than filling the card. The pins and the fit
+        // are js/site-map.js since 2026-10-03, shared with the Sites page.
+        $this->assertStringContainsString('js/site-map.js', $html);
+        $this->assertStringContainsString('site-map.css', $html);
+        $js = file_get_contents(public_path('js/site-map.js'));
+        $this->assertStringContainsString('const FIT_ZOOM = 15;', $js);
+        $this->assertStringContainsString('map.setView(points[0], FIT_ZOOM)', $js);
+        $this->assertStringContainsString('maxZoom: FIT_ZOOM', $js);
+        $this->assertStringNotContainsString("map.on('click'", $js, 'the shared layer drops no pin either');
 
         // Dark tiles in the dark theme, as on the Sites page.
         $this->assertStringContainsString('html[data-bs-theme="dark"] #kioskMap .leaflet-tile-pane { filter: invert(1)', $html);

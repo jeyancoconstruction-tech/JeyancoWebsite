@@ -1,0 +1,72 @@
+/*
+ * Sites and kiosks on a map: the red site pin with its name and range, the
+ * kiosk badge in the colour of where it stands, the key and the popups.
+ * Drawn by public/js/site-map.js on the dashboard's Project Sites map and on
+ * the Sites page.
+ */
+
+/* A site: the red pin, with its name and range beside it. A kiosk: a round
+   badge in the colour of where it stands, with its name and that state. */
+.dm-mark { background: none; border: 0; }
+.dm-kiosk { position: relative; width: 32px; height: 32px; white-space: nowrap; }
+.dm-site { position: relative; width: 28px; height: 38px; white-space: nowrap; }
+.dm-site svg { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+/* A site's name sits over its pin, a kiosk's to the right of its badge, so a
+   kiosk standing at its own site does not bury the site's name. Where one
+   would land on another, it tries the other sides first (declutter() in
+   js/site-map.js). */
+.dm-chip { position: absolute; }
+.dm-site .dm-chip { bottom: 40px; left: 50%; transform: translateX(-50%); align-items: center; text-align: center; }
+.dm-site .dm-chip.at-below { bottom: auto; top: 40px; }
+.dm-site .dm-chip.at-right { bottom: auto; top: 2px; left: 32px; transform: none; align-items: flex-start; text-align: left; }
+.dm-site .dm-chip.at-left  { bottom: auto; top: 2px; left: auto; right: 32px; transform: none; align-items: flex-end; text-align: right; }
+.dm-kiosk .dm-chip { left: 40px; top: 50%; transform: translateY(-50%); }
+.dm-kiosk .dm-chip.at-left { left: auto; right: 40px; align-items: flex-end; text-align: right; }
+/* Where no side is free, the less urgent name steps back and comes out on
+   hover. The pins and badges themselves always show. */
+.dm-chip.is-hidden { display: none; }
+.leaflet-marker-icon.dm-mark:hover { z-index: 10000 !important; }
+.dm-mark:hover .dm-chip.is-hidden { display: flex; }
+.dm-chip {
+    display: flex; flex-direction: column; max-width: 200px; overflow: hidden;
+    padding: 3px 8px 4px; border-radius: 8px; line-height: 1.25;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    border: 1px solid var(--border-md); box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+.dm-chip b { font-size: 11.5px; font-weight: 700; color: var(--text-primary); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.dm-chip small { font-size: 10.5px; font-weight: 600; color: var(--text-secondary); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.dm-av {
+    flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+    font-size: 14px; color: var(--dm-c); background: var(--surface); border: 2.5px solid var(--dm-c);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--dm-c) 22%, transparent), 0 2px 6px rgba(0,0,0,.3);
+}
+.dm-kiosk .dm-chip small { color: var(--dm-c); }
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-in        { --dm-c: var(--success); }
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot):is(.is-out, .is-elsewhere) { --dm-c: var(--danger); }
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-nogps     { --dm-c: var(--warning); }
+:is(.dm-kiosk, .dm-legend-keys span, .dm-pop-k, .dm-dot).is-offline   { --dm-c: var(--text-muted); }
+/* The header's dot. Not Bootstrap's text-* colours, which the dark theme
+   turns all to one colour. */
+.dm-dot { display: inline-block; width: 8px; height: 8px; margin-right: 3px; border-radius: 50%; background: var(--dm-c); vertical-align: 1px; }
+.dm-kiosk.is-offline .dm-av { opacity: .75; }
+
+/* The key, bottom left, and the way to the Sites page. */
+.dm-legend {
+    max-width: 280px; padding: 7px 10px; border-radius: 8px;
+    font-size: 10.5px; line-height: 1.5; color: var(--text-secondary);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    border: 1px solid var(--border-md); box-shadow: var(--shadow-sm);
+}
+.dm-legend-keys { display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.dm-legend-keys span { display: inline-flex; align-items: center; gap: 5px; }
+.dm-legend-keys i { width: 8px; height: 8px; border-radius: 50%; background: var(--dm-c); }
+.dm-legend-note { margin-top: 3px; color: var(--text-muted); }
+.dm-legend a { display: inline-block; margin-top: 3px; font-weight: 600; color: var(--brand); text-decoration: none; }
+.dm-legend a i { font-size: 9px; }
+
+/* What a click on a pin or a kiosk opens. */
+.dm-pop { display: flex; flex-direction: column; gap: 3px; min-width: 190px; font-size: 12px; line-height: 1.4; }
+.dm-pop b { font-size: 12.5px; }
+.dm-pop-sub { font-size: 11px; color: var(--text-muted); }
+.dm-pop-k { font-weight: 600; color: var(--dm-c); }
+.dm-pop-k i { width: 14px; }

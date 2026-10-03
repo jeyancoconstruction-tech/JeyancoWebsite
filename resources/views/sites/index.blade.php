@@ -12,6 +12,8 @@
 
 @push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{{-- The site pins, kiosk badges and key, as on the dashboard's map. --}}
+<link rel="stylesheet" href="{{ asset('site-map.css') }}?v={{ @filemtime(public_path('site-map.css')) ?: '1' }}">
 <style>
 .sm-page { --sm-r: 16px; --sm-r-sm: 12px; display: flex; flex-direction: column; gap: 18px; }
 
@@ -122,20 +124,22 @@ html[data-bs-theme] .main-content .sm-page > .page-head { margin-bottom: -6px !i
    page. The light theme keeps OpenStreetMap's own colours untouched. */
 html[data-bs-theme="dark"] .sm-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.88) saturate(.55); }
 html[data-bs-theme="light"] .sm-map .leaflet-tile-pane { filter: none; }
-.sm-pin { background: none; border: 0; }
-.sm-pin svg { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+html[data-bs-theme="dark"] .sm-map .leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--text-muted); }
+/* The pin being placed: the site pin, named "New site" until it has a name. */
+.sm-draft .dm-chip { border-color: var(--brand); }
+.sm-draft .dm-chip small { color: var(--brand); }
+/* What a tap does now. Top centre, over the map but never in front of it:
+   the sites and kiosks under it stay readable and clickable. */
 .sm-maptip {
-    position: absolute; left: 10px; bottom: 22px; z-index: 500; pointer-events: none;
-    font-size: 12px; color: var(--text-secondary); background: color-mix(in srgb, var(--surface) 92%, transparent);
-    border: 1px solid var(--border-md); padding: 6px 10px; border-radius: 8px;
+    position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 500; pointer-events: none;
+    max-width: calc(100% - 120px); text-align: center;
+    font-size: 12px; color: var(--text-secondary); background: color-mix(in srgb, var(--surface) 94%, transparent);
+    border: 1px solid var(--border-md); padding: 6px 12px; border-radius: 999px; box-shadow: var(--shadow-sm);
 }
-.sm-veil {
-    position: absolute; inset: 0; z-index: 600; display: grid; place-items: center; text-align: center; padding: 24px; cursor: pointer;
-    background: color-mix(in srgb, var(--bg) 78%, transparent); border: 0; width: 100%; color: inherit;
-}
-.sm-veil-in { max-width: 34ch; color: var(--text-secondary); font-size: .9rem; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.sm-veil-in i { font-size: 1.9rem; color: var(--brand); }
-.sm-veil-in b { color: var(--text-primary); font-size: 1rem; }
+.sm-maptip i { color: var(--brand); margin-right: 5px; }
+.sm-maptip.is-nudge { border-color: var(--brand); color: var(--text-primary); animation: smNudge .45s ease; }
+@keyframes smNudge { 0%, 100% { transform: translateX(-50%); } 30% { transform: translateX(calc(-50% - 6px)); } 60% { transform: translateX(calc(-50% + 6px)); } }
+@media (prefers-reduced-motion: reduce) { .sm-maptip.is-nudge { animation: none; } }
 
 /* ── Site cards ─────────────────────────────────────────────────────────── */
 .sm-sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; padding: 12px; }
@@ -256,18 +260,15 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         <section class="sm-card sm-mapcard" aria-label="{{ __('Map') }}">
             <div class="sm-mapbar">
                 <span>{{ __('Map') }} · <b id="smArea">Naga City, Camarines Sur</b></span>
-                <span>{{ __('Tap anywhere to move the pin') }}</span>
+                <span id="smKiosks">{{ __('Sites and kiosks') }}</span>
             </div>
+            {{-- Every site and kiosk, as on the dashboard (2026-10-03). It used
+                 to sit behind a cover until a project name was typed; the
+                 order still holds — a tap places a pin only once the new site
+                 has a name — but the map shows what is already there. --}}
             <div class="sm-mapbox">
-                <div class="sm-map" id="smMap" aria-label="{{ __('Map. Click to place the site pin.') }}"></div>
-                <div class="sm-maptip" id="smTip">{{ __('Tap to drop a pin') }}</div>
-                <button type="button" class="sm-veil" id="smVeil">
-                    <span class="sm-veil-in">
-                        <i class="fas fa-map-location-dot"></i>
-                        <b>{{ __('Add a project name to open the map') }}</b>
-                        <span>{{ __('Then search for a place, or tap the map to drop a pin.') }}</span>
-                    </span>
-                </button>
+                <div class="sm-map" id="smMap" aria-label="{{ __('Map of every site and kiosk. Click to place the new site pin.') }}"></div>
+                <div class="sm-maptip" id="smTip" aria-live="polite"></div>
             </div>
         </section>
     </div>
@@ -287,6 +288,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 
 @push('scripts')
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ asset('js/site-map.js') }}?v={{ @filemtime(public_path('js/site-map.js')) ?: '1' }}"></script>
 <script>
 (function () {
     'use strict';
@@ -296,6 +298,8 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         list:  @json(route('sites.list')),
         store: @json(route('sites.store')),
         site:  id => @json(url('/sites')) + '/' + id,
+        // Every site and kiosk, read the way the dashboard's map reads them.
+        map:   @json(route('dashboard.map')),
     };
     const RADIUS = { def: @json($radiusDefault), min: @json($radiusMin), max: @json($radiusMax), step: 25 };
     const NAGA   = { lat: 13.6218, lng: 123.1948 };   // the dashboard's default centre
@@ -342,12 +346,26 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
     }).addTo(map);
 
-    const pinIcon = L.divIcon({
-        className: 'sm-pin', iconSize: [28, 38], iconAnchor: [14, 37],
-        html: '<svg width="28" height="38" viewBox="0 0 28 38" aria-hidden="true"><path d="M14 37C14 37 1.5 22.6 1.5 13.8a12.5 12.5 0 0 1 25 0C26.5 22.6 14 37 14 37z" fill="#ef4444" stroke="#fff" stroke-width="1.6"/><circle cx="14" cy="13.5" r="4.6" fill="#fff"/></svg>',
+    // Every site with its range and every kiosk where its GPS last put it,
+    // exactly as the dashboard's map draws them (js/site-map.js). The site
+    // being edited steps off it while its own pin is moved.
+    const layer = JeyancoSiteMap(map, {
+        mapUrl:   URLS.map,
+        statusEl: $('smKiosks'),
+        autoFit:  () => !S.pin,        // never pull the view off a pin being placed
+    });
+    const syncLayer = () => layer.hideSite(S.editing);
+
+    // The pin being placed: the same pin, with its name beside it — the
+    // project name typed so far, or "New site" — and a solid ring, so it
+    // reads apart from the sites already there.
+    const PIN = '<svg width="28" height="38" viewBox="0 0 28 38" aria-hidden="true"><path d="M14 37C14 37 1.5 22.6 1.5 13.8a12.5 12.5 0 0 1 25 0C26.5 22.6 14 37 14 37z" fill="#ef4444" stroke="#fff" stroke-width="1.6"/><circle cx="14" cy="13.5" r="4.6" fill="#fff"/></svg>';
+    const draftIcon = () => L.divIcon({
+        className: 'dm-mark', iconSize: null, iconAnchor: [14, 37],
+        html: `<div class="dm-site sm-draft">${PIN}<span class="dm-chip"><b>${esc($('smName').value.trim() || 'New site')}</b>` +
+              `<small>${S.radius} m range · ${S.editing != null ? 'editing' : 'new'}</small></span></div>`,
     });
     let pinMarker = null, pinCircle = null;
-    const others = L.layerGroup().addTo(map);
 
     function drawPin() {
         if (!S.pin) {
@@ -358,45 +376,43 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         const at = [S.pin.lat, S.pin.lng];
         const brand = cssVar('--brand');
         if (!pinCircle) {
-            pinCircle = L.circle(at, { radius: S.radius, color: brand, weight: 1.5, dashArray: '5 4', fillColor: brand, fillOpacity: .14, interactive: false }).addTo(map);
+            pinCircle = L.circle(at, { radius: S.radius, color: brand, weight: 2, fillColor: brand, fillOpacity: .18, interactive: false }).addTo(map);
         } else {
             pinCircle.setLatLng(at).setRadius(S.radius).setStyle({ color: brand, fillColor: brand });
         }
         if (!pinMarker) {
-            pinMarker = L.marker(at, { icon: pinIcon, draggable: true, keyboard: false, zIndexOffset: 1000 }).addTo(map);
+            pinMarker = L.marker(at, { icon: draftIcon(), draggable: true, keyboard: false, zIndexOffset: 2000 }).addTo(map);
             pinMarker.on('drag', e => pinCircle && pinCircle.setLatLng(e.target.getLatLng()));
             pinMarker.on('dragend', e => { const p = e.target.getLatLng(); dropPin(p.lat, p.lng); });
         } else {
-            pinMarker.setLatLng(at);
+            pinMarker.setLatLng(at).setIcon(draftIcon());
         }
     }
 
-    // The other sites, faint, so a new one is not dropped on top of an old one.
-    function drawOthers() {
-        others.clearLayers();
-        const ink = cssVar('--text-muted'), paper = cssVar('--surface');
-        S.sites.filter(s => pinned(s) && s.id !== S.editing).forEach(s => {
-            L.circleMarker([s.latitude, s.longitude], {
-                radius: 6, color: ink, weight: 2, fillColor: paper, fillOpacity: 1, bubblingMouseEvents: false,
-            }).bindTooltip(esc(s.name), { direction: 'top', offset: [0, -6] }).addTo(others);
-        });
-    }
-
+    // Step 1 before step 2: a tap places a pin once the site has a name (or
+    // its place is being searched for). Before that the map only shows.
     function openMap() {
         if (S.opened) return;
         S.opened = true;
-        $('smVeil').hidden = true;
-        map.invalidateSize();
+        render();
     }
 
+    let nudged = null;
     map.on('click', e => {
-        if (!S.opened) return;
+        if (!S.opened) {
+            // Said where the eye already is, and the name field is handed over.
+            const tip = $('smTip');
+            tip.classList.remove('is-nudge'); void tip.offsetWidth; tip.classList.add('is-nudge');
+            clearTimeout(nudged); nudged = setTimeout(() => tip.classList.remove('is-nudge'), 600);
+            $('smName').focus();
+            return;
+        }
         closeSugg();
         dropPin(e.latlng.lat, e.latlng.lng);
     });
     if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize()).observe($('smMap'));
-    // The ring and the other sites take their colours from the theme.
-    new MutationObserver(() => { drawPin(); drawOthers(); })
+    // The ring takes its colour from the theme.
+    new MutationObserver(() => drawPin())
         .observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
 
     // ── Putting the pin down ─────────────────────────────────────────────────
@@ -608,12 +624,9 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         render();
     }
 
-    // Step 1 before step 2: the map opens once the site has a name.
-    $('smName').addEventListener('input', () => { if ($('smName').value.trim()) openMap(); hideErr(); });
-    $('smVeil').addEventListener('click', () => {
-        if ($('smName').value.trim()) { openMap(); $('smLoc').focus(); }
-        else $('smName').focus();
-    });
+    // Step 1 before step 2: a tap places a pin once the site has a name. The
+    // pin being placed carries the name as it is typed.
+    $('smName').addEventListener('input', () => { if ($('smName').value.trim()) openMap(); hideErr(); drawPin(); });
 
     $('smRadius').addEventListener('input', e => {
         S.radius = snap(e.target.value);
@@ -636,7 +649,10 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         $('smRadius').value     = S.radius;
         $('smRadiusVal').textContent = S.radius + ' m';
         $('smClear').hidden = !$('smLoc').value.trim() && !S.pin;
-        $('smTip').textContent = S.pin ? 'Tap or drag to move the pin' : 'Tap to drop a pin';
+        $('smTip').innerHTML = !S.opened
+            ? '<i class="fas fa-pen"></i>Type a project name, then tap the map to place the new site'
+            : S.pin ? '<i class="fas fa-hand-pointer"></i>Tap or drag to move the pin'
+            : '<i class="fas fa-location-dot"></i>Tap the map to drop the pin';
 
         const editing = S.editing != null ? byId(S.editing) : null;
         $('smFormTitle').textContent = editing ? 'Edit ' + editing.name : @json(__('Add New Site'));
@@ -655,11 +671,12 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 
     function resetForm() {
         S.editing = null;
+        S.opened = false;          // the next site starts at step 1 again
         S.radius = snap(RADIUS.def);
         $('smName').value = '';
         clearPick();
         hideErr();
-        drawOthers();
+        syncLayer();
         renderSites();
     }
 
@@ -713,6 +730,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
             S.saving = false;
             resetForm();
             await loadSites();
+            layer.refresh();
         } catch (err) {
             S.saving = false;
             showErr(err.message);
@@ -729,20 +747,18 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
             S.loaded = true;
             if (S.editing != null && !byId(S.editing)) resetForm();
             renderSites();
-            drawOthers();
             if (first) frameSites();
         } catch (e) {
             if (!S.loaded) $('smSites').innerHTML = '<div class="sm-empty">Could not load the sites. Refresh the page to try again.</div>';
         }
     }
 
-    // First look: every pinned site in view, or Naga when none is pinned yet.
+    // What the map is showing, in its bar. The first view itself — every
+    // site and kiosk, or Naga when there is none — is the layer's.
     function frameSites() {
         if (S.pin) return;
-        const pts = S.sites.filter(pinned).map(s => [s.latitude, s.longitude]);
-        if (pts.length === 1) map.setView(pts[0], 16);
-        else if (pts.length > 1) map.fitBounds(pts, { padding: [50, 50], maxZoom: 16 });
-        if (pts.length) $('smArea').textContent = pts.length === 1 ? S.sites.find(pinned).name : 'All pinned sites';
+        const pts = S.sites.filter(pinned);
+        if (pts.length) $('smArea').textContent = pts.length === 1 ? pts[0].name : 'All pinned sites';
     }
 
     function renderSites() {
@@ -800,15 +816,11 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         if (b.dataset.yes)   return removeSite(+b.dataset.yes, b);
     });
 
+    // The card's pin button: go to the site and open what its pin says.
     function showOnMap(id) {
         const s = byId(id);
         if (!pinned(s)) return;
-        openMap();
-        map.setView([s.latitude, s.longitude], 17);
-        others.eachLayer(l => {
-            const at = l.getLatLng();
-            if (at.lat === s.latitude && at.lng === s.longitude) l.openTooltip();
-        });
+        if (!layer.focusSite(id, 17)) map.setView([s.latitude, s.longitude], 17);
         $('smMap').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -837,7 +849,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         }
         $('smLoc').value = s.location || '';
         hideErr(); closeSugg();
-        render(); renderSites(); drawOthers();
+        render(); renderSites(); syncLayer();
         const top = $('smForm').getBoundingClientRect().top;
         if (top < 0 || top > window.innerHeight * .6) $('smForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
         $('smLoc').focus({ preventScroll: true });
@@ -854,6 +866,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
             S.confirm = null;
             if (S.editing === id) resetForm();
             await loadSites();
+            layer.refresh();
         } catch (err) {
             btn.disabled = false;
             Notify.error(err.message);
@@ -863,10 +876,15 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
     // ── Start ────────────────────────────────────────────────────────────────
     render();
     loadSites();
+    layer.refresh();
 
-    // A site added or changed at another desk, or a kiosk switched to one: the
-    // list is asked for again. Quietly — the form and the map are left alone.
-    Live.on('sites devices kiosk', () => loadSites());
+    // A site added or changed at another desk, a kiosk switched to one, or a
+    // kiosk's GPS moving: the list and the map are asked for again. Quietly —
+    // the form and a pin being placed are left alone. Silence announces
+    // nothing, so the map also looks every minute: that is how a kiosk that
+    // stopped talking turns grey, as on the dashboard.
+    Live.on('sites devices kiosk', () => { loadSites(); layer.refresh(); });
+    setInterval(() => { if (!document.hidden) layer.refresh(); }, 60000);
 })();
 </script>
 @endpush
