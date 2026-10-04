@@ -1,7 +1,8 @@
 /*
  * Sites and kiosks on a map: the red site pin with its name and range, the
- * kiosk badge green in range or red out of it, the dashed red line from a
- * kiosk out of range to its site, the key and the popups.
+ * kiosk badge green in range or red out of it, the pulse round it that says
+ * whether it has a GPS signal, the dashed red line from a kiosk out of range
+ * to its site, the key and the popups.
  * Drawn by public/js/site-map.js on the dashboard's Project Sites map and on
  * the Sites page.
  */
@@ -49,6 +50,29 @@
    turns all to one colour. Grey while there is nothing to measure. */
 .dm-dot { --dm-c: var(--text-muted); display: inline-block; width: 8px; height: 8px; margin-right: 3px; border-radius: 50%; background: var(--dm-c); vertical-align: 1px; }
 
+/* GPS, said by a pulse round the badge (Michael, 2026-10-04). With a signal,
+   green rings keep rippling out of it; with none, one red ring beats. The
+   pulse has its own colour, apart from the badge's: a kiosk can be out of
+   range on a good signal, or last seen in range with none. The rings sit
+   behind the badge and the names, so they cover neither. */
+.gps-on  { --dm-g: var(--success); }
+.gps-off { --dm-g: var(--danger); }
+.dm-av { position: relative; }
+.dm-av::before, .dm-av::after {
+    content: ""; position: absolute; inset: -2.5px; z-index: -1; border-radius: 50%;
+    border: 2px solid var(--dm-g); opacity: 0; pointer-events: none;
+}
+.gps-on .dm-av::before  { animation: dm-ripple 2s ease-out infinite; }
+.gps-on .dm-av::after   { animation: dm-ripple 2s ease-out 1s infinite; }
+.gps-off .dm-av::before { border-width: 3px; animation: dm-beat 1.4s ease-in-out infinite; }
+@keyframes dm-ripple { from { transform: scale(1); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
+@keyframes dm-beat { 0%, 100% { transform: scale(1.3); opacity: .25; } 50% { transform: scale(1.65); opacity: .95; } }
+/* Motion turned off: the ring stands still round the badge, in its colour. */
+@media (prefers-reduced-motion: reduce) {
+    .dm-kiosk .dm-av::before { animation: none; transform: scale(1.5); opacity: .8; }
+    .dm-kiosk .dm-av::after, .dm-legend-gps i { animation: none; }
+}
+
 /* A kiosk out of range: dashed red to the site it is set to. The colour is
    here, not in the script, so it follows the theme. */
 .dm-way { stroke: var(--danger); stroke-opacity: .9; }
@@ -64,6 +88,11 @@
 .dm-legend-keys span { display: inline-flex; align-items: center; gap: 5px; }
 .dm-legend-keys i { width: 8px; height: 8px; border-radius: 50%; background: var(--dm-c); }
 .dm-legend-way i { width: 16px; height: 0; border-radius: 0; background: none; border-top: 2px dashed var(--dm-c); }
+/* The two pulses, as small rings that pulse the same way. */
+.dm-legend-gps { margin-top: 2px; }
+.dm-legend-gps i, .dm-pop-g i { background: none; border: 2px solid var(--dm-g); animation: dm-key 2s ease-out infinite; }
+.dm-legend-gps .gps-off i, .dm-pop-g.gps-off i { animation-duration: 1.4s; }
+@keyframes dm-key { from { box-shadow: 0 0 0 0 var(--dm-g); } to { box-shadow: 0 0 0 4px transparent; } }
 .dm-legend-note { margin-top: 3px; color: var(--text-muted); }
 .dm-legend a { display: inline-block; margin-top: 3px; font-weight: 600; color: var(--brand); text-decoration: none; }
 .dm-legend a i { font-size: 9px; }
@@ -74,3 +103,5 @@
 .dm-pop-sub { font-size: 11px; color: var(--text-muted); }
 .dm-pop-k { font-weight: 600; color: var(--dm-c); }
 .dm-pop-k i { width: 14px; }
+.dm-pop-g { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--dm-g); }
+.dm-pop-g i { flex: none; width: 8px; height: 8px; border-radius: 50%; }

@@ -154,13 +154,60 @@ class DashboardMapTest extends TestCase
             $this->assertStringNotContainsString($gone, $js);
             $this->assertStringNotContainsString($gone, $css);
         }
-        $this->assertStringContainsString('class="dm-kiosk is-${k.range}"', $js, 'the badge is coloured by range');
+        $this->assertStringContainsString('class="dm-kiosk is-${k.range} ${signal(k)}"', $js, 'the badge is coloured by range');
         $this->assertStringNotContainsString('--warning', $css);
 
         $this->assertStringContainsString("k.range === 'out' && siteMarks[k.site_id]", $js);
         $this->assertStringContainsString("L.polyline(way, { className: 'dm-way'", $js);
         $this->assertStringContainsString("dashArray: '8 7'", $js);
         $this->assertStringContainsString('.dm-way { stroke: var(--danger);', $css);
+    }
+
+    /**
+     * GPS is said by a pulse round the kiosk's badge (Michael, 2026-10-04:
+     * "pulsing loader paikot sa fingerprint icon ... kapag may gps signal
+     * yung kiosk, kapag wala naman red pulse"). A signal is a fix on a
+     * heartbeat still fresh; no satellites, or gone quiet, is none.
+     */
+    public function test_the_badge_pulses_green_with_a_gps_signal_and_red_without(): void
+    {
+        $this->kiosk('LIVE', $this->warehouse);
+        $this->kiosk('NOSAT', $this->warehouse);
+        $this->kiosk('QUIET', $this->warehouse);
+        $this->heard('LIVE', 13.6221, 123.1951);
+        $this->heard('NOSAT', 13.6221, 123.1951, 'no_fix');       // on, last position kept, no satellites
+        $this->heard('QUIET', 13.6221, 123.1951, 'fix', 7200);    // its last word was a fix, two hours ago
+
+        $k = $this->map();
+        $this->assertSame('fix', $k['LIVE']['gps']);
+        $this->assertSame('stale', $k['NOSAT']['gps']);
+        $this->assertSame('stale', $k['QUIET']['gps'], 'a fix from a kiosk gone quiet is not a signal');
+        $this->assertSame('in', $k['NOSAT']['range'], 'the badge keeps the colour of where it last was');
+
+        $js  = file_get_contents(public_path('js/site-map.js'));
+        $css = file_get_contents(public_path('site-map.css'));
+
+        // Only a fix is a signal, and the badge, the key and the popup say it.
+        $this->assertStringContainsString("const signal = k => k.gps === 'fix' ? 'gps-on' : 'gps-off';", $js);
+        $this->assertStringContainsString('<span class="gps-on"><i></i>GPS signal</span>', $js);
+        $this->assertStringContainsString('<span class="gps-off"><i></i>No GPS signal</span>', $js);
+        $this->assertStringContainsString('<div class="dm-pop-g ${signal(k)}">', $js);
+
+        // Green with a signal, red without: a colour of the pulse's own.
+        $this->assertStringContainsString('.gps-on  { --dm-g: var(--success); }', $css);
+        $this->assertStringContainsString('.gps-off { --dm-g: var(--danger); }', $css);
+        $this->assertStringContainsString('.gps-on .dm-av::before  { animation: dm-ripple', $css);
+        $this->assertStringContainsString('.gps-off .dm-av::before { border-width: 3px; animation: dm-beat', $css);
+        $this->assertStringContainsString('border: 2px solid var(--dm-g)', $css);
+        $this->assertStringContainsString('@media (prefers-reduced-motion: reduce)', $css);
+
+        // A badge is redrawn only when it changed, or its pulse would start
+        // over on every heartbeat.
+        $this->assertStringContainsString('if (m.drawn !== html) m.setIcon(kioskIcon(html));', $js);
+
+        // The kiosk console's own map says it the same way.
+        $devices = file_get_contents(resource_path('views/devices/index.blade.php'));
+        $this->assertStringContainsString('.dvc-pin.stale::after, .dvc-pin.off::after {', $devices);
     }
 
     public function test_the_edge_of_the_range_is_inside(): void

@@ -13,6 +13,11 @@
  * where it last was. A kiosk out of range has a dashed red line to the site
  * it is set to ("putol na redline papunta sa designated site").
  *
+ * GPS is said by a pulse round the badge, apart from its colour (Michael,
+ * 2026-10-04: "pulsing loader paikot sa fingerprint icon ... kapag may gps
+ * signal yung kiosk, kapag wala naman red pulse"). Green rings ripple out of
+ * a kiosk that has a signal; a red ring beats round one that has none.
+ *
  *   const layer = JeyancoSiteMap(map, {
  *       mapUrl:   '/dashboard/map',
  *       sitesUrl: '/sites',          // the key links there; leave out to omit
@@ -51,10 +56,17 @@
               `<small>${s.radius_m} m range · ${plural(s.kiosks, 'kiosk')}</small></span></div>`,
     });
 
-    const kioskIcon = k => L.divIcon({
-        className: 'dm-mark', iconSize: null, iconAnchor: [16, 16], popupAnchor: [0, -14],
-        html: `<div class="dm-kiosk is-${k.range}" data-range="${k.range}"><span class="dm-av"><i class="fas fa-fingerprint"></i></span>` +
-              `<span class="dm-chip"><b>${esc(k.name)}</b><small>${esc(kioskLine(k))}</small></span></div>`,
+    // Whether the kiosk has a GPS signal now: a fix, on a heartbeat still
+    // fresh. No satellites, or gone quiet, is none.
+    const signal = k => k.gps === 'fix' ? 'gps-on' : 'gps-off';
+    const gpsLine = k => k.gps === 'fix' ? 'GPS signal' : 'No GPS signal';
+
+    const kioskHtml = k =>
+        `<div class="dm-kiosk is-${k.range} ${signal(k)}" data-range="${k.range}"><span class="dm-av"><i class="fas fa-fingerprint"></i></span>` +
+        `<span class="dm-chip"><b>${esc(k.name)}</b><small>${esc(kioskLine(k))}</small></span></div>`;
+
+    const kioskIcon = html => L.divIcon({
+        className: 'dm-mark', iconSize: null, iconAnchor: [16, 16], popupAnchor: [0, -14], html,
     });
 
     function sitePopup(s, kiosks) {
@@ -64,19 +76,20 @@
             `<div>Range: ${s.radius_m} m from the pin</div>` +
             (here.length
                 ? here.map(k => k.range
-                    ? `<div class="dm-pop-k is-${k.range}"><i class="fas fa-fingerprint"></i> ${esc(k.name)} · ${esc(kioskLine(k))}</div>`
+                    ? `<div class="dm-pop-k is-${k.range}"><i class="fas fa-fingerprint"></i> ${esc(k.name)} · ${esc(kioskLine(k))}` +
+                      (k.gps === 'fix' ? '' : ' · no GPS signal') + '</div>'
                     : `<div class="dm-pop-sub"><i class="fas fa-fingerprint"></i> ${esc(k.name)} · no position yet</div>`).join('')
                 : '<div class="dm-pop-sub">No kiosk is set to this site.</div>') +
             '</div>';
     }
 
     function kioskPopup(k) {
-        const gps = { fix: 'GPS fix', stale: 'Last known position', none: 'No position yet' }[k.gps];
         return `<div class="dm-pop"><b>${esc(k.name)}</b> <span class="dm-pop-sub">${esc(k.code)}</span>` +
             `<div class="dm-pop-k is-${k.range}">${esc(kioskLine(k))}</div>` +
+            `<div class="dm-pop-g ${signal(k)}"><i></i>${gpsLine(k)}${k.gps === 'fix' ? '' : ' · last known position'}</div>` +
             `<div>Set to ${k.site ? '<b>' + esc(k.site) + '</b>' + (k.radius_m ? ` · ${k.radius_m} m range` : ' · not pinned') : 'no site'}</div>` +
             (k.at_site && k.at_site !== k.site ? `<div class="dm-pop-sub">Standing in ${esc(k.at_site)}'s range</div>` : '') +
-            `<div class="dm-pop-sub">${gps} · heard ${ago(k.seen_ago)}</div></div>`;
+            `<div class="dm-pop-sub">Heard ${ago(k.seen_ago)}</div></div>`;
     }
 
     // Names that would land on top of one another. Each name tries its
@@ -102,6 +115,9 @@
         };
         legend.addTo(map);
 
+        // Redrawn only when it says something new, as the badges are: a pulse
+        // that starts over on every heartbeat would never look steady.
+        let keyed = '';
         function drawLegend(sites, kiosks) {
             const unplaced = kiosks.filter(k => k.lat == null).length;
             const unpinned = sites.filter(s => s.lat == null).length;
@@ -109,14 +125,21 @@
                 unplaced ? plural(unplaced, 'kiosk') + ' with no position' : '',
                 unpinned ? plural(unpinned, 'site') + ' not pinned' : '',
             ].filter(Boolean).join(' · ');
-            legend.getContainer().innerHTML =
+            const html =
                 '<div class="dm-legend-keys">' +
                     '<span class="is-in"><i></i>In range</span>' +
                     '<span class="is-out"><i></i>Out of range</span>' +
                     (Object.keys(strays).length ? '<span class="is-out dm-legend-way"><i></i>Line to its site</span>' : '') +
                 '</div>' +
+                '<div class="dm-legend-keys dm-legend-gps">' +
+                    '<span class="gps-on"><i></i>GPS signal</span>' +
+                    '<span class="gps-off"><i></i>No GPS signal</span>' +
+                '</div>' +
                 (missing ? `<div class="dm-legend-note">Not on the map: ${missing}</div>` : '') +
                 (opts.sitesUrl ? `<a href="${opts.sitesUrl}">Pins are set on the Sites page <i class="fas fa-arrow-right"></i></a>` : '');
+            if (html === keyed) return;
+            keyed = html;
+            legend.getContainer().innerHTML = html;
         }
 
         // One marker per site and per kiosk, kept between refreshes and moved,
@@ -152,13 +175,17 @@
             kiosks.filter(k => k.lat != null && k.lng != null).forEach(k => {
                 placed.add(k.id);
                 const at = [k.lat, k.lng];
-                const m = kioskMarks[k.id];
+                const html = kioskHtml(k);
+                let m = kioskMarks[k.id];
                 if (!m) {
-                    kioskMarks[k.id] = L.marker(at, { icon: kioskIcon(k), zIndexOffset: 1000, keyboard: false })
+                    m = kioskMarks[k.id] = L.marker(at, { icon: kioskIcon(html), zIndexOffset: 1000, keyboard: false })
                         .addTo(map).bindPopup(kioskPopup(k));
                 } else {
-                    m.setLatLng(at).setIcon(kioskIcon(k)).setPopupContent(kioskPopup(k));
+                    m.setLatLng(at).setPopupContent(kioskPopup(k));
+                    // A new icon is a new badge, and its pulse would start over.
+                    if (m.drawn !== html) m.setIcon(kioskIcon(html));
                 }
+                m.drawn = html;
             });
             Object.keys(kioskMarks).forEach(id => {
                 if (placed.has(+id)) return;

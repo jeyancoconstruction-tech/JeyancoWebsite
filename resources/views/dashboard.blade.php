@@ -416,7 +416,7 @@
         // A fix is cached rather than saved, and the API says so the moment
         // one lands, so a kiosk's marker moves when the kiosk does. Silence
         // announces nothing, so the map also looks again every minute: that is
-        // how a kiosk that stopped talking turns grey.
+        // how the pulse round a kiosk that stopped talking turns red.
         Live.on('kiosk devices sites', refresh);
         setInterval(() => { if (!document.hidden) refresh(); }, 60000);
     })();

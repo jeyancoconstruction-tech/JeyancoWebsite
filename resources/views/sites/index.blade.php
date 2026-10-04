@@ -881,8 +881,8 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
     // A site added or changed at another desk, a kiosk switched to one, or a
     // kiosk's GPS moving: the list and the map are asked for again. Quietly —
     // the form and a pin being placed are left alone. Silence announces
-    // nothing, so the map also looks every minute: that is how a kiosk that
-    // stopped talking turns grey, as on the dashboard.
+    // nothing, so the map also looks every minute: that is how the pulse round
+    // a kiosk that stopped talking turns red, as on the dashboard.
     Live.on('sites devices kiosk', () => { loadSites(); layer.refresh(); });
     setInterval(() => { if (!document.hidden) layer.refresh(); }, 60000);
 })();
