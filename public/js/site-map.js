@@ -15,13 +15,21 @@
  *
  * GPS is said by a pulse round the badge, apart from its colour (Michael,
  * 2026-10-04: "pulsing loader paikot sa fingerprint icon ... kapag may gps
- * signal yung kiosk, kapag wala naman red pulse"). Green rings ripple out of
- * a kiosk that has a signal; a red ring beats round one that has none.
+ * signal yung kiosk, kapag wala naman red pulse"). Rings ripple out of every
+ * kiosk: green with a signal, a soft orange with none (Michael, 2026-10-05:
+ * "orange yung hindi gaanong matingkad", moving as the signal's rings do).
+ *
+ * Over the map is a list of the sites (Michael, 2026-10-05: "pwede mamili
+ * kung anong site then mag zo-zoom in sa site na yun ... all site na mag
+ * zo-zoom out para makita lahat"). A site's name goes in to its range; "All
+ * sites" goes back out to everything.
  *
  *   const layer = JeyancoSiteMap(map, {
  *       mapUrl:   '/dashboard/map',
  *       sitesUrl: '/sites',          // the key links there; leave out to omit
  *       statusEl: element,           // optional: "1 kiosk: 1 in range"
+ *       pickEl:   element,           // optional: where the list of sites goes
+ *       onPick:   site => {},        // optional: a site was picked, or null for all
  *       autoFit:  () => true,        // optional: may the first load move the view?
  *   });
  *   layer.refresh();  layer.fitAll();  layer.hideSite(id);  layer.focusSite(id);
@@ -33,6 +41,10 @@
     // level and felt cramped; 15 shows the neighbourhood around the site
     // with its range ring still clear. The + button still goes closer.
     const FIT_ZOOM = 15;
+
+    // How close picking one site from the list may go. Its range ring is
+    // fitted to the map, and a 50 m ring would otherwise run past the tiles.
+    const SITE_ZOOM = 18;
 
     // The same red pin the Sites page puts down.
     const PIN = '<svg width="28" height="38" viewBox="0 0 28 38" aria-hidden="true"><path d="M14 37C14 37 1.5 22.6 1.5 13.8a12.5 12.5 0 0 1 25 0C26.5 22.6 14 37 14 37z" fill="#ef4444" stroke="#fff" stroke-width="1.6"/><circle cx="14" cy="13.5" r="4.6" fill="#fff"/></svg>';
@@ -147,6 +159,58 @@
         const siteMarks = {}, kioskMarks = {}, strays = {};
         let fitted = false, hidden = null, last = { sites: [], kiosks: [] };
 
+        // The list over the map: "All sites", then every site by name. One
+        // with no pin is listed and cannot be picked, so nobody wonders where
+        // it went.
+        let picker = null, listed = '';
+        if (opts.pickEl) {
+            opts.pickEl.classList.add('dm-pick-at');
+            opts.pickEl.innerHTML = '<label class="dm-pick" title="Show a site on the map">' +
+                '<i class="fas fa-location-crosshairs" aria-hidden="true"></i>' +
+                '<select aria-label="Show a site on the map"><option value="">All sites</option></select></label>';
+            picker = opts.pickEl.querySelector('select');
+            picker.addEventListener('change', () => show(picker.value));
+        }
+
+        function drawPicker(sites) {
+            if (!picker) return;
+            const html = '<option value="">All sites</option>' + sites.slice()
+                .sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true }))
+                .map(s => s.lat != null && s.lng != null
+                    ? `<option value="${s.id}">${esc(s.name)}</option>`
+                    : `<option value="${s.id}" disabled>${esc(s.name)} · not pinned</option>`).join('');
+            if (html === listed) return;
+            listed = html;
+            const was = picker.value;
+            picker.innerHTML = html;
+            // The site picked has gone, or lost its pin: the list says All again.
+            picker.value = [...picker.options].some(o => o.value === was && !o.disabled) ? was : '';
+        }
+
+        // Moving to what was picked: flown, so the eye follows where the map
+        // went. With motion turned off it is simply there.
+        const still = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        function goTo(bounds, maxZoom) {
+            const how = { padding: [60, 60], maxZoom };
+            if (still()) map.fitBounds(bounds, Object.assign({ animate: false }, how));
+            else map.flyToBounds(bounds, Object.assign({ duration: .9 }, how));
+        }
+
+        // A site: in to its range ring. "All sites", or one no longer there:
+        // back out to every site and kiosk.
+        function show(id) {
+            const s = last.sites.find(x => String(x.id) === String(id) && x.lat != null && x.lng != null);
+            map.closePopup();
+            if (s) {
+                goTo(L.latLng(s.lat, s.lng).toBounds(2 * s.radius_m), SITE_ZOOM);
+            } else {
+                const points = everything();
+                if (points.length) goTo(L.latLngBounds(points), FIT_ZOOM);
+            }
+            if (picker) picker.value = s ? String(s.id) : '';
+            if (opts.onPick) opts.onPick(s || null);
+        }
+
         function draw(sites, kiosks) {
             last = { sites, kiosks };
             const seen = new Set();
@@ -210,6 +274,7 @@
 
             drawLegend(sites, kiosks);
             drawStatus(kiosks);
+            drawPicker(sites);
 
             // The first time, show everything there is: every site and every
             // kiosk that has a position.
@@ -255,11 +320,15 @@
             Object.values(siteMarks).forEach(m => m.circle.setStyle({ color: brand(), fillColor: brand() }));
         }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
 
+        // Every site's pin and every kiosk on the map.
+        const everything = () => Object.values(siteMarks).map(m => m.pin.getLatLng())
+            .concat(Object.values(kioskMarks).map(m => m.getLatLng()));
+
         function fitAll() {
-            const points = Object.values(siteMarks).map(m => m.pin.getLatLng())
-                .concat(Object.values(kioskMarks).map(m => m.getLatLng()));
+            const points = everything();
             if (points.length === 1) map.setView(points[0], FIT_ZOOM);
             else if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: FIT_ZOOM });
+            if (picker) picker.value = '';
         }
 
         // The header says how the kiosks stand: in range or out of it.
@@ -314,8 +383,12 @@
                 if (!m) return false;
                 map.setView(m.pin.getLatLng(), zoom || 17);
                 m.pin.openPopup();
+                if (picker) picker.value = String(id);
                 return true;
             },
+
+            /** What the list over the map does: a site's id goes in to it, nothing goes out to all. */
+            show,
         };
     };
 })();

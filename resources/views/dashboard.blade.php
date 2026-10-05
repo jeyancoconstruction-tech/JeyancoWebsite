@@ -172,6 +172,8 @@
         <section class="panel area-map site-tracker" id="siteTrackerCard">
             <div class="panel-head table-card-header" style="padding:8px 12px;">
                 <h2><i class="fas fa-map-location-dot"></i> {{ __('Project Sites') }}</h2>
+                {{-- Which site the map looks at: one of them, or all (js/site-map.js fills it). --}}
+                <span id="kioskPick"></span>
                 <span id="kiosk-status" style="font-size:10.5px;color:var(--text-secondary);font-weight:500;">
                     <i class="fas fa-circle-notch fa-spin"></i> {{ __('Locating…') }}
                 </span>
@@ -395,6 +397,7 @@
             mapUrl:   mapEl.dataset.mapUrl,
             sitesUrl: mapEl.dataset.sitesUrl,
             statusEl,
+            pickEl:   document.getElementById('kioskPick'),
         });
 
         statusEl.style.cursor = 'pointer';
@@ -416,7 +419,7 @@
         // A fix is cached rather than saved, and the API says so the moment
         // one lands, so a kiosk's marker moves when the kiosk does. Silence
         // announces nothing, so the map also looks again every minute: that is
-        // how the pulse round a kiosk that stopped talking turns red.
+        // how the pulse round a kiosk that stopped talking turns orange.
         Live.on('kiosk devices sites', refresh);
         setInterval(() => { if (!document.hidden) refresh(); }, 60000);
     })();

@@ -110,9 +110,11 @@ html[data-bs-theme] .main-content .sm-page > .page-head { margin-bottom: -6px !i
 .sm-mapcard { display: flex; flex-direction: column; overflow: hidden; }
 .sm-mapbar {
     display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted);
+    /* 7px, not 10: the list of sites is 26px tall, and the bar keeps its height. */
+    padding: 7px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-muted);
 }
 .sm-mapbar b { color: var(--text-primary); font-weight: 600; }
+.sm-mapbar-end { display: inline-flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
 .sm-mapbox { position: relative; flex: 1; min-height: clamp(360px, calc(100vh - 300px), 700px); }
 .sm-map { position: absolute; inset: 0; cursor: crosshair; }
 /* The map fills its card edge to edge; the card already draws the frame.
@@ -260,7 +262,12 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         <section class="sm-card sm-mapcard" aria-label="{{ __('Map') }}">
             <div class="sm-mapbar">
                 <span>{{ __('Map') }} · <b id="smArea">Naga City, Camarines Sur</b></span>
-                <span id="smKiosks">{{ __('Sites and kiosks') }}</span>
+                {{-- The kiosks' standing, and which site the map looks at: one
+                     of them, or all (js/site-map.js fills the list). --}}
+                <span class="sm-mapbar-end">
+                    <span id="smKiosks">{{ __('Sites and kiosks') }}</span>
+                    <span id="smPick"></span>
+                </span>
             </div>
             {{-- Every site and kiosk, as on the dashboard (2026-10-03). It used
                  to sit behind a cover until a project name was typed; the
@@ -352,6 +359,9 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
     const layer = JeyancoSiteMap(map, {
         mapUrl:   URLS.map,
         statusEl: $('smKiosks'),
+        pickEl:   $('smPick'),
+        // The bar says what the map was taken to.
+        onPick:   s => { $('smArea').textContent = s ? s.name : 'All pinned sites'; },
         autoFit:  () => !S.pin,        // never pull the view off a pin being placed
     });
     const syncLayer = () => layer.hideSite(S.editing);
@@ -882,7 +892,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
     // kiosk's GPS moving: the list and the map are asked for again. Quietly —
     // the form and a pin being placed are left alone. Silence announces
     // nothing, so the map also looks every minute: that is how the pulse round
-    // a kiosk that stopped talking turns red, as on the dashboard.
+    // a kiosk that stopped talking turns orange, as on the dashboard.
     Live.on('sites devices kiosk', () => { loadSites(); layer.refresh(); });
     setInterval(() => { if (!document.hidden) layer.refresh(); }, 60000);
 })();

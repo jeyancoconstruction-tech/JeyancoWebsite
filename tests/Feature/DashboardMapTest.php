@@ -168,8 +168,13 @@ class DashboardMapTest extends TestCase
      * "pulsing loader paikot sa fingerprint icon ... kapag may gps signal
      * yung kiosk, kapag wala naman red pulse"). A signal is a fix on a
      * heartbeat still fresh; no satellites, or gone quiet, is none.
+     *
+     * With none the pulse is a soft orange, and it moves exactly as the
+     * signal's does (Michael, 2026-10-05: "make it at least color orange
+     * yung hindi gaanong matingkad, also igaya sa design or transition ng
+     * pulse ng pag may signal"). It was one thicker red ring that beat.
      */
-    public function test_the_badge_pulses_green_with_a_gps_signal_and_red_without(): void
+    public function test_the_badge_pulses_green_with_a_gps_signal_and_soft_orange_without(): void
     {
         $this->kiosk('LIVE', $this->warehouse);
         $this->kiosk('NOSAT', $this->warehouse);
@@ -193,11 +198,18 @@ class DashboardMapTest extends TestCase
         $this->assertStringContainsString('<span class="gps-off"><i></i>No GPS signal</span>', $js);
         $this->assertStringContainsString('<div class="dm-pop-g ${signal(k)}">', $js);
 
-        // Green with a signal, red without: a colour of the pulse's own.
+        // Green with a signal, a soft orange without: a colour of the pulse's
+        // own, and neither the theme's red nor its amber.
         $this->assertStringContainsString('.gps-on  { --dm-g: var(--success); }', $css);
-        $this->assertStringContainsString('.gps-off { --dm-g: var(--danger); }', $css);
-        $this->assertStringContainsString('.gps-on .dm-av::before  { animation: dm-ripple', $css);
-        $this->assertStringContainsString('.gps-off .dm-av::before { border-width: 3px; animation: dm-beat', $css);
+        $this->assertStringContainsString('.gps-off { --dm-g: var(--dm-quiet); }', $css);
+        $this->assertStringContainsString(':root { --dm-quiet: #DE9254; }', $css);
+        $this->assertStringNotContainsString('.gps-off { --dm-g: var(--danger)', $css);
+
+        // One ripple for both: the same two rings, the same two seconds.
+        $this->assertStringContainsString('.gps-on .dm-av::before, .gps-off .dm-av::before { animation: dm-ripple 2s ease-out infinite; }', $css);
+        $this->assertStringContainsString('.gps-on .dm-av::after,  .gps-off .dm-av::after  { animation: dm-ripple 2s ease-out 1s infinite; }', $css);
+        $this->assertStringNotContainsString('dm-beat', $css, 'the red beat is gone');
+        $this->assertStringNotContainsString('animation-duration: 1.4s', $css, 'the key pulses at one pace too');
         $this->assertStringContainsString('border: 2px solid var(--dm-g)', $css);
         $this->assertStringContainsString('@media (prefers-reduced-motion: reduce)', $css);
 
@@ -207,7 +219,58 @@ class DashboardMapTest extends TestCase
 
         // The kiosk console's own map says it the same way.
         $devices = file_get_contents(resource_path('views/devices/index.blade.php'));
-        $this->assertStringContainsString('.dvc-pin.stale::after, .dvc-pin.off::after {', $devices);
+        $this->assertStringContainsString('.dvc-pin.stale::after, .dvc-pin.off::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid #DE9254;', $devices);
+    }
+
+    /**
+     * Over each map is a list of the sites (Michael, 2026-10-05: "maglagay ka
+     * ng sorting sa taas ng map na pwede mamili kung anong site then mag
+     * zo-zoom in sa site na yun, then meron din all site na mag zo-zoom out
+     * para makita lahat ng available site").
+     */
+    public function test_a_list_over_the_map_goes_in_to_one_site_or_out_to_all(): void
+    {
+        // Each page gives the list a place in the bar above its map.
+        $dashboard = $this->actingAs($this->admin)->get('/dashboard')->assertOk()->getContent();
+        $this->assertStringContainsString('<span id="kioskPick"></span>', $dashboard);
+        $this->assertStringContainsString("pickEl:   document.getElementById('kioskPick'),", $dashboard);
+        $this->assertLessThan(strpos($dashboard, 'id="kioskMap"'), strpos($dashboard, 'id="kioskPick"'), 'above the map');
+
+        $sites = $this->get('/sites')->assertOk()->getContent();
+        $this->assertStringContainsString('<span id="smPick"></span>', $sites);
+        $this->assertStringContainsString("pickEl:   $('smPick'),", $sites);
+        $this->assertLessThan(strpos($sites, 'id="smMap"'), strpos($sites, 'id="smPick"'), 'above the map');
+
+        // What it lists comes from the same read as the pins: every site, and
+        // whether it is pinned.
+        $byName = collect($this->getJson('/dashboard/map')->assertOk()->json('sites'))->keyBy('name');
+        $this->assertNotNull($byName['Site A']['lat']);
+        $this->assertSame(300, $byName['Site B']['radius_m']);
+        $this->assertNull($byName['Site C']['lat'], 'listed, and not to be picked');
+
+        $js = file_get_contents(public_path('js/site-map.js'));
+
+        // All sites first, then each by name; one with no pin cannot be picked.
+        $this->assertStringContainsString('<option value="">All sites</option>', $js);
+        $this->assertStringContainsString('`<option value="${s.id}">${esc(s.name)}</option>`', $js);
+        $this->assertStringContainsString('`<option value="${s.id}" disabled>${esc(s.name)} · not pinned</option>`', $js);
+        $this->assertStringContainsString("picker.addEventListener('change', () => show(picker.value));", $js);
+
+        // A site: in to its range ring. All sites: out to every pin and kiosk.
+        $this->assertStringContainsString('goTo(L.latLng(s.lat, s.lng).toBounds(2 * s.radius_m), SITE_ZOOM);', $js);
+        $this->assertStringContainsString('if (points.length) goTo(L.latLngBounds(points), FIT_ZOOM);', $js);
+        $this->assertStringContainsString('map.flyToBounds(bounds', $js);
+        $this->assertStringContainsString('(prefers-reduced-motion: reduce)', $js);
+
+        // Redrawn only when the sites changed, so a heartbeat does not close a
+        // list somebody has open; and the list follows the map elsewhere.
+        $this->assertStringContainsString('if (html === listed) return;', $js);
+        $this->assertStringContainsString("if (picker) picker.value = '';", $js);
+        $this->assertStringContainsString('if (picker) picker.value = String(id);', $js);
+
+        // The open list is drawn in the theme, not Chrome's white.
+        $css = file_get_contents(public_path('site-map.css'));
+        $this->assertStringContainsString('html[data-bs-theme] .dm-pick select option { background: var(--surface); color: var(--text-primary);', $css);
     }
 
     public function test_the_edge_of_the_range_is_inside(): void

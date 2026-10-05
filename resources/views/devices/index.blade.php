@@ -108,8 +108,8 @@
 .dvc-pin.stale { background: #8a97ab; }
 .dvc-pin.off { background: #dc2626; }
 .dvc-pin.live::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid #16a34a; animation: dvc-ring 1.8s ease-out infinite; }
-/* No GPS signal: the ring is red, as on the dashboard's and the Sites map. */
-.dvc-pin.stale::after, .dvc-pin.off::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid #dc2626; animation: dvc-ring 1.8s ease-out infinite; }
+/* No GPS signal: the ring is a soft orange, as on the dashboard's and the Sites map. */
+.dvc-pin.stale::after, .dvc-pin.off::after { content: ""; position: absolute; inset: -9px; border-radius: 50%; border: 2px solid #DE9254; animation: dvc-ring 1.8s ease-out infinite; }
 @keyframes dvc-ring { from { transform: scale(.4); opacity: .9; } to { transform: scale(1.4); opacity: 0; } }
 .dvc-site { width: 26px; height: 26px; border-radius: 7px; background: var(--brand, #1668dc); color: #fff; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.35); border: 2px solid #fff; font: 800 11px Inter, sans-serif; }
 @media (prefers-reduced-motion: reduce) { .dvc-live::before, .dvc-pin::after { animation: none; } }
