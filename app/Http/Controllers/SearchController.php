@@ -511,6 +511,8 @@ class SearchController extends Controller
                 'attendance time in out present absent kiosk scan today clock working break'),
             $page('Workforce', 'Attendance history', 'Attendance · every past day', route('attendance', ['tab' => 'history']), 'history',
                 'attendance history past days records log dtr time record'),
+            $page('Workforce', 'Absent today', 'Attendance · expected today and not scanned yet', route('attendance', ['view' => 'absent']), 'user-x',
+                'attendance absent today missing no scan not in yet no show who is not here due later'),
             $page('Workforce', 'Needs review', 'Attendance · missed sign-outs and days with no break scans', route('attendance', ['view' => 'missed']), 'alert-triangle',
                 'attendance needs review missed sign out time out no break not recorded invalid held unpaid'),
             $page('Workforce', 'Employees', 'The workforce: register, edit, export, bonus', route('employees.register'), 'users',

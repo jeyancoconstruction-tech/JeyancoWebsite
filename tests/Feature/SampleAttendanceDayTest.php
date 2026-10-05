@@ -165,6 +165,66 @@ class SampleAttendanceDayTest extends TestCase
         $this->assertSame($moved, $day());
     }
 
+    /**
+     * --whole (Michael, 2026-10-05: "gawan muna ng normal na attendance na
+     * lahat ng nag in hanggang hapon na"): everybody who is in gets the rest
+     * of the day now, ahead of the clock.
+     */
+    public function test_whole_finishes_the_day_now_for_everybody_who_is_in(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-30 11:40:00', 'Asia/Manila'));
+
+        [$sample, $wentHome, $stillIn] = $this->crew(3, $this->day, 'Day');
+        [$night] = $this->crew(1, $this->night, 'Night');
+
+        $kiosk = Kiosk::firstOrCreate(['code' => 'SITE_A'], ['name' => 'Site A Kiosk', 'is_active' => true]);
+        // In at 8:46, out at 9:27: a morning of their own, timed out.
+        $morning = Attendance::create(['employee_id' => $wentHome->id, 'shift_id' => $this->day->id, 'kiosk_id' => $kiosk->id,
+            'date' => '2026-09-30', 'session' => 'AM', 'time_in' => '2026-09-30 08:46:00', 'time_out' => '2026-09-30 09:27:00']);
+        // In and still working: their day to finish.
+        $open = Attendance::create(['employee_id' => $stillIn->id, 'shift_id' => $this->day->id, 'kiosk_id' => $kiosk->id,
+            'date' => '2026-09-30', 'session' => 'AM', 'time_in' => '2026-09-30 07:58:00']);
+
+        // In the morning the night crew's last night is over, and tonight has
+        // not opened: --today starts nobody on a shift that has ended.
+        $this->artisan('attendance:sample-day', ['--today' => true])->assertSuccessful();
+        $this->assertSame(0, Attendance::where('employee_id', $night->id)->count());
+        $this->assertSame(1, Attendance::where('employee_id', $sample->id)->count());
+        $this->assertNull(Attendance::where('employee_id', $sample->id)->value('time_out'));
+
+        $this->artisan('attendance:sample-day', ['--today' => true, '--whole' => true])->assertSuccessful();
+
+        // The sample worker: both sessions, in and out, the afternoon ahead of the clock.
+        $rows = Attendance::where('employee_id', $sample->id)->orderBy('session')->get();
+        $this->assertSame(['AM', 'PM'], $rows->pluck('session')->all());
+        $this->assertSame(0, $rows->whereNull('time_out')->count());
+        $this->assertGreaterThan('2026-09-30 16:00:00', $rows[1]->time_out);
+
+        // A morning already timed out: the afternoon follows it, and the
+        // worker's own scans are as they were.
+        $rows = Attendance::where('employee_id', $wentHome->id)->orderBy('session')->get();
+        $this->assertSame(['AM', 'PM'], $rows->pluck('session')->all());
+        $this->assertSame(['2026-09-30 08:46:00', '2026-09-30 09:27:00', $kiosk->id],
+            [$morning->fresh()->time_in, $morning->fresh()->time_out, $morning->fresh()->kiosk_id]);
+        $this->assertNull($rows[1]->kiosk_id);
+        $this->assertGreaterThan('2026-09-30 12:40:00', $rows[1]->time_in);
+        $this->assertNotNull($rows[1]->time_out);
+
+        // Still timed in for real, and not due in yet: neither is touched.
+        $this->assertSame([$open->id], Attendance::where('employee_id', $stillIn->id)->pluck('id')->all());
+        $this->assertNull($open->fresh()->time_out);
+        $this->assertSame(0, Attendance::where('employee_id', $night->id)->count());
+
+        // Payroll reads the finished day as a day worked.
+        $paid = collect(app(PayrollService::class)->computeForRange('2026-09-30', '2026-09-30')['employees'])
+            ->firstWhere('employee_id', $sample->id);
+        $this->assertSame(1, $paid['totals']['workdays']);
+
+        // Undo takes back the sample rows, the added afternoon among them.
+        $this->artisan('attendance:sample-day', ['--today' => true, '--undo' => true])->assertSuccessful();
+        $this->assertEqualsCanonicalizing([$morning->id, $open->id], Attendance::pluck('id')->all());
+    }
+
     public function test_a_day_begun_with_today_and_closed_by_the_system_is_finished_by_the_next_run(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-09-30 11:03:00', 'Asia/Manila'));

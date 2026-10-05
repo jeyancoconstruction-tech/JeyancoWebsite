@@ -53,11 +53,11 @@ a.atm-sched:hover { border-color:var(--brand); color:inherit; text-decoration:no
 }
 
 /* ── Cards ───────────────────────────────────────────────────────────────
-   One strip of four numbers. Each is a question, so each is a link — to the
+   One strip of five numbers. Each is a question, so each is a link — to the
    same status the control under the tabs sets. Anchors, not buttons: the
    answer is a URL the office can bookmark or send to somebody. */
 .atm-stats {
-    display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); margin-bottom:12px;
+    display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); margin-bottom:12px;
     background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
     box-shadow:var(--shadow-xs); overflow:hidden;
 }
@@ -367,8 +367,10 @@ tr.atm-dayhead td {
 
 @media (max-width:1100px) {
     .atm-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-    .atm-stat:nth-child(3) { border-left:0; }
+    .atm-stat:nth-child(odd) { border-left:0; }
     .atm-stat:nth-child(n+3) { border-top:1px solid var(--border); }
+    /* Five cards in two columns: the last one takes the whole row, not half of it beside a gap. */
+    .atm-stat:last-child:nth-child(odd) { grid-column:1 / -1; }
     .atm-toolbar .atm-push { margin-left:0; }
 }
 @media (max-width:700px) {
@@ -497,6 +499,25 @@ tr.atm-dayhead td {
             <span class="atm-stat-num">{{ $onBreak }}</span>
             <span class="atm-stat-sub">
                 {{ $overBreak ? $overBreak . ' ' . __('past the break') : __('Between sessions') }}
+            </span>
+        </a>
+        {{-- Who is not here: on the roster, expected, and two hours into the
+             shift with nothing scanned. The line under the number says who
+             else the card lists: late getting in, and due later today. --}}
+        <a @class(['atm-stat', 'is-bad', 'has-some' => $absentToday > 0, 'is-active' => $cardOn('absent')])
+           href="{{ $cardUrl('absent') }}" data-view="absent"
+           @if($cardOn('absent')) aria-current="true" @endif>
+            <span class="atm-stat-lbl">{{ __('Absent today') }}</span>
+            <span class="atm-stat-num">{{ $absentToday }}</span>
+            <span class="atm-stat-sub">
+                @php
+                    $absentNote = collect([
+                        $notInYet ? $notInYet . ' ' . __('not in yet') : null,
+                        $dueLater ? $dueLater . ' ' . __('due later') : null,
+                        $offToday ? $offToday . ' ' . __('off today') : null,
+                    ])->filter()->implode(' · ');
+                @endphp
+                {{ $absentNote !== '' ? $absentNote : ($absentToday ? __('Expected, no scan') : __('Nobody expected is missing')) }}
             </span>
         </a>
         <a @class(['atm-stat', 'is-bad', 'has-some' => $invalidCount > 0, 'is-active' => $cardOn('missed')])
@@ -640,6 +661,7 @@ tr.atm-dayhead td {
                             <span>{{ $search !== '' ? __('Nobody on today\'s list matches these filters.') : match ($todayView) {
                                 'clocked-in' => __('Nobody is clocked in right now.'),
                                 'break'      => __('Nobody is on break right now.'),
+                                'absent'     => __('Nobody expected today is missing.'),
                                 'missed'     => __('Nothing on today\'s list is waiting on a review.'),
                                 'done'       => __('No finished days yet today.'),
                                 'all'        => __('Nobody on the roster matches these filters.'),
@@ -971,7 +993,7 @@ tr.atm-dayhead td {
     // only on today, so they come and go with the tab; the tab rides in the
     // address bar too.
     const rangePick = document.getElementById('attRangePick');
-    const todayOnly = ['clocked-in', 'break'];
+    const todayOnly = ['clocked-in', 'break', 'absent'];
 
     document.querySelectorAll('.atm-tab[data-tab]').forEach(btn => {
         btn.addEventListener('shown.bs.tab', () => {

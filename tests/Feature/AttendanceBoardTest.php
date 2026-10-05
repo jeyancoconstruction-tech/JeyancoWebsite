@@ -293,7 +293,101 @@ class AttendanceBoardTest extends TestCase
         $this->assertStringNotContainsString('<b>Here At A</b>', $html);
     }
 
-    /** Nobody who has not scanned is on any list but All. */
+    /**
+     * Absent today, the card after On break (Michael, 2026-10-05: "gusto ko
+     * malaman ... kung sino ang absent today kaya sa taas sunod sa on break
+     * maglagay ka ng absent today"). The number is who the rows call Absent:
+     * expected, two hours into the shift, nothing scanned. The card lists
+     * them with whoever is late getting in or due later, so the office sees
+     * everybody the roster is still waiting for — and nobody on leave.
+     */
+    public function test_absent_today_counts_and_lists_who_is_expected_and_has_not_scanned(): void
+    {
+        $night = Shift::where('crosses_midnight', true)->firstOrFail();
+        $night->forceFill(Shift::layOut('20:00', '05:00', '00:00', '01:00') + ['regular_minutes' => 480])->save();
+
+        $this->stretch($this->worker('In On Time'), '2026-09-15', 'AM', '08:00:00', null);
+        $this->worker('Not Yet Here');
+        $this->worker('Night Later')->forceFill(['shift_id' => $night->id])->save();
+
+        $away = $this->worker('Away On Leave');
+        \App\Models\LeaveRequest::create([
+            'employee_id' => $away->id, 'leave_type' => 'vacation',
+            'starts_on' => '2026-09-15', 'ends_on' => '2026-09-16', 'days' => 2,
+            'is_paid' => true, 'status' => 'approved',
+        ]);
+        $this->worker('Still Pending')->forceFill(['status' => Employee::STATUS_PENDING])->save();
+
+        // Nine o'clock: an hour late is not absent yet.
+        $this->at('2026-09-15 09:00:00');
+        $page = $this->page(['view' => 'present']);
+        $this->assertSame([0, 1, 1, 1], [$page->viewData('absentToday'), $page->viewData('notInYet'), $page->viewData('dueLater'), $page->viewData('offToday')]);
+
+        // Half past ten: two hours with no scan is.
+        $this->at('2026-09-15 10:30:00');
+        $page = $this->page(['view' => 'present']);
+        $this->assertSame([1, 0, 1, 1], [$page->viewData('absentToday'), $page->viewData('notInYet'), $page->viewData('dueLater'), $page->viewData('offToday')]);
+        $this->assertSame(1, $page->viewData('presentToday'), 'the other cards are as they were');
+
+        // The card: after On break, before Needs review, red while somebody is absent.
+        $html = $page->getContent();
+        $this->assertMatchesRegularExpression(
+            '#<a class="atm-stat is-bad has-some"\s+href="[^"]*view=absent"\s+data-view="absent"\s*>\s*<span class="atm-stat-lbl">Absent today</span>\s*<span class="atm-stat-num">1</span>#', $html);
+        $this->assertMatchesRegularExpression('#<span class="atm-stat-sub">\s*1 due later · 1 off today\s*</span>#', $html);
+        $this->assertLessThan(strpos($html, 'Absent today'), strpos($html, '<span class="atm-stat-lbl">On break</span>'));
+        $this->assertLessThan(strpos($html, '<span class="atm-stat-lbl">Needs review</span>'), strpos($html, 'Absent today'));
+
+        // Clicking it: who is absent, and who is due later. Not who scanned,
+        // not who is on leave, not who is pending.
+        $page = $this->page(['view' => 'absent']);
+        $html = $page->getContent();
+        $this->assertSame(['Not Yet Here', 'Night Later'],
+            $page->viewData('todayAttendances')->map(fn ($d) => $d->employee()->name)->all(), 'absent first, then due later');
+        $this->assertStringContainsString('Absent', $this->row($html, 'Not Yet Here'));
+        $this->assertStringContainsString('Scheduled', $this->row($html, 'Night Later'));
+        foreach (['In On Time', 'Away On Leave', 'Still Pending'] as $name) {
+            $this->assertStringNotContainsString("<b>{$name}</b>", $html, $name);
+        }
+        $this->assertMatchesRegularExpression('#<a class="atm-stat is-bad has-some is-active"\s+href="[^"]*view=all"\s+data-view="absent"\s+aria-current="true"#', $html);
+        $this->assertSame('today', $page->viewData('openTab'));
+
+        // The search narrows the list and leaves the number.
+        $page = $this->page(['view' => 'absent', 'q' => 'night']);
+        $this->assertSame(['Night Later'], $page->viewData('todayAttendances')->map(fn ($d) => $d->employee()->name)->all());
+        $this->assertSame(1, $page->viewData('absentToday'));
+
+        // Once everybody expected has scanned, the card says so in grey.
+        $this->stretch(Employee::where('name', 'Not Yet Here')->firstOrFail(), '2026-09-15', 'AM', '10:31:00', null);
+        Employee::where('name', 'Night Later')->delete();
+        Employee::where('name', 'Away On Leave')->delete();
+        $this->at('2026-09-15 10:35:00');
+        $html = $this->page(['view' => 'absent'])->getContent();
+        $this->assertMatchesRegularExpression('#<span class="atm-stat-lbl">Absent today</span>\s*<span class="atm-stat-num">0</span>\s*<span class="atm-stat-sub">\s*Nobody expected is missing\s*</span>#', $html);
+        $this->assertStringContainsString('Nobody expected today is missing.', $html);
+        $this->assertDoesNotMatchRegularExpression('#atm-stat is-bad has-some is-active#', $html);
+    }
+
+    /** Somebody working at another site today is not absent from their own. */
+    public function test_a_worker_scanned_at_another_site_is_not_absent_at_their_own(): void
+    {
+        $other = Site::firstOrCreate(['name' => 'Site B']);
+
+        $lent = $this->worker('Lent To B');
+        $lent->forceFill(['site_id' => $this->site->id])->save();
+        $this->stretch($lent, '2026-09-15', 'AM', '08:00:00', null)->forceFill(['site_id' => $other->id])->save();
+        $this->worker('Missing At A')->forceFill(['site_id' => $this->site->id])->save();
+
+        $this->at('2026-09-15 10:30:00');
+        $page = $this->page(['view' => 'absent', 'site' => $this->site->id]);
+
+        $this->assertSame(1, $page->viewData('absentToday'));
+        $this->assertSame(['Missing At A'], $page->viewData('todayAttendances')->map(fn ($d) => $d->employee()->name)->all());
+
+        // And All at that site does not list them as not scanned either.
+        $this->assertStringNotContainsString('<b>Lent To B</b>', $this->page(['view' => 'all', 'site' => $this->site->id])->getContent());
+    }
+
+    /** Nobody who has not scanned is on any list but All and Absent. */
     public function test_only_all_lists_those_who_have_not_scanned(): void
     {
         $this->worker('Not Yet Here');
@@ -326,12 +420,12 @@ class AttendanceBoardTest extends TestCase
         $this->assertMatchesRegularExpression('#<label data-today-only>\s*<input type="radio" name="view" value="clocked-in"#', $today);
     }
 
-    /** A Working or On break carried over to History reads as everybody there, not as nobody. */
+    /** A Working, On break or Absent carried over to History reads as everybody there, not as nobody. */
     public function test_history_reads_working_and_on_break_as_everybody(): void
     {
         $this->stretch($this->worker('Past Day'), '2026-09-14', 'AM', '08:00:00', '17:00:00');
 
-        foreach (['clocked-in', 'break'] as $view) {
+        foreach (['clocked-in', 'break', 'absent'] as $view) {
             $page = $this->actingAs($this->admin())
                 ->get(route('attendance', ['tab' => 'history', 'view' => $view]))->assertOk();
 

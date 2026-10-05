@@ -27,13 +27,15 @@ class AttendanceController extends Controller
      *
      * All is everybody on the roster, scanned or not; Present is everybody
      * who scanned — the Present today card, which the control has no button
-     * for.
+     * for. Absent is the other half of the roster: nobody who scanned, and
+     * everybody expected today who has not (the Absent today card).
      */
     private const VIEWS = [
         'all'        => null,
         'present'    => ['work', 'break', 'review', 'done', 'norec'],
         'clocked-in' => ['work'],
         'break'      => ['break'],
+        'absent'     => [],
         'missed'     => ['review'],
         'done'       => ['done'],
     ];
@@ -41,6 +43,13 @@ class AttendanceController extends Controller
     /** What each tab opens on when nobody has chosen: everybody who scanned today, and every past day. */
     private const TODAY_DEFAULT   = 'present';
     private const HISTORY_DEFAULT = 'all';
+
+    /**
+     * Where an unscanned worker the office expected today stands: past two
+     * hours with no scan, late getting in, or due later in the day. Leave,
+     * a holiday and the rest day ('off') are not absences.
+     */
+    private const MISSING = ['absent', 'notin', 'sched'];
 
     /** What the lists load with every row: who, where, under which shift, and from which kiosk. */
     private const WITH = ['employee.laborType', 'site', 'shift', 'kiosk', 'reviewer'];
@@ -132,10 +141,10 @@ class AttendanceController extends Controller
         $todayView   = $view ?? self::TODAY_DEFAULT;
         $historyView = $view ?? self::HISTORY_DEFAULT;
 
-        // Working and On break are questions about now. A finished day is
-        // neither, and History has no buttons for them, so there they read
-        // as everybody rather than as an empty list.
-        if (in_array($historyView, ['clocked-in', 'break'], true)) {
+        // Working, On break and Absent are questions about now. A finished
+        // day is none of them, and History has no buttons for them, so there
+        // they read as everybody rather than as an empty list.
+        if (in_array($historyView, ['clocked-in', 'break', 'absent'], true)) {
             $historyView = 'all';
         }
 
@@ -182,13 +191,23 @@ class AttendanceController extends Controller
         $scanned    = $keep->map(fn (AttendanceDayView $d) => $d->day)->values();
         $todayBoard = AttendanceDayView::all($scanned, $now, true, $this->priced($payroll, $scanned));
 
-        // All is the whole roster: everybody who has not scanned is listed
-        // too, with where they stand — expected later, not in yet, absent, or
-        // not expected today at all.
-        if ($wanted === null) {
-            $todayBoard = $todayBoard->concat(
-                $this->unscanned($todayAll->pluck('employee_id')->unique()->all(), $now, $siteId, $shiftId, $search)
-            )->values();
+        // The rest of the roster: everybody with nothing scanned for their
+        // workday, and where each stands — expected later, not in yet,
+        // absent, or not expected today at all. Somebody scanned at another
+        // site, or under another shift, than the one chosen is not missing,
+        // so who has scanned is asked without the filters.
+        $scannedIds = ($siteId || $shiftId)
+            ? Attendance::ofRegistered()->fromWorkday($now)->whereNotNull('time_in')->distinct()->pluck('employee_id')->all()
+            : $todayAll->pluck('employee_id')->unique()->all();
+        $rest = $this->unscanned($scannedIds, $now, $siteId, $shiftId);
+
+        // All is the whole roster, so they are listed after those who
+        // scanned. Absent is only them, and only the ones expected today:
+        // the Absent today card (Michael, 2026-10-05).
+        if ($wanted === null || $todayView === 'absent') {
+            $todayBoard = $todayBoard->concat($rest->filter(fn (AttendanceDayView $d) =>
+                ($wanted === null || in_array($d->key(), self::MISSING, true)) && $named($d->day->employee()?->name)
+            ))->values();
         }
 
         $todayAttendances = $todayBoard->map(fn (AttendanceDayView $d) => $d->day)->values();
@@ -276,6 +295,16 @@ class AttendanceController extends Controller
         $onBreak  = $breaks->count();
         $overBreak = $breaks->filter(fn (AttendanceDayView $d) => $d->status()['over'])->count();
 
+        // Absent today: on the roster, expected, and two hours into the
+        // shift with nothing scanned — the row's own word for it. Late
+        // getting in and due later are said beside the number, since they
+        // are who the card lists too; leave and days off are not absences.
+        $stands      = $rest->countBy(fn (AttendanceDayView $d) => $d->key());
+        $absentToday = (int) ($stands['absent'] ?? 0);
+        $notInYet    = (int) ($stands['notin'] ?? 0);
+        $dueLater    = (int) ($stands['sched'] ?? 0);
+        $offToday    = (int) ($stands['off'] ?? 0);
+
         $weekStart = Carbon::today()->startOfWeek(); // Monday — resets each week
 
         // Days waiting on the office this week, by the same rule the rows
@@ -337,6 +366,7 @@ class AttendanceController extends Controller
         return view('attendance', compact(
             'todayAttendances', 'historyAttendances', 'historyDays', 'todayBoard', 'historyBoard',
             'presentToday', 'nightCrew', 'clockedIn', 'inSecond', 'onBreak', 'overBreak',
+            'absentToday', 'notInYet', 'dueLater', 'offToday',
             'invalidCount', 'reviewToday', 'reviewEarlier', 'holidayDates',
             'sites', 'shifts', 'siteId', 'shiftId', 'range', 'view', 'todayView', 'historyView',
             'search', 'openTab', 'now'
@@ -345,23 +375,23 @@ class AttendanceController extends Controller
 
     /**
      * Everybody on the roster with nothing scanned for their shift's workday,
-     * as days with no rows: the rest of the answer to "all of them".
+     * as days with no rows: the rest of the answer to "all of them", and the
+     * whole of the answer to "who is absent".
      *
      * Read off the worker, since there is no attendance to read: their home
      * site and their current shift. Leave, the rest day and a holiday are
      * named, so somebody nobody expected is not reported absent.
      *
-     * @param  array<int, int>  $present  employees already on the list
+     * @param  array<int, int>  $present  employees who have scanned for their workday, at any site
      * @return Collection<int, AttendanceDayView>
      */
-    private function unscanned(array $present, Carbon $now, ?int $siteId, ?int $shiftId, string $search): Collection
+    private function unscanned(array $present, Carbon $now, ?int $siteId, ?int $shiftId): Collection
     {
         $roster = Employee::active()
             ->with(['laborType', 'shift', 'site'])
             ->whereNotIn('id', $present)
             ->when($siteId, fn ($q) => $q->where('site_id', $siteId))
             ->when($shiftId, fn ($q) => $q->where('shift_id', $shiftId))
-            ->when($search !== '', fn ($q) => $q->where('name', 'like', '%' . $search . '%'))
             ->orderBy('name')
             ->get();
 

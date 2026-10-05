@@ -16,6 +16,7 @@ use Illuminate\Console\Command;
  *     php artisan attendance:sample-day                  # write it
  *     php artisan attendance:sample-day --undo           # take it back
  *     php artisan attendance:sample-day --today          # today, as far as it has gone
+ *     php artisan attendance:sample-day --today --whole  # today, finished now for whoever is in
  *     php artisan attendance:sample-day --today --undo
  *
  * Each worker gets their last shift that has fully finished, overtime
@@ -27,21 +28,30 @@ use Illuminate\Console\Command;
  * some stay for overtime, and one or two leave early. The same day always
  * comes out the same, so a rerun after --undo gives the same figures.
  *
- * --today is the day each crew is working now, the one the Attendance page
- * calls today (Michael, 2026-10-05). Only the scans the clock has reached are
- * written: at eleven in the morning everybody is timed in and nobody is out.
- * Run it again later and the same workers go to their break, come back and go
- * home. A day left unfinished is finished by the next run, with or without
- * --today, even after the system closed it as a missed time out.
+ * --today is the day each crew is working now (Michael, 2026-10-05). Only
+ * the scans the clock has reached are written: at eleven in the morning
+ * everybody is timed in and nobody is out. Run it again later and the same
+ * workers go to their break, come back and go home. A day left unfinished is
+ * finished by the next run, with or without --today, even after the system
+ * closed it as a missed time out. Nobody is started on a shift that is
+ * already over: in the morning the night crew's last night is history on the
+ * Attendance page, not today, so they wait for the evening.
  *
- * A worker who already has attendance on that day is left alone. The rows
- * carry no kiosk, which real scans always do; --undo removes exactly those
- * rows on the days this command writes.
+ * --whole finishes the day now for everybody who is in (Michael, 2026-10-05:
+ * "gawan muna ng normal na attendance na lahat ng nag in hanggang hapon na"):
+ * the break, the afternoon and the time out are written although the clock
+ * has not reached them. Somebody who scanned a morning of their own and timed
+ * out is given the afternoon after it; their own scans are not touched.
+ *
+ * Otherwise a worker who already has attendance on that day is left alone.
+ * The rows carry no kiosk, which real scans always do; --undo removes exactly
+ * those rows on the days this command writes.
  */
 class SampleAttendanceDay extends Command
 {
     protected $signature = 'attendance:sample-day
         {--today : The day each crew is working now, written as far as the clock has gone}
+        {--whole : Finish the day now for everybody who is in, the scans still ahead of the clock too}
         {--undo : Remove the sample rows written for those days}';
 
     protected $description = 'Give every active worker a normal day of attendance (a few late, some overtime) on their last finished shift, or on today so far';
@@ -49,10 +59,14 @@ class SampleAttendanceDay extends Command
     /** How long after the shift's end overtime may run, so a day counts as finished. */
     private const OVERTIME_ROOM = 150;
 
+    /** The last worker written kept a morning of their own: only the afternoon is the sample's. */
+    private bool $keptMorning = false;
+
     public function handle(): int
     {
         $now     = Carbon::now('Asia/Manila');
         $today   = (bool) $this->option('today');
+        $whole   = (bool) $this->option('whole');
         $workers = Employee::active()->with('shift')->orderBy('name')->get()->filter(fn (Employee $e) => $e->shift?->hasSchedule());
 
         $written = $skipped = $waiting = $removed = 0;
@@ -64,17 +78,25 @@ class SampleAttendanceDay extends Command
             if ($day === null) {
                 continue;
             }
-            $days[$day] = true;
 
             if ($this->option('undo')) {
+                $days[$day] = true;
                 $removed += Attendance::where('employee_id', $worker->id)->whereDate('date', $day)->whereNull('kiosk_id')->delete();
                 continue;
             }
 
             $times = $this->dayFor($worker, $sched, $day);
-            $scans = $this->fill($worker, $day, $times, $now);
 
-            if ($scans === 0 && $times['AM'][0]->greaterThan($now)) {
+            // A shift that has ended is no longer today on the Attendance
+            // page: what was begun on it is finished, and nobody is started.
+            $over  = $today && Attendance::workdayOf($sched, $now) !== $day;
+            // Finished now, for whoever is in: every scan of the day counts
+            // as reached once the first one has been.
+            $upTo  = $whole && $times['AM'][0]->lessThanOrEqualTo($now) ? $times['PM'][1] : $now;
+            $this->keptMorning = false;
+            $scans = $this->fill($worker, $day, $times, $upTo, ! $over, $whole);
+
+            if ($scans === 0 && ! Attendance::where('employee_id', $worker->id)->whereDate('date', $day)->exists()) {
                 $waiting++;
                 continue;
             }
@@ -83,9 +105,11 @@ class SampleAttendanceDay extends Command
                 continue;
             }
 
-            $at = fn (Carbon $t) => $t->greaterThan($now) ? '…' : $t->format('g:i A');
-            $this->line(sprintf('  %-28s %s  %s–%s  %s–%s', mb_strimwidth($worker->name, 0, 28), $day,
-                $at($times['AM'][0]), $at($times['AM'][1]), $at($times['PM'][0]), $at($times['PM'][1])));
+            $at = fn (Carbon $t) => $t->greaterThan($upTo) ? '…' : $t->format('g:i A');
+            $this->line(sprintf('  %-28s %s  %s  %s–%s', mb_strimwidth($worker->name, 0, 28), $day,
+                $this->keptMorning ? '(their own morning)' : $at($times['AM'][0]) . '–' . $at($times['AM'][1]),
+                $at($times['PM'][0]), $at($times['PM'][1])));
+            $days[$day] = true;
             $written++;
         }
 
@@ -99,8 +123,9 @@ class SampleAttendanceDay extends Command
             $this->info("{$removed} sample attendance rows removed ({$on}).");
         } elseif ($today) {
             AuditLog::record('Attendance', 'created', "Sample attendance written for {$written} workers on {$on}, up to {$now->format('g:i A')}.");
-            $this->info("{$written} workers brought up to {$now->format('g:i A')} ({$on}); {$skipped} already had attendance and were left alone"
-                . ($waiting ? "; {$waiting} are not due in yet." : '.'));
+            $this->info("{$written} workers " . ($whole ? 'given the whole day' : "brought up to {$now->format('g:i A')}")
+                . " ({$on}); {$skipped} already had attendance and were left alone"
+                . ($waiting ? "; {$waiting} not started, with no shift running." : '.'));
         } else {
             AuditLog::record('Attendance', 'created', "Sample attendance written for {$written} workers on {$on}.");
             $this->info("{$written} workers given a day of attendance ({$on}); {$skipped} already had one and were left alone.");
@@ -129,12 +154,16 @@ class SampleAttendanceDay extends Command
      * hold at this hour, and a later run adds the rest to the same rows.
      *
      * Null when the day holds anything this command did not write: that
-     * worker is present already and is left alone.
+     * worker is present already and is left alone — unless the day is being
+     * finished ($around), when a morning of their own that is timed out is
+     * followed by the afternoon.
      *
      * @param  array{AM: array{0: Carbon, 1: Carbon}, PM: array{0: Carbon, 1: Carbon}}  $times
+     * @param  Carbon  $now    how far the day is written: the clock, or the day's end
+     * @param  bool    $start  may a worker with nothing on the day be started?
      * @return int|null  scans written
      */
-    private function fill(Employee $worker, string $day, array $times, Carbon $now): ?int
+    private function fill(Employee $worker, string $day, array $times, Carbon $now, bool $start = true, bool $around = false): ?int
     {
         $stamp = fn (Carbon $t) => $t->format('Y-m-d H:i:s');
         $rows  = Attendance::where('employee_id', $worker->id)->whereDate('date', $day)->get();
@@ -143,8 +172,12 @@ class SampleAttendanceDay extends Command
             && isset($times[$r->session])
             && (string) $r->time_in === $stamp($times[$r->session][0]);
 
+        if ($rows->isEmpty() && ! $start) {
+            return 0;
+        }
+
         if (! $rows->every($own)) {
-            return null;
+            return $around ? $this->afternoonAfter($worker, $day, $times, $rows) : null;
         }
 
         $rows  = $rows->keyBy('session');
@@ -185,6 +218,44 @@ class SampleAttendanceDay extends Command
         });
 
         return $scans;
+    }
+
+    /**
+     * The afternoon, after a morning the worker scanned themselves: a second
+     * session in and out, and their own rows as they are. Only after a
+     * morning that is timed out, with no second session yet; anything else
+     * is their day to finish, and null says it was left alone.
+     *
+     * @param  \Illuminate\Support\Collection<int, Attendance>  $rows  what the day already holds
+     */
+    private function afternoonAfter(Employee $worker, string $day, array $times, $rows): ?int
+    {
+        [$in, $out] = $times['PM'];
+        $back = $in->format('Y-m-d H:i:s');
+
+        $morningDone = $rows->isNotEmpty() && $rows->every(fn (Attendance $r) =>
+            $r->session === 'AM' && ! empty($r->time_out) && (string) $r->time_out <= $back);
+
+        if (! $morningDone) {
+            return null;
+        }
+
+        Attendance::withoutEvents(fn () => Attendance::create([
+            'employee_id' => $worker->id,
+            'shift_id'    => $worker->shift_id,
+            'site_id'     => $rows->first()->site_id ?? $worker->site_id,
+            'date'        => $day,
+            'session'     => 'PM',
+            'time_in'     => $back,
+            'time_out'    => $out->format('Y-m-d H:i:s'),
+        ]));
+
+        // Back for the second session: a morning flagged for its missing
+        // break scans has them now, as the kiosk would clear it.
+        Attendance::clearBreakFlag($worker->id, $day);
+        $this->keptMorning = true;
+
+        return 2;
     }
 
     /**
