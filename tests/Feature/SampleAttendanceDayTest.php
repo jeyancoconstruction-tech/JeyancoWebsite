@@ -107,4 +107,88 @@ class SampleAttendanceDayTest extends TestCase
         $this->artisan('attendance:sample-day')->assertSuccessful();
         $this->assertSame($first, Attendance::where('employee_id', $other->id)->orderBy('session')->pluck('time_in')->all());
     }
+
+    /** --today (Michael, 2026-10-05): the day in progress, for everybody who has not scanned yet. */
+    public function test_today_is_written_as_far_as_the_clock_has_gone_and_a_rerun_moves_it_along(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-30 11:03:00', 'Asia/Manila'));
+
+        $crew    = $this->crew(30, $this->day, 'Day');
+        $scanned = array_shift($crew);
+        $ids     = array_map(fn ($e) => $e->id, $crew);
+        Employee::create(['name' => 'Still Pending', 'status' => Employee::STATUS_PENDING, 'rate_per_hour' => 100, 'shift_id' => $this->day->id]);
+
+        $kiosk = Kiosk::firstOrCreate(['code' => 'SITE_A'], ['name' => 'Site A Kiosk', 'is_active' => true]);
+        $real  = Attendance::create(['employee_id' => $scanned->id, 'shift_id' => $this->day->id, 'kiosk_id' => $kiosk->id,
+            'date' => '2026-09-30', 'session' => 'AM', 'time_in' => '2026-09-30 07:55:00']);
+
+        $this->artisan('attendance:sample-day', ['--today' => true])->assertSuccessful();
+
+        // Eleven in the morning: everybody is in, nobody is out, nothing is ahead of the clock.
+        $rows = Attendance::whereIn('employee_id', $ids)->get();
+        $this->assertCount(29, $rows);
+        $this->assertSame(['AM'], $rows->pluck('session')->unique()->values()->all());
+        $this->assertSame(0, $rows->whereNotNull('time_out')->count());
+        $this->assertTrue($rows->every(fn ($r) => str_starts_with($r->time_in, '2026-09-30') && $r->time_in <= '2026-09-30 11:03:00'));
+        $this->assertSame(29, Attendance::fromWorkday(Carbon::now())->whereNull('kiosk_id')->count(), 'the Attendance page lists them under today');
+
+        // Whoever is present already is not written over, and the pending are not workforce.
+        $this->assertSame([$real->id], Attendance::where('employee_id', $scanned->id)->pluck('id')->all());
+        $this->assertNull($real->fresh()->time_out);
+        $this->assertSame(30, Attendance::count());
+
+        // The same minute again adds nothing.
+        $this->artisan('attendance:sample-day', ['--today' => true])->assertSuccessful();
+        $this->assertSame(30, Attendance::count());
+
+        // Half past twelve: out for the break, not back yet.
+        Carbon::setTestNow(Carbon::parse('2026-09-30 12:30:00', 'Asia/Manila'));
+        $this->artisan('attendance:sample-day', ['--today' => true])->assertSuccessful();
+        $rows = Attendance::whereIn('employee_id', $ids)->get();
+        $this->assertCount(29, $rows);
+        $this->assertSame(29, $rows->whereNotNull('time_out')->count());
+
+        // The evening: the whole day, the same one the finished-day run writes.
+        Carbon::setTestNow(Carbon::parse('2026-09-30 21:07:00', 'Asia/Manila'));
+        $this->artisan('attendance:sample-day', ['--today' => true])->assertSuccessful();
+        $day = fn () => Attendance::whereIn('employee_id', $ids)->orderBy('employee_id')->orderBy('session')
+            ->get(['employee_id', 'session', 'time_in', 'time_out'])->toArray();
+        $moved = $day();
+        $this->assertCount(58, $moved);
+        $this->assertSame(0, Attendance::whereIn('employee_id', $ids)->whereNull('time_out')->count());
+        $this->assertSame(0, Attendance::where('needs_review', true)->count());
+
+        $this->artisan('attendance:sample-day', ['--today' => true, '--undo' => true])->assertSuccessful();
+        $this->assertSame([$real->id], Attendance::pluck('id')->all(), 'only the real scan is left');
+
+        $this->artisan('attendance:sample-day')->assertSuccessful();
+        $this->assertSame($moved, $day());
+    }
+
+    public function test_a_day_begun_with_today_and_closed_by_the_system_is_finished_by_the_next_run(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-30 11:03:00', 'Asia/Manila'));
+        [$worker] = $this->crew(1, $this->day, 'Day');
+
+        $this->artisan('attendance:sample-day', ['--today' => true])->assertSuccessful();
+
+        // Nobody ran it again: the next morning the open morning is a missed time out.
+        Carbon::setTestNow(Carbon::parse('2026-10-01 09:00:00', 'Asia/Manila'));
+        $this->assertSame(1, Attendance::closeStale(null, Carbon::now()));
+        $this->assertSame(1, Attendance::where('needs_review', true)->count());
+
+        $this->artisan('attendance:sample-day')->assertSuccessful();
+
+        $rows = Attendance::where('employee_id', $worker->id)->whereDate('date', '2026-09-30')->orderBy('session')->get();
+        $this->assertSame(['AM', 'PM'], $rows->pluck('session')->all());
+        $this->assertSame(0, $rows->where('needs_review', true)->count());
+        $this->assertSame([null, null], $rows->pluck('close_type')->all());
+        $this->assertSame([null, null], $rows->pluck('close_reason')->all());
+        $this->assertGreaterThanOrEqual('2026-09-30 12:00:00', $rows[0]->time_out);
+        $this->assertLessThan('2026-09-30 12:05:00', $rows[0]->time_out, 'the break scan, not the guess at the session end');
+
+        $paid = collect(app(PayrollService::class)->computeForRange('2026-09-30', '2026-09-30')['employees'])
+            ->firstWhere('employee_id', $worker->id);
+        $this->assertSame(1, $paid['totals']['workdays']);
+    }
 }

@@ -322,6 +322,10 @@ class SystemSettingsMockupTest extends TestCase
 
     public function test_missing_scan_alerts_follow_their_switch(): void
     {
+        // A Wednesday: the alert counts this week's days, and on a Monday
+        // yesterday is last week's.
+        Carbon::setTestNow('2026-09-30 10:00:00');
+
         $admin  = $this->admin();
         $worker = \App\Models\Employee::create(['site_id' => \App\Models\Kiosk::resolve()?->site_id, 'name' => 'No Time Out', 'status' => 'active', 'fingerprint_id' => '7', 'rate_per_hour' => 100]);
         $day    = now()->subDay()->toDateString();
