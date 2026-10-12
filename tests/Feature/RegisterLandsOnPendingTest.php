@@ -135,8 +135,9 @@ class RegisterLandsOnPendingTest extends TestCase
     public function test_the_form_no_longer_explains_the_pending_state(): void
     {
         $this->actingAs($this->admin())
-             ->get(route('employees.create'))
+             ->get(route('employees.register'))
              ->assertOk()
+             ->assertSee('id="regWizardForm"', false)
              ->assertDontSee('This worker is saved as');
     }
 }

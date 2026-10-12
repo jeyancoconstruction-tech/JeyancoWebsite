@@ -252,14 +252,15 @@ class EmployeeController extends Controller
         ]);
     }
 
+    /**
+     * Register Employee was a page of its own. It is a step-by-step pop-up
+     * on the Employees page now (employees/_register_wizard.blade.php), so
+     * this address leads there with the pop-up open — a bookmark, the search
+     * and an old link all still land on the form they were after.
+     */
     public function create()
     {
-        $laborTypes        = LaborType::all();
-        $sites             = Site::orderBy('name')->get();
-        $nextFingerprintId = $this->nextFingerprintId();
-        $shifts            = Shift::orderBy('id')->get();
-
-        return view('employees.create', compact('laborTypes', 'sites', 'nextFingerprintId', 'shifts'));
+        return redirect()->route('employees.register', ['register' => 1]);
     }
 
     public function store(Request $request)
@@ -288,7 +289,7 @@ class EmployeeController extends Controller
 
         // Reclaim the slot from a removed or archived worker who still owns it.
         if ($fingerprintId && $holder = Employee::releaseFingerprint($fingerprintId)) {
-            return back()->withInput()->withErrors([
+            throw \Illuminate\Validation\ValidationException::withMessages([
                 'fingerprint_id' => Employee::fingerprintConflictMessage($holder, $fingerprintId),
             ]);
         }
@@ -319,6 +320,23 @@ class EmployeeController extends Controller
                 ? $employee->name . ' is registered and waiting for fingerprint enrolment at the kiosk.'
                 : $employee->name . ' has been added to the system.'
         );
+
+        // The step-by-step pop-up on Employees posts this in the background
+        // and stays where it is: it is told who was registered, and says so
+        // on its last step. The same save, answered in the way it was asked.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'id'      => $employee->id,
+                'number'  => '#' . str_pad((string) $employee->id, 4, '0', STR_PAD_LEFT),
+                'name'    => $employee->name,
+                'labor'   => $laborType?->name,
+                'site'    => $employee->site?->name,
+                // Whether a kiosk stands at their site to enrol the finger on.
+                'kiosk'   => $employee->site_id !== null && \App\Models\Kiosk::where('site_id', $employee->site_id)->exists(),
+                'pending' => $employee->isPending(),
+            ]);
+        }
 
         // Back to where the Register Employee button was pressed, on the tab
         // the new worker just landed in. A query parameter rather than a

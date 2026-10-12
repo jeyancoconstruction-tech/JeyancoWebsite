@@ -70,9 +70,10 @@ class EmployeeNameSuffixTest extends TestCase
         $this->actingAs($this->admin())->post(route('employees.store'), $this->form(['name_suffix' => 'Sr.']));
         $employee = Employee::firstOrFail();
 
-        $this->get(route('employees.create'))->assertOk()
+        // Register Employee: the step-by-step pop-up on the Employees page.
+        $this->get(route('employees.register'))->assertOk()
              ->assertSee('name="name_suffix"', false)
-             ->assertSeeInOrder(['name="last_name"', 'name="name_suffix"', '>Jr.</option>', '>Sr.</option>', '>II</option>'], false);
+             ->assertSeeInOrder(['id="regWizardForm"', 'id="last_name" name="last_name"', 'name="name_suffix"', '>Jr.</option>', '>Sr.</option>', '>II</option>'], false);
 
         $this->get(route('employees.edit', $employee->id))->assertOk()
              ->assertSee('<option value="Sr." selected>Sr.</option>', false);

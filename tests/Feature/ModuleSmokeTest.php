@@ -114,7 +114,9 @@ class ModuleSmokeTest extends TestCase
     {
         $urls = [
             '/dashboard',
-            '/employees/create',
+            // Register Employee became a pop-up on Employees (2026-10-12);
+            // its old address leads there, which RegisterWizardTest holds.
+            '/employees/register?register=1',
             '/employees/register',
             '/attendance',
             '/sites',

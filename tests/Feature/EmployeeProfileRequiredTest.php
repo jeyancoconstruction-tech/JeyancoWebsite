@@ -159,7 +159,9 @@ class EmployeeProfileRequiredTest extends TestCase
     /** The form marks only Employment & Pay as required. */
     public function test_the_form_marks_only_employment_and_pay(): void
     {
-        $html = $this->actingAs($this->admin())->get(route('employees.create'))->assertOk()->getContent();
+        // The form is the step-by-step pop-up on the Employees page now.
+        $page = $this->actingAs($this->admin())->get(route('employees.register'))->assertOk()->getContent();
+        $html = \Illuminate\Support\Str::between($page, 'id="regWizardForm"', 'id="rwDiscard"');
 
         foreach (['middle_name', 'date_hired', 'birth_date', 'gender', 'phone', 'emergency_contact_name', 'address_province', 'address_postal'] as $field) {
             $this->assertDoesNotMatchRegularExpression('/<(input|select)[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is optional");
@@ -170,7 +172,11 @@ class EmployeeProfileRequiredTest extends TestCase
         foreach (['labor_type_id', 'site_id'] as $field) {
             $this->assertMatchesRegularExpression('/<select[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is required");
         }
-        $this->assertStringContainsString('Only Employment &amp; Pay is required', $html);
+        // Said on the step itself: the first is tagged Required, the other
+        // four Optional, and the foot says which it is.
+        $this->assertSame(1, substr_count($html, '<span class="rw-tag req">Required</span>'));
+        $this->assertSame(4, substr_count($html, '<span class="rw-tag">Optional</span>'));
+        $this->assertStringContainsString('Only this step is required.', $page);
     }
 
     /**
@@ -188,7 +194,7 @@ class EmployeeProfileRequiredTest extends TestCase
             'status'        => Employee::STATUS_ACTIVE,
         ]);
 
-        foreach ([route('employees.create'), route('employees.edit', $employee->id)] as $url) {
+        foreach ([route('employees.register'), route('employees.edit', $employee->id)] as $url) {
             $html = $this->actingAs($this->admin())->get($url)->assertOk()->getContent();
 
             foreach (['name="employment_type"', 'name="contract_rate"', 'name="end_of_contract"', 'Contractual', 'Employee Type'] as $gone) {

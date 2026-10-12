@@ -52,7 +52,9 @@ class EmployeeDirectoryRetiredTest extends TestCase
         );
         $this->assertStringNotContainsString('<span>Register &amp; Manage</span>', $html);
 
-        foreach ([route('employees.register'), route('employees.create'), route('employees.edit', $emp), route('employees.show', $emp)] as $url) {
+        // Register Employee is a pop-up on the Employees page now, so it has
+        // no page of its own to light anything up.
+        foreach ([route('employees.register'), route('employees.register', ['register' => 1]), route('employees.edit', $emp), route('employees.show', $emp)] as $url) {
             $page = $this->actingAs($admin)->get($url)->assertOk()->getContent();
             $this->assertMatchesRegularExpression(
                 '~<a class="nav-link active" href="' . preg_quote(route('employees.register'), '~') . '">~',

@@ -86,7 +86,7 @@ class PageHeaderTest extends TestCase
             'attendance'              => ['/attendance'],
             'attendance history'      => ['/attendance?tab=history'],
             'employees'               => ['/employees/register'],
-            'register employee'       => ['/employees/create'],
+            'register employee'       => ['/employees/register?register=1'],
             'employee profile'        => ['/employees/{worker}'],
             'edit employee'           => ['/employees/{worker}/edit'],
             'leave'                   => ['/leave-advances'],

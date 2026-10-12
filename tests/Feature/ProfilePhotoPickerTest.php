@@ -66,11 +66,13 @@ class ProfilePhotoPickerTest extends TestCase
 
     public function test_register_employee_no_longer_offers_a_photo(): void
     {
+        // The step-by-step pop-up on the Employees page.
         $html = $this->actingAs($this->admin())
-            ->get(route('employees.create'))
+            ->get(route('employees.register'))
             ->assertOk()
             ->getContent();
 
+        $this->assertStringContainsString('id="regWizardForm"', $html);
         $this->assertStringNotContainsString('name="photo"', $html);
         $this->assertStringNotContainsString('id="openCameraBtn"', $html);
         $this->assertStringNotContainsString('id="galleryInput"', $html);

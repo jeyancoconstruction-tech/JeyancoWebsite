@@ -42,8 +42,9 @@ class LaborTypeAutofillTest extends TestCase
     {
         LaborType::firstOrCreate(['name' => 'Electrician'], ['daily_rate' => 1200, 'ot_rate' => 187.5]);
 
+        // Register Employee is the step-by-step pop-up on the Employees page.
         return $this->actingAs($this->admin())
-            ->get(route('employees.create'))
+            ->get(route('employees.register'))
             ->assertOk()
             ->getContent();
     }

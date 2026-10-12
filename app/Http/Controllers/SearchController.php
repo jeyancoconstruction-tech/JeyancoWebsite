@@ -517,7 +517,8 @@ class SearchController extends Controller
                 'attendance needs review missed sign out time out no break not recorded invalid held unpaid'),
             $page('Workforce', 'Employees', 'The workforce: register, edit, export, bonus', route('employees.register'), 'users',
                 'employees workers staff personnel directory register manage list crew fingerprint'),
-            $page('Workforce', 'Add employee', 'Employees · register a new worker', route('employees.create'), 'user-plus',
+            // The registration is a pop-up on Employees; this opens the page with it up.
+            $page('Workforce', 'Add employee', 'Employees · register a new worker', route('employees.register', ['register' => 1]), 'user-plus',
                 'add new employee worker register create hire enroll fingerprint'),
             $page('Workforce', 'Pending registration', 'Employees · detected by the kiosk, waiting to be completed', route('employees.register', ['tab' => 'pending']), 'user-check',
                 'employees pending kiosk detected registration fingerprint enroll waiting'),

@@ -498,10 +498,12 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             <a href="{{ route('employees.export') }}" class="rmx-outline" id="rmExportBtn">
                 <i class="ti ti-file-spreadsheet" aria-hidden="true"></i>{{ __('Export to Excel') }}
             </a>
-            {{-- The full registration form, not the compact modal: a complete
-                 worker profile does not fit in a dialog. The modal stays for
-                 confirming and completing kiosk detections. --}}
-            <a href="{{ route('employees.create') }}" class="rmx-primary" id="rmAddBtn">
+            {{-- The full registration, as a step-by-step pop-up over this
+                 page (employees/_register_wizard.blade.php). A link all the
+                 same, so it opens in a new tab with the pop-up up. The compact
+                 modal further down stays for confirming and completing kiosk
+                 detections. --}}
+            <a href="{{ route('employees.register', ['register' => 1]) }}" class="rmx-primary" id="rmAddBtn" data-register-open aria-haspopup="dialog">
                 <i class="ti ti-user-plus" aria-hidden="true"></i>{{ __('Register employee') }}
             </a>
         </x-slot:actions>
@@ -1111,6 +1113,9 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
 </div>
 @endif
 
+{{-- ── Register employee, step by step ─────────────────────────────────── --}}
+@include('employees._register_wizard')
+
 {{-- ── The bulk action dialog ──────────────────────────────────────────────
      One dialog for the four actions on the bar; the script shows the fields
      the action needs. It always says who changes and from what (Now → After),
@@ -1468,7 +1473,12 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             if (joined.length === 1) Notify.success(@json(__(':name is now active')).replace(':name', nameOf(joined[0])));
             else if (joined.length > 1) Notify.success(@json(__(':n workers are now active')).replace(':n', joined.length));
 
-            const fresh = now.pending.filter(k => !before.pending.includes(k) && !before.active.includes(k)).length;
+            // Not counting anybody this very page has just registered: the
+            // pop-up's last step said so already (_register_wizard.blade.php).
+            const arrived = now.pending.filter(k => !before.pending.includes(k) && !before.active.includes(k)).length;
+            const own     = Math.min(arrived, window.rwJustRegistered || 0);
+            if (own) window.rwJustRegistered -= own;
+            const fresh   = arrived - own;
             if (fresh === 1) Notify.info(@json(__('1 new worker is waiting in Pending')));
             else if (fresh > 1) Notify.info(@json(__(':n new workers are waiting in Pending')).replace(':n', fresh));
 
