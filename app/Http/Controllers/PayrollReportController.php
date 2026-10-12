@@ -41,14 +41,6 @@ class PayrollReportController extends Controller
         'advances'   => 'Cash Advances',
     ];
 
-    public const PRESETS = [
-        'week'   => 'This week',
-        'lweek'  => 'Last week',
-        'month'  => 'This month',
-        'lmonth' => 'Last month',
-        'ytd'    => 'Year to date',
-    ];
-
     /** The deduction columns, in the order the payslip lists them. */
     private const DEDUCTIONS = [
         'sss'     => 'SSS',
@@ -94,7 +86,8 @@ class PayrollReportController extends Controller
             return $this->buildDtr($request);
         }
 
-        [$preset, $from, $to] = $this->period($request);
+        $period = $this->period($request, false);
+        [$from, $to] = [$period['from'], $period['to']];
         $weeks  = max(1, (int) round((abs($from->diffInDays($to)) + 1) / 7));
 
         // The period before, as long as this one, for the "vs" figures.
@@ -143,8 +136,6 @@ class PayrollReportController extends Controller
         return [
             'report'  => $report,
             'reports' => self::REPORTS,
-            'presets' => self::PRESETS,
-            'preset'  => $preset,
             'from'    => $from->toDateString(),
             'to'      => $to->toDateString(),
             'fromC'   => $from,
@@ -158,23 +149,34 @@ class PayrollReportController extends Controller
             'sites'   => Site::orderBy('name')->get(['id', 'name']),
             'siteId'  => $siteId,
             'q'       => $q,
+            'period'  => $period,
         ];
     }
 
     /**
-     * The period asked for, as whole pay weeks, never past the week running
-     * now. This month (the default) is the pay weeks that end in it, as the
-     * Remittance Tracker counts them.
+     * The period every tab reads: a week or a month, one step at a time —
+     * Weekly / Monthly, Previous and Next on the bar, which is all there is
+     * to pick it with since the date fields and the presets went (Michael,
+     * 2026-10-12: "alisin mo na yung may petsa, then use it to all sections").
      *
-     * @return array{0: string, 1: Carbon, 2: Carbon}
+     * A week is the pay week holding ?at. A month is read two ways:
+     *  - by the day, for the DTR: the calendar month, the 1st to its last day;
+     *  - by the pay week, for the payroll tabs: the pay weeks that END in the
+     *    month, as the Remittance Tracker counts them, and never past the
+     *    week running now. Payroll is figured a week at a time, so a week cut
+     *    in two by the 1st would report half its deductions.
+     * Never a period that has not begun.
+     *
+     * @return array{span: string, at: string, from: Carbon, to: Carbon, label: string, prev: array, next: ?array, week: array, month: array}
      */
-    private function period(Request $request): array
+    private function period(Request $request, bool $byDay): array
     {
         $today  = Carbon::now('Asia/Manila')->startOfDay();
         $starts = (int) (SystemSetting::current()->week_starts_on ?? Carbon::MONDAY);
         $weekOf = fn (Carbon $d) => $d->copy()->startOfDay()->subDays(($d->dayOfWeek - $starts + 7) % 7);
-        $thisWeek = $weekOf($today);
-        $lastDay  = $thisWeek->copy()->addDays(6);
+        $date   = fn (string $key) => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query($key))
+            ? rescue(fn () => Carbon::createFromFormat('Y-m-d', $request->query($key), 'Asia/Manila')->startOfDay(), null, false)
+            : null;
 
         // Pay weeks that end in a month.
         $inMonth = function (Carbon $month) use ($weekOf) {
@@ -189,41 +191,78 @@ class PayrollReportController extends Controller
             }
             return [$end->copy()->subDays(6), $last];
         };
+        $monthOf = fn (Carbon $m) => $byDay ? [$m->copy(), $m->copy()->endOfMonth()->startOfDay()] : $inMonth($m);
 
-        $preset = (string) $request->query('preset', '');
-        $fromIn = (string) $request->query('from', '');
-        $toIn   = (string) $request->query('to', '');
+        $span = (string) $request->query('span');
+        $at   = $date('at');
 
-        if (! array_key_exists($preset, self::PRESETS)
-            && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromIn) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $toIn)) {
-            $a = Carbon::parse($fromIn, 'Asia/Manila');
-            $b = Carbon::parse($toIn, 'Asia/Manila');
-            if ($b->lt($a)) {
-                [$a, $b] = [$b, $a];
-            }
-            $from = $weekOf($a);
-            $to   = $weekOf($b)->addDays(6);
-            $preset = 'custom';
-        } else {
-            $preset = array_key_exists($preset, self::PRESETS) ? $preset : 'month';
-            [$from, $to] = match ($preset) {
-                'week'   => [$thisWeek->copy(), $lastDay->copy()],
-                'lweek'  => [$thisWeek->copy()->subWeek(), $thisWeek->copy()->subDay()],
-                'lmonth' => $inMonth($today->copy()->startOfMonth()->subMonthNoOverflow()),
-                'ytd'    => [$inMonth($today->copy()->startOfYear())[0], $lastDay->copy()],
-                default  => $inMonth($today->copy()),
+        // A link from before: a preset, or the two dates the fields sent.
+        // It opens the week or the month it was closest to.
+        if (! in_array($span, ['week', 'month'], true)) {
+            [$a, $b] = [$date('from'), $date('to')];
+            $preset  = (string) $request->query('preset');
+
+            [$span, $at] = match (true) {
+                $preset === 'week'                        => ['week', $today->copy()],
+                $preset === 'lweek'                       => ['week', $today->copy()->subWeek()],
+                $preset === 'lmonth'                      => ['month', $today->copy()->startOfMonth()->subMonthNoOverflow()],
+                in_array($preset, ['month', 'ytd'], true) => ['month', $today->copy()],
+                $a !== null && $b !== null                => [abs($a->diffInDays($b)) > 6 ? 'month' : 'week', $a->min($b)],
+                // The DTR opens on the week, the payroll tabs on the month.
+                default                                   => [$byDay ? 'week' : 'month', $at],
             };
         }
 
-        // Nothing past the week running now; never an empty range.
-        if ($to->gt($lastDay)) {
-            $to = $lastDay->copy();
-        }
-        if ($to->lt($from)) {
-            $from = $weekOf($to);
+        $at ??= $today->copy();
+
+        if ($span === 'month') {
+            $month = $at->copy()->startOfMonth();
+            if ($monthOf($month)[0]->gt($today)) {
+                $month = $today->copy()->startOfMonth();
+            }
+
+            [$from, $to] = $monthOf($month);
+            $back  = $month->copy()->subMonthNoOverflow();
+            $on    = $month->copy()->addMonthNoOverflow();
+            $next  = $monthOf($on)[0]->gt($today) ? null : $on;
+            $label = $month->format('F Y');
+            $at    = $month;
+        } else {
+            $from  = $weekOf($at->gt($today) ? $today : $at);
+            $to    = $from->copy()->addDays(6);
+            $back  = $from->copy()->subWeek();
+            $on    = $from->copy()->addWeek();
+            $next  = $on->gt($today) ? null : $on;
+            $label = DtrService::label($from, $to);
+            $at    = $from;
         }
 
-        return [$preset, $from, $to];
+        // Payroll has nothing past the week running now.
+        $lastDay = $weekOf($today)->addDays(6);
+        if (! $byDay && $to->gt($lastDay)) {
+            $to = $lastDay;
+        }
+
+        // Weekly and Monthly keep to the days on screen: today's week or
+        // month when it is among them. Otherwise the week the period opens
+        // in — and, by the pay week, the month a week ENDS in.
+        $now = $today->betweenIncluded($from, $to);
+
+        return [
+            'span'  => $span,
+            'at'    => $at->toDateString(),
+            'from'  => $from,
+            'to'    => $to,
+            'label' => $label,
+            'prev'  => ['span' => $span, 'at' => $back->toDateString()],
+            'next'  => $next ? ['span' => $span, 'at' => $next->toDateString()] : null,
+            'week'  => ['span' => 'week', 'at' => ($now ? $today : $from)->toDateString()],
+            'month' => ['span' => 'month', 'at' => match (true) {
+                $span === 'month' => $at->toDateString(),
+                $byDay            => ($now ? $today : $from)->toDateString(),
+                default           => $to->toDateString(),
+            }],
+        ];
     }
 
     /**
@@ -321,17 +360,14 @@ class PayrollReportController extends Controller
 
     // ── Employees DTR ────────────────────────────────────────────────────────
 
-    /** A custom range is read whole; a year is as far as one page of days goes. */
-    private const DTR_DAYS_MAX = 366;
-
     /**
-     * The Employees DTR tab: who was on site on which days of a week, a month
-     * or a range, off DtrService — which reads the scans and payroll's own
+     * The Employees DTR tab: who was on site on which days of a week or a
+     * month, off DtrService — which reads the scans and payroll's own
      * hours rather than counting any of its own.
      */
     private function buildDtr(Request $request): array
     {
-        $period = $this->dtrPeriod($request);
+        $period = $this->period($request, true);
         [$from, $to] = [$period['from'], $period['to']];
 
         $siteId = $request->filled('site') ? (int) $request->query('site') : null;
@@ -389,8 +425,6 @@ class PayrollReportController extends Controller
         return [
             'report'  => 'dtr',
             'reports' => self::REPORTS,
-            'presets' => self::PRESETS,
-            'preset'  => '',
             'from'    => $from->toDateString(),
             'to'      => $to->toDateString(),
             'fromC'   => $from,
@@ -422,82 +456,7 @@ class PayrollReportController extends Controller
             'sites'   => Site::orderBy('name')->get(['id', 'name']),
             'siteId'  => $siteId,
             'q'       => $q,
-            'dtr'     => $period,
-        ];
-    }
-
-    /**
-     * The DTR's period: the week or the month holding ?at, or the dates asked
-     * for as they were given — a time record is read by the day, so nothing
-     * is widened to whole pay weeks here. Never a period that has not begun.
-     *
-     * @return array{span: string, from: Carbon, to: Carbon, label: string, prev: array, next: ?array, week: array, month: array}
-     */
-    private function dtrPeriod(Request $request): array
-    {
-        $today  = Carbon::now('Asia/Manila')->startOfDay();
-        $starts = (int) (SystemSetting::current()->week_starts_on ?? Carbon::MONDAY);
-        $weekOf = fn (Carbon $d) => $d->copy()->startOfDay()->subDays(($d->dayOfWeek - $starts + 7) % 7);
-        $date   = fn (string $key) => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query($key))
-            ? rescue(fn () => Carbon::createFromFormat('Y-m-d', $request->query($key), 'Asia/Manila')->startOfDay(), null, false)
-            : null;
-
-        $span = (string) $request->query('span');
-        [$a, $b] = [$date('from'), $date('to')];
-
-        if (! in_array($span, ['week', 'month'], true)) {
-            $span = $a && $b ? 'custom' : 'week';
-        }
-
-        if ($span === 'custom') {
-            if ($b->lt($a)) {
-                [$a, $b] = [$b, $a];
-            }
-            if ($a->gt($today)) {
-                [$a, $b] = [$today->copy(), $today->copy()];
-            }
-            $from = $a;
-            $to   = $b->min($a->copy()->addDays(self::DTR_DAYS_MAX - 1));
-            $days = (int) $from->diffInDays($to) + 1;
-
-            $step = fn (int $n) => ['from' => $from->copy()->addDays($n * $days)->toDateString(), 'to' => $to->copy()->addDays($n * $days)->toDateString()];
-            $prev = $step(-1);
-            $next = $from->copy()->addDays($days)->gt($today) ? null : $step(1);
-        } else {
-            $at = $date('at') ?? $today->copy();
-            if ($at->gt($today)) {
-                $at = $today->copy();
-            }
-
-            if ($span === 'month') {
-                $from = $at->copy()->startOfMonth();
-                $to   = $at->copy()->endOfMonth()->startOfDay();
-                $back = $from->copy()->subMonthNoOverflow();
-                $on   = $from->copy()->addMonthNoOverflow();
-            } else {
-                $from = $weekOf($at);
-                $to   = $from->copy()->addDays(6);
-                $back = $from->copy()->subWeek();
-                $on   = $from->copy()->addWeek();
-            }
-
-            $prev = ['span' => $span, 'at' => $back->toDateString()];
-            $next = $on->gt($today) ? null : ['span' => $span, 'at' => $on->toDateString()];
-        }
-
-        // Weekly and Monthly keep to the days on screen: today's week or
-        // month when it is among them, else the one the period opens in.
-        $anchor = ($today->betweenIncluded($from, $to) ? $today : $from)->toDateString();
-
-        return [
-            'span'  => $span,
-            'from'  => $from,
-            'to'    => $to,
-            'label' => DtrService::label($from, $to),
-            'prev'  => $prev,
-            'next'  => $next,
-            'week'  => ['span' => 'week', 'at' => $anchor],
-            'month' => ['span' => 'month', 'at' => $anchor],
+            'period'  => $period,
         ];
     }
 
@@ -553,7 +512,7 @@ class PayrollReportController extends Controller
     /** What a worker's DTR page says: who, where, under which hours, and each day. */
     private function sheet(Request $request, int $employee): array
     {
-        $period = $this->dtrPeriod($request);
+        $period = $this->period($request, true);
         [$from, $to] = [$period['from'], $period['to']];
 
         $mine = app(DtrService::class)->range($from->toDateString(), $to->toDateString())[$employee] ?? null;

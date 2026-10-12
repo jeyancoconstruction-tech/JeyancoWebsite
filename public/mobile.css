@@ -437,9 +437,8 @@
 
 /* ── 13 · PAYROLL REPORTS ──────────────────────────────────────────────────
    Six totals across fit a desktop, not a tablet or a phone: three to a row,
-   then two. On a phone the period presets wrap instead of running off the
-   card, the filters take the full width, and the bar labels give room to the
-   bars. */
+   then two. On a phone the filters take the full width, and the bar labels
+   give room to the bars. */
 @media (max-width: 1024px) {
     .rp-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
@@ -453,10 +452,11 @@
     .rp-hb .v { min-width: 64px !important; }
 }
 
-/* Employees DTR. Seven totals leave one over in rows of three or two, which
-   takes the row to itself. The period — Weekly or Monthly, back, which one,
-   on — is a row of its own with the label in the middle, and a worker's page
-   scrolls sideways inside the pop-up rather than squeezing eleven columns. */
+/* The period — Weekly or Monthly, back, which one, on — is on every tab: a
+   row of its own with the label in the middle. Employees DTR: seven totals
+   leave one over in rows of three or two, which takes the row to itself, and
+   a worker's page scrolls sideways inside the pop-up rather than squeezing
+   eleven columns. */
 @media (max-width: 1024px) {
     .rp-kpis.is-7 .rp-kpi:last-child { grid-column: 1 / -1; }
 }

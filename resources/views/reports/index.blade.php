@@ -37,9 +37,6 @@ html[data-bs-theme] .main-content .rp > .page-head { margin-bottom: -2px !import
 /* Filters */
 .rp-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; }
 .rp-chips { display: flex; gap: 4px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
-.rp-chips button { border: 0; background: none; color: var(--text-secondary); font-size: 12px; font-weight: 600; height: 26px; padding: 0 10px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
-.rp-chips button:hover { color: var(--text-primary); }
-.rp-chips button.on { background: var(--surface); color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .rp-sel { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-md); background: var(--surface); border-radius: 10px; padding: 0 10px; height: 32px; margin: 0; }
 .rp-sel svg { width: 15px; height: 15px; color: var(--text-muted); flex: none; }
 html[data-bs-theme] .rp .rp-sel input,
@@ -47,12 +44,10 @@ html[data-bs-theme] .rp .rp-sel select {
     border: 0 !important; background: transparent !important; box-shadow: none !important; outline: none;
     height: 34px; padding: 0; color: var(--text-primary); font-size: 13px; font-weight: 500; min-width: 0;
 }
-html[data-bs-theme] .rp .rp-sel input[type=date] { width: 114px; font-family: var(--rp-mono); font-size: 12.5px; }
-html[data-bs-theme] .rp .rp-sel input.q { width: 140px; }
+html[data-bs-theme] .rp .rp-sel input.q { width: 172px; }
 html[data-bs-theme] .rp .rp-sel select { width: 120px; }
 /* The open list, which the browser draws white behind a see-through field. */
 html[data-bs-theme] .rp .rp-sel select option { background: var(--surface); color: var(--text-primary); }
-.rp-sel .dash { color: var(--text-muted); }
 .rp-filters .sp { flex: 1; }
 .rp-lnk { color: var(--brand); font-size: 13px; font-weight: 600; padding: 0 6px; text-decoration: none; }
 .rp-lnk:hover { text-decoration: underline; }
@@ -238,14 +233,10 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
 
     $isDtr   = $report === 'dtr';
     $filters = array_filter(['site' => $siteId, 'q' => $q !== '' ? $q : null], fn ($v) => $v !== null && $v !== '');
-    $custom  = ($isDtr ? $dtr['span'] === 'custom' : $preset === 'custom') ? ['from' => $from, 'to' => $to] : [];
-    $keepQuery = $filters + ($custom ?: ($isDtr ? ['span' => $dtr['span'], 'at' => $from] : ['preset' => $preset]));
-    // Another tab keeps the site, the search and a range picked by hand. A
-    // preset is the payroll reports' and a week or a month the DTR's, so
-    // neither follows across.
-    $tabQuery = fn (string $k) => ($k === 'dtr') === $isDtr ? $keepQuery : $filters + $custom;
-    $url = fn (array $with) => route('payroll-reports.index', array_merge($keepQuery, ['report' => $report], $with));
-    $dtrUrl = fn (array $with) => route('payroll-reports.index', $filters + ['report' => 'dtr'] + $with);
+    // The week or the month on screen follows to every tab, with the site
+    // and the search.
+    $keepQuery = $filters + ['span' => $period['span'], 'at' => $period['at']];
+    $step = fn (array $to) => route('payroll-reports.index', $filters + ['report' => $report] + $to);
 
     $icons = [
         'dtr'        => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8.5 15.5l2.2 2.2 4.8-4.8"/>',
@@ -257,7 +248,9 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
     ];
     $svg = fn ($path, $w = '1.8') => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' . $w . '" aria-hidden="true">' . $path . '</svg>';
     $arrow = $svg('<path d="M7 10l5-5 5 5M7 14l5 5 5-5"/>', '2.4');
-    $periodText = $isDtr ? $dtr['label'] : $fromC->format('M j') . ' – ' . $toC->format('M j, Y');
+    // By the pay week a month is the weeks that end in it, so the dates are
+    // written out beside the report's name.
+    $periodText = $isDtr ? $period['label'] : \App\Services\DtrService::label($fromC, $toC);
 
     // A cell: the text is R::fmt's, the same the Excel export writes.
     $cell = function (array $col, $val) {
@@ -303,7 +296,7 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
 
     <nav class="rp-tabs" aria-label="{{ __('Report') }}">
         @foreach($reports as $k => $t)
-            <a class="rp-tab {{ $k === $report ? 'on' : '' }}" href="{{ route('payroll-reports.index', array_merge($tabQuery($k), ['report' => $k])) }}" @if($k === $report) aria-current="page" @endif>
+            <a class="rp-tab {{ $k === $report ? 'on' : '' }}" href="{{ route('payroll-reports.index', array_merge($keepQuery, ['report' => $k])) }}" @if($k === $report) aria-current="page" @endif>
                 {!! $svg($icons[$k]) !!}{{ __($t) }}
             </a>
         @endforeach
@@ -311,39 +304,24 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
 
     <form class="rp-card rp-filters" method="GET" action="{{ route('payroll-reports.index') }}" id="rpFilters" aria-label="{{ __('Filters') }}">
         <input type="hidden" name="report" value="{{ $report }}">
-        @if($isDtr)
-            {{-- The DTR is read by the week or the month, one step at a time.
-                 The span rides along so a site or a name keeps the period;
-                 a date picked by hand clears it, and those dates are used. --}}
-            <input type="hidden" name="span" value="{{ $dtr['span'] !== 'custom' ? $dtr['span'] : '' }}" id="rpPreset">
-            <input type="hidden" name="at" value="{{ $from }}">
-            <div class="rp-chips" role="group" aria-label="{{ __('Period') }}">
-                <a href="{{ $dtrUrl($dtr['week']) }}" class="{{ $dtr['span'] === 'week' ? 'on' : '' }}" @if($dtr['span'] === 'week') aria-current="true" @endif>{{ __('Weekly') }}</a>
-                <a href="{{ $dtrUrl($dtr['month']) }}" class="{{ $dtr['span'] === 'month' ? 'on' : '' }}" @if($dtr['span'] === 'month') aria-current="true" @endif>{{ __('Monthly') }}</a>
-            </div>
-            <div class="rp-period">
-                <a class="rp-step" href="{{ $dtrUrl($dtr['prev']) }}" id="rpPrev">{!! $svg('<path d="M15 6l-6 6 6 6"/>', '2.4') !!}{{ __('Previous') }}</a>
-                <span class="rp-when" id="rpWhen" aria-live="polite">{{ $dtr['label'] }}</span>
-                @if($dtr['next'])
-                    <a class="rp-step" href="{{ $dtrUrl($dtr['next']) }}" id="rpNext">{{ __('Next') }}{!! $svg('<path d="M9 6l6 6-6 6"/>', '2.4') !!}</a>
-                @else
-                    <span class="rp-step off" id="rpNext" aria-disabled="true" title="{{ __('Nothing after this yet') }}">{{ __('Next') }}{!! $svg('<path d="M9 6l6 6-6 6"/>', '2.4') !!}</span>
-                @endif
-            </div>
-        @else
-            <input type="hidden" name="preset" value="{{ $preset !== 'custom' ? $preset : '' }}" id="rpPreset">
-            <div class="rp-chips" role="group" aria-label="{{ __('Period') }}">
-                @foreach($presets as $k => $t)
-                    <button type="submit" name="preset" value="{{ $k }}" class="{{ $preset === $k ? 'on' : '' }}" @if($preset === $k) aria-pressed="true" @endif>{{ __($t) }}</button>
-                @endforeach
-            </div>
-        @endif
-        <label class="rp-sel" title="{{ $isDtr ? __('Follows the week or month above. Set both dates yourself to read any range.') : __('Whole pay weeks, from the week holding the first date to the week holding the last') }}">
-            {!! $svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', '2') !!}
-            <input type="date" name="from" value="{{ $from }}" aria-label="{{ __('From') }}" id="rpFrom">
-            <span class="dash">–</span>
-            <input type="date" name="to" value="{{ $to }}" aria-label="{{ __('To') }}" id="rpTo">
-        </label>
+        {{-- The period, the same on every tab (Michael, 2026-10-12): Weekly or
+             Monthly, then back, which one, and on. No date fields. It rides
+             along in the form so a site or a name keeps the period. --}}
+        <input type="hidden" name="span" value="{{ $period['span'] }}">
+        <input type="hidden" name="at" value="{{ $period['at'] }}">
+        <div class="rp-chips" role="group" aria-label="{{ __('Period') }}">
+            <a href="{{ $step($period['week']) }}" class="{{ $period['span'] === 'week' ? 'on' : '' }}" @if($period['span'] === 'week') aria-current="true" @endif>{{ __('Weekly') }}</a>
+            <a href="{{ $step($period['month']) }}" class="{{ $period['span'] === 'month' ? 'on' : '' }}" @if($period['span'] === 'month') aria-current="true" @endif>{{ __('Monthly') }}</a>
+        </div>
+        <div class="rp-period">
+            <a class="rp-step" href="{{ $step($period['prev']) }}" id="rpPrev">{!! $svg('<path d="M15 6l-6 6 6 6"/>', '2.4') !!}{{ __('Previous') }}</a>
+            <span class="rp-when" id="rpWhen" aria-live="polite" @if(! $isDtr && $period['span'] === 'month') title="{{ __('The pay weeks that end in this month') }}" @endif>{{ $period['label'] }}</span>
+            @if($period['next'])
+                <a class="rp-step" href="{{ $step($period['next']) }}" id="rpNext">{{ __('Next') }}{!! $svg('<path d="M9 6l6 6-6 6"/>', '2.4') !!}</a>
+            @else
+                <span class="rp-step off" id="rpNext" aria-disabled="true" title="{{ __('Nothing after this yet') }}">{{ __('Next') }}{!! $svg('<path d="M9 6l6 6-6 6"/>', '2.4') !!}</span>
+            @endif
+        </div>
         <label class="rp-sel">
             {!! $svg('<path d="M12 22s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z"/>', '2') !!}
             <select name="site" aria-label="{{ __('Site') }}" id="rpSite">
@@ -481,15 +459,10 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
 @push('scripts')
 <script>
 (function () {
-    // The filters apply as they change: a date pair, a site, a name.
+    // The filters apply as they change: a site, a name.
     const form = document.getElementById('rpFilters');
     if (form) {
-        const preset = document.getElementById('rpPreset');
-        const from = document.getElementById('rpFrom'), to = document.getElementById('rpTo');
         const go = () => form.requestSubmit ? form.requestSubmit() : form.submit();
-        [from, to].forEach(el => el && el.addEventListener('change', () => {
-            if (from.value && to.value) { preset.value = ''; go(); }
-        }));
         const site = document.getElementById('rpSite');
         site && site.addEventListener('change', go);
         const q = document.getElementById('rpQ');
@@ -543,14 +516,14 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
 </script>
 @if($isDtr)
 @php
-    // One worker's page and its two downloads, for the dates on screen. The
+    // One worker's page and its two downloads, for the period on screen. The
     // 0 stands where the script writes the worker's id.
-    $dtrFor   = ['employee' => 0, 'from' => $from, 'to' => $to];
+    $dtrFor   = ['employee' => 0, 'span' => $period['span'], 'at' => $period['at']];
     $dtrLinks = [
         'sheet'  => route('payroll-reports.dtr', $dtrFor),
         'pdf'    => route('payroll-reports.dtr.pdf', $dtrFor),
         'xls'    => route('payroll-reports.dtr.excel', $dtrFor),
-        'period' => $dtr['label'],
+        'period' => $period['label'],
     ];
 @endphp
 <script>

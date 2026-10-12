@@ -170,7 +170,7 @@ class EmployeesDtrTest extends TestCase
     public function test_weekly_moves_a_week_at_a_time_and_never_ahead_of_today(): void
     {
         $now = $this->page();
-        $dtr = $now->viewData('dtr');
+        $dtr = $now->viewData('period');
 
         $this->assertSame('week', $dtr['span'], 'weekly is how it opens');
         $this->assertSame(['2026-09-14', '2026-09-20'], [$now->viewData('from'), $now->viewData('to')]);
@@ -183,13 +183,13 @@ class EmployeesDtrTest extends TestCase
 
         $before = $this->page($dtr['prev']);
         $this->assertSame(['2026-09-07', '2026-09-13'], [$before->viewData('from'), $before->viewData('to')]);
-        $this->assertSame(['span' => 'week', 'at' => '2026-09-14'], $before->viewData('dtr')['next']);
+        $this->assertSame(['span' => 'week', 'at' => '2026-09-14'], $before->viewData('period')['next']);
 
-        // The date fields follow the period.
-        $before->assertSee('name="from" value="2026-09-07"', false)->assertSee('name="to" value="2026-09-13"', false);
+        // The bar is all there is: no date fields to type a range into.
+        $before->assertDontSee('type="date"', false)->assertDontSee('name="from"', false);
 
         // A week that straddles two months names both.
-        $this->assertSame('Aug 31 – Sep 6, 2026', $this->page(['span' => 'week', 'at' => '2026-09-02'])->viewData('dtr')['label']);
+        $this->assertSame('Aug 31 – Sep 6, 2026', $this->page(['span' => 'week', 'at' => '2026-09-02'])->viewData('period')['label']);
 
         // Asked for a week still to come: the one running now.
         $this->assertSame('2026-09-14', $this->page(['span' => 'week', 'at' => '2026-12-01'])->viewData('from'));
@@ -198,7 +198,7 @@ class EmployeesDtrTest extends TestCase
     public function test_monthly_is_the_calendar_month_and_moves_a_month_at_a_time(): void
     {
         $month = $this->page(['span' => 'month']);
-        $dtr   = $month->viewData('dtr');
+        $dtr   = $month->viewData('period');
 
         $this->assertSame(['2026-09-01', '2026-09-30'], [$month->viewData('from'), $month->viewData('to')]);
         $this->assertSame('September 2026', $dtr['label']);
@@ -207,34 +207,33 @@ class EmployeesDtrTest extends TestCase
 
         $august = $this->page($dtr['prev']);
         $this->assertSame(['2026-08-01', '2026-08-31'], [$august->viewData('from'), $august->viewData('to')]);
-        $this->assertSame('August 2026', $august->viewData('dtr')['label']);
-        $this->assertSame(['span' => 'month', 'at' => '2026-09-01'], $august->viewData('dtr')['next']);
+        $this->assertSame('August 2026', $august->viewData('period')['label']);
+        $this->assertSame(['span' => 'month', 'at' => '2026-09-01'], $august->viewData('period')['next']);
 
         // Weekly and Monthly keep to the days on screen.
         $this->assertSame(['span' => 'week', 'at' => '2026-09-18'], $dtr['week'], "this month's week is today's");
-        $this->assertSame(['span' => 'week', 'at' => '2026-08-01'], $august->viewData('dtr')['week']);
+        $this->assertSame(['span' => 'week', 'at' => '2026-08-01'], $august->viewData('period')['week']);
     }
 
-    public function test_a_range_set_by_hand_is_used_as_it_was_given(): void
+    public function test_the_week_or_month_rides_along_with_a_site_or_a_name(): void
     {
-        // Not widened to pay weeks, as the payroll reports' periods are.
-        $custom = $this->page(['from' => '2026-09-16', 'to' => '2026-09-10']);
-        $dtr    = $custom->viewData('dtr');
+        // The form carries the period, so a site or a name keeps it.
+        $this->page(['span' => 'week', 'at' => '2026-09-07'])
+            ->assertSee('name="span" value="week"', false)->assertSee('name="at" value="2026-09-07"', false);
 
-        $this->assertSame('custom', $dtr['span']);
-        $this->assertSame(['2026-09-10', '2026-09-16'], [$custom->viewData('from'), $custom->viewData('to')]);
-        $this->assertSame('Sep 10 – 16, 2026', $dtr['label']);
-        $this->assertSame(['from' => '2026-09-03', 'to' => '2026-09-09'], $dtr['prev'], 'back by its own length');
-        $this->assertSame(['from' => '2026-09-17', 'to' => '2026-09-23'], $dtr['next']);
-
-        // The span the form carries wins over the dates in its fields, so a
-        // site or a name picked on a week keeps the week.
-        $kept = $this->page(['span' => 'week', 'at' => '2026-09-07', 'from' => '2026-09-01', 'to' => '2026-09-30']);
+        $kept = $this->page(['span' => 'week', 'at' => '2026-09-07', 'q' => 'ana']);
         $this->assertSame(['2026-09-07', '2026-09-13'], [$kept->viewData('from'), $kept->viewData('to')]);
 
-        // Cleared — which is what picking a date does — the dates are read.
-        $cleared = $this->page(['span' => '', 'at' => '2026-09-07', 'from' => '2026-09-01', 'to' => '2026-09-03']);
-        $this->assertSame(['2026-09-01', '2026-09-03'], [$cleared->viewData('from'), $cleared->viewData('to')]);
+        // A link from when the tab had date fields opens the week or the
+        // month those dates were closest to — so a pop-up left open across
+        // the change still finds its worker's page.
+        $week = $this->page(['from' => '2026-09-16', 'to' => '2026-09-10']);
+        $this->assertSame('week', $week->viewData('period')['span']);
+        $this->assertSame(['2026-09-07', '2026-09-13'], [$week->viewData('from'), $week->viewData('to')]);
+
+        $month = $this->page(['from' => '2026-08-01', 'to' => '2026-08-31']);
+        $this->assertSame('month', $month->viewData('period')['span']);
+        $this->assertSame(['2026-08-01', '2026-08-31'], [$month->viewData('from'), $month->viewData('to')]);
     }
 
     // ── Each day ─────────────────────────────────────────────────────────
@@ -369,7 +368,7 @@ class EmployeesDtrTest extends TestCase
         $this->assertArrayNotHasKey($gone->id, app(DtrService::class)->range('2026-09-21', '2026-09-27'));
 
         $this->actingAs($this->admin)
-            ->get(route('payroll-reports.dtr', ['employee' => $pending->id, 'from' => '2026-09-14', 'to' => '2026-09-20']))
+            ->get(route('payroll-reports.dtr', ['employee' => $pending->id, 'span' => 'week', 'at' => '2026-09-14']))
             ->assertNotFound();
     }
 
@@ -420,7 +419,7 @@ class EmployeesDtrTest extends TestCase
     public function test_a_workers_page_says_who_where_and_every_date(): void
     {
         $html = $this->actingAs($this->admin)
-            ->get(route('payroll-reports.dtr', ['employee' => $this->ben->id, 'from' => '2026-09-14', 'to' => '2026-09-20']))
+            ->get(route('payroll-reports.dtr', ['employee' => $this->ben->id, 'span' => 'week', 'at' => '2026-09-14']))
             ->assertOk()->getContent();
 
         foreach ([
@@ -440,7 +439,7 @@ class EmployeesDtrTest extends TestCase
         $this->assertStringNotContainsString('<html', $html);
 
         $ana = $this->actingAs($this->admin)
-            ->get(route('payroll-reports.dtr', ['employee' => $this->ana->id, 'from' => '2026-09-14', 'to' => '2026-09-20']))
+            ->get(route('payroll-reports.dtr', ['employee' => $this->ana->id, 'span' => 'week', 'at' => '2026-09-14']))
             ->assertOk()->getContent();
         $this->assertStringContainsString('Complete', $ana);
         $this->assertStringContainsString('<td class="ot">2h 00m</td>', $ana);
@@ -448,13 +447,13 @@ class EmployeesDtrTest extends TestCase
         $this->assertStringContainsString('Total · 4 days worked', $ana);
 
         $this->actingAs($this->admin)
-            ->get(route('payroll-reports.dtr', ['employee' => 999999, 'from' => '2026-09-14', 'to' => '2026-09-20']))
+            ->get(route('payroll-reports.dtr', ['employee' => 999999, 'span' => 'week', 'at' => '2026-09-14']))
             ->assertNotFound();
     }
 
     public function test_it_downloads_as_a_pdf_and_for_excel(): void
     {
-        $for = ['employee' => $this->ana->id, 'from' => '2026-09-14', 'to' => '2026-09-20'];
+        $for = ['employee' => $this->ana->id, 'span' => 'week', 'at' => '2026-09-14'];
 
         $pdf = $this->actingAs($this->admin)->get(route('payroll-reports.dtr.pdf', $for))->assertOk();
         $this->assertSame('application/pdf', $pdf->headers->get('Content-Type'));
