@@ -15,6 +15,7 @@ use App\Models\Shift;
 use App\Models\ValeAdvance;
 use App\Models\SystemSetting;
 use App\Support\LaborHistory;
+use App\Support\OvertimePermission;
 use App\Support\Live;
 use App\Support\WorkSchedule;
 use Carbon\Carbon;
@@ -110,6 +111,10 @@ class PayrollService
             // a day is priced by the type in force on it. Empty for a worker
             // nobody has changed: they are priced as they stand.
             'laborHistory' => LaborHistory::load(),
+
+            // Who may take overtime, by day. Until the office allows the
+            // first worker there is no rule and it answers yes for everybody.
+            'overtime' => OvertimePermission::load(),
         ];
     }
 
@@ -660,6 +665,18 @@ class PayrollService
         $standard   = max(1.0, (float) ($day->standard_hours_per_day ?? 8));
         $autoOt     = (bool) ($day->auto_count_overtime ?? true);
 
+        // And only for a worker the office has allowed to take it, from the
+        // day it began choosing who may. For anybody else the hours past
+        // their regular hours are not recorded — the same thing the office
+        // switch above does for everybody. By the day worked, so what was
+        // counted before a worker was stopped, or before there was any
+        // choosing at all, stays counted.
+        $barred = isset($cfg['overtime']) && $employee
+            && ! $cfg['overtime']->allowedOn((int) $employee->id, $this->dateOf($rec->date));
+        if ($barred) {
+            $autoOt = false;
+        }
+
         // The meal period sits inside the standard day. Nine hours on site with
         // an hour for lunch is eight hours of wage, so the daily rate buys the
         // standard hours less the break, and overtime starts there too.
@@ -683,6 +700,13 @@ class PayrollService
         // first, so that hours × rate on screen came to the gross exactly —
         // but a hundredth of an hour is thirty-six seconds, and one minute
         // went in as 0.02 of an hour: a minute and twelve seconds' pay.
+        // Not allowed overtime: the day stops at what the rate buys. (Days
+        // counted by the shift's sessions do this themselves, further down;
+        // this is for a day with no schedule to count it by.)
+        if ($barred) {
+            $hours = min($hours, $paidStandard);
+        }
+
         $regular_hours = $autoOt ? min($paidStandard, $hours) : $hours;
         $ot_hours      = $autoOt ? max(0, $hours - $paidStandard) : 0.0;
 

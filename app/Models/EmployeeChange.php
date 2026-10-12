@@ -27,6 +27,16 @@ class EmployeeChange extends Model
     public const SHIFT = 'shift';
     public const LABOR = 'labor';
     public const BONUS = 'bonus';
+    /** Allowed to take overtime, or not: to_id is 1 or 0. Read by App\Support\OvertimePermission. */
+    public const OVERTIME = 'overtime';
+
+    /** The worker column each kind of change is written to. */
+    public const COLUMNS = [
+        self::SITE     => 'site_id',
+        self::SHIFT    => 'shift_id',
+        self::LABOR    => 'labor_type_id',
+        self::OVERTIME => 'overtime_allowed',
+    ];
 
     protected $fillable = [
         'batch', 'employee_id', 'kind', 'effective_on', 'from_id', 'to_id',
@@ -84,6 +94,7 @@ class EmployeeChange extends Model
             self::SITE  => $this->moveTo($employee, 'site_id', $this->to_id === null || Site::whereKey($this->to_id)->exists()),
             self::SHIFT => $this->moveTo($employee, 'shift_id', Shift::whereKey($this->to_id)->exists()),
             self::LABOR => $this->changeLabor($employee),
+            self::OVERTIME => $this->moveTo($employee, 'overtime_allowed', true),
             default     => false,
         };
 
@@ -175,7 +186,7 @@ class EmployeeChange extends Model
         }
 
         $employee = $this->employee;
-        $column   = ['site' => 'site_id', 'shift' => 'shift_id', 'labor' => 'labor_type_id'][$this->kind] ?? null;
+        $column   = self::COLUMNS[$this->kind] ?? null;
 
         if (! $employee || ! $column || (int) $employee->{$column} !== (int) $this->to_id) {
             return false;
@@ -258,6 +269,7 @@ class EmployeeChange extends Model
         return match ($this->kind) {
             self::SITE  => $this->to_id ? 'moved to ' . $this->targetName() : 'taken off their site',
             self::SHIFT, self::LABOR => 'changed to ' . $this->targetName(),
+            self::OVERTIME => $this->to_id ? 'allowed to take overtime' : 'stopped from taking overtime',
             default     => 'changed',
         };
     }
@@ -269,6 +281,7 @@ class EmployeeChange extends Model
             self::SITE  => $this->to_id ? (Site::whereKey($this->to_id)->value('name') ?? 'another site') : 'No site',
             self::SHIFT => Shift::whereKey($this->to_id)->value('name') ?? 'another shift',
             self::LABOR => LaborType::whereKey($this->to_id)->value('name') ?? 'another labor type',
+            self::OVERTIME => $this->to_id ? 'Overtime allowed' : 'No overtime',
             default     => '',
         };
     }

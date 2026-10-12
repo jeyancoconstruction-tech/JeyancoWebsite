@@ -66,6 +66,9 @@ class Employee extends Model
     protected $fillable = [
         'name', 'rate_per_hour', 'position', 'employment_type', 'project_id', 'labor_type_id', 'shift_id',
         'site_id', 'kiosk_id', 'status', 'vale', 'fingerprint_id', 'photo', 'archived_at', 'end_of_contract',
+        // Whether they may take overtime, as it stands today. Payroll reads the
+        // dated record of each change instead: see App\Support\OvertimePermission.
+        'overtime_allowed',
         ...self::PROFILE_FIELDS,
         ...self::IDENTITY_FIELDS,
     ];
@@ -79,6 +82,7 @@ class Employee extends Model
         'birth_date'      => 'date',
         'date_hired'      => 'date',
         'end_of_contract' => 'date',
+        'overtime_allowed' => 'boolean',
         // Stored as JSON so a worker can carry several of each without
         // needing a child table per list.
         'education'       => 'array',

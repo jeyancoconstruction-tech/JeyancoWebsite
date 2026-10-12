@@ -99,6 +99,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post  ('/employees/bulk-site',  [\App\Http\Controllers\EmployeeBulkController::class, 'site'])->name('employees.bulk-site');
     Route::post  ('/employees/bulk-shift', [\App\Http\Controllers\EmployeeBulkController::class, 'shift'])->name('employees.bulk-shift');
     Route::post  ('/employees/bulk-labor', [\App\Http\Controllers\EmployeeBulkController::class, 'labor'])->name('employees.bulk-labor');
+    // Who may take overtime: allowed for the workers ticked, or stopped.
+    Route::post  ('/employees/bulk-overtime', [\App\Http\Controllers\EmployeeBulkController::class, 'overtime'])->name('employees.bulk-overtime');
     Route::post  ('/employees/bulk-undo',  [\App\Http\Controllers\EmployeeBulkController::class, 'undo'])->name('employees.bulk-undo');
     // A change still waiting for its day, called off from the worker's row.
     Route::delete('/employees/changes/{change}', [\App\Http\Controllers\EmployeeBulkController::class, 'cancel'])->name('employees.changes.cancel');

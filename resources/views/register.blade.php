@@ -649,6 +649,9 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                                 'nation'   => $e->nationality,
                                 'blood'    => $e->blood_type,
                                 'shift'    => $e->shift ? $e->shift->name . ' · ' . \Carbon\Carbon::parse($e->shift->starts_at)->format('g:i A') : null,
+                                // Null until the office has begun choosing who may: before
+                                // that everybody takes overtime and there is nothing to say.
+                                'overtime' => $bulk['overtimeRule'] ? ($e->overtime_allowed ? __('Allowed') : __('Not allowed')) : null,
                                 'hiredAs'  => $e->isContractual()
                                     ? __('Contractual') . ($e->end_of_contract ? ' · ' . __('until') . ' ' . $e->end_of_contract->format('M j, Y') : '')
                                     : __('Regular'),
@@ -661,14 +664,21 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                         {{-- The ids are what the bulk dialogs compare against: who is
                              already at the site, on the shift or of the labor
                              type being changed to, and so is left as they are. --}}
-                        <tr class="rmx-row-card" data-live-key="emp-{{ $e->id }}" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}" data-shift="{{ $e->shift?->name }}" data-site-id="{{ $e->site_id }}" data-shift-id="{{ $e->shift_id }}" data-labor-id="{{ $e->labor_type_id }}">
+                        <tr class="rmx-row-card" data-live-key="emp-{{ $e->id }}" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}" data-shift="{{ $e->shift?->name }}" data-site-id="{{ $e->site_id }}" data-shift-id="{{ $e->shift_id }}" data-labor-id="{{ $e->labor_type_id }}" data-ot="{{ $e->overtime_allowed ? 1 : 0 }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td><button type="button" class="rmx-open" aria-haspopup="dialog" aria-label="{{ __('Details of :name', ['name' => $e->name]) }}">@include('employees._person', ['e' => $e, 'displayName' => $e->name])</button>
                                 {{-- A change dated ahead: what it will be and from
                                      when, with a way to call it off before then. --}}
                                 @php $onContract = $e->isContractual() && $e->end_of_contract; @endphp
-                                @if($onContract || ($scheduled[$e->id] ?? collect())->isNotEmpty())
+                                @if($onContract || $e->overtime_allowed || ($scheduled[$e->id] ?? collect())->isNotEmpty())
                                     <div class="rmx-tags">
+                                        {{-- May take overtime. Nobody else does, from the day
+                                             the first of them was allowed. --}}
+                                        @if($e->overtime_allowed)
+                                            <span class="rmx-pill rmx-pill-ok rmx-ot" title="{{ __('Hours worked past their regular hours are recorded and paid as overtime.') }}">
+                                                <i class="ti ti-clock-plus" aria-hidden="true"></i>{{ __('Overtime allowed') }}
+                                            </span>
+                                        @endif
                                         {{-- On contract: the last day of it, after which they
                                              leave this list by themselves. Amber in its last
                                              thirty days, so a renewal is not a surprise. --}}
@@ -870,6 +880,10 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
     <button type="button" class="rmx-abtn" data-act="site"><i class="ti ti-map-pin" aria-hidden="true"></i>{{ __('Transfer site') }}</button>
     <button type="button" class="rmx-abtn" data-act="shift"><i class="ti ti-moon" aria-hidden="true"></i>{{ __('Change shift') }}</button>
     <button type="button" class="rmx-abtn" data-act="labor"><i class="ti ti-tool" aria-hidden="true"></i>{{ __('Change labor type') }}</button>
+    {{-- Who may take overtime. From the day the first worker is allowed,
+         only the workers allowed have the hours past their regular hours
+         recorded (App\Support\OvertimePermission). --}}
+    <button type="button" class="rmx-abtn" data-act="overtime"><i class="ti ti-clock-plus" aria-hidden="true"></i>{{ __('Allow overtime') }}</button>
     @if(auth()->user()?->isAdmin())
         <button type="button" class="rmx-abtn" data-act="bonus"><i class="ti ti-gift" aria-hidden="true"></i>{{ __('Add bonus') }}</button>
     @endif
@@ -1959,13 +1973,14 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                 name: (tr.querySelector('.rmx-name')?.textContent || '').trim(),
                 site: tr.dataset.siteId || '', shift: tr.dataset.shiftId || '', labor: tr.dataset.laborId || '',
                 siteName: tr.dataset.site || '', shiftName: tr.dataset.shift || '', laborName: tr.dataset.labor || '',
+                ot: tr.dataset.ot === '1', otName: tr.dataset.ot === '1' ? 'Overtime allowed' : 'No overtime',
             };
         }).filter(Boolean);
     }
 
     // ── The dialog ──────────────────────────────────────────────────────────
-    const TITLE = { site: @json(__('Transfer site')), shift: @json(__('Change shift')), labor: @json(__('Change labor type')), bonus: @json(__('Add bonus')) };
-    const ICON  = { site: 'fa-location-dot', shift: 'fa-moon', labor: 'fa-helmet-safety', bonus: 'fa-gift' };
+    const TITLE = { site: @json(__('Transfer site')), shift: @json(__('Change shift')), labor: @json(__('Change labor type')), overtime: @json(__('Allow overtime')), bonus: @json(__('Add bonus')) };
+    const ICON  = { site: 'fa-location-dot', shift: 'fa-moon', labor: 'fa-helmet-safety', overtime: 'fa-clock', bonus: 'fa-gift' };
     const modal = () => bootstrap.Modal.getOrCreateInstance(modalEl);
     const show  = (id, on) => { $(id).hidden = !on; };
 
@@ -2007,7 +2022,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
         $('bkIcon').className = 'fas ' + ICON[kind];
         $('bkSub').textContent = many(people.length, 'employee') + ' selected';
 
-        show('bkTo', kind === 'site' || kind === 'shift');
+        show('bkTo', kind === 'site' || kind === 'shift' || kind === 'overtime');
         show('bkLabor', kind === 'labor');
         ['bkAmount', 'bkReason', 'bkPeriod', 'bkTotal'].forEach(id => show(id, kind === 'bonus'));
         show('bkFlow', kind !== 'bonus');
@@ -2022,6 +2037,10 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             $('bkToLabel').textContent = 'Change to';
             $('bkEffHelp').textContent = 'The new schedule applies to scans from this date.';
             segments(cfg.shifts.map(s => ({ v: String(s.id), icon: s.night ? 'moon' : 'sun', label: s.name, small: s.from })));
+        } else if (kind === 'overtime') {
+            $('bkToLabel').textContent = 'Overtime';
+            $('bkEffHelp').textContent = 'Applies to work from this date.';
+            segments([{ v: '1', icon: 'clock-plus', label: 'Allow overtime' }, { v: '0', icon: 'clock-off', label: 'Do not allow' }]);
         } else if (kind === 'labor') {
             $('bkEffHelp').textContent = 'The new labor type and rate apply to work from this date.';
             const pick = $('bkLaborType');
@@ -2091,6 +2110,36 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                    + ' Past attendance and payroll are not changed.' + skipped('already on ' + to.name);
             label = 'Change shift for ' + moving.length;
             ready = !!to && moving.length > 0;
+        } else if (act === 'overtime') {
+            // Allowed, the hours past their regular hours are overtime. Not
+            // allowed, those hours are not recorded at all. And there is no
+            // rule until somebody is allowed: the first allowance is what
+            // begins the choosing, for everybody, so that is said before it
+            // is confirmed.
+            const allow = choice === '1';
+            moving = choice === null ? people : people.filter(p => p.ot !== allow);
+            standing(moving, 'otName', '');
+            after(choice === null ? 'Choose' : allow ? 'Overtime allowed' : 'No overtime',
+                  choice === null ? '' : allow ? 'Hours past their regular hours are overtime' : 'Hours past their regular hours are not recorded');
+
+            if (choice === null) {
+                note = 'Choose whether they may take overtime.';
+            } else if (allow) {
+                note = 'From the effective date, the hours they work past their regular hours are recorded and paid as overtime.';
+                if (!cfg.overtimeRule) {
+                    const others = Math.max(0, pane.querySelectorAll('tbody > tr[data-live-key]').length - moving.length);
+                    note += ' From that date only the employees allowed here take overtime: the other ' + many(others, 'active employee')
+                          + ' will not have it recorded until they are allowed too.';
+                }
+                note += ' Past attendance and payroll are not changed.' + skipped('already allowed');
+            } else if (!cfg.overtimeRule) {
+                note = 'Nobody is held back yet: overtime is recorded for everybody until the first employee is allowed.';
+            } else {
+                note = 'From the effective date, the hours they work past their regular hours are not recorded as overtime and are not paid.'
+                     + ' Past attendance and payroll are not changed.' + skipped('not allowed already');
+            }
+            label = (choice === '0' ? 'Stop overtime for ' : 'Allow overtime for ') + moving.length;
+            ready = choice !== null && moving.length > 0;
         } else if (act === 'labor') {
             const to      = cfg.labor.find(t => String(t.id) === choice);
             const useRate = $('bkUseRate').checked;
@@ -2169,6 +2218,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             if (act === 'site')  body.site_id = choice === '' ? null : Number(choice);
             if (act === 'shift') body.shift_id = Number(choice);
             if (act === 'labor') { body.labor_type_id = Number(choice); body.use_rate = $('bkUseRate').checked; }
+            if (act === 'overtime') body.allow = choice === '1';
         }
 
         sending = true;
@@ -2177,6 +2227,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
         try {
             const { ok, data } = await post(cfg.urls[act], body);
             if (ok && data.success) {
+                if ('overtime_rule' in data) cfg.overtimeRule = data.overtime_rule;
                 modal().hide();
                 document.dispatchEvent(new CustomEvent('rmx:select-done'));
                 reread();
@@ -2198,7 +2249,10 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
     async function undo(batch) {
         try {
             const { ok, data } = await post(cfg.urls.undo, { batch: batch });
-            if (ok && data.success) { reread(); Notify.info(data.message); return; }
+            if (ok && data.success) {
+                if ('overtime_rule' in data) cfg.overtimeRule = data.overtime_rule;
+                reread(); Notify.info(data.message); return;
+            }
             Notify.error(said(data) || 'Could not undo that.');
         } catch (err) {
             Notify.error('Network error. Please try again.');
@@ -2246,7 +2300,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             group('In case of emergency',
                 fact('Contact', d.ice) + fact('Phone', d.icePhone)) +
             group('Work',
-                fact('Hired', d.hired) + fact('Shift', d.shift) + fact('Employment type', d.hiredAs, true));
+                fact('Hired', d.hired) + fact('Shift', d.shift) + fact('Employment type', d.hiredAs, !d.overtime) + (d.overtime ? fact('Overtime', d.overtime) : ''));
         $('wmProfile').href = d.profile;
         $('wmEdit').href = d.edit;
         modal.show();

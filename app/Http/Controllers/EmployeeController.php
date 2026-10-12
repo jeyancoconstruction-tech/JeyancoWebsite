@@ -789,10 +789,14 @@ class EmployeeController extends Controller
                         . ' to ' . Carbon::createFromTime(\App\Support\WorkSchedule::NIGHT_TO_HOUR)->format('g:i A'),
             'today'    => EmployeeChange::earliestDate(),
             'mayBonus' => (bool) auth()->user()?->isAdmin(),
+            // The day from which only the workers allowed take overtime; null
+            // while nobody has been allowed yet and everybody still does.
+            'overtimeRule' => \App\Support\OvertimePermission::load()->startsOn(),
             'urls'     => [
                 'site'  => route('employees.bulk-site'),
                 'shift' => route('employees.bulk-shift'),
                 'labor' => route('employees.bulk-labor'),
+                'overtime' => route('employees.bulk-overtime'),
                 'bonus' => route('employees.bulk-bonus'),
                 'undo'  => route('employees.bulk-undo'),
             ],

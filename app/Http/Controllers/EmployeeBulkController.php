@@ -10,6 +10,7 @@ use App\Models\LaborType;
 use App\Models\Shift;
 use App\Models\Site;
 use App\Support\ActivityRecorder;
+use App\Support\OvertimePermission;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -78,6 +79,30 @@ class EmployeeBulkController extends Controller
             'log'     => 'Changed the labor type of :n to :to' . ($useRate
                 ? ' at ₱' . number_format($type->daily_rate / 8, 2) . ' / hr'
                 : ', each keeping their own rate'),
+        ]);
+    }
+
+    /**
+     * Allow the workers ticked to take overtime, or stop them.
+     *
+     * From the day the first worker is allowed, only the workers allowed take
+     * overtime: for anybody else the hours past their regular hours are not
+     * recorded (App\Support\OvertimePermission). Until then there is no rule
+     * and overtime is counted for whoever works it, so allowing the first
+     * worker is also what begins the choosing. The answer says from which
+     * day the rule runs, for the page to say so.
+     */
+    public function overtime(Request $request): JsonResponse
+    {
+        $data  = $this->check($request, ['allow' => 'required|boolean']);
+        $allow = $request->boolean('allow');
+
+        return $this->change($data, EmployeeChange::OVERTIME, $allow ? 1 : 0, [], [
+            'to'      => $allow ? 'allowed overtime' : 'not allowed overtime',
+            'done'    => $allow ? ':n allowed to take overtime' : ':n no longer take overtime',
+            'later'   => $allow ? ':n will be allowed overtime from :date' : ':n will stop taking overtime from :date',
+            'already' => $allow ? 'Everybody selected is already allowed overtime.' : 'Nobody selected is allowed overtime, so there is nothing to stop.',
+            'log'     => $allow ? 'Allowed overtime for :n' : 'Stopped overtime for :n',
         ]);
     }
 
@@ -203,7 +228,7 @@ class EmployeeBulkController extends Controller
         });
 
         $kept = $rows->count() - $undone;
-        $what = $isBonus ? 'bonus' : ['site' => 'site transfer', 'shift' => 'shift change', 'labor' => 'labor type change'][$rows->first()->kind];
+        $what = $isBonus ? 'bonus' : ['site' => 'site transfer', 'shift' => 'shift change', 'labor' => 'labor type change', 'overtime' => 'overtime change'][$rows->first()->kind];
 
         if ($isBonus) {
             app(ActivityRecorder::class)->noteExplicit('Payroll Settings', null);
@@ -215,6 +240,8 @@ class EmployeeBulkController extends Controller
         return response()->json([
             'success' => true,
             'undone'  => $undone,
+            // Taking back the first allowance takes the rule back with it.
+            'overtime_rule' => OvertimePermission::load()->startsOn(),
             'message' => $undone === 0
                 ? 'Nothing to undo: they have been changed again since.'
                 : 'Undone for ' . $this->count($undone) . ($kept ? "; {$kept} changed again since and left as they are" : ''),
@@ -260,7 +287,7 @@ class EmployeeBulkController extends Controller
     {
         $on     = Carbon::parse($data['effective_on'])->toDateString();
         $later  = $on > EmployeeChange::earliestDate();
-        $column = ['site' => 'site_id', 'shift' => 'shift_id', 'labor' => 'labor_type_id'][$kind];
+        $column = EmployeeChange::COLUMNS[$kind];
 
         $workers = Employee::active()->whereIn('id', $data['ids'])->orderBy('name')->get();
         $moving  = $workers->filter(fn (Employee $e) => (int) $e->{$column} !== (int) $toId)->values();
@@ -314,6 +341,9 @@ class EmployeeBulkController extends Controller
             'later'   => $later,
             'batch'   => $batch,
             'message' => $fill($later ? $say['later'] : $say['done'], (string) $n),
+            // The day from which only the workers allowed take overtime,
+            // or null while everybody still does.
+            'overtime_rule' => OvertimePermission::load()->startsOn(),
         ]);
     }
 

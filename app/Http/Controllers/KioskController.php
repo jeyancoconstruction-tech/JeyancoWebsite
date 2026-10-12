@@ -853,7 +853,9 @@ class KioskController extends Controller
                 $from  = WorkSchedule::paidFrom($sched, $in, $day, $session, $first);
                 $split = WorkSchedule::split($sched, $from, $now->copy()->startOfMinute(), $day, $used);
 
-                if ($split['ot'] > 0) {
+                // Only somebody the office allows to take overtime is told
+                // they have some: for anybody else payroll does not record it.
+                if ($split['ot'] > 0 && \App\Support\OvertimePermission::load()->allowedOn((int) $employee->id, $day)) {
                     // Where the overtime began, which is no longer always the
                     // end of the shift: a day that buys eight of its eleven
                     // hours turns over in the middle of the afternoon.
@@ -1464,6 +1466,11 @@ class KioskController extends Controller
             ->get()
             ->groupBy('employee_id');
 
+        // Who may take overtime, read once for the whole board. The board
+        // shows overtime only for them: for anybody else payroll does not
+        // record it, and a figure here would promise pay that is not coming.
+        $mayOvertime = \App\Support\OvertimePermission::load();
+
         $records = [];
         $moments = ['am_in' => [], 'pm_in' => [], 'out' => []];   // for the summary
         foreach ($rows as $empId => $recs) {
@@ -1552,6 +1559,10 @@ class KioskController extends Controller
                     $ot      += $split['ot'];
                 }
 
+                if (! $mayOvertime->allowedOn((int) $empId, $shiftDay)) {
+                    $ot = 0;
+                }
+
                 $records[] = $this->boardRow($emp, $empId, $shift, $am, $pm, $amLast, $pmLast, $amRows, $pmRows, $recs, [
                     'total_hours'    => round($regular, 2),
                     'overtime_hours' => round($ot, 2),
@@ -1592,7 +1603,9 @@ class KioskController extends Controller
             }
 
             $totalHours = round($totalMin / 60, 2);
-            $overtime   = max(0, round($totalHours - $paidStandard, 2));
+            $overtime   = $mayOvertime->allowedOn((int) $empId, $shiftDay)
+                ? max(0, round($totalHours - $paidStandard, 2))
+                : 0;
 
             // Overtime being earned right now, as opposed to a finished day
             // that happened to run long. The board marks the two differently:
