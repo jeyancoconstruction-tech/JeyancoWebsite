@@ -254,6 +254,115 @@ class EmployeeBonusTest extends TestCase
         $this->assertEqualsWithDelta(500.0, $slip['bonus'], 0.001);
     }
 
+    // ── Before anybody has clocked in ────────────────────────────────────
+
+    /**
+     * Three bonuses given on a Monday morning were on file and nowhere on
+     * Payroll Records (Michael, 2026-10-12): nobody had scanned yet, and a
+     * week listed only who had attendance or leave in it. A bonus given by
+     * name is on the payroll from the moment it is given.
+     */
+    public function test_a_bonus_shows_before_the_worker_has_clocked_in_that_week(): void
+    {
+        $e = $this->worker();   // not a scan all week
+
+        $this->give($e, 500, 'Performance')->assertSessionHasNoErrors();
+
+        $totals = $this->totals($e, ...self::WEEK);
+
+        $this->assertEqualsWithDelta(500.0, $totals['bonus'], 0.001);
+        $this->assertEqualsWithDelta(500.0, $totals['net'], 0.001, 'the bonus, and nothing else');
+        $this->assertEqualsWithDelta(0.0, $totals['gross'], 0.001, 'a bonus is not wages');
+        $this->assertEqualsWithDelta(0.0, $totals['totalDeductions'], 0.001);
+        $this->assertSame(0, $totals['workdays']);
+
+        // On every screen that reads the payroll, without one of them failing
+        // on a worker who has no day to show.
+        $row = collect($this->actingAs($this->admin)
+            ->get(route('payroll-records', ['mode' => 'weekly', 'week' => '2026-W38']))
+            ->assertOk()->assertSee('Lawrence Bernas')->viewData('employees'))->firstWhere('employee_id', $e->id);
+        $this->assertEqualsWithDelta(500.0, $row['totals']['bonus'], 0.001);
+
+        $slip = $this->actingAs($this->admin)
+            ->get(route('payslip.batch', ['from' => self::WEEK[0], 'to' => self::WEEK[1], 'employee' => $e->id]))
+            ->assertOk()->viewData('slips')->first();
+        $this->assertEqualsWithDelta(500.0, $slip['bonus'], 0.001);
+        $this->assertEqualsWithDelta(500.0, $slip['net'], 0.001);
+
+        foreach ([
+            route('payroll-records'), route('payroll-records', ['mode' => 'daily', 'date' => '2026-09-17']),
+            route('payroll-records.export.excel', ['mode' => 'weekly', 'week' => '2026-W38']),
+            route('payroll-reports.index'), route('remittances.index'), route('dashboard'), route('analytics'),
+        ] as $page) {
+            $this->actingAs($this->admin)->get($page)->assertOk();
+        }
+    }
+
+    /** Once they clock in it is the same one row, and the bonus is counted once. */
+    public function test_the_bonus_is_counted_once_when_the_worker_then_clocks_in(): void
+    {
+        $e = $this->worker();
+        $this->give($e, 500);
+
+        $alone = $this->totals($e, ...self::WEEK);
+
+        Attendance::create([
+            'employee_id' => $e->id, 'shift_id' => $e->shift_id, 'date' => '2026-09-17', 'session' => 'AM',
+            'time_in' => '2026-09-17 08:00:00', 'time_out' => '2026-09-17 17:00:00',
+        ]);
+
+        $rows = collect(app(PayrollService::class)->computeForRange(...self::WEEK)['weeks'])
+            ->flatMap(fn ($w) => $w['details'])->where('employee_id', $e->id);
+
+        $this->assertCount(1, $rows, 'one row for the week, not the bonus and the day apart');
+        $this->assertEqualsWithDelta(500.0, $rows->first()['bonus'], 0.001);
+        $this->assertGreaterThan(0, $rows->first()['gross']);
+        $this->assertArrayNotHasKey('bonus_only', $rows->first());
+        $this->assertEqualsWithDelta($alone['bonus'], $this->totals($e, ...self::WEEK)['bonus'], 0.001);
+    }
+
+    /** Who a week lists for a bonus alone, and who it does not. */
+    public function test_only_a_bonus_given_by_name_lists_somebody_who_has_not_worked(): void
+    {
+        $named   = $this->worker([], 'Named Worker');
+        $other   = $this->worker([], 'Other Worker');
+        $pending = $this->worker([], 'Newly Detected');
+        $pending->forceFill(['status' => Employee::STATUS_PENDING])->save();
+
+        // By name: the worker named, and not a pending registration.
+        Bonus::create(['amount' => 300, 'effective_on' => '2026-09-17', 'all_employees' => false, 'created_by' => 'test'])
+            ->employees()->sync([$named->id, $pending->id]);
+        // For everybody: that is everybody on the week's payroll, not a
+        // reason to list the whole crew on a week nobody has worked.
+        Bonus::create(['amount' => 50, 'effective_on' => '2026-09-17', 'all_employees' => true, 'created_by' => 'test']);
+        // Dated into next week: it appears with next week.
+        Bonus::create(['amount' => 900, 'effective_on' => '2026-09-21', 'all_employees' => false, 'created_by' => 'test'])
+            ->employees()->sync([$other->id]);
+
+        $payroll = app(PayrollService::class);
+        $listed  = collect($payroll->computeForRange('2026-09-14', '2026-09-27')['employees'])->keyBy('employee_id');
+
+        $this->assertSame([$named->id], $listed->keys()->all());
+        $this->assertEqualsWithDelta(300.0, $listed[$named->id]['totals']['bonus'], 0.001, 'the named bonus; the everybody one goes with a week worked');
+
+        // Asked about other workers only, this one is not answered for.
+        $this->assertSame([], $payroll->computeForRange(...self::WEEK + [2 => ['employees' => [$other->id]]])['employees']);
+
+        // Next week, once it has opened.
+        Carbon::setTestNow(Carbon::parse('2026-09-21 07:00:00', 'Asia/Manila'));
+        $this->assertEqualsWithDelta(900.0, $this->totals($other, '2026-09-21', '2026-09-27')['bonus'], 0.001);
+    }
+
+    /** A week of nothing but a bonus has no pay in it for a cash advance to be collected from. */
+    public function test_no_cash_advance_is_collected_from_a_bonus_alone(): void
+    {
+        $e = $this->worker();
+        $this->give($e, 500);
+
+        $this->assertSame([], app(PayrollService::class)->cashAdvanceRoom([$e->id], ...self::WEEK),
+            'for an advance it is still a week with no payroll');
+    }
+
     // ── Taking one back ──────────────────────────────────────────────────
 
     /** While the period runs it can be taken back, and payroll drops it. */

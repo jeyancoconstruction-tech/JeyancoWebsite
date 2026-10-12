@@ -9,6 +9,7 @@ use App\Models\LeaveRequest;
 use App\Models\Loan;
 use App\Models\PayrollRate;
 use App\Models\Bonus;
+use App\Models\Employee;
 use App\Models\EmployeeChange;
 use App\Models\Shift;
 use App\Models\ValeAdvance;
@@ -398,6 +399,17 @@ class PayrollService
                 Carbon::parse($grantsFrom)->startOfWeek($weekStartsOn)->toDateString(),
                 Carbon::parse($grantsTo)->startOfWeek($weekStartsOn)->addDays(6)->toDateString()
             );
+
+        // Whoever those grants name. A bonus given by name is on the payroll
+        // from the moment it is given, so its week has to be able to list a
+        // worker who has not clocked in during it yet — which needs their
+        // name, and their attendance is not there to carry it. Never a
+        // pending registration, and only the workers asked about.
+        $cfg['only']     = $only;
+        $named           = collect($cfg['bonusGrants'])->reject(fn ($g) => $g['all'])->pluck('employees')->flatten()->unique()->values();
+        $cfg['grantees'] = $named->isEmpty()
+            ? collect()
+            : Employee::withTrashed()->registered()->with(['laborType', 'shift'])->whereIn('id', $named)->get()->keyBy('id');
 
         // Advances are filtered on where their schedule begins rather than on
         // the range: one started months ago may still have instalments left to
@@ -1021,6 +1033,13 @@ class PayrollService
 
         foreach ($weeks as $week) {
             foreach ($week['details'] as $d) {
+                // A week that holds nothing but a bonus has no pay in it, and
+                // a bonus is not salary: for an advance it is a week with no
+                // payroll, which charges nothing and defers nothing.
+                if (! empty($d['bonus_only'])) {
+                    continue;
+                }
+
                 $room[(int) $d['employee_id']][$week['week_opens']] = (float) ($d['cash_advance_room'] ?? 0);
             }
         }
@@ -1102,6 +1121,39 @@ class PayrollService
     }
 
     /**
+     * The pay weeks a bonus given by name lands in, inside the range asked
+     * for and no later than the week running now.
+     *
+     * @return array<string, array{0: string, 1: string}>  week label => [opens, closes]
+     */
+    private function weeksWithNamedBonus(array $cfg, int $weekStart, int $weekEnd): array
+    {
+        $from  = (string) ($cfg['range']['from'] ?? '');
+        $to    = (string) ($cfg['range']['to'] ?? '');
+        $today = Carbon::now('Asia/Manila')->toDateString();
+        $weeks = [];
+
+        foreach ($cfg['bonusGrants'] ?? [] as $grant) {
+            if ($grant['all'] || empty($grant['employees'])) {
+                continue;
+            }
+
+            $opens  = Carbon::parse($grant['on'])->startOfWeek($weekStart);
+            $closes = $opens->copy()->endOfWeek($weekEnd);
+
+            if ($opens->toDateString() > $today
+                || ($from !== '' && $closes->toDateString() < $from)
+                || ($to !== '' && $opens->toDateString() > $to)) {
+                continue;
+            }
+
+            $weeks[$opens->format('m/d/Y') . ' - ' . $closes->format('m/d/Y')] = [$opens->toDateString(), $closes->toDateString()];
+        }
+
+        return $weeks;
+    }
+
+    /**
      * Group records by week, then by employee within the week. The week opens
      * on the day System Settings names.
      * Output shape matches the original $payrollWeeks exactly.
@@ -1143,6 +1195,14 @@ class PayrollService
         }
 
         foreach ($this->weeksWithLeave($cfg, $weekStart, $weekEnd) as $weekRange => $bounds) {
+            $weekBounds[$weekRange] ??= $bounds;
+        }
+
+        // And so does a bonus given to somebody by name. Three of them given
+        // on a Monday morning, before anybody had scanned, were on file and
+        // nowhere on Payroll Records: the week had no attendance, so there
+        // was no week to show them in.
+        foreach ($this->weeksWithNamedBonus($cfg, $weekStart, $weekEnd) as $weekRange => $bounds) {
             $weekBounds[$weekRange] ??= $bounds;
         }
 
@@ -1417,6 +1477,60 @@ class PayrollService
                 ], 0);
 
                 $weeklyTotalSalary += $net;
+            }
+
+            // A worker given a bonus by name who has neither clocked in nor
+            // been on leave this week. The bonus is theirs for the period
+            // whether or not they have worked a day of it yet, so they are
+            // listed with it and every other figure at zero — the row fills
+            // in as they clock in, and the bonus is counted once either way.
+            // Not before the week has opened: a bonus dated into next week
+            // appears with next week. The standing period bonus is not added
+            // here; that one goes with a week worked.
+            $listed = array_flip(array_map('intval', array_column($employeeSummaries, 'employee_id')));
+            $asked  = ($cfg['only'] ?? null) === null ? null : array_map('intval', $cfg['only']);
+            $owed   = [];
+
+            if ($weekOpens <= Carbon::now('Asia/Manila')->toDateString()) {
+                foreach ($grants as $grant) {
+                    foreach ($grant['all'] ? [] : $grant['employees'] as $grantee) {
+                        $grantee = (int) $grantee;
+
+                        if (isset($listed[$grantee])
+                            || ! isset($cfg['grantees'][$grantee])
+                            || ($asked !== null && ! in_array($grantee, $asked, true))) {
+                            continue;
+                        }
+
+                        $owed[$grantee] = ($owed[$grantee] ?? 0) + $grant['amount'];
+                    }
+                }
+            }
+
+            foreach ($owed as $grantee => $amount) {
+                $who = $cfg['grantees'][$grantee];
+
+                $employeeSummaries[] = [
+                    'employee_id' => $grantee,
+                    'shift'       => $who->shift?->name,
+                    'name'        => $who->name,
+                    'position'    => $who->position ?? '',
+                    'dailyRate'   => round($this->dayRateOf($who, $weekRates, 0.0, $weekOpens, $cfg), 2),
+                    'bonus'       => round($amount, 2),
+                    'net'         => round($amount, 2),
+                    // Nothing was earned this week for a cash advance to be
+                    // collected from: see cashAdvanceRoom().
+                    'bonus_only'  => true,
+                    'cash_advance_deferred' => 0.0,
+                    'cash_advance_room'     => 0.0,
+                ] + array_fill_keys([
+                    'workdays', 'hours', 'minutes', 'gross', 'overtime', 'holidayPay', 'restDayPay', 'nightDiffPay',
+                    'leaveDays', 'paidLeaveDays', 'leavePay', 'sssDeduction', 'philhealthDeduction', 'pagibigDeduction',
+                    'withholdingTax', 'autoDeductions', 'late_minutes', 'vale', 'vale_advance', 'vale_advance_due',
+                    'manualDeductions', 'totalDeductions',
+                ], 0);
+
+                $weeklyTotalSalary += $amount;
             }
 
             $payrollWeeks[] = [
