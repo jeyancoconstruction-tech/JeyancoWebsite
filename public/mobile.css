@@ -463,3 +463,29 @@
     .rmx-top { --rmx-gutter: 14px; }
     .atm-top { --atm-gutter: 14px; }
 }
+
+
+/* ── 15 · BULK ACTIONS ON EMPLOYEES ────────────────────────────────────────
+   With the sidebar off the screen the bar centres on the page itself. On a
+   phone it becomes a block in the bottom corner beside the chat button, two
+   buttons to a row; the site picker takes a row of its own above Search, and
+   a change dated ahead goes under the worker's name. */
+@media (max-width: 1024px) {
+    .rmx-abar { left: 12px !important; max-width: calc(100vw - 108px) !important; }
+}
+@media (max-width: 767.98px) {
+    .rmx-abar { right: 76px !important; bottom: 12px !important; width: auto !important; max-width: none !important;
+                display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; padding: 10px !important; }
+    .rmx-abar > b { align-self: center; padding-left: 4px; }
+    .rmx-abar-clr { justify-self: end; }
+    .rmx-abar-sep { display: none; }
+    .rmx-abtn { height: auto !important; min-height: 40px; padding: 4px 8px !important; gap: 6px !important;
+                font-size: 12.5px !important; line-height: 1.15; white-space: normal !important; }
+
+    .rmx-tools { flex-wrap: wrap; }
+    .rmx-sitepick { flex: 1 1 100%; height: 36px !important; }
+    .rmx-sitepick select { flex: 1 1 auto; min-width: 0; max-width: none !important; }
+
+    .rmx-table td:nth-child(2):has(.rmx-tags) { flex-wrap: wrap; }
+    .rmx-table td:nth-child(2) .rmx-tags { flex: 1 1 100%; margin: 0 0 0 38px !important; }
+}

@@ -47,7 +47,10 @@ final class ActivityRecorder
     /** Never logged: the log itself, the assistant's chat, a run's per-worker lines. */
     private const IGNORED = ['AuditLog', 'ChatMessage', 'PayrollRunItem',
         // The receipt's own row: its payment's entry already says it was paid.
-        'RemittanceReceipt'];
+        'RemittanceReceipt',
+        // The dated half of a bulk change on Employees, which is logged as
+        // one line naming everybody it moved.
+        'EmployeeChange'];
 
     /** Columns whose change on its own is bookkeeping rather than an activity. */
     private const NOISE = ['updated_at', 'created_at', 'deleted_at', 'last_seen_at', 'last_login_at', 'remember_token',

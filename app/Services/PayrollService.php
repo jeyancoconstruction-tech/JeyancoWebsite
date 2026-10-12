@@ -9,9 +9,11 @@ use App\Models\LeaveRequest;
 use App\Models\Loan;
 use App\Models\PayrollRate;
 use App\Models\Bonus;
+use App\Models\EmployeeChange;
 use App\Models\Shift;
 use App\Models\ValeAdvance;
 use App\Models\SystemSetting;
+use App\Support\LaborHistory;
 use App\Support\Live;
 use App\Support\WorkSchedule;
 use Carbon\Carbon;
@@ -102,6 +104,11 @@ class PayrollService
             // Every shift as a lookup. Payroll resolves one per attendance
             // record, and a query per row would be thousands.
             'shifts' => Shift::lookup(),
+
+            // The labor type each worker held before it was last changed, so
+            // a day is priced by the type in force on it. Empty for a worker
+            // nobody has changed: they are priced as they stand.
+            'laborHistory' => LaborHistory::load(),
         ];
     }
 
@@ -275,6 +282,10 @@ class PayrollService
      */
     public function computeForRange(?string $from = null, ?string $to = null, array $options = []): array
     {
+        // A change dated ahead that has come due is made before anything is
+        // priced, so the day it starts on is paid at what it changed to.
+        EmployeeChange::applyDue();
+
         $cfg  = $this->config();
         $only = $options['employees'] ?? null;
 
@@ -564,13 +575,16 @@ class PayrollService
      *
      * @param  float  $priced  the rate the week already priced a day at, or 0
      */
-    private function dayRateOf($employee, array $rates, float $priced = 0.0): float
+    private function dayRateOf($employee, array $rates, float $priced = 0.0, ?string $on = null, array $cfg = []): float
     {
         if ($priced > 0) {
             return $priced;
         }
 
-        $configured = $employee->laborType?->daily_rate;
+        // By the labor type in force on the day, as computeRecord() does.
+        $configured = $on !== null && isset($cfg['laborHistory'])
+            ? $cfg['laborHistory']->dailyRateOn($employee, $on)
+            : $employee->laborType?->daily_rate;
         $schedule   = $employee->shift?->schedule();
         $standard   = $schedule && WorkSchedule::has($schedule) ? max(1.0, WorkSchedule::paidHours($schedule)) : 8.0;
 
@@ -729,7 +743,13 @@ class PayrollService
         // rate_per_hour only for employees without a labor type. This keeps
         // gross aligned with the rate configured in Settings even if an
         // employee's cached rate_per_hour has drifted.
-        $configured = $employee->laborType?->daily_rate;
+        //
+        // The labor type in force on the day, not today's: one changed from
+        // the Employees page takes effect from a date, and the days before it
+        // keep the type — and so the rate — they were worked under.
+        $configured = isset($cfg['laborHistory'])
+            ? $cfg['laborHistory']->dailyRateOn($employee, $dateStr)
+            : $employee->laborType?->daily_rate;
         $dailyRate  = $configured !== null
             ? (float) $configured
             : ((float) ($employee->rate_per_hour ?? 0)) * $paidStandard;
@@ -1213,7 +1233,7 @@ class PayrollService
                         $paidLeaveDays += $filed->is_paid ? $d : 0;
                     }
 
-                    $leaveRate = $this->dayRateOf($employee, $weekRates, $pricedDaily);
+                    $leaveRate = $this->dayRateOf($employee, $weekRates, $pricedDaily, $leaveOpens, $cfg);
                     $leavePay  = round($paidLeaveDays * $leaveRate, 2);
 
                     // Income is income: a paid day off is contributed and
@@ -1278,7 +1298,7 @@ class PayrollService
                         // What the week priced a day of theirs at. The weekly
                         // tables read this off a day worked; a week that is
                         // all leave has none, so the week carries it too.
-                        'dailyRate'           => round($this->dayRateOf($employee, $weekRates, $pricedDaily), 2),
+                        'dailyRate'           => round($this->dayRateOf($employee, $weekRates, $pricedDaily, $leaveOpens, $cfg), 2),
                         'leaveDays'           => round($leaveDays, 2),
                         'paidLeaveDays'       => round($paidLeaveDays, 2),
                         'leavePay'            => round($leavePay, 2),
@@ -1334,7 +1354,7 @@ class PayrollService
                     continue;
                 }
 
-                $dayRate = $this->dayRateOf($onLeave, $weekRates);
+                $dayRate = $this->dayRateOf($onLeave, $weekRates, 0.0, $leaveOpens, $cfg);
                 $pay     = round($paidDays * $dayRate, 2);
 
                 // The same contributions a worked week would carry: the week
@@ -1573,7 +1593,7 @@ class PayrollService
     private function leaveDayRow($employee, LeaveRequest $filed, string $date, float $days, array $cfg, float $priced): array
     {
         $rates = $this->ratesOn($date, $cfg);
-        $rate  = $this->dayRateOf($employee, $rates, $priced);
+        $rate  = $this->dayRateOf($employee, $rates, $priced, $date, $cfg);
         $paid  = $filed->is_paid ? $days : 0.0;
         $pay   = round($paid * $rate, 2);
 

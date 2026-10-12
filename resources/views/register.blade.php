@@ -354,6 +354,110 @@ tr.rmx-row-card { cursor: pointer; }
 .wm-list dd.none { color: var(--text-muted, #98A2B3); font-weight: 500; }
 .emp-foot a.emp-btn-cancel, .emp-foot a.emp-btn-save { text-decoration: none; }
 @media (max-width: 575px) { .wm-pay b { font-size: 15px; } }
+
+/* ── Bulk actions ─────────────────────────────────────────────────────────
+   Tick workers on the Active list and a bar comes up from the bottom:
+   transfer site, change shift, change labor type, add bonus. Each opens the
+   one dialog below, which says what will change before it is confirmed. */
+
+/* The site, beside Search: the same filter the Site heading sets. */
+.rmx-sitepick { display: flex; align-items: center; gap: 6px; height: 30px; margin: 0; padding: 0 6px 0 10px;
+    background: var(--rmx-card); border: var(--rmx-bw) solid var(--rmx-line-strong); border-radius: 8px;
+    transition: border-color .15s, box-shadow .15s; }
+.rmx-sitepick:focus-within { border-color: var(--brand, #1668DC); box-shadow: 0 0 0 3px var(--rmx-accent-bg); }
+.rmx-sitepick i { font-size: 15px; color: var(--rmx-txt-3); flex: none; }
+html[data-bs-theme] .rmx .rmx-sitepick select {
+    height: 28px; max-width: 170px; padding: 0; border: 0 !important; background: transparent !important;
+    box-shadow: none !important; outline: none; font: inherit; font-size: 12.5px; color: var(--rmx-txt); cursor: pointer;
+}
+/* A see-through select opens a white list in dark mode unless told otherwise. */
+html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface); color: var(--text-primary); }
+
+/* While selecting: what to do next, a row that ticks where it is clicked. */
+.rmx-note.rmx-bulk-hint { display: none; }
+.rm-pane.selecting .rmx-note.rmx-bulk-hint { display: flex; }
+.rm-pane.selecting .rmx-table tbody tr { cursor: pointer; user-select: none; }
+.rm-pane.selecting .rmx-table tbody tr:has(.rmx-check:checked) { background: var(--rmx-accent-bg); }
+
+/* A change dated ahead, under the worker's name until its day comes. */
+.rmx-sched { gap: 5px; }
+.rmx-sched form { display: inline-flex; margin: 0; }
+.rmx-sched-x { all: unset; cursor: pointer; display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; }
+.rmx-sched-x i { font-size: 11px; }
+.rmx-sched-x:hover { background: var(--rmx-accent-line); }
+.rmx-sched-x:focus-visible { outline: 2px solid var(--brand, #1668DC); outline-offset: 1px; }
+
+/* The bar. The page's colours turned inside out, so it reads as floating
+   over the list in light and in dark alike. It keeps clear of the chat
+   button in the corner. */
+.rmx-abar { position: fixed; z-index: 1040; left: calc(var(--sidebar-width, 0px) + 16px); right: 96px; bottom: 20px;
+    width: fit-content; max-width: calc(100vw - var(--sidebar-width, 0px) - 112px); margin: 0 auto;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 10px 10px 16px; border-radius: 14px;
+    background: var(--text-primary); color: var(--surface); box-shadow: 0 14px 40px rgba(0, 0, 0, .35);
+    transform: translateY(160%); visibility: hidden;
+    transition: transform .25s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .25s; }
+.rmx-abar.show { transform: none; visibility: visible; transition: transform .25s cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .rmx-abar, .rmx-abar.show { transition: none; } }
+.rmx-abar b { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.rmx-abar-clr { all: unset; cursor: pointer; font-size: 12.5px; font-weight: 600; opacity: .7; padding: 6px; border-radius: 6px; }
+.rmx-abar-clr:hover { opacity: 1; }
+.rmx-abar-sep { width: 1px; height: 24px; background: currentColor; opacity: .2; }
+.rmx-abtn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; height: 38px;
+    padding: 0 12px; border-radius: 9px; font-size: 13px; font-weight: 700; white-space: nowrap;
+    background: var(--surface); color: var(--text-primary); }
+.rmx-abtn i { font-size: 16px; }
+.rmx-abtn:hover { box-shadow: inset 0 0 0 2px var(--brand, #1668DC); }
+.rmx-abtn:focus-visible, .rmx-abar-clr:focus-visible { outline: 2px solid var(--brand, #1668DC); outline-offset: 2px; }
+
+/* The dialog: what to change to, who it changes and from what, from when. */
+#rmxBulkModal .emp-body { display: grid; gap: 16px; }
+#rmxBulkModal .emp-field + .emp-field { margin-top: 0; }
+#rmxBulkModal [hidden] { display: none !important; }
+#rmxBulkModal .emp-foot { justify-content: flex-end; }
+#rmxBulkModal .emp-btn-save:disabled { opacity: .45; cursor: not-allowed; }
+.bk-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.bk-seg button { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border: 1px solid var(--border); border-radius: 9px; font-size: 13px; font-weight: 600;
+    color: var(--text-primary); background: var(--bg-surface); }
+.bk-seg button i { font-size: 15px; color: var(--text-muted); }
+.bk-seg button small { font-size: 11.5px; font-weight: 500; color: var(--text-muted); }
+.bk-seg button:hover { border-color: var(--border-md); }
+.bk-seg button.on { border-color: var(--brand); background: var(--brand-subtle); color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.bk-seg button.on i, .bk-seg button.on small { color: inherit; }
+.bk-seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.bk-ck { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; font-size: 13px; font-weight: 500; color: var(--text-primary); cursor: pointer; }
+.bk-ck input { width: 16px; height: 16px; margin: 0; accent-color: var(--brand); cursor: pointer; }
+.bk-ck b { font-variant-numeric: tabular-nums; }
+.bk-peso { position: relative; }
+.bk-peso span { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted); pointer-events: none; }
+#rmxBulkModal .bk-peso .form-control { padding-left: 30px !important; font-size: 16px; font-weight: 700; }
+#rmxBulkModal #bkWhyOther { margin-top: 8px; }
+.bk-flow { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: stretch; }
+.bk-flow > i { align-self: center; }
+.bk-to span:empty { display: none; }
+.bk-flow > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg-subtle); }
+.bk-flow small { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+.bk-flow > i { font-size: 20px; color: var(--text-muted); }
+.bk-line { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-primary); }
+.bk-line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-line b { font-variant-numeric: tabular-nums; }
+.bk-to b { font-size: 16px; color: var(--text-primary); overflow-wrap: anywhere; }
+.bk-to span { font-size: 12px; color: var(--text-muted); }
+.bk-total { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--bg-subtle); color: var(--text-primary); }
+.bk-total b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.bk-chips { display: flex; gap: 6px; flex-wrap: wrap; max-height: 96px; overflow: auto; }
+.bk-chips span { font-size: 12px; padding: 3px 9px; border-radius: 999px; color: var(--text-primary);
+    background: var(--bg-subtle); border: 1px solid var(--border); }
+.bk-note { display: flex; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 9px; font-size: 12.5px; line-height: 1.5;
+    color: var(--text-secondary); background: var(--bg-subtle); }
+.bk-note i { font-size: 16px; flex: none; margin-top: 1px; color: var(--brand); }
+.bk-err { margin: 0; font-size: 12.5px; color: var(--danger); }
+@media (max-width: 560px) {
+    .bk-flow { grid-template-columns: 1fr; }
+    .bk-flow > i { transform: rotate(90deg); justify-self: center; }
+}
 </style>
 @endpush
 
@@ -458,6 +562,19 @@ tr.rmx-row-card { cursor: pointer; }
             <span class="rmx-fsum" id="rmxFilterSum" hidden><i class="ti ti-filter" aria-hidden="true"></i><span data-fsum-text></span><b data-fsum-n></b><button type="button" class="rmx-fclear" data-fclear title="{{ __('Show everybody') }}" aria-label="{{ __('Clear the filters') }}"><i class="ti ti-x" aria-hidden="true"></i></button></span>
         </div>
         <div class="rmx-tools">
+            {{-- One site's workers. The same filter the Site heading sets, kept
+                 in step with it, and here so a whole site can be picked and
+                 then ticked in one go. --}}
+            <label class="rmx-sitepick" title="{{ __('Show one site only') }}">
+                <i class="ti ti-map-pin" aria-hidden="true"></i>
+                <select id="rmxSite" autocomplete="off" aria-label="{{ __('Site') }}">
+                    <option value="*">{{ __('All sites') }}</option>
+                    @foreach($sites as $s)
+                        <option value="{{ $s->name }}">{{ $s->name }}</option>
+                    @endforeach
+                    <option value="">{{ __('No site') }}</option>
+                </select>
+            </label>
             {{-- Finds a worker in the list on screen by name or number, as it
                  is typed. It narrows the list the same way the headings do. --}}
             <label class="rmx-search">
@@ -478,6 +595,12 @@ tr.rmx-row-card { cursor: pointer; }
     {{-- ═══ ACTIVE ═════════════════════════════════════════════════════════ --}}
     <div class="rm-pane {{ $openTab === 'active' ? 'active' : '' }}" data-pane="active" role="tabpanel">
         <div class="rmx-card">
+            {{-- Only while selecting: the bar it speaks of comes up once
+                 somebody is ticked. --}}
+            <div class="rmx-note rmx-bulk-hint">
+                <i class="ti ti-info-circle" aria-hidden="true"></i>
+                <span>{{ __('Tick employees or use the header box to select everyone shown, then pick an action in the bar below. Tip: filter by site first, then select all.') }}</span>
+            </div>
             <div class="rmx-bulk" hidden>
                 <span class="rmx-bulk-count"><strong>0</strong> {{ __('selected') }}</span>
                 <button type="button" class="rmx-bulk-btn js-bulk-clear">{{ __('Clear selection') }}</button>
@@ -530,9 +653,32 @@ tr.rmx-row-card { cursor: pointer; }
                                 'profile'  => route('employees.show', $e->id),
                             ];
                         @endphp
-                        <tr class="rmx-row-card" data-live-key="emp-{{ $e->id }}" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}" data-shift="{{ $e->shift?->name }}">
+                        {{-- The ids are what the bulk dialogs compare against: who is
+                             already at the site, on the shift or of the labor
+                             type being changed to, and so is left as they are. --}}
+                        <tr class="rmx-row-card" data-live-key="emp-{{ $e->id }}" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}" data-shift="{{ $e->shift?->name }}" data-site-id="{{ $e->site_id }}" data-shift-id="{{ $e->shift_id }}" data-labor-id="{{ $e->labor_type_id }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
-                            <td><button type="button" class="rmx-open" aria-haspopup="dialog" aria-label="{{ __('Details of :name', ['name' => $e->name]) }}">@include('employees._person', ['e' => $e, 'displayName' => $e->name])</button></td>
+                            <td><button type="button" class="rmx-open" aria-haspopup="dialog" aria-label="{{ __('Details of :name', ['name' => $e->name]) }}">@include('employees._person', ['e' => $e, 'displayName' => $e->name])</button>
+                                {{-- A change dated ahead: what it will be and from
+                                     when, with a way to call it off before then. --}}
+                                @if(($scheduled[$e->id] ?? collect())->isNotEmpty())
+                                    <div class="rmx-tags">
+                                        @foreach($scheduled[$e->id] as $change)
+                                            <span class="rmx-pill rmx-pill-accent rmx-sched" title="{{ __('Takes effect on :date', ['date' => $change->effective_on->format('M d, Y')]) }}">
+                                                <i class="ti ti-calendar-time" aria-hidden="true"></i>{{ __(':to from :date', ['to' => $change->targetName(), 'date' => $change->effective_on->format('M d')]) }}
+                                                <form action="{{ route('employees.changes.cancel', $change) }}" method="POST"
+                                                      data-confirm="{{ __(':name stays as they are, and nothing changes on :date.', ['name' => $e->name, 'date' => $change->effective_on->format('M d, Y')]) }}"
+                                                      data-confirm-title="{{ __('Cancel this change?') }}"
+                                                      data-confirm-label="{{ __('Cancel the change') }}"
+                                                      data-confirm-tone="warning">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="rmx-sched-x" title="{{ __('Cancel this change') }}" aria-label="{{ __('Cancel this change') }} — {{ $e->name }}"><i class="ti ti-x" aria-hidden="true"></i></button>
+                                                </form>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </td>
                             <td>@include('employees._site', ['e' => $e])</td>
                             <td>@include('employees._labor', ['e' => $e])</td>
                             <td>@if($e->shift)<span class="rmx-shift" title="{{ $e->shift->name }} · {{ \Carbon\Carbon::parse($e->shift->starts_at)->format('g:i A') }}"><i class="ti ti-{{ $e->shift->crosses_midnight ? 'moon' : 'sun' }}" aria-hidden="true"></i>{{ $e->shift->name }}<small>{{ \Carbon\Carbon::parse($e->shift->starts_at)->format('g:i A') }}</small></span>@else<span class="rmx-dash">—</span>@endif</td>
@@ -695,6 +841,22 @@ tr.rmx-row-card { cursor: pointer; }
             </div>
         </div>
     </div>
+</div>
+
+{{-- ── Bulk actions ────────────────────────────────────────────────────────
+     Up from the bottom once somebody on the Active list is ticked. Each
+     button opens the dialog further down for everybody ticked. Adding a
+     bonus is offered to whoever may already give one from a row. --}}
+<div class="rmx rmx-abar" id="rmxActs" role="region" aria-label="{{ __('Bulk actions') }}">
+    <b id="rmxActsN">{{ __('0 selected') }}</b>
+    <button type="button" class="rmx-abar-clr" id="rmxActsClear">{{ __('Clear') }}</button>
+    <span class="rmx-abar-sep" aria-hidden="true"></span>
+    <button type="button" class="rmx-abtn" data-act="site"><i class="ti ti-map-pin" aria-hidden="true"></i>{{ __('Transfer site') }}</button>
+    <button type="button" class="rmx-abtn" data-act="shift"><i class="ti ti-moon" aria-hidden="true"></i>{{ __('Change shift') }}</button>
+    <button type="button" class="rmx-abtn" data-act="labor"><i class="ti ti-tool" aria-hidden="true"></i>{{ __('Change labor type') }}</button>
+    @if(auth()->user()?->isAdmin())
+        <button type="button" class="rmx-abtn" data-act="bonus"><i class="ti ti-gift" aria-hidden="true"></i>{{ __('Add bonus') }}</button>
+    @endif
 </div>
 
 {{-- ════════════════════════════ EMPLOYEE FORM MODAL ═══════════════════════
@@ -948,6 +1110,89 @@ tr.rmx-row-card { cursor: pointer; }
     </div>
 </div>
 @endif
+
+{{-- ── The bulk action dialog ──────────────────────────────────────────────
+     One dialog for the four actions on the bar; the script shows the fields
+     the action needs. It always says who changes and from what (Now → After),
+     names them, and takes the date the change starts — today at the earliest,
+     because a day already worked is never changed. --}}
+<div class="modal fade" id="rmxBulkModal" tabindex="-1" aria-hidden="true" aria-labelledby="bkTitle">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog" style="max-width:520px;">
+        <div class="modal-content emp-modal">
+            <div class="emp-head">
+                <span class="emp-head-icon" aria-hidden="true"><i class="fas fa-users" id="bkIcon"></i></span>
+                <div class="emp-head-text">
+                    <h6 class="emp-head-title" id="bkTitle">{{ __('Transfer site') }}</h6>
+                    <p class="emp-head-sub" id="bkSub"></p>
+                </div>
+                <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times" aria-hidden="true"></i></button>
+            </div>
+            <div class="modal-body emp-body">
+                {{-- Transfer site / Change shift: one button per choice. --}}
+                <div class="emp-field" id="bkTo">
+                    <span class="ep-label" id="bkToLabel">{{ __('Move to') }}</span>
+                    <div class="bk-seg" id="bkSeg" role="group" aria-labelledby="bkToLabel"></div>
+                </div>
+
+                {{-- Change labor type. --}}
+                <div class="emp-field" id="bkLabor" hidden>
+                    <label class="ep-label" for="bkLaborType">{{ __('Change to') }}</label>
+                    <select class="form-select" id="bkLaborType"></select>
+                    <label class="bk-ck" for="bkUseRate">
+                        <input type="checkbox" id="bkUseRate" checked>
+                        <span>{{ __('Use this labor type\'s rate') }} <b id="bkLaborRate"></b></span>
+                    </label>
+                </div>
+
+                {{-- Add bonus. --}}
+                <div class="emp-field" id="bkAmount" hidden>
+                    <label class="ep-label" for="bkAmt">{{ __('Bonus per employee') }}</label>
+                    <div class="bk-peso"><span aria-hidden="true">₱</span><input class="form-control" type="number" id="bkAmt" min="0.01" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+                </div>
+                <div class="emp-field" id="bkReason" hidden>
+                    <label class="ep-label" for="bkWhy">{{ __('Reason') }}</label>
+                    <select class="form-select" id="bkWhy">
+                        <option>{{ __('Performance') }}</option>
+                        <option>{{ __('Perfect attendance') }}</option>
+                        <option>{{ __('Holiday') }}</option>
+                        <option>{{ __('Project completion') }}</option>
+                        <option value="Other">{{ __('Other') }}</option>
+                    </select>
+                    <input class="form-control" type="text" id="bkWhyOther" maxlength="160" placeholder="{{ __('Describe the reason') }}" aria-label="{{ __('Describe the reason') }}" hidden>
+                </div>
+                <div class="emp-field" id="bkPeriod" hidden>
+                    <label class="ep-label" for="bkPer">{{ __('Add to payroll period') }}</label>
+                    <select class="form-select" id="bkPer">
+                        @foreach($bulk['periods'] as $p)
+                            <option value="{{ $p['key'] }}">{{ $p['label'] }}{{ $p['key'] === 'current' ? ' ' . __('(current)') : '' }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="bk-flow" id="bkFlow">
+                    <div class="bk-from"><small>{{ __('Now') }}</small><div id="bkFrom"></div></div>
+                    <i class="ti ti-arrow-right" aria-hidden="true"></i>
+                    <div class="bk-to"><small>{{ __('After') }}</small><b id="bkToName">–</b><span id="bkToSub"></span></div>
+                </div>
+                <div class="bk-total" id="bkTotal" hidden></div>
+                <div class="bk-chips" id="bkChips"></div>
+
+                <div class="emp-field" id="bkEffective">
+                    <label class="ep-label" for="bkEff">{{ __('Effective date') }}</label>
+                    <input class="form-control" type="date" id="bkEff" min="{{ $bulk['today'] }}" value="{{ $bulk['today'] }}">
+                    <span class="ep-hint" id="bkEffHelp"></span>
+                </div>
+
+                <p class="bk-note"><i class="ti ti-info-circle" aria-hidden="true"></i><span id="bkNote"></span></p>
+                <p class="bk-err" id="bkErr" role="alert" hidden></p>
+            </div>
+            <div class="emp-foot">
+                <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                <button type="button" class="emp-btn-save" id="bkConfirm"><i class="fas fa-check" aria-hidden="true"></i> <span></span></button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {{-- ── Script ──────────────────────────────────────────────────────────────── --}}
 <script>
@@ -1296,6 +1541,10 @@ tr.rmx-row-card { cursor: pointer; }
             bar.querySelectorAll('button').forEach(b => { b.disabled = picked.length === 0; });
         }
         if (pane === openPane()) syncToggle();
+        // The bar under the Active list acts on whoever is ticked here.
+        document.dispatchEvent(new CustomEvent('rmx:selection', {
+            detail: { pane: pane, selecting: selecting, ids: picked.map(b => b.value) },
+        }));
     }
 
     // Entering the mode reveals the checkbox column; leaving it drops whatever
@@ -1325,6 +1574,11 @@ tr.rmx-row-card { cursor: pointer; }
         syncToggle();
     });
     document.addEventListener('rmx:filtered', function (e) { sync(e.detail.pane); });
+    // A bulk action has been saved: the selection has done its job.
+    document.addEventListener('rmx:select-done', function () {
+        const pane = openPane();
+        if (pane && pane.classList.contains('selecting')) setSelecting(pane, false);
+    });
 
     document.addEventListener('change', function (e) {
         const t = e.target;
@@ -1440,6 +1694,7 @@ tr.rmx-row-card { cursor: pointer; }
     // null is "all"; '' is the rows with nothing in the column.
     const matches = (tr, f, skip) => found(tr) && Object.keys(KEYS).every(k => k === skip || f[k] === null || valueOf(tr, k) === f[k]);
     const nameOf  = (key, value) => value === '' ? KEYS[key].none : value;
+    const sitePick = document.getElementById('rmxSite');
 
     function apply(pane) {
         const f    = stateOf(pane);
@@ -1472,6 +1727,8 @@ tr.rmx-row-card { cursor: pointer; }
                     .concat(on.map(k => nameOf(k, f[k]))).join(' · ');
                 sum.querySelector('[data-fsum-n]').textContent = shown;
             }
+            // The picker beside Search says what the Site heading says.
+            if (sitePick) sitePick.value = f.site === null ? '*' : f.site;
         }
         document.dispatchEvent(new CustomEvent('rmx:filtered', { detail: { pane } }));
     }
@@ -1554,6 +1811,17 @@ tr.rmx-row-card { cursor: pointer; }
         const pane = document.querySelector('.rm-pane.active');
         if (pane) apply(pane);
     }
+    // The site picker sets the same filter the Site heading does, for the
+    // list on screen; '*' is everybody, '' the workers with no site.
+    if (sitePick) {
+        sitePick.addEventListener('change', function () {
+            closeMenu();
+            const pane = document.querySelector('.rm-pane.active');
+            if (!pane) return;
+            stateOf(pane).site = sitePick.value === '*' ? null : sitePick.value;
+            apply(pane);
+        });
+    }
     if (search) {
         search.addEventListener('input', typed);
         search.addEventListener('search', typed);
@@ -1588,6 +1856,330 @@ tr.rmx-row-card { cursor: pointer; }
         const pane = e.target.closest && e.target.closest('.rm-pane');
         if (pane) apply(pane);
     });
+})();
+
+// ── Bulk actions ────────────────────────────────────────────────────────────
+// The bar under a selection on the Active list, the dialog its four buttons
+// open, and the Undo that follows a save. The dialog says what will change
+// before anything is sent: who moves and from what (those already there are
+// left out and counted), from which date, and what stays as it was. The
+// server decides the same things again for itself.
+(function () {
+    const cfg     = @json($bulk);
+    const bar     = document.getElementById('rmxActs');
+    const modalEl = document.getElementById('rmxBulkModal');
+    if (!bar || !modalEl) return;
+
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const $    = id => document.getElementById(id);
+    const peso = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const many = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+    const el   = (tag, text, cls) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
+
+    // ── The bar: up while somebody on the Active list is ticked ─────────────
+    let pane = null, ids = [];
+
+    document.addEventListener('rmx:selection', function (e) {
+        const d = e.detail;
+        if (!d.pane || d.pane.dataset.pane !== 'active') return;
+        pane = d.pane;
+        ids  = d.selecting && d.pane.classList.contains('active') ? d.ids : [];
+        bar.classList.toggle('show', ids.length > 0);
+        $('rmxActsN').textContent = ids.length + ' selected';
+    });
+
+    $('rmxActsClear').addEventListener('click', function () {
+        const clear = pane && pane.querySelector('.js-bulk-clear');
+        if (clear) clear.click();
+    });
+
+    // A row ticks where it is clicked while selecting, and Shift takes every
+    // row from the last one ticked to this one. The row's own buttons keep
+    // their jobs; the worker's card stays shut until Done.
+    let lastBox = null;
+    document.addEventListener('click', function (e) {
+        const row = e.target.closest && e.target.closest('.rm-pane.selecting tbody tr');
+        const box = row && row.querySelector('.rmx-check');
+        if (!box) return;
+
+        const range = function () {
+            if (!e.shiftKey || !lastBox || lastBox === box) return;
+            const all = Array.from(row.closest('.rm-pane').querySelectorAll('tbody tr:not([hidden]) .rmx-check'));
+            const a = all.indexOf(lastBox), b = all.indexOf(box);
+            if (a < 0 || b < 0) return;
+            all.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(x => { x.checked = true; });
+        };
+
+        if (e.target === box) { range(); lastBox = box; return; }
+
+        const own = e.target.closest('a, form, label, input, select, .rmx-actions, button:not(.rmx-open)');
+        if (own && row.contains(own)) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        box.checked = !box.checked;
+        range();
+        lastBox = box;
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+    }, true);
+
+    // ── Who is ticked, read off their rows ──────────────────────────────────
+    function chosen() {
+        if (!pane) return [];
+        return ids.map(function (id) {
+            const box = pane.querySelector('.rmx-check[value="' + id + '"]');
+            const tr  = box && box.closest('tr');
+            if (!tr) return null;
+            return {
+                id: id,
+                name: (tr.querySelector('.rmx-name')?.textContent || '').trim(),
+                site: tr.dataset.siteId || '', shift: tr.dataset.shiftId || '', labor: tr.dataset.laborId || '',
+                siteName: tr.dataset.site || '', shiftName: tr.dataset.shift || '', laborName: tr.dataset.labor || '',
+            };
+        }).filter(Boolean);
+    }
+
+    // ── The dialog ──────────────────────────────────────────────────────────
+    const TITLE = { site: @json(__('Transfer site')), shift: @json(__('Change shift')), labor: @json(__('Change labor type')), bonus: @json(__('Add bonus')) };
+    const ICON  = { site: 'fa-location-dot', shift: 'fa-moon', labor: 'fa-helmet-safety', bonus: 'fa-gift' };
+    const modal = () => bootstrap.Modal.getOrCreateInstance(modalEl);
+    const show  = (id, on) => { $(id).hidden = !on; };
+
+    let act = null, choice = null, people = [], sending = false;
+
+    // One button per site or shift; the one pressed is the choice.
+    function segments(options) {
+        const seg = $('bkSeg');
+        seg.textContent = '';
+        options.forEach(function (o) {
+            const b = el('button');
+            b.type = 'button';
+            b.dataset.v = o.v;
+            b.setAttribute('aria-pressed', 'false');
+            const i = el('i', null, 'ti ti-' + o.icon);
+            i.setAttribute('aria-hidden', 'true');
+            b.append(i, document.createTextNode(o.label));
+            if (o.small) b.append(el('small', o.small));
+            b.addEventListener('click', function () {
+                choice = o.v;
+                seg.querySelectorAll('button').forEach(x => {
+                    x.classList.toggle('on', x === b);
+                    x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+                });
+                update();
+            });
+            seg.appendChild(b);
+        });
+    }
+
+    function open(kind) {
+        people = chosen();
+        if (!people.length) return;
+
+        act = kind; choice = null; sending = false;
+        $('bkErr').hidden = true;
+        $('bkEff').value = cfg.today;
+        $('bkTitle').textContent = TITLE[kind];
+        $('bkIcon').className = 'fas ' + ICON[kind];
+        $('bkSub').textContent = many(people.length, 'employee') + ' selected';
+
+        show('bkTo', kind === 'site' || kind === 'shift');
+        show('bkLabor', kind === 'labor');
+        ['bkAmount', 'bkReason', 'bkPeriod', 'bkTotal'].forEach(id => show(id, kind === 'bonus'));
+        show('bkFlow', kind !== 'bonus');
+        show('bkEffective', kind !== 'bonus');
+
+        if (kind === 'site') {
+            $('bkToLabel').textContent = 'Move to';
+            $('bkEffHelp').textContent = 'Scans from this date count at the new site.';
+            segments(cfg.sites.map(s => ({ v: String(s.id), icon: 'map-pin', label: s.name }))
+                .concat([{ v: '', icon: 'map-pin-off', label: 'Unassigned' }]));
+        } else if (kind === 'shift') {
+            $('bkToLabel').textContent = 'Change to';
+            $('bkEffHelp').textContent = 'The new schedule applies to scans from this date.';
+            segments(cfg.shifts.map(s => ({ v: String(s.id), icon: s.night ? 'moon' : 'sun', label: s.name, small: s.from })));
+        } else if (kind === 'labor') {
+            $('bkEffHelp').textContent = 'The new labor type and rate apply to work from this date.';
+            const pick = $('bkLaborType');
+            pick.textContent = '';
+            pick.appendChild(new Option('Choose a labor type…', ''));
+            cfg.labor.forEach(t => pick.appendChild(new Option(t.name, String(t.id))));
+            $('bkUseRate').checked = true;
+        } else {
+            $('bkAmt').value = '';
+            $('bkWhy').selectedIndex = 0;
+            $('bkWhyOther').value = '';
+            $('bkWhyOther').hidden = true;
+            $('bkPer').value = 'current';
+        }
+
+        update();
+        modal().show();
+    }
+
+    // "Site A  5 / Site B  3": where the ones who will change stand now.
+    function standing(list, key, none) {
+        const counts = new Map();
+        list.forEach(p => counts.set(p[key], (counts.get(p[key]) || 0) + 1));
+        const box = $('bkFrom');
+        box.textContent = '';
+        [...counts.keys()].sort((a, b) => a.localeCompare(b)).forEach(function (name) {
+            const line = el('span', null, 'bk-line');
+            line.append(el('span', name || none), el('b', counts.get(name)));
+            box.appendChild(line);
+        });
+    }
+
+    function update() {
+        let moving = people, label = '', note = '', ready = false;
+        const skipped = words => {
+            const n = people.length - moving.length;
+            return n ? ' ' + n + ' ' + words + ' will be skipped.' : '';
+        };
+        const after = (name, sub) => { $('bkToName').textContent = name; $('bkToSub').textContent = sub || ''; };
+
+        if (act === 'site') {
+            const to = choice === null ? null
+                     : choice === '' ? { name: 'Unassigned', where: 'Not linked to any site' }
+                     : cfg.sites.find(s => String(s.id) === choice);
+            moving = to ? people.filter(p => p.site !== choice) : people;
+            standing(moving, 'siteName', 'No site');
+            after(to ? to.name : 'Choose a site', to ? to.where : '');
+            if (!to) {
+                note = 'Pick the site to move them to.';
+            } else {
+                note = choice === '' ? 'They will not belong to any site until reassigned, and cannot scan at a kiosk until then.'
+                     : to.kiosks     ? 'They will scan at ' + to.name + '’s kiosk from the effective date.'
+                                     : to.name + ' has no kiosk yet, so they cannot scan there until a kiosk is set to it.';
+                note += ' Past attendance stays at the site it was scanned at, and pay is not changed.';
+                note += skipped(choice === '' ? 'already without a site' : 'already at ' + to.name);
+            }
+            label = 'Transfer ' + many(moving.length, 'employee');
+            ready = !!to && moving.length > 0;
+        } else if (act === 'shift') {
+            const to = cfg.shifts.find(s => String(s.id) === choice);
+            moving = to ? people.filter(p => p.shift !== choice) : people;
+            standing(moving, 'shiftName', 'No shift');
+            after(to ? to.name : 'Choose a shift', to ? [to.from, to.to].filter(Boolean).join(' – ') : '');
+            note = !to ? 'Pick the shift to move them to.'
+                 : 'Their scans follow ' + to.name + ' from the effective date.'
+                   + (to.night ? ' Hours worked from ' + cfg.night + ' carry the night differential.' : '')
+                   + ' Past attendance and payroll are not changed.' + skipped('already on ' + to.name);
+            label = 'Change shift for ' + moving.length;
+            ready = !!to && moving.length > 0;
+        } else if (act === 'labor') {
+            const to      = cfg.labor.find(t => String(t.id) === choice);
+            const useRate = $('bkUseRate').checked;
+            moving = to ? people.filter(p => p.labor !== choice) : people;
+            $('bkLaborRate').textContent = to ? '(' + peso(to.rate) + ' / hr)' : '';
+            standing(moving, 'laborName', 'No labor type');
+            after(to ? to.name : 'Choose a labor type',
+                  to ? (useRate ? 'Rate becomes ' + peso(to.rate) + ' / hr' : 'Each keeps their current rate') : '');
+            note = !to ? 'Pick the labor type to change them to.'
+                 : (useRate ? 'Rates are updated to ' + peso(to.rate) + ' / hr from the effective date.' : 'Rates stay as they are.')
+                   + ' Past attendance and payroll are not changed.' + skipped('already ' + to.name);
+            label = 'Change labor type for ' + moving.length;
+            ready = !!to && moving.length > 0;
+        } else {
+            const amount = parseFloat($('bkAmt').value) || 0;
+            const period = cfg.periods.find(p => p.key === $('bkPer').value) || cfg.periods[0];
+            const total  = $('bkTotal');
+            total.textContent = '';
+            total.append(el('span', people.length + ' × ' + peso(amount)), el('b', peso(amount * people.length)));
+            note  = 'The bonus is added on top of net pay for ' + period.label + ' and shows on each payslip.';
+            label = 'Add bonus to ' + people.length;
+            ready = amount > 0;
+        }
+
+        const chips = $('bkChips');
+        chips.textContent = '';
+        moving.forEach(p => chips.appendChild(el('span', p.name)));
+
+        $('bkNote').textContent = note;
+        $('bkConfirm').querySelector('span').textContent = label;
+        $('bkConfirm').disabled = !ready || sending;
+    }
+
+    $('bkLaborType').addEventListener('change', function () { choice = this.value || null; update(); });
+    $('bkUseRate').addEventListener('change', update);
+    ['bkAmt', 'bkPer'].forEach(id => $(id).addEventListener('input', update));
+    $('bkWhy').addEventListener('change', function () {
+        $('bkWhyOther').hidden = this.value !== 'Other';
+        if (!$('bkWhyOther').hidden) $('bkWhyOther').focus();
+    });
+    bar.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => open(b.dataset.act)));
+    modalEl.addEventListener('shown.bs.modal', function () {
+        const first = act === 'bonus' ? $('bkAmt') : act === 'labor' ? $('bkLaborType') : $('bkSeg').querySelector('button');
+        if (first) first.focus();
+    });
+
+    // ── Save, and the way back ──────────────────────────────────────────────
+    const post = (url, body) => fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+        body: JSON.stringify(body),
+    }).then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, data: data })));
+    // What the server said was wrong, in its own words.
+    const said = data => (data.errors && Object.values(data.errors)[0] && Object.values(data.errors)[0][0]) || data.message;
+    // The lists re-read themselves; nothing is reloaded, so the Undo stays up.
+    const reread = () => { if (window.Live && Live.refresh) Live.refresh(); else location.reload(); };
+
+    $('bkConfirm').addEventListener('click', async function () {
+        if (sending) return;
+
+        const fail = function (message) { $('bkErr').textContent = message; $('bkErr').hidden = false; };
+        $('bkErr').hidden = true;
+
+        const body = { ids: people.map(p => Number(p.id)) };
+
+        if (act === 'bonus') {
+            const why = $('bkWhy').value === 'Other' ? $('bkWhyOther').value.trim() : $('bkWhy').value;
+            if (!why) { fail('Please describe the reason.'); $('bkWhyOther').focus(); return; }
+            body.amount = $('bkAmt').value;
+            body.reason = why;
+            body.period = $('bkPer').value;
+        } else {
+            const on = $('bkEff').value;
+            if (!on || on < cfg.today) { fail('Pick today or a later date. Days already worked are not changed.'); return; }
+            body.effective_on = on;
+            if (act === 'site')  body.site_id = choice === '' ? null : Number(choice);
+            if (act === 'shift') body.shift_id = Number(choice);
+            if (act === 'labor') { body.labor_type_id = Number(choice); body.use_rate = $('bkUseRate').checked; }
+        }
+
+        sending = true;
+        update();
+
+        try {
+            const { ok, data } = await post(cfg.urls[act], body);
+            if (ok && data.success) {
+                modal().hide();
+                document.dispatchEvent(new CustomEvent('rmx:select-done'));
+                reread();
+                Notify.success(data.message, {
+                    timeout: 10000,
+                    action: { label: @json(__('Undo')), run: () => undo(data.batch) },
+                });
+                return;
+            }
+            fail(said(data) || 'Could not complete that action.');
+        } catch (err) {
+            fail('Network error. Please try again.');
+        } finally {
+            sending = false;
+            update();
+        }
+    });
+
+    async function undo(batch) {
+        try {
+            const { ok, data } = await post(cfg.urls.undo, { batch: batch });
+            if (ok && data.success) { reread(); Notify.info(data.message); return; }
+            Notify.error(said(data) || 'Could not undo that.');
+        } catch (err) {
+            Notify.error('Network error. Please try again.');
+        }
+    }
 })();
 
 // ── A worker, opened from their row ─────────────────────────────────────────

@@ -12,6 +12,7 @@
         Notify.success('Saved.')            Notify.error('Could not save.')
         Notify.warning('Nothing selected.') Notify.info('Copied.')
         await Notify.confirm({ title, message, confirmLabel, tone })
+        Notify.success('8 moved.', { action: { label: 'Undo', run: fn } })
 
     And declaratively, which is how the inline onsubmit="return confirm(...)"
     handlers were replaced without rewriting each one by hand:
@@ -88,7 +89,12 @@
         // dismiss a toast and immediately trigger the same one again and
         // nothing came back at all.
         const dupe = [...stack.children].find(c => c.dataset.key === tone + '|' + message && !c.dataset.leaving);
-        if (dupe) {
+        // A toast with an action is never the one before it, however alike
+        // they read: its button undoes this save, not the last one.
+        const action = opts.action && opts.action.label && typeof opts.action.run === 'function' ? opts.action : null;
+        if (dupe && action) {
+            dismiss(dupe);
+        } else if (dupe) {
             dupe.style.animation = 'none';
             void dupe.offsetWidth;
             dupe.style.animation = '';
@@ -127,6 +133,17 @@
         x.addEventListener('click', () => dismiss(el));
 
         el.append(icon, body, x);
+
+        // One thing to do about what the toast says — Undo, after a save
+        // that can be taken back. Pressed once, and the toast goes with it.
+        if (action) {
+            const act = document.createElement('button');
+            act.type        = 'button';
+            act.className   = 'jy-toast-act';
+            act.textContent = action.label;
+            act.addEventListener('click', () => { dismiss(el); action.run(); });
+            el.insertBefore(act, x);
+        }
 
         if (timeout > 0) {
             const bar = document.createElement('span');

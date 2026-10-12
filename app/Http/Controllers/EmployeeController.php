@@ -8,6 +8,7 @@ use Illuminate\Validation\Rule;
 use App\Models\AuditLog;
 use App\Models\Bonus;
 use App\Models\Employee;
+use App\Models\EmployeeChange;
 use App\Models\Shift;
 use App\Models\SystemSetting;
 use Carbon\Carbon;
@@ -87,7 +88,7 @@ class EmployeeController extends Controller
      *
      * @return array{0: string, 1: string}  [opens, closes] as Y-m-d
      */
-    private static function payPeriod(?string $on = null): array
+    public static function payPeriod(?string $on = null): array
     {
         $opens = Carbon::parse($on ?? now())
             ->startOfWeek((int) (SystemSetting::current()->week_starts_on ?? Carbon::MONDAY));
@@ -652,11 +653,70 @@ class EmployeeController extends Controller
         $this->alertMissingSetup();
         [$bonuses, $bonusPeriod] = $this->bonusesThisPeriod();
 
+        // Changes dated ahead from the bar under a selection, for the tag on
+        // each worker's row; and what that bar's dialogs offer.
+        $scheduled = EmployeeChange::waitingByEmployee();
+        $bulk      = $this->bulkOptions($sites, $shifts, $laborTypes);
+
         return view('register', compact(
             'pending', 'active', 'archived', 'removed',
             'laborTypes', 'sites', 'shifts', 'nextFingerprintId',
-            'bonuses', 'bonusPeriod'
+            'bonuses', 'bonusPeriod', 'scheduled', 'bulk'
         ));
+    }
+
+    /**
+     * What the bulk dialogs on Employees choose from, as the page's script
+     * reads it: the real sites, shifts and labor types with their rates, the
+     * pay period running now and the one after, and where each action posts.
+     */
+    private function bulkOptions($sites, $shifts, $laborTypes): array
+    {
+        $kiosks = \App\Models\Kiosk::query()->whereNotNull('site_id')
+            ->selectRaw('site_id, COUNT(*) as n')->groupBy('site_id')->pluck('n', 'site_id');
+
+        $time = fn (?string $t) => $t ? Carbon::parse($t)->format('g:i A') : null;
+
+        [$opens, $closes]         = self::payPeriod();
+        [$nextOpens, $nextCloses] = self::payPeriod(Carbon::parse($opens)->addDays(7)->toDateString());
+        $words = fn (string $a, string $b) => Carbon::parse($a)->format('M d') . ' – ' . Carbon::parse($b)->format('M d, Y');
+
+        return [
+            'sites' => $sites->map(fn (Site $s) => [
+                'id'     => $s->id,
+                'name'   => $s->name,
+                'where'  => $s->location,
+                'kiosks' => (int) ($kiosks[$s->id] ?? 0),
+            ])->values()->all(),
+            'shifts' => $shifts->map(fn (Shift $s) => [
+                'id'    => $s->id,
+                'name'  => $s->name,
+                'night' => (bool) $s->crosses_midnight,
+                'from'  => $time($s->starts_at),
+                'to'    => $time($s->pm_ends_at),
+            ])->values()->all(),
+            'labor' => $laborTypes->map(fn (LaborType $t) => [
+                'id'   => $t->id,
+                'name' => $t->name,
+                'rate' => round((float) $t->daily_rate / 8, 2),
+            ])->values()->all(),
+            'periods' => [
+                ['key' => 'current', 'label' => $words($opens, $closes)],
+                ['key' => 'next',    'label' => $words($nextOpens, $nextCloses)],
+            ],
+            // The hours that carry the night differential, as payroll counts them.
+            'night'    => Carbon::createFromTime(\App\Support\WorkSchedule::NIGHT_FROM_HOUR)->format('g:i A')
+                        . ' to ' . Carbon::createFromTime(\App\Support\WorkSchedule::NIGHT_TO_HOUR)->format('g:i A'),
+            'today'    => EmployeeChange::earliestDate(),
+            'mayBonus' => (bool) auth()->user()?->isAdmin(),
+            'urls'     => [
+                'site'  => route('employees.bulk-site'),
+                'shift' => route('employees.bulk-shift'),
+                'labor' => route('employees.bulk-labor'),
+                'bonus' => route('employees.bulk-bonus'),
+                'undo'  => route('employees.bulk-undo'),
+            ],
+        ];
     }
 
     /**

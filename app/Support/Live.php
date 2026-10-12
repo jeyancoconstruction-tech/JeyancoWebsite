@@ -60,6 +60,9 @@ final class Live
     private const MODELS = [
         'Attendance'           => ['attendance', 'payroll'],
         'Employee'             => ['employees', 'attendance', 'payroll'],
+        // A change dated ahead, or one undone, moves what a day is priced at
+        // without the worker's own row being written.
+        'EmployeeChange'       => ['employees', 'payroll'],
         'LeaveRequest'         => ['leave', 'payroll'],
         'Loan'                 => ['advances', 'payroll'],
         'LoanDeduction'        => ['advances', 'payroll'],

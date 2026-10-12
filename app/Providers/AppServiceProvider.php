@@ -123,6 +123,27 @@ class AppServiceProvider extends ServiceProvider
         // entry it writes is itself announced.
         \App\Support\Live::listen();
 
+        // A site, shift or labor type change dated ahead on Employees is made
+        // when its day comes. Nothing here runs on a timer, so the first
+        // request of that day makes it — the kiosk's included, which is the
+        // one that has to know where a worker now belongs. After the two
+        // above, so the change is logged and announced like any other.
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Routing\Events\RouteMatched::class,
+            function (\Illuminate\Routing\Events\RouteMatched $event) {
+                // Not on the live feed: every open tab asks it every few
+                // seconds, and it shows nothing a change could alter.
+                if ($event->request->is('live/*')) {
+                    return;
+                }
+                try {
+                    \App\Models\EmployeeChange::applyDue();
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+        );
+
         // In production (Railway) the public connection is always HTTPS, so
         // generate https:// links and form actions to avoid "not secure"
         // browser warnings on form submits.

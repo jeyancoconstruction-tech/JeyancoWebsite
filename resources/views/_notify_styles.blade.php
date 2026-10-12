@@ -73,6 +73,15 @@
 }
 .jy-toast-x:hover { background: var(--bg-subtle, #f8f9fb); color: var(--text-primary, #101828); }
 .jy-toast-x:focus-visible { outline: 2px solid var(--brand, #1668dc); outline-offset: 1px; }
+/* The one action a toast may carry (Undo). */
+.jy-toast-act {
+    flex: none; align-self: center; padding: 5px 10px; margin: 0;
+    background: none; border: none; border-radius: 7px; cursor: pointer;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--brand, #1668dc);
+    transition: background .12s;
+}
+.jy-toast-act:hover { background: var(--brand-subtle, #eaf2fd); }
+.jy-toast-act:focus-visible { outline: 2px solid var(--brand, #1668dc); outline-offset: 1px; }
 
 /* The bar is the timer made visible — it says the toast is going to leave, so
    its disappearance does not read as something being taken away. */

@@ -203,8 +203,11 @@ class PayslipController extends Controller
                        - ($totals['restDayPay'] ?? 0) - ($totals['nightDiffPay'] ?? 0)
                        - ($totals['leavePay'] ?? 0), 2);
 
-        // Daily rate from labor type (source of truth) or fall back to stored hourly × 8
-        $dailyRate = $emp->laborType?->daily_rate ?? round(($emp->rate_per_hour ?? 0) * 8, 2);
+        // Daily rate from labor type (source of truth) or fall back to stored hourly × 8.
+        // The type in force when the period closed: a slip for a week before
+        // a labor type change still names the rate that week was paid at.
+        $dailyRate = \App\Support\LaborHistory::load()->dailyRateOn($emp, $to)
+            ?? round(($emp->rate_per_hour ?? 0) * 8, 2);
 
         return array_merge($totals, [
             'regular'   => $regular,

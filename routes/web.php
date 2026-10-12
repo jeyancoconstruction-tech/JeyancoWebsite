@@ -93,6 +93,16 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/employees/register', [EmployeeController::class, 'register'])->name('employees.register');
     Route::get('/employees/register/live', [EmployeeController::class, 'registerLive'])->name('employees.register.live');
 
+    // The bar under a selection on Employees: one change for everybody
+    // ticked, from a date, and the Undo that follows it. Adding a bonus the
+    // same way sits with the other bonus routes further down.
+    Route::post  ('/employees/bulk-site',  [\App\Http\Controllers\EmployeeBulkController::class, 'site'])->name('employees.bulk-site');
+    Route::post  ('/employees/bulk-shift', [\App\Http\Controllers\EmployeeBulkController::class, 'shift'])->name('employees.bulk-shift');
+    Route::post  ('/employees/bulk-labor', [\App\Http\Controllers\EmployeeBulkController::class, 'labor'])->name('employees.bulk-labor');
+    Route::post  ('/employees/bulk-undo',  [\App\Http\Controllers\EmployeeBulkController::class, 'undo'])->name('employees.bulk-undo');
+    // A change still waiting for its day, called off from the worker's row.
+    Route::delete('/employees/changes/{change}', [\App\Http\Controllers\EmployeeBulkController::class, 'cancel'])->name('employees.changes.cancel');
+
     // Employee lifecycle (Register & Manage hub). Declared before the resource
     // so their suffixed paths are never swallowed by "/employees/{employee}".
     Route::post  ('/employees/{employee}/complete', [EmployeeController::class, 'complete'])->name('employees.complete');
@@ -227,6 +237,8 @@ Route::middleware(['auth', 'active', 'is_admin'])->group(function () {
     // because a bonus is money: it belongs with who may already give one.
     Route::post  ('/employees/{employee}/bonus',         [EmployeeController::class, 'storeBonus'])->name('employees.bonus.store');
     Route::delete('/employees/{employee}/bonus/{bonus}', [EmployeeController::class, 'destroyBonus'])->name('employees.bonus.destroy');
+    // And for everybody ticked on Employees at once.
+    Route::post  ('/employees/bulk-bonus', [\App\Http\Controllers\EmployeeBulkController::class, 'bonus'])->name('employees.bulk-bonus');
     Route::post  ('/settings/vale/advances',                [SettingsController::class, 'storeValeAdvance'])->name('vale-advances.store');
     Route::delete('/settings/vale/advances/{valeAdvance}',  [SettingsController::class, 'destroyValeAdvance'])->name('vale-advances.destroy');
     
