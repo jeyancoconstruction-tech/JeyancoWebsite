@@ -113,12 +113,16 @@ class DtrService
 
         $out = [];
 
-        // Removed and deleted workers are among them: the days they worked
-        // still happened. Pending ones are not workforce yet.
+        // Removed and deleted workers are among them when they scanned in
+        // the period: the days they worked still happened. One who left
+        // without a scan in it has no time record to show, and listing them
+        // would fill a month with names no longer on the Employees page.
+        // Pending ones are not workforce yet.
         foreach (Employee::withTrashed()->registered()->with('shift')->get() as $e) {
             $mine = $views[$e->id] ?? [];
+            $left = $e->trashed() || in_array($e->status, [Employee::STATUS_ARCHIVED, Employee::STATUS_DELETED], true);
 
-            if (! $mine && ! $this->onRoster($e, $from, min($to, $today))) {
+            if (! $mine && ($left || ! $this->onRoster($e, $from, min($to, $today)))) {
                 continue;
             }
 

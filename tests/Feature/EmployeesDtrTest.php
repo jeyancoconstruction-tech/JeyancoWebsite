@@ -343,17 +343,20 @@ class EmployeesDtrTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-09-01 08:00:00', 'Asia/Manila'));
         $pending = $this->worker('Still Pending', ['status' => Employee::STATUS_PENDING]);
         $gone    = $this->worker('Gone Midweek');
+        $unseen  = $this->worker('Gone Unseen');
         $this->scan($gone, '2026-09-14', 'AM', '08:00', '12:00');
         $this->scan($gone, '2026-09-14', 'PM', '13:00', '17:00');
 
         Carbon::setTestNow(Carbon::parse('2026-09-16 09:00:00', 'Asia/Manila'));
         $gone->delete();
+        $unseen->delete();
 
         Carbon::setTestNow(Carbon::parse('2026-09-18 18:00:00', 'Asia/Manila'));
         $all = app(DtrService::class)->range('2026-09-14', '2026-09-20');
 
         $this->assertArrayNotHasKey($pending->id, $all);
         $this->assertArrayHasKey($gone->id, $all, 'the day worked still happened');
+        $this->assertArrayNotHasKey($unseen->id, $all, 'off the Employees page with no scan in the period: no time record to show');
 
         $days = collect($all[$gone->id]['days'])->keyBy('date');
         $this->assertSame(DtrService::COMPLETE, $days['2026-09-14']['remark']);
