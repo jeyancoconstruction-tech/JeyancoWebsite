@@ -21,8 +21,14 @@ use Tests\TestCase;
  * So the fields and their names are the ones the page had — the same ones
  * Edit Employee still has — the form posts to the same place under the same
  * rules, and the labor type still fills the rate and the position. What is
- * new is the order: Employment & pay first and alone required, then four
- * steps that can be skipped, then a review, then who was registered.
+ * new is the order: Employment type and Employment & pay, the two that are
+ * required, then four steps that can be skipped, then a review, then who was
+ * registered.
+ *
+ * The first step — Regular or Contractual, the date hired, the contract's
+ * months — came the same day from a second pair of screenshots ("add on 1st
+ * page and use its functions"). What a contract then does is in
+ * EmployeeContractTest.
  *
  * How it looks and walks is checked in a browser; this holds what the page
  * carries and what saving answers.
@@ -66,11 +72,12 @@ class RegisterWizardTest extends TestCase
         return collect($m[1])->reject(fn ($n) => in_array($n, ['_token', '_method'], true))->unique()->sort()->values()->all();
     }
 
-    /** What the pop-up posts when only the first step is filled in. */
+    /** What the pop-up posts when only the two required steps are filled in. */
     private function required(array $with = []): array
     {
         return $with + [
-            'profile_form'  => '1',
+            'profile_form'    => '1',
+            'employment_type' => Employee::EMPLOYMENT_REGULAR,
             'first_name'    => 'Juan',
             'last_name'     => 'Dela Cruz',
             'labor_type_id' => $this->mason->id,
@@ -105,22 +112,24 @@ class RegisterWizardTest extends TestCase
         $this->assertStringContainsString('id="regWizardForm" action="' . route('employees.store') . '" method="POST" novalidate', $wizard);
         $this->assertStringContainsString('<input type="hidden" name="profile_form" value="1">', $wizard);
 
-        // Six steps and the last word, one on screen at a time.
-        foreach (range(1, 7) as $n) {
+        // Seven steps and the last word, one on screen at a time.
+        foreach (range(1, 8) as $n) {
             $this->assertSame(1, substr_count($wizard, '<section data-step="' . $n . '"'));
         }
-        $this->assertSame(6, substr_count($wizard, '<section data-step') - substr_count($wizard, '<section data-step="1">'), 'every step but the first starts hidden');
-        $this->assertSame(6, preg_match_all('/<section data-step="\d" hidden>/', $wizard));
+        $this->assertSame(1, substr_count($wizard, '<section data-step="1">'), 'the first step is the one showing');
+        $this->assertSame(7, preg_match_all('/<section data-step="\d" hidden>/', $wizard), 'every step but the first starts hidden');
+        $this->assertStringContainsString('Step 1 of 7', $wizard);
 
         foreach ([
+            'Employment type', 'Choose how this worker is hired.',
             'Employment &amp; pay', 'Needed to put the worker on the payroll.',
             'Personal information', 'Address', 'Government IDs', 'Needed for SSS, PhilHealth and Pag-IBIG deductions.',
             'Contact information', 'In case of emergency', 'Review', 'Check the details before registering.',
-            'Only this step is required.', 'Skip for now', 'Discard this registration? What you typed will be lost.', 'Keep editing',
+            'Steps 1 and 2 are required.', 'Skip for now', 'Discard this registration? What you typed will be lost.', 'Keep editing',
         ] as $said) {
             $this->assertStringContainsString($said, $wizard);
         }
-        foreach (['Employment', 'Personal', 'Address', 'Gov’t IDs', 'Contact', 'Review', 'You can skip this and fill it in later.', 'Register another'] as $said) {
+        foreach (['Type', 'Employment type', 'Employment', 'Personal', 'Address', 'Gov’t IDs', 'Contact', 'Review', 'You can skip this and fill it in later.', 'Register another'] as $said) {
             $this->assertStringContainsString(json_encode($said), $page, "the steps script says {$said}");
         }
 
@@ -152,16 +161,44 @@ class RegisterWizardTest extends TestCase
         }
     }
 
-    public function test_the_first_step_holds_everything_required(): void
+    /** The first step: Regular or Contractual, the date hired, and a contract's months. */
+    public function test_the_first_step_asks_how_the_worker_is_hired(): void
+    {
+        $first = Str::between($this->wizard(), '<section data-step="1">', '<section data-step="2"');
+
+        // Two cards to choose between, Regular chosen. Stored as 'daily',
+        // which is what every worker already on file is.
+        $this->assertStringContainsString('<input type="radio" name="employment_type" value="daily" checked>', $first);
+        $this->assertStringContainsString('<input type="radio" name="employment_type" value="contractual">', $first);
+        foreach ([
+            '<b>Regular</b>', 'Stays on the Active list until removed.',
+            '<b>Contractual</b>', 'Hired for a set number of months. Leaves the Active list when the contract ends.',
+            'Contract length', '1 to 36 months.', 'Contract ends', 'Set the contract length', 'Leaves the Active list after this date.',
+        ] as $said) {
+            $this->assertStringContainsString($said, $first);
+        }
+
+        // Today is the day hired unless somebody says otherwise, and it is asked for.
+        $this->assertMatchesRegularExpression('/<input type="date"[^>]*name="date_hired" value="' . now()->toDateString() . '" required>/', $first);
+
+        // The months are off, and so not sent, until Contractual is chosen;
+        // the end date is shown and never sent: the server works it out.
+        $this->assertMatchesRegularExpression('/<input type="number"[^>]*name="contract_months" min="1" max="36"[^>]*\sdisabled>/', $first);
+        $this->assertMatchesRegularExpression('/<input type="text"[^>]*id="rwEnds"[^>]*readonly/', $first);
+        $this->assertStringNotContainsString('name="end_of_contract"', $first);
+        $this->assertStringNotContainsString('name="contract_rate"', $first, 'no contract amount: a contractual worker is paid like anybody');
+    }
+
+    public function test_the_second_step_holds_the_rest_of_what_is_required(): void
     {
         $wizard = $this->wizard();
-        $first  = Str::between($wizard, '<section data-step="1">', '<section data-step="2"');
-        $rest   = Str::after($wizard, '<section data-step="2"');
+        $first  = Str::between($wizard, '<section data-step="2" hidden>', '<section data-step="3"');
+        $rest   = Str::after($wizard, '<section data-step="3"');
 
         foreach (['first_name', 'last_name', 'labor_type_id', 'job_title', 'site_id', 'rate_per_hour'] as $field) {
             $this->assertMatchesRegularExpression('/<(input|select)[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $first, "{$field} is required");
         }
-        $this->assertDoesNotMatchRegularExpression('/<(input|select)[^>]*\srequired[\s>]/', $rest, 'nothing after the first step is required');
+        $this->assertDoesNotMatchRegularExpression('/<(input|select)[^>]*\srequired[\s>]/', $rest, 'nothing after the second step is required');
 
         // The shift is two buttons, the day shift chosen, posted as shift_id.
         $day = Shift::where('crosses_midnight', false)->firstOrFail();
@@ -169,8 +206,6 @@ class RegisterWizardTest extends TestCase
         $this->assertMatchesRegularExpression('/<button type="button" data-v="' . $day->id . '"[^>]*\n?\s*class="on" aria-pressed="true">/', $first);
         $this->assertSame(Shift::count(), substr_count($first, '<button type="button" data-v="'));
 
-        // Today is the day hired unless somebody says otherwise.
-        $this->assertStringContainsString('name="date_hired" value="' . now()->toDateString() . '"', $first);
     }
 
     /** The office's own labor types and sites, and the functions the page had. */
@@ -226,7 +261,7 @@ class RegisterWizardTest extends TestCase
     // ── Saving ───────────────────────────────────────────────────────────
 
     /** The same save, answered to the pop-up instead of by a new page. */
-    public function test_it_registers_with_only_the_first_step(): void
+    public function test_it_registers_with_only_the_required_steps(): void
     {
         $this->save($this->required(['middle_name' => 'Santos', 'name_suffix' => 'Jr.']))
             ->assertOk()
@@ -239,10 +274,13 @@ class RegisterWizardTest extends TestCase
                 'site'    => 'Wizard Yard',
                 'kiosk'   => false,
                 'pending' => true,
+                'contract_ends' => null,
             ]);
 
         $worker = Employee::sole();
 
+        $this->assertSame(Employee::EMPLOYMENT_REGULAR, $worker->employment_type);
+        $this->assertNull($worker->end_of_contract, 'a regular worker has no end');
         $this->assertSame(Employee::STATUS_PENDING, $worker->status, 'pending until the kiosk enrols a finger, as before');
         $this->assertSame('Wizard Mason', $worker->position);
         $this->assertSame('Wizard Mason', $worker->job_title);

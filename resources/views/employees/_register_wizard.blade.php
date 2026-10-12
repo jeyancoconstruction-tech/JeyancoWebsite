@@ -6,9 +6,14 @@
     and what saving does are the same as they were there: the form still posts
     to employees.store with profile_form, the labor type still fills the rate
     and the position, and province / city / barangay still come from the PSGC
-    lists. What changed is the order they are asked in: Employment & pay
-    first and alone required, then Personal, Address, Government IDs and
-    Contact, each of which can be skipped, then a review.
+    lists. What changed is the order they are asked in: Employment type and
+    Employment & pay, the two that are required, then Personal, Address,
+    Government IDs and Contact, each of which can be skipped, then a review.
+
+    The first step — Regular or Contractual, the date hired, and for a
+    contract its length in months — came the same day, from a second pair of
+    screenshots. A contractual worker leaves the Active list the day after
+    the contract ends; see Employee::endFinishedContracts().
 
     Edit Employee stays a page and carries the same fields
     (employees/_profile_fields.blade.php). RegisterWizardTest holds the two to
@@ -111,6 +116,26 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
 .rw-sub { grid-column: 1 / -1; margin: 6px 0 -4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
 .rw-error { display: flex; gap: 8px; margin: 0 0 14px; padding: 10px 12px; border-radius: 9px; font-size: 12.5px; background: var(--danger-soft); color: var(--danger); }
 
+/* Employment type: two cards to choose between, and the contract under them. */
+.rw-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.rw-type { position: relative; display: flex; flex-direction: column; gap: 5px; min-height: 148px; margin: 0; padding: 18px; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--bg-subtle); transition: border-color .15s, background .15s; }
+.rw-type input { position: absolute; opacity: 0; pointer-events: none; }
+.rw-type-ic { width: 40px; height: 40px; margin-bottom: 9px; border-radius: 10px; display: grid; place-items: center;
+    background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted); }
+.rw-type-ic i { font-size: 19px; }
+.rw-type-dot { position: absolute; top: 16px; right: 16px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border-md); }
+.rw-type b { font-size: 16px; color: var(--text-primary); }
+.rw-type small { max-width: 46ch; font-size: 13px; line-height: 1.45; color: var(--text-muted); }
+.rw-type:hover { border-color: var(--border-md); }
+.rw-type:has(input:checked) { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: var(--brand-subtle); }
+.rw-type:has(input:checked) .rw-type-ic { background: var(--brand); border-color: var(--brand); color: #fff; }
+.rw-type:has(input:checked) .rw-type-dot { border-color: var(--brand); background: radial-gradient(circle, var(--brand) 0 4px, transparent 4.5px); }
+.rw-type:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+.rw-unit { position: relative; }
+.rw-unit > span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12.5px; color: var(--text-muted); pointer-events: none; }
+.rw .rw-unit .form-control { padding-right: 68px !important; }
+
 /* Review: every step as it was answered, each with a way back. */
 .rw-rev { display: grid; gap: 12px; }
 .rw-rv { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
@@ -146,7 +171,8 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
 
 @media (max-width: 860px) { .rw-g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
-    .rw-g, .rw-g3, .rw-rv dl { grid-template-columns: minmax(0, 1fr); }
+    .rw-g, .rw-g3, .rw-rv dl, .rw-types { grid-template-columns: minmax(0, 1fr); }
+    .rw-type { min-height: 0; padding: 14px; }
     .rw-foot:not(.rw-dis) .rw-meta { display: none; }
     .rw-h, .rw-steps, .rw-foot { padding-left: 16px; padding-right: 16px; }
     html[data-bs-theme] #regWizard .rw-b { padding-left: 16px !important; padding-right: 16px !important; }
@@ -165,7 +191,7 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
             <div class="rw-h">
                 <div>
                     <h3 id="rwTitle">{{ __('Register employee') }}</h3>
-                    <p id="rwSub">{{ __('Step 1 of 6') }} · {{ __('Employment & pay') }}</p>
+                    <p id="rwSub">{{ __('Step 1 of 7') }} · {{ __('Employment type') }}</p>
                 </div>
                 <button type="button" class="rw-x" id="rwClose" aria-label="{{ __('Close') }}"><i class="ti ti-x" aria-hidden="true"></i></button>
             </div>
@@ -182,8 +208,62 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
 
                 <p class="rw-error" id="rwError" role="alert" hidden></p>
 
-                {{-- ═══ 1 · Employment & pay ═══ --}}
+                {{-- ═══ 1 · Employment type ═══
+                     How the worker is hired. A regular worker stays on the
+                     Active list until somebody removes them; a contractual one
+                     is hired for a number of months and leaves it the day
+                     after the contract ends (Employee::endFinishedContracts()).
+                     Pay is the same either way. The end date is worked out
+                     from the date hired and the months — here for the office
+                     to see, and again by the server, which is what is saved. --}}
                 <section data-step="1">
+                    <div class="rw-pane-h">
+                        <span class="rw-ic"><i class="ti ti-clipboard-check" aria-hidden="true"></i></span>
+                        <div><b>{{ __('Employment type') }}</b><small>{{ __('Choose how this worker is hired.') }}</small></div>
+                        <span class="rw-tag req">{{ __('Required') }}</span>
+                    </div>
+
+                    <div class="rw-types" role="radiogroup" aria-label="{{ __('Employment type') }}">
+                        <label class="rw-type">
+                            <input type="radio" name="employment_type" value="{{ \App\Models\Employee::EMPLOYMENT_REGULAR }}" checked>
+                            <span class="rw-type-ic"><i class="ti ti-user" aria-hidden="true"></i></span>
+                            <span class="rw-type-dot" aria-hidden="true"></span>
+                            <b>{{ __('Regular') }}</b>
+                            <small>{{ __('Stays on the Active list until removed.') }}</small>
+                        </label>
+                        <label class="rw-type">
+                            <input type="radio" name="employment_type" value="{{ \App\Models\Employee::EMPLOYMENT_CONTRACTUAL }}">
+                            <span class="rw-type-ic"><i class="ti ti-calendar-event" aria-hidden="true"></i></span>
+                            <span class="rw-type-dot" aria-hidden="true"></span>
+                            <b>{{ __('Contractual') }}</b>
+                            <small>{{ __('Hired for a set number of months. Leaves the Active list when the contract ends.') }}</small>
+                        </label>
+                    </div>
+
+                    <div class="rw-g rw-g3 rw-contract">
+                        {{-- A worker is nearly always registered on the day they
+                             start, so today is the default. now() is Manila time. --}}
+                        <div class="rw-f">
+                            <label for="date_hired">{{ __('Date hired') }} <i>*</i></label>
+                            <input type="date" class="form-control" id="date_hired" name="date_hired" value="{{ now()->toDateString() }}" required>
+                            <span class="rw-em" data-say="{{ __('Enter the date hired.') }}">{{ __('Enter the date hired.') }}</span>
+                        </div>
+                        <div class="rw-f" id="rwContractLength" hidden>
+                            <label for="contract_months">{{ __('Contract length') }} <i>*</i></label>
+                            <div class="rw-unit"><input type="number" class="form-control" id="contract_months" name="contract_months" min="1" max="{{ \App\Models\Employee::CONTRACT_MONTHS_MAX }}" step="1" inputmode="numeric" placeholder="{{ __('e.g. 6') }}" disabled><span aria-hidden="true">{{ __('months') }}</span></div>
+                            <span class="rw-hp">{{ __('1 to :max months.', ['max' => \App\Models\Employee::CONTRACT_MONTHS_MAX]) }}</span>
+                            <span class="rw-em" data-say="{{ __('Enter 1 to :max months.', ['max' => \App\Models\Employee::CONTRACT_MONTHS_MAX]) }}">{{ __('Enter 1 to :max months.', ['max' => \App\Models\Employee::CONTRACT_MONTHS_MAX]) }}</span>
+                        </div>
+                        <div class="rw-f" id="rwContractEnds" hidden>
+                            <label for="rwEnds">{{ __('Contract ends') }}</label>
+                            <input type="text" class="form-control ep-locked" id="rwEnds" placeholder="{{ __('Set the contract length') }}" readonly tabindex="-1">
+                            <span class="rw-hp">{{ __('Leaves the Active list after this date.') }}</span>
+                        </div>
+                    </div>
+                </section>
+
+                {{-- ═══ 2 · Employment & pay ═══ --}}
+                <section data-step="2" hidden>
                     <div class="rw-pane-h">
                         <span class="rw-ic"><i class="ti ti-briefcase" aria-hidden="true"></i></span>
                         <div><b>{{ __('Employment & pay') }}</b><small>{{ __('Needed to put the worker on the payroll.') }}</small></div>
@@ -262,22 +342,16 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                             <span class="rw-hp" id="rwRateHint" data-say="{{ __('Fills in from the labor type.') }}">{{ __('Fills in from the labor type.') }}</span>
                             <span class="rw-em" data-say="{{ __('Enter a rate above ₱0.') }}">{{ __('Enter a rate above ₱0.') }}</span>
                         </div>
-                        {{-- A worker is nearly always registered on the day they
-                             start, so today is the default. now() is Manila time. --}}
-                        <div class="rw-f">
-                            <label for="date_hired">{{ __('Date hired') }}</label>
-                            <input type="date" class="form-control" id="date_hired" name="date_hired" value="{{ now()->toDateString() }}">
-                            <span class="rw-em" data-say=""></span>
-                        </div>
-
-                        {{-- No photo field: Railway wipes uploads on every deploy.
+                        {{-- The date hired is on the first step, with the
+                             contract it starts.
+                             No photo field: Railway wipes uploads on every deploy.
                              No fingerprint field: the kiosk reads the finger, and
                              that enrolment is what makes the worker active. --}}
                     </div>
                 </section>
 
-                {{-- ═══ 2 · Personal information ═══ --}}
-                <section data-step="2" hidden>
+                {{-- ═══ 3 · Personal information ═══ --}}
+                <section data-step="3" hidden>
                     <div class="rw-pane-h">
                         <span class="rw-ic"><i class="ti ti-user" aria-hidden="true"></i></span>
                         <div><b>{{ __('Personal information') }}</b><small>{{ __('Can be filled in later.') }}</small></div>
@@ -326,12 +400,12 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                     </div>
                 </section>
 
-                {{-- ═══ 3 · Address ═══
+                {{-- ═══ 4 · Address ═══
                      Province leads, because the two that follow are answers to
                      it: the city list is whatever is inside the chosen province,
                      and the barangay list whatever is inside the chosen city.
                      The lists come from PSGC via public/js/address-picker.js. --}}
-                <section data-step="3" hidden>
+                <section data-step="4" hidden>
                     <div class="rw-pane-h">
                         <span class="rw-ic"><i class="ti ti-home" aria-hidden="true"></i></span>
                         <div><b>{{ __('Address') }}</b><small>{{ __('Can be filled in later.') }}</small></div>
@@ -366,8 +440,8 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                     </div>
                 </section>
 
-                {{-- ═══ 4 · Government IDs ═══ --}}
-                <section data-step="4" hidden>
+                {{-- ═══ 5 · Government IDs ═══ --}}
+                <section data-step="5" hidden>
                     <div class="rw-pane-h">
                         <span class="rw-ic"><i class="ti ti-id" aria-hidden="true"></i></span>
                         <div><b>{{ __('Government IDs') }}</b><small>{{ __('Needed for SSS, PhilHealth and Pag-IBIG deductions.') }}</small></div>
@@ -397,8 +471,8 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                     </div>
                 </section>
 
-                {{-- ═══ 5 · Contact information ═══ --}}
-                <section data-step="5" hidden>
+                {{-- ═══ 6 · Contact information ═══ --}}
+                <section data-step="6" hidden>
                     <div class="rw-pane-h">
                         <span class="rw-ic"><i class="ti ti-phone" aria-hidden="true"></i></span>
                         <div><b>{{ __('Contact information') }}</b><small>{{ __('Can be filled in later.') }}</small></div>
@@ -437,8 +511,8 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                     </div>
                 </section>
 
-                {{-- ═══ 6 · Review ═══ --}}
-                <section data-step="6" hidden>
+                {{-- ═══ 7 · Review ═══ --}}
+                <section data-step="7" hidden>
                     <div class="rw-pane-h">
                         <span class="rw-ic"><i class="ti ti-circle-check" aria-hidden="true"></i></span>
                         <div><b>{{ __('Review') }}</b><small>{{ __('Check the details before registering.') }}</small></div>
@@ -447,7 +521,7 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                 </section>
 
                 {{-- ═══ Done ═══ --}}
-                <section data-step="7" hidden>
+                <section data-step="8" hidden>
                     <div class="rw-ok">
                         <span class="rw-ok-big"><i class="ti ti-check" aria-hidden="true"></i></span>
                         <h4 id="rwOkName">{{ __('Employee registered') }}</h4>
@@ -463,7 +537,7 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                 <button type="button" class="rw-danger" id="rwDrop">{{ __('Discard') }}</button>
             </div>
             <div class="rw-foot" id="rwFoot">
-                <span class="rw-meta" id="rwMeta">{{ __('Only this step is required.') }}</span>
+                <span class="rw-meta" id="rwMeta">{{ __('Steps 1 and 2 are required.') }}</span>
                 <button type="button" class="emp-btn-cancel" id="rwBack">{{ __('Cancel') }}</button>
                 <button type="button" class="rw-skip" id="rwSkip" hidden>{{ __('Skip for now') }}</button>
                 <button type="button" class="emp-btn-save" id="rwNext"><span>{{ __('Next') }}</span></button>
@@ -512,11 +586,15 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
     if (!modalEl || !form) return;
 
     const $      = id => document.getElementById(id);
-    const STEPS  = [@json(__('Employment')), @json(__('Personal')), @json(__('Address')), @json(__('Gov’t IDs')), @json(__('Contact')), @json(__('Review'))];
-    const NAMES  = [@json(__('Employment & pay')), @json(__('Personal information')), @json(__('Address')), @json(__('Government IDs')), @json(__('Contact information')), @json(__('Review'))];
+    const STEPS  = [@json(__('Type')), @json(__('Employment')), @json(__('Personal')), @json(__('Address')), @json(__('Gov’t IDs')), @json(__('Contact')), @json(__('Review'))];
+    const NAMES  = [@json(__('Employment type')), @json(__('Employment & pay')), @json(__('Personal information')), @json(__('Address')), @json(__('Government IDs')), @json(__('Contact information')), @json(__('Review'))];
     // The optional steps as they read in the middle of a sentence.
-    const LATER  = { 2: @json(__('personal information')), 3: @json(__('address')), 4: @json(__('government IDs')), 5: @json(__('contact information')) };
-    const REVIEW = 6, DONE = 7;
+    const LATER  = { 3: @json(__('personal information')), 4: @json(__('address')), 5: @json(__('government IDs')), 6: @json(__('contact information')) };
+    // The first two steps must be filled in; the four after them can be skipped.
+    const MUST   = 2, REVIEW = 7, DONE = 8;
+    const CONTRACTUAL = @json(\App\Models\Employee::EMPLOYMENT_CONTRACTUAL);
+    const OVER        = @json(__('That contract would already be over. Give it more months, or check the date hired.'));
+    const MONTHS_MAX  = @json(\App\Models\Employee::CONTRACT_MONTHS_MAX);
     const csrf   = document.querySelector('meta[name="csrf-token"]').content;
     const digits = v => String(v).replace(/\D/g, '');
     const peso   = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -524,6 +602,7 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
     const val    = name => String((input(name) && input(name).value) || '').trim();
     const make   = (tag, text, cls) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
     const modal  = () => bootstrap.Modal.getOrCreateInstance(modalEl);
+    const dated  = v => v ? new Date(v + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
     let cur = 1, reached = 1, sending = false, registered = false;
     const wrong = new Set();   // steps holding something to fix
@@ -568,10 +647,10 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
 
         const done = n === DONE;
         $('rwSteps').hidden = done;
-        $('rwSub').textContent  = done ? @json(__('Done')) : 'Step ' + n + ' of 6 · ' + NAMES[n - 1];
-        $('rwSkip').hidden      = n === 1 || n >= REVIEW;
+        $('rwSub').textContent  = done ? @json(__('Done')) : 'Step ' + n + ' of 7 · ' + NAMES[n - 1];
+        $('rwSkip').hidden      = n <= MUST || n >= REVIEW;
         $('rwNext').querySelector('span').textContent = n === REVIEW ? @json(__('Register employee')) : done ? @json(__('Done')) : @json(__('Next'));
-        $('rwMeta').textContent = n === 1 ? @json(__('Only this step is required.')) : n < REVIEW ? @json(__('You can skip this and fill it in later.')) : '';
+        $('rwMeta').textContent = n <= MUST ? @json(__('Steps 1 and 2 are required.')) : n < REVIEW ? @json(__('You can skip this and fill it in later.')) : '';
         $('rwBack').textContent = done ? @json(__('Register another')) : n === 1 ? @json(__('Cancel')) : @json(__('Back'));
         $('rwError').hidden     = true;
 
@@ -584,8 +663,10 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
     /** Into the first field of the step on screen. */
     function focusFirst() {
         const pane  = '[data-step="' + cur + '"] ';
+        // The first step opens on two cards to choose between, so nothing
+        // there is put in focus unless something on it is wrong.
         const first = cur < REVIEW && (form.querySelector(pane + '.rw-f.bad input, ' + pane + '.rw-f.bad select:not(.rw-suffix)')
-                                    || form.querySelector(pane + 'input:not([type="hidden"]), ' + pane + 'select'));
+                                    || (cur > 1 && form.querySelector(pane + 'input:not([type="hidden"]), ' + pane + 'select')));
         if (first && modalEl.classList.contains('show')) first.focus({ preventScroll: true });
     }
 
@@ -600,33 +681,43 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
         if (em) em.textContent = (bad && message) || em.dataset.say || '';
     }
 
-    /** Each rule of a step as [field, is it wrong]. Only Employment & pay must be filled in; the rest are held to their shape when something is typed. */
+    /** Each rule of a step as [field, is it wrong]. Only the first two steps must be filled in; the rest are held to their shape when something is typed. */
     function rules(n) {
         const out = [];
-        const t   = (name, bad) => out.push([name, bad]);
+        const t   = (name, bad, why) => out.push([name, bad, why]);
 
         if (n === 1) {
+            t('date_hired', !val('date_hired'));
+            if (onContract()) {
+                const months = Number(val('contract_months'));
+                const whole  = /^\d+$/.test(val('contract_months')) && months >= 1 && months <= MONTHS_MAX;
+                // In range, and not a contract that is over before it is saved.
+                const over = whole && !!val('date_hired') && contractEnd() < today();
+                t('contract_months', !whole || over, over ? OVER : null);
+            }
+        }
+        if (n === 2) {
             ['first_name', 'last_name', 'labor_type_id', 'job_title', 'site_id'].forEach(k => t(k, !val(k)));
             t('rate_per_hour', !(parseFloat(val('rate_per_hour')) > 0));
         }
-        if (n === 2) {
+        if (n === 3) {
             const born = val('birth_date');
             let young  = false;
             if (born) { const d = new Date(born + 'T00:00'), line = new Date(); line.setFullYear(line.getFullYear() - 18); young = d > line; }
             t('birth_date', young);
         }
-        if (n === 3) {
+        if (n === 4) {
             const zip = val('address_postal');
             t('address_postal', !!zip && !/^\d{4}$/.test(zip));
         }
-        if (n === 4) {
+        if (n === 5) {
             const long = (name, ok) => { const d = digits(val(name)); t(name, !!d && !ok(d.length)); };
             long('sss_number', l => l === 10);
             long('philhealth_number', l => l === 12);
             long('pagibig_number', l => l === 12);
             long('tin_number', l => l >= 9 && l <= 12);
         }
-        if (n === 5) {
+        if (n === 6) {
             ['phone', 'emergency_contact_phone'].forEach(k => { const d = digits(val(k)); t(k, !!d && !/^09\d{9}$/.test(d)); });
             const mail = val('email');
             t('email', !!mail && !/^\S+@\S+\.\S+$/.test(mail));
@@ -639,11 +730,57 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
     function check(n, say = true, focus = true) {
         const all = rules(n);
         const bad = all.filter(r => r[1]).map(r => r[0]);
-        if (say) all.forEach(([name, isBad]) => mark(name, isBad));
+        if (say) all.forEach(([name, isBad, why]) => mark(name, isBad, why));
         if (bad.length) wrong.add(n); else wrong.delete(n);
         if (bad.length && say && focus) input(bad[0]).focus();
         return !bad.length;
     }
+
+    // ── Employment type ─────────────────────────────────────────────────────
+    // Regular needs only the date hired. Contractual adds how many months,
+    // and shows the day that makes the contract end: the same day of the
+    // month that many months on, or the last day of a month too short for
+    // it. The server works the date out again the same way and that is what
+    // is saved; this is so the office sees it before they go on.
+    const onContract = () => val('employment_type') === CONTRACTUAL;
+    const iso        = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const today      = () => iso(new Date());
+
+    /** The contract's last day as Y-m-d, or '' while it cannot be worked out. */
+    function contractEnd() {
+        const hired  = val('date_hired');
+        const months = parseInt(val('contract_months'), 10);
+        if (!hired || !(months >= 1)) return '';
+        const [y, m, d] = hired.split('-').map(Number);
+        const end  = new Date(y, m - 1 + months, 1);
+        const last = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
+        end.setDate(Math.min(d, last));
+        return iso(end);
+    }
+
+    /** Show the contract fields for a contractual worker, and what they come to. */
+    function contract() {
+        const on = onContract();
+        $('rwContractLength').hidden = !on;
+        $('rwContractEnds').hidden   = !on;
+        // Not sent, and not counted as typed, unless it applies.
+        input('contract_months').disabled = !on;
+        if (!on) { input('contract_months').value = ''; mark('contract_months', false); }
+
+        const ends = on ? contractEnd() : '';
+        $('rwEnds').value = ends ? dated(ends) : '';
+
+        // An end already behind today is said where the months are typed,
+        // as soon as it is; anything else waits for Next.
+        if (on && ((ends && ends < today()) || form.querySelector('#rwContractLength.bad'))) check(1, true, false);
+    }
+
+    form.querySelectorAll('input[name="employment_type"]').forEach(r => r.addEventListener('change', function () {
+        contract();
+        if (onContract()) input('contract_months').focus();
+        steps();
+    }));
+    ['contract_months', 'date_hired'].forEach(name => input(name).addEventListener('input', contract));
 
     function go(n) {
         if (n === cur) return;
@@ -654,19 +791,21 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
     // ── Review ──────────────────────────────────────────────────────────────
     const chosen = name => { const s = input(name), o = s && s.options[s.selectedIndex]; return o && o.value ? (o.dataset.name || o.textContent.trim()) : ''; };
     const fullName = () => [val('first_name'), val('middle_name'), val('last_name'), val('name_suffix')].filter(Boolean).join(' ');
-    const dated = v => v ? new Date(v + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
     function review() {
         const shift = $('rwShift').querySelector('button.on');
         const parts = [
-            [1, NAMES[0], [['Name', fullName()], ['Labor type', chosen('labor_type_id')], ['Position', val('job_title')], ['Shift', shift ? shift.dataset.name : ''],
-                           ['Rate per hour', val('rate_per_hour') ? peso(val('rate_per_hour')) : ''], ['Site', chosen('site_id')], ['Date hired', dated(val('date_hired'))]]],
-            [2, NAMES[1], [['Date of birth', dated(val('birth_date'))], ['Place of birth', val('birth_place')], ['Gender', val('gender')], ['Civil status', val('civil_status')],
+            [1, NAMES[0], [['Type', onContract() ? @json(__('Contractual')) : @json(__('Regular'))], ['Date hired', dated(val('date_hired'))]]
+                .concat(onContract() ? [['Contract length', val('contract_months') ? val('contract_months') + (val('contract_months') === '1' ? ' month' : ' months') : ''],
+                                        ['Contract ends', $('rwEnds').value]] : [])],
+            [2, NAMES[1], [['Name', fullName()], ['Labor type', chosen('labor_type_id')], ['Position', val('job_title')], ['Shift', shift ? shift.dataset.name : ''],
+                           ['Rate per hour', val('rate_per_hour') ? peso(val('rate_per_hour')) : ''], ['Site', chosen('site_id')]]],
+            [3, NAMES[2], [['Date of birth', dated(val('birth_date'))], ['Place of birth', val('birth_place')], ['Gender', val('gender')], ['Civil status', val('civil_status')],
                            ['Nationality', val('nationality')], ['Blood type', val('blood_type')]]],
-            [3, NAMES[2], [['Street', val('address_street')], ['Barangay', val('address_barangay')], ['City / Municipality', val('address_city')], ['Province', val('address_province')],
+            [4, NAMES[3], [['Street', val('address_street')], ['Barangay', val('address_barangay')], ['City / Municipality', val('address_city')], ['Province', val('address_province')],
                            ['ZIP code', val('address_postal')]]],
-            [4, NAMES[3], [['SSS', val('sss_number')], ['PhilHealth', val('philhealth_number')], ['Pag-IBIG', val('pagibig_number')], ['TIN', val('tin_number')]]],
-            [5, NAMES[4], [['Mobile', val('phone')], ['Email', val('email')], ['Emergency contact', val('emergency_contact_name')], ['Relationship', val('emergency_contact_relation')],
+            [5, NAMES[4], [['SSS', val('sss_number')], ['PhilHealth', val('philhealth_number')], ['Pag-IBIG', val('pagibig_number')], ['TIN', val('tin_number')]]],
+            [6, NAMES[5], [['Mobile', val('phone')], ['Email', val('email')], ['Emergency contact', val('emergency_contact_name')], ['Relationship', val('emergency_contact_relation')],
                            ['Contact number', val('emergency_contact_phone')]]],
         ];
 
@@ -746,7 +885,7 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
 
         // The optional steps left with nothing in them. Nationality comes
         // filled in, so it does not count as an answer.
-        const empty = [2, 3, 4, 5].filter(n => Array.from(form.querySelectorAll('[data-step="' + n + '"] input, [data-step="' + n + '"] select'))
+        const empty = [3, 4, 5, 6].filter(n => Array.from(form.querySelectorAll('[data-step="' + n + '"] input, [data-step="' + n + '"] select'))
             .every(x => !x.value || x.name === 'nationality')).map(n => LATER[n]);
 
         $('rwOkName').textContent = data.name + ' ' + @json(__('is registered'));
@@ -755,6 +894,7 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                 ? (data.kiosk ? 'Next, enroll their fingerprint at the ' + data.site + ' kiosk.'
                               : 'Next, enroll their fingerprint at a kiosk. ' + data.site + ' has no kiosk set to it yet.')
                 : 'Next, enroll their fingerprint at a kiosk.')
+            + (data.contract_ends ? ' On contract until ' + data.contract_ends + ', and off the Active list after that.' : '')
             + (empty.length ? ' Still to fill in: ' + empty.join(', ') + '.' : '');
 
         show(DONE);
@@ -773,11 +913,13 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
     /** Anything typed? The date hired and the nationality come filled in, and do not count. */
     function dirty() {
         return Array.from(form.querySelectorAll('input:not([type="hidden"]), select'))
-            .some(x => x.value && x.name !== 'nationality' && x.name !== 'date_hired');
+            .some(x => x.type === 'radio' ? x.checked !== x.defaultChecked
+                                          : x.value && !x.disabled && x.name !== 'nationality' && x.name !== 'date_hired');
     }
 
     function reset() {
         form.reset();
+        contract();
         setShift($('rwShift').dataset.default);
         $('rwRateHint').textContent = $('rwRateHint').dataset.say;
         form.querySelectorAll('.rw-f.bad').forEach(function (f) {
@@ -873,7 +1015,7 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
             ? peso(parseFloat(opt.dataset.daily) || 0) + ' a day ÷ 8 hours.'
             : $('rwRateHint').dataset.say;
         // The rate and the position were just filled in for it.
-        if (wrong.has(1)) { check(1, true, false); steps(); }
+        if (wrong.has(2)) { check(2, true, false); steps(); }
     });
 
     // 00-0000000-0, 0000-0000-0000, 09XX XXX XXXX: the separators type themselves.

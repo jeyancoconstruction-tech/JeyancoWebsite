@@ -270,11 +270,11 @@ class EmployeeController extends Controller
             'shift_id'       => 'nullable|exists:shifts,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ], $this->profileRules($request)), [
+        ], $this->profileRules($request), $this->employmentRules()), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
             'first_name.required_without' => 'The first name is required.',
             'last_name.required_with'     => 'The last name is required.',
-        ]);
+        ] + self::EMPLOYMENT_MESSAGES);
 
         $identity  = $this->identityData($request);
         $laborType = $request->filled('labor_type_id') ? LaborType::find($request->labor_type_id) : null;
@@ -312,7 +312,7 @@ class EmployeeController extends Controller
             // fingerprint by hand has done that enrolment themselves, so that
             // case activates immediately.
             'status'         => $fingerprintId ? Employee::STATUS_ACTIVE : Employee::STATUS_PENDING,
-        ], $this->profileData($request, $laborType), $identity)));
+        ], $this->profileData($request, $laborType), $identity, $this->employmentData($request))));
 
         EmployeeAlert::fire(auth()->user(), 'new_employee',
             'New Employee Registered',
@@ -335,6 +335,8 @@ class EmployeeController extends Controller
                 // Whether a kiosk stands at their site to enrol the finger on.
                 'kiosk'   => $employee->site_id !== null && \App\Models\Kiosk::where('site_id', $employee->site_id)->exists(),
                 'pending' => $employee->isPending(),
+                // For a contractual worker, the last day of the contract.
+                'contract_ends' => $employee->isContractual() ? $employee->end_of_contract?->format('M d, Y') : null,
             ]);
         }
 
@@ -367,11 +369,11 @@ class EmployeeController extends Controller
             'site_id'        => $request->boolean('profile_form') ? 'required|exists:sites,id' : 'nullable|exists:sites,id',
             'shift_id'       => 'nullable|exists:shifts,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
-        ], $this->profileRules($request)), [
+        ], $this->profileRules($request), $this->employmentRules()), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
             'first_name.required_without' => 'The first name is required.',
             'last_name.required_with'     => 'The last name is required.',
-        ]);
+        ] + self::EMPLOYMENT_MESSAGES);
 
         $identity  = $this->identityData($request, $employee);
         $laborType = $request->filled('labor_type_id') ? LaborType::find($request->labor_type_id) : null;
@@ -393,7 +395,7 @@ class EmployeeController extends Controller
             'shift_id'       => $request->has('shift_id') ? ($request->shift_id ?: null) : $employee->shift_id,
             'site_id'        => $request->site_id ?: null,
             'fingerprint_id' => $fingerprintId,
-        ], $this->profileData($request, $laborType), $identity);
+        ], $this->profileData($request, $laborType), $identity, $this->employmentData($request));
         $updateData = Employee::withoutMissingColumns($updateData);
 
         if ($request->hasFile('photo')) {
@@ -436,6 +438,65 @@ class EmployeeController extends Controller
             'labor_type_id' => 'required|exists:labor_types,id',
             'rate_per_hour' => 'required|numeric|min:0.01',
         ];
+    }
+
+    // ── How they were hired ───────────────────────────────────────────────────
+
+    /** What the office is told when a contract is not filled in properly. */
+    private const EMPLOYMENT_MESSAGES = [
+        'date_hired.required_if'      => 'A contract runs from the date hired, so it is needed.',
+        'contract_months.required_if' => 'Say how many months the contract runs.',
+        'contract_months.integer'     => 'The contract length is a whole number of months.',
+        'contract_months.min'         => 'A contract runs 1 to 36 months.',
+        'contract_months.max'         => 'A contract runs 1 to 36 months.',
+    ];
+
+    /**
+     * Regular or contractual, and for a contract, how many months.
+     *
+     * Nullable, because only Register employee and Edit Employee ask: the
+     * quick-edit modal and the kiosk say nothing about it, and a save from
+     * either leaves it as it stands.
+     */
+    private function employmentRules(): array
+    {
+        return [
+            'employment_type' => ['nullable', Rule::in([Employee::EMPLOYMENT_REGULAR, Employee::EMPLOYMENT_CONTRACTUAL])],
+            'contract_months' => ['nullable', 'required_if:employment_type,' . Employee::EMPLOYMENT_CONTRACTUAL,
+                                  'integer', 'min:1', 'max:' . Employee::CONTRACT_MONTHS_MAX],
+        ];
+    }
+
+    /**
+     * The employment type and the day the contract ends, ready to save — or
+     * nothing, when the request did not say.
+     *
+     * The end is worked out here from the date hired and the months, never
+     * typed: it is the day after which the worker leaves the Active list
+     * (Employee::endFinishedContracts()), so it has to be the same sum every
+     * time. A contract that would already be over is refused, because saving
+     * it would take the worker off the list on the next request.
+     */
+    private function employmentData(Request $request): array
+    {
+        if (! $request->filled('employment_type')) {
+            return [];
+        }
+
+        if ($request->input('employment_type') !== Employee::EMPLOYMENT_CONTRACTUAL) {
+            return ['employment_type' => Employee::EMPLOYMENT_REGULAR, 'end_of_contract' => null];
+        }
+
+        $ends = Employee::contractEnd((string) $request->input('date_hired'), (int) $request->input('contract_months'));
+
+        if ($ends->toDateString() < now()->toDateString()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'contract_months' => 'That contract would already be over: it would have ended on ' . $ends->format('M d, Y')
+                    . '. Give it more months, or check the date hired.',
+            ]);
+        }
+
+        return ['employment_type' => Employee::EMPLOYMENT_CONTRACTUAL, 'end_of_contract' => $ends->toDateString()];
     }
 
     /**
@@ -523,7 +584,8 @@ class EmployeeController extends Controller
             // Job — the position is part of Employment & Pay, so required on
             // the full forms. The date hired is optional (2026-09-30).
             'job_title'  => "$need|string|max:150",
-            'date_hired' => 'nullable|date',
+            // …unless they are on contract: it is what the contract runs from.
+            'date_hired' => ['nullable', 'required_if:employment_type,' . Employee::EMPLOYMENT_CONTRACTUAL, 'date'],
 
             // Education (repeatable)
             'education'                  => 'nullable|array|max:10',
@@ -901,9 +963,38 @@ class EmployeeController extends Controller
     public function restore($id)
     {
         $employee = Employee::removed()->findOrFail($id);
+        $ended    = $this->bringBack($employee);
+
+        return back()->with('success', $ended
+            ? "{$employee->name} was restored as a regular employee. Their contract ended on {$ended}; set a new one from Edit if they are back on contract."
+            : $employee->name . ' was restored.');
+    }
+
+    /**
+     * Restore a removed worker, and keep them restored.
+     *
+     * A contract that has run out is what took a contractual worker off the
+     * Active list, and it would take them off again on the very next look.
+     * Whoever restores them has decided they are staying, so they come back
+     * as a regular worker — on the list until somebody removes them — and a
+     * new contract, if there is one, is set from Edit.
+     *
+     * @return string|null  the day the dropped contract ended, when one was dropped
+     */
+    private function bringBack(Employee $employee): ?string
+    {
+        $ended = $employee->contractIsOver() ? $employee->end_of_contract->format('M d, Y') : null;
+
         $employee->restore();
 
-        return back()->with('success', $employee->name . ' was restored.');
+        if ($ended) {
+            $employee->update(Employee::withoutMissingColumns([
+                'employment_type' => Employee::EMPLOYMENT_REGULAR,
+                'end_of_contract' => null,
+            ]));
+        }
+
+        return $ended;
     }
 
     /**
@@ -934,7 +1025,7 @@ class EmployeeController extends Controller
 
         $employees = Employee::removed()->whereIn('id', $request->ids)->get();
         foreach ($employees as $employee) {
-            $employee->restore();
+            $this->bringBack($employee);
         }
 
         return response()->json(['success' => true, 'restored' => $employees->count()]);

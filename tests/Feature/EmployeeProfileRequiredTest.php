@@ -156,35 +156,47 @@ class EmployeeProfileRequiredTest extends TestCase
         $this->assertNull($employee->date_hired);
     }
 
-    /** The form marks only Employment & Pay as required. */
+    /**
+     * The form marks only its first two steps as required: Employment type
+     * and Employment & Pay. The date hired is on the first of them and is
+     * asked for there since 2026-10-12 — it is what a contract runs from —
+     * though a save that names no date is still accepted for a regular
+     * worker, as the test above holds.
+     */
     public function test_the_form_marks_only_employment_and_pay(): void
     {
         // The form is the step-by-step pop-up on the Employees page now.
         $page = $this->actingAs($this->admin())->get(route('employees.register'))->assertOk()->getContent();
         $html = \Illuminate\Support\Str::between($page, 'id="regWizardForm"', 'id="rwDiscard"');
 
-        foreach (['middle_name', 'date_hired', 'birth_date', 'gender', 'phone', 'emergency_contact_name', 'address_province', 'address_postal'] as $field) {
+        foreach (['middle_name', 'birth_date', 'gender', 'phone', 'emergency_contact_name', 'address_province', 'address_postal'] as $field) {
             $this->assertDoesNotMatchRegularExpression('/<(input|select)[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is optional");
         }
-        foreach (['first_name', 'last_name', 'job_title', 'rate_per_hour'] as $field) {
+        foreach (['first_name', 'last_name', 'job_title', 'rate_per_hour', 'date_hired'] as $field) {
             $this->assertMatchesRegularExpression('/<input[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is required");
         }
         foreach (['labor_type_id', 'site_id'] as $field) {
             $this->assertMatchesRegularExpression('/<select[^>]*name="' . $field . '"[^>]*\srequired[\s>]/', $html, "{$field} is required");
         }
-        // Said on the step itself: the first is tagged Required, the other
-        // four Optional, and the foot says which it is.
-        $this->assertSame(1, substr_count($html, '<span class="rw-tag req">Required</span>'));
+        // Said on the steps themselves: the first two are tagged Required,
+        // the other four Optional, and the foot says which it is.
+        $this->assertSame(2, substr_count($html, '<span class="rw-tag req">Required</span>'));
         $this->assertSame(4, substr_count($html, '<span class="rw-tag">Optional</span>'));
-        $this->assertStringContainsString('Only this step is required.', $page);
+        $this->assertStringContainsString('Steps 1 and 2 are required.', $page);
     }
 
     /**
-     * Contractual was removed (Michael, 2026-10-03). Neither form offers an
-     * employee type or a contract any more, and the labor type and rate are
-     * marked required in the markup itself, since no script switches them.
+     * The old Contractual — a contract amount, left out of payroll — was
+     * removed on 2026-10-03 and stays removed: neither form asks for a
+     * contract amount, and the labor type and rate are required of everybody.
+     *
+     * What Michael added on 2026-10-12 is a different thing under the same
+     * word: how the worker is hired. Regular, or Contractual for a number of
+     * months, after which they leave the Active list. Both forms ask it, and
+     * neither lets the end date be typed — it is worked out from the date
+     * hired and the months. EmployeeContractTest holds what it does.
      */
-    public function test_neither_form_offers_an_employee_type_or_a_contract(): void
+    public function test_both_forms_ask_how_the_worker_is_hired_and_neither_a_contract_amount(): void
     {
         $employee = Employee::create([
             'name'          => 'Ana Reyes',
@@ -197,8 +209,11 @@ class EmployeeProfileRequiredTest extends TestCase
         foreach ([route('employees.register'), route('employees.edit', $employee->id)] as $url) {
             $html = $this->actingAs($this->admin())->get($url)->assertOk()->getContent();
 
-            foreach (['name="employment_type"', 'name="contract_rate"', 'name="end_of_contract"', 'Contractual', 'Employee Type'] as $gone) {
+            foreach (['name="contract_rate"', 'name="end_of_contract"', 'Contract Amount', 'Employee Type'] as $gone) {
                 $this->assertStringNotContainsString($gone, $html, "{$url} still shows {$gone}");
+            }
+            foreach (['name="employment_type"', 'name="contract_months"', 'Regular', 'Contractual', 'Leaves the Active list after this date.'] as $asked) {
+                $this->assertStringContainsString($asked, $html, "{$url} does not show {$asked}");
             }
             $this->assertMatchesRegularExpression('/<select[^>]*name="labor_type_id"[^>]*\srequired[\s>]/', $html);
         }

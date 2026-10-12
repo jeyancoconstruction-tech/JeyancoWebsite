@@ -92,6 +92,18 @@
                         <span class="ep-label">{{ __('Date Hired') }}</span>
                         <span class="ep-value {{ $employee->date_hired ? '' : 'is-empty' }}">{{ $employee->date_hired?->format('M d, Y') ?: __('Not recorded') }}</span>
                     </div>
+                    {{-- Regular, or on contract and until when: after that day
+                         they leave the Active list by themselves. --}}
+                    <div class="col-md-6 col-lg-3">
+                        <span class="ep-label">{{ __('Employment Type') }}</span>
+                        <span class="ep-value">
+                            @if($employee->isContractual())
+                                {{ __('Contractual') }}@if($employee->end_of_contract) · {{ __('until') }} {{ $employee->end_of_contract->format('M d, Y') }}@endif
+                            @else
+                                {{ __('Regular') }}
+                            @endif
+                        </span>
+                    </div>
                     <div class="col-md-6 col-lg-3">
                         <span class="ep-label">{{ __('Site Assignment') }}</span>
                         <span class="ep-value {{ $employee->site ? '' : 'is-empty' }}">

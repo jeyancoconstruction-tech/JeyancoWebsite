@@ -199,6 +199,42 @@
                                  twenty-five other things. --}}
                         </div>
 
+                        {{-- How they were hired, as Register employee asks on its
+                             first step. Regular stays on the Active list until
+                             removed; a contract runs so many months from the
+                             date hired, and the worker leaves the list the day
+                             after it ends. More months here is how a contract
+                             is extended. The end date is worked out, not typed. --}}
+                        @php
+                            $contractual = \App\Models\Employee::EMPLOYMENT_CONTRACTUAL;
+                            $empType     = old('employment_type', $employee->isContractual() ? $contractual : \App\Models\Employee::EMPLOYMENT_REGULAR);
+                            $empMonths   = old('contract_months', $employee->contractMonths());
+                        @endphp
+                        <div class="col-md-6 col-lg-3">
+                            <label class="ep-label" for="employment_type">{{ __('Employment Type') }}</label>
+                            <select id="employment_type" name="employment_type" class="form-select @error('employment_type') is-invalid @enderror">
+                                <option value="{{ \App\Models\Employee::EMPLOYMENT_REGULAR }}" @selected($empType !== $contractual)>{{ __('Regular') }}</option>
+                                <option value="{{ $contractual }}" @selected($empType === $contractual)>{{ __('Contractual') }}</option>
+                            </select>
+                            @error('employment_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <span class="ep-hint" id="employment_hint"></span>
+                        </div>
+                        <div class="col-md-6 col-lg-2" id="contract_months_field" @if($empType !== $contractual) hidden @endif>
+                            <label class="ep-label" for="contract_months">{{ __('Contract Length') }} <span class="ep-req">*</span></label>
+                            <input type="number" id="contract_months" name="contract_months" min="1" max="{{ \App\Models\Employee::CONTRACT_MONTHS_MAX }}" step="1"
+                                   value="{{ $empMonths }}" placeholder="{{ __('e.g. 6') }}"
+                                   class="form-control @error('contract_months') is-invalid @enderror" @if($empType !== $contractual) disabled @endif>
+                            @error('contract_months')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <span class="ep-hint">{{ __('Months, 1 to :max.', ['max' => \App\Models\Employee::CONTRACT_MONTHS_MAX]) }}</span>
+                        </div>
+                        <div class="col-md-6 col-lg-3" id="contract_ends_field" @if($empType !== $contractual) hidden @endif>
+                            <label class="ep-label" for="contract_ends">{{ __('Contract Ends') }}</label>
+                            <input type="text" id="contract_ends" class="form-control ep-locked" readonly tabindex="-1"
+                                   value="{{ $employee->isContractual() ? $employee->end_of_contract?->format('M j, Y') : '' }}"
+                                   placeholder="{{ __('Set the contract length') }}">
+                            <span class="ep-hint">{{ __('Leaves the Active list after this date.') }}</span>
+                        </div>
+
                         {{-- Employee ID, fingerprint and the labor type's rates are
                              shown in the strip at the top. The fingerprint still
                              goes back with the form, unchanged, as it always did. --}}
@@ -265,6 +301,51 @@
 </script>
 
 @include('employees._position_from_labor')
+
+<script>
+// ── Employment type → the contract fields ───────────────────────────────────
+// A contract's length and end show only for a contractual worker. The end is
+// the date hired plus the months — the same day of the month, or the last day
+// of a month too short for it — worked out here so it can be seen before
+// saving, and again by the server, which is what is kept.
+(function () {
+    const type   = document.getElementById('employment_type');
+    const months = document.getElementById('contract_months');
+    const hired  = document.getElementById('date_hired');
+    const ends   = document.getElementById('contract_ends');
+    const hint   = document.getElementById('employment_hint');
+    if (!type || !months || !hired || !ends) return;
+
+    const CONTRACTUAL = @json(\App\Models\Employee::EMPLOYMENT_CONTRACTUAL);
+
+    function contractEnd() {
+        const n = parseInt(months.value, 10);
+        if (!hired.value || !(n >= 1)) return '';
+        const [y, m, d] = hired.value.split('-').map(Number);
+        const end  = new Date(y, m - 1 + n, 1);
+        const last = new Date(end.getFullYear(), end.getMonth() + 1, 0).getDate();
+        end.setDate(Math.min(d, last));
+        return end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function sync() {
+        const on = type.value === CONTRACTUAL;
+        document.getElementById('contract_months_field').hidden = !on;
+        document.getElementById('contract_ends_field').hidden   = !on;
+        // Not sent unless it applies.
+        months.disabled = !on;
+        months.required = on;
+        ends.value = on ? contractEnd() : '';
+        if (hint) hint.textContent = on ? @json(__('Hired for a set number of months.')) : @json(__('Stays on the Active list until removed.'));
+    }
+
+    type.addEventListener('change', sync);
+    months.addEventListener('input', sync);
+    hired.addEventListener('input', sync);
+    sync();
+})();
+</script>
+
 @include('employees._register_progress')
 
 @endsection

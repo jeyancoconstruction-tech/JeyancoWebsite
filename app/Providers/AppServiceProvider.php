@@ -136,6 +136,13 @@ class AppServiceProvider extends ServiceProvider
                 if ($event->request->is('live/*')) {
                     return;
                 }
+                // The same first request takes a contractual worker off the
+                // Active list once their contract has ended.
+                try {
+                    \App\Models\Employee::endFinishedContracts();
+                } catch (\Throwable $e) {
+                    report($e);
+                }
                 try {
                     \App\Models\EmployeeChange::applyDue();
                 } catch (\Throwable $e) {

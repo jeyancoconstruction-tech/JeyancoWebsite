@@ -649,6 +649,9 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                                 'nation'   => $e->nationality,
                                 'blood'    => $e->blood_type,
                                 'shift'    => $e->shift ? $e->shift->name . ' · ' . \Carbon\Carbon::parse($e->shift->starts_at)->format('g:i A') : null,
+                                'hiredAs'  => $e->isContractual()
+                                    ? __('Contractual') . ($e->end_of_contract ? ' · ' . __('until') . ' ' . $e->end_of_contract->format('M j, Y') : '')
+                                    : __('Regular'),
                                 'ice'      => collect([$e->emergency_contact_name, $e->emergency_contact_relation ? '(' . $e->emergency_contact_relation . ')' : null])->filter()->implode(' ') ?: null,
                                 'icePhone' => $e->emergency_contact_phone,
                                 'edit'     => route('employees.edit', $e->id),
@@ -663,9 +666,20 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                             <td><button type="button" class="rmx-open" aria-haspopup="dialog" aria-label="{{ __('Details of :name', ['name' => $e->name]) }}">@include('employees._person', ['e' => $e, 'displayName' => $e->name])</button>
                                 {{-- A change dated ahead: what it will be and from
                                      when, with a way to call it off before then. --}}
-                                @if(($scheduled[$e->id] ?? collect())->isNotEmpty())
+                                @php $onContract = $e->isContractual() && $e->end_of_contract; @endphp
+                                @if($onContract || ($scheduled[$e->id] ?? collect())->isNotEmpty())
                                     <div class="rmx-tags">
-                                        @foreach($scheduled[$e->id] as $change)
+                                        {{-- On contract: the last day of it, after which they
+                                             leave this list by themselves. Amber in its last
+                                             thirty days, so a renewal is not a surprise. --}}
+                                        @if($onContract)
+                                            @php $daysLeft = (int) now()->startOfDay()->diffInDays($e->end_of_contract, false); @endphp
+                                            <span class="rmx-pill {{ $daysLeft <= 30 ? 'rmx-pill-warn' : '' }} rmx-contract"
+                                                  title="{{ __('Contractual. Leaves the Active list after this date; give the contract more months from Edit to extend it.') }}">
+                                                <i class="ti ti-calendar-event" aria-hidden="true"></i>{{ __('Contract until :date', ['date' => $e->end_of_contract->format('M j, Y')]) }}
+                                            </span>
+                                        @endif
+                                        @foreach(($scheduled[$e->id] ?? collect()) as $change)
                                             <span class="rmx-pill rmx-pill-accent rmx-sched" title="{{ __('Takes effect on :date', ['date' => $change->effective_on->format('M d, Y')]) }}">
                                                 <i class="ti ti-calendar-time" aria-hidden="true"></i>{{ __(':to from :date', ['to' => $change->targetName(), 'date' => $change->effective_on->format('M d')]) }}
                                                 <form action="{{ route('employees.changes.cancel', $change) }}" method="POST"
@@ -2232,7 +2246,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             group('In case of emergency',
                 fact('Contact', d.ice) + fact('Phone', d.icePhone)) +
             group('Work',
-                fact('Hired', d.hired) + fact('Shift', d.shift));
+                fact('Hired', d.hired) + fact('Shift', d.shift) + fact('Employment type', d.hiredAs, true));
         $('wmProfile').href = d.profile;
         $('wmEdit').href = d.edit;
         modal.show();

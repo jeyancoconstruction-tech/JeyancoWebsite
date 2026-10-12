@@ -20,14 +20,26 @@ class Employee extends Model
     public const STATUS_DELETED  = 'deleted';    // deleted for good: off every list, history kept — see deleteForGood()
 
     /**
-     * Paid for each day actually worked — what every worker is.
+     * Paid for each day actually worked — what every worker is, however they
+     * were hired.
      *
-     * There used to be a second type, Contractual, settled against a contract
-     * total and left out of payroll. Michael had it removed on 2026-10-03.
-     * The `employment_type`, `contract_rate` and `end_of_contract` columns
-     * stay in the table, but nothing reads or writes them now.
+     * How they were hired is the other thing `employment_type` says, since
+     * 2026-10-12 (Michael's Register employee mockup): Regular, who stays on
+     * the Active list until somebody removes them, or Contractual, hired for
+     * a set number of months and off the Active list the day after
+     * `end_of_contract`. Nothing about pay differs between the two.
+     *
+     * Regular is stored as 'daily' because that is what every worker already
+     * on file is. The older Contractual — settled against a contract total
+     * and left out of payroll — was removed on 2026-10-03 and has not come
+     * back: `contract_rate` is still unread.
      */
-    public const EMPLOYMENT_DAILY = 'daily';
+    public const EMPLOYMENT_DAILY       = 'daily';
+    public const EMPLOYMENT_REGULAR     = self::EMPLOYMENT_DAILY;
+    public const EMPLOYMENT_CONTRACTUAL = 'contractual';
+
+    /** The longest a contract may be written for, in months. */
+    public const CONTRACT_MONTHS_MAX = 36;
 
     /**
      * Columns the controller writes through identityData() rather than the
@@ -53,7 +65,7 @@ class Employee extends Model
 
     protected $fillable = [
         'name', 'rate_per_hour', 'position', 'employment_type', 'project_id', 'labor_type_id', 'shift_id',
-        'site_id', 'kiosk_id', 'status', 'vale', 'fingerprint_id', 'photo', 'archived_at',
+        'site_id', 'kiosk_id', 'status', 'vale', 'fingerprint_id', 'photo', 'archived_at', 'end_of_contract',
         ...self::PROFILE_FIELDS,
         ...self::IDENTITY_FIELDS,
     ];
@@ -66,6 +78,7 @@ class Employee extends Model
         'updated_at'    => 'datetime',
         'birth_date'      => 'date',
         'date_hired'      => 'date',
+        'end_of_contract' => 'date',
         // Stored as JSON so a worker can carry several of each without
         // needing a child table per list.
         'education'       => 'array',
@@ -145,6 +158,142 @@ class Employee extends Model
     }
 
     // ── State helpers ────────────────────────────────────────────────────────
+    // ── A contract ───────────────────────────────────────────────────────────
+
+    public function isContractual(): bool
+    {
+        return $this->employment_type === self::EMPLOYMENT_CONTRACTUAL;
+    }
+
+    /**
+     * The last day of a contract of so many months from the day hired: the
+     * same day of the month, that many months on. A month too short for it
+     * ends on its own last day — the 31st of August and six months is the
+     * 28th of February, not some day in March.
+     */
+    public static function contractEnd(string $hired, int $months): \Carbon\Carbon
+    {
+        return \Carbon\Carbon::parse($hired)->startOfDay()->addMonthsNoOverflow($months);
+    }
+
+    /**
+     * How many months the contract was written for, read back off the two
+     * dates it was made from. Null for a regular worker.
+     */
+    public function contractMonths(): ?int
+    {
+        if (! $this->isContractual() || ! $this->date_hired || ! $this->end_of_contract) {
+            return null;
+        }
+
+        for ($months = 1; $months <= self::CONTRACT_MONTHS_MAX; $months++) {
+            if (self::contractEnd($this->date_hired->toDateString(), $months)->isSameDay($this->end_of_contract)) {
+                return $months;
+            }
+        }
+
+        // Dates somebody set another way: the nearest whole month.
+        return max(1, (int) round($this->date_hired->diffInDays($this->end_of_contract) / 30.44));
+    }
+
+    /** The last day of the contract has passed. */
+    public function contractIsOver(): bool
+    {
+        return $this->isContractual()
+            && $this->end_of_contract !== null
+            && $this->end_of_contract->toDateString() < now()->toDateString();
+    }
+
+    /** The day the finished contracts were last looked for, in this process. */
+    private static ?string $contractsCheckedOn = null;
+
+    protected static function booted(): void
+    {
+        // A contract put on file, or changed, may be over the next time anybody looks.
+        static::saved(function (self $employee) {
+            if ($employee->isContractual()) {
+                self::$contractsCheckedOn = null;
+            }
+        });
+    }
+
+    /**
+     * Take everybody whose contract has ended off the Active list.
+     *
+     * It is the Remove button, pressed by the calendar: the worker goes to
+     * Removed, where their records are kept and they can be restored, and
+     * every day they worked stays on the payroll it was paid in. Nothing
+     * runs on a timer here, so the first request of the day does it (see
+     * AppServiceProvider), and it answers from memory after that.
+     *
+     * Not while they are still clocked in. A night crew's last day runs past
+     * midnight into the day after the contract ends, and removed, they could
+     * not clock out of it. They go on the next look after they have.
+     *
+     * @return int how many left the list
+     */
+    public static function endFinishedContracts(): int
+    {
+        $today = now()->toDateString();
+
+        if (self::$contractsCheckedOn === $today) {
+            return 0;
+        }
+        self::$contractsCheckedOn = $today;
+
+        try {
+            $over = static::query()
+                ->where('status', self::STATUS_ACTIVE)
+                ->where('employment_type', self::EMPLOYMENT_CONTRACTUAL)
+                ->whereNotNull('end_of_contract')
+                ->whereDate('end_of_contract', '<', $today)   // whereDate: SQLite keeps a date with its midnight
+                ->get();
+        } catch (\Throwable $e) {
+            return 0;
+        }
+
+        $left = 0;
+
+        foreach ($over as $employee) {
+            try {
+                $stillIn = Attendance::where('employee_id', $employee->id)
+                    ->whereNotNull('time_in')->whereNull('time_out')
+                    ->whereDate('date', '>=', now()->subDay()->toDateString())
+                    ->exists();
+
+                if ($stillIn) {
+                    // Looked at again on the next request, not tomorrow.
+                    self::$contractsCheckedOn = null;
+                    continue;
+                }
+
+                $ended = $employee->end_of_contract->format('M d, Y');
+                $employee->delete();   // to Removed: records kept, can be restored
+                $left++;
+
+                // Nobody pressed anything: say what happened, and why.
+                app(\App\Support\ActivityRecorder::class)->noteExplicit('Employees', $employee);
+                AuditLog::entry([
+                    'user_name'    => 'System',
+                    'module'       => 'Employees',
+                    'action'       => 'deleted',
+                    'description'  => "The contract of {$employee->name} ended on {$ended}. They were moved to Removed; their records are kept.",
+                    'subject_type' => 'Employee',
+                    'subject_id'   => $employee->id,
+                ]);
+
+                foreach (User::where('is_admin', true)->where('is_active', true)->get() as $admin) {
+                    \App\Notifications\EmployeeAlert::fire($admin, 'contract_ended', 'Contract ended',
+                        "The contract of {$employee->name} ended on {$ended}. They are in Removed now and can be restored from there.");
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return $left;
+    }
+
     public function isPending(): bool  { return $this->status === self::STATUS_PENDING; }
     public function isActive(): bool   { return $this->status === self::STATUS_ACTIVE; }
     public function isArchived(): bool { return $this->status === self::STATUS_ARCHIVED; }
@@ -291,7 +440,7 @@ class Employee extends Model
     public static function withoutMissingColumns(array $attributes): array
     {
         $guarded = array_merge(
-            ['employment_type'],
+            ['employment_type', 'end_of_contract'],
             self::PROFILE_FIELDS,
             self::IDENTITY_FIELDS
         );

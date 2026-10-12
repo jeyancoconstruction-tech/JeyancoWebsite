@@ -28,6 +28,12 @@ class EmployeeAlert extends Notification
             'color' => '#dc2626',
             'link'  => '/employees/register',
         ],
+        // The contract of a contractual worker ran out and they left the Active list.
+        'contract_ended' => [
+            'icon'  => 'fa-calendar-xmark',
+            'color' => '#d97706',
+            'link'  => '/employees/register?tab=removed',
+        ],
     ];
 
     public function __construct(
