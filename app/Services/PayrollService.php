@@ -1613,6 +1613,8 @@ class PayrollService
                     'ot_minutes'          => (int) round($r['ot_hours'] * 60),
                     'ot_rate'             => round($r['ot_rate'], 2),
                     'late_minutes'        => $r['lateMinutes'],
+                    // The minutes the night differential was paid on, for the DTR.
+                    'night_minutes'       => (int) round(($r['night_hours'] ?? 0) * 60),
                     'otPay'               => round($r['otPay'], 2),
                     'holidayPay'          => round($r['holidayPay'], 2),
                     'restDayPay'          => round($r['restDayPay'], 2),

@@ -131,11 +131,13 @@ return [
             'Pick a report across the top, then a period: a preset, or two dates (whole pay weeks are used). Site and name narrow it as you type.',
             'Every figure is the one Payroll Records shows for the same weeks; the totals compare with the period just before.',
             'Click a column to sort it. Export Excel downloads the table; Print / PDF prints the report alone.',
+            'Employees DTR lists everybody by the week or the month, from the scans. Click an employee for the DTR page, with Download PDF and Download Excel.',
         ]],
         'tl' => ['title' => 'Mga Ulat sa Sahod', 'lines' => [
             'Pumili ng ulat sa itaas, saka ng panahon: isang preset, o dalawang petsa (buong pay week ang ginagamit). Ang site at pangalan ang nagpapaliit dito habang nagta-type.',
             'Ang bawat halaga ay kapareho ng ipinapakita ng Payroll Records sa parehong mga linggo; ikinukumpara ang kabuuan sa panahong nauna.',
             'I-click ang column para ayusin. Ang Export Excel ang nagda-download ng talaan; ang Print / PDF ang nagpi-print ng ulat lamang.',
+            'Nakalista sa Employees DTR ang lahat kada linggo o buwan, mula sa mga scan. I-click ang empleyado para sa DTR page, na may Download PDF at Download Excel.',
         ]],
     ],
 

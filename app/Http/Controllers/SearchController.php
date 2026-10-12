@@ -542,6 +542,8 @@ class SearchController extends Controller
                 'remittance remittances tracker sss philhealth pagibig pag-ibig bir tax contribution government monthly receipt remit'),
             $page('Payroll', 'Payroll Reports', 'Payroll Records · summary reports and Excel', route('payroll-reports.index'), 'file-bar-chart',
                 'payroll reports summary export excel totals labor cost', Modules::REPORTS),
+            $page('Payroll', 'Employees DTR', 'Payroll Reports · daily time record by week or month, PDF and Excel', $report('dtr'), 'file-bar-chart',
+                'report dtr daily time record attendance scans time in out late undertime overtime absences missing scan night differential weekly monthly pdf', Modules::REPORTS),
             $page('Payroll', 'Payroll by Employee', 'Payroll Reports', $report('employee'), 'file-bar-chart',
                 'report payroll per employee worker totals', Modules::REPORTS),
             $page('Payroll', 'Labor Cost by Site', 'Payroll Reports', $report('site'), 'file-bar-chart',

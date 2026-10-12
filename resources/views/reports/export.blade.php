@@ -6,7 +6,7 @@
 <body>
 <table border="1" cellspacing="0" cellpadding="4">
     <tr><td colspan="{{ count($table['cols']) }}"><b>{{ $reports[$report] }}</b></td></tr>
-    <tr><td colspan="{{ count($table['cols']) }}">{{ $fromC->format('M d, Y') }} – {{ $toC->format('M d, Y') }} · {{ $weeks }} {{ $weeks === 1 ? 'pay week' : 'pay weeks' }} · Generated {{ now('Asia/Manila')->format('M d, Y g:i A') }}</td></tr>
+    <tr><td colspan="{{ count($table['cols']) }}">{{ $fromC->format('M d, Y') }} – {{ $toC->format('M d, Y') }} · @if($weeks){{ $weeks }} {{ $weeks === 1 ? 'pay week' : 'pay weeks' }} · @endif Generated {{ now('Asia/Manila')->format('M d, Y g:i A') }}</td></tr>
     <tr>
         @foreach($table['cols'] as $col)
             <th style="background:#e8eef7">{{ $col[1] }}</th>

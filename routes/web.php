@@ -311,6 +311,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('module:payroll-reports')->group(function () {
         Route::get('/payroll-reports', [\App\Http\Controllers\PayrollReportController::class, 'index'])->name('payroll-reports.index');
         Route::get('/payroll-reports/export', [\App\Http\Controllers\PayrollReportController::class, 'export'])->name('payroll-reports.export');
+        // Employees DTR: one worker's page for the pop-up, and its downloads.
+        Route::get('/payroll-reports/dtr/{employee}', [\App\Http\Controllers\PayrollReportController::class, 'dtr'])->whereNumber('employee')->name('payroll-reports.dtr');
+        Route::get('/payroll-reports/dtr/{employee}/pdf', [\App\Http\Controllers\PayrollReportController::class, 'dtrPdf'])->whereNumber('employee')->name('payroll-reports.dtr.pdf');
+        Route::get('/payroll-reports/dtr/{employee}/excel', [\App\Http\Controllers\PayrollReportController::class, 'dtrExcel'])->whereNumber('employee')->name('payroll-reports.dtr.excel');
     });
 
     // ── SYSTEM · Device Monitoring (read-only over the kiosk's own data) ───

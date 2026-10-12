@@ -6,11 +6,16 @@ use App\Models\Employee;
 use App\Models\Loan;
 use App\Models\PayrollRate;
 use App\Models\Site;
+use App\Models\Shift;
 use App\Models\SystemSetting;
+use App\Services\DtrService;
 use App\Services\PayrollService;
 use App\Support\WorkSchedule;
 use Carbon\Carbon;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Payroll Reports, under Payroll Records (laid out after Michael's
@@ -28,7 +33,7 @@ use Illuminate\Http\Request;
 class PayrollReportController extends Controller
 {
     public const REPORTS = [
-        'summary'    => 'Payroll Summary',
+        'dtr'        => 'Employees DTR',
         'employee'   => 'Payroll by Employee',
         'site'       => 'Labor Cost by Site',
         'overtime'   => 'Overtime',
@@ -81,7 +86,14 @@ class PayrollReportController extends Controller
 
     private function build(Request $request, PayrollService $payroll): array
     {
-        $report = array_key_exists((string) $request->query('report'), self::REPORTS) ? $request->query('report') : 'summary';
+        // Employees DTR took Payroll Summary's place (Michael, 2026-10-12), so
+        // it is what opens first, and what an old link to the summary opens.
+        $report = array_key_exists((string) $request->query('report'), self::REPORTS) ? $request->query('report') : 'dtr';
+
+        if ($report === 'dtr') {
+            return $this->buildDtr($request);
+        }
+
         [$preset, $from, $to] = $this->period($request);
         $weeks  = max(1, (int) round((abs($from->diffInDays($to)) + 1) / 7));
 
@@ -121,12 +133,11 @@ class PayrollReportController extends Controller
         $rates   = $rateSet ? $rateSet->toRates() : PayrollRate::fallbackRates();
 
         [$chart, $table] = match ($report) {
-            'employee'   => $this->byEmployee($rows, $who),
             'site'       => $this->bySite($rows, $staff),
             'overtime'   => $this->overtime($rows, $who, $rates),
             'deductions' => $this->deductions($rows, $who),
             'advances'   => $this->advances($to, $siteId, $q, $staff),
-            default      => $this->summary($rows, $from, $to),
+            default      => $this->byEmployee($rows, $who),
         };
 
         return [
@@ -308,82 +319,268 @@ class PayrollReportController extends Controller
         ];
     }
 
-    // ── The reports ──────────────────────────────────────────────────────────
+    // ── Employees DTR ────────────────────────────────────────────────────────
 
-    /** One row per pay week: what each period came to. */
-    private function summary(array $rows, Carbon $from, Carbon $to): array
+    /** A custom range is read whole; a year is as far as one page of days goes. */
+    private const DTR_DAYS_MAX = 366;
+
+    /**
+     * The Employees DTR tab: who was on site on which days of a week, a month
+     * or a range, off DtrService — which reads the scans and payroll's own
+     * hours rather than counting any of its own.
+     */
+    private function buildDtr(Request $request): array
     {
-        $today = Carbon::now('Asia/Manila')->startOfDay();
-        $weeks = [];
-        foreach ($rows as $r) {
-            $w = &$weeks[$r['start']];
-            $w ??= ['start' => $r['start'], 'end' => $r['end'], 'ids' => [], 'minutes' => 0, 'gross' => 0, 'ded' => 0, 'net' => 0];
-            if ($r['minutes'] > 0 || $r['gross'] > 0) {
-                $w['ids'][$r['id']] = true;
-            }
-            $w['minutes'] += $r['minutes'];
-            $w['gross']   += $r['gross'];
-            $w['ded']     += $r['ded'];
-            $w['net']     += $r['net'];
-            unset($w);
-        }
-        ksort($weeks);
-        if ($weeks) {
-            $first = Carbon::parse(array_key_first($weeks), 'Asia/Manila');
-            $last  = Carbon::parse(array_key_last($weeks), 'Asia/Manila');
-            for ($d = $first->copy(); $d->lte($last); $d->addWeek()) {
-                $weeks[$d->toDateString()] ??= ['start' => $d->toDateString(), 'end' => $d->copy()->addDays(6)->toDateString(),
-                                               'ids' => [], 'minutes' => 0, 'gross' => 0, 'ded' => 0, 'net' => 0];
-            }
-            ksort($weeks);
-        }
+        $period = $this->dtrPeriod($request);
+        [$from, $to] = [$period['from'], $period['to']];
 
-        $list = [];
-        foreach ($weeks as $w) {
-            $s = Carbon::parse($w['start'], 'Asia/Manila');
-            $e = Carbon::parse($w['end'], 'Asia/Manila');
-            $open = $e->gte($today);
+        $siteId = $request->filled('site') ? (int) $request->query('site') : null;
+        $q      = trim((string) $request->query('q', ''));
+
+        $all   = app(DtrService::class)->range($from->toDateString(), $to->toDateString());
+        $staff = Employee::withTrashed()->with(['site:id,name', 'shift:id,name', 'laborType:id,name'])
+            ->whereIn('id', array_keys($all))->orderBy('name')
+            ->get(['id', 'name', 'position', 'site_id', 'shift_id', 'labor_type_id']);
+
+        $needle = mb_strtolower(ltrim($q, '#'));
+        $list   = [];
+        $sum    = array_fill_keys(['days', 'worked', 'regular', 'ot', 'late', 'lates', 'under', 'night', 'absent', 'missing'], 0);
+        $with   = ['scans' => 0, 'ot' => 0, 'absent' => 0, 'missing' => 0];
+
+        foreach ($staff as $e) {
+            if ($siteId !== null && (int) $e->site_id !== $siteId) {
+                continue;
+            }
+            if ($q !== '' && ! str_contains(mb_strtolower($e->name), $needle)
+                && ltrim((string) $e->id, '0') !== ltrim($needle, '0')) {
+                continue;
+            }
+
+            $t    = $all[$e->id]['totals'];
+            $who  = $this->who($e->id, $e->name, $e->position, $e);
+            $site = $e->site?->name ?? 'Unassigned';
+
             $list[] = [
-                'week'    => ['v' => $w['start'], 't' => $s->isoWeekYear . '-W' . str_pad((string) $s->isoWeek, 2, '0', STR_PAD_LEFT)],
-                'period'  => ['v' => $w['start'], 't' => $s->format('M j') . ' – ' . $e->format('M j')],
-                'workers' => count($w['ids']),
-                'minutes' => $w['minutes'],
-                'gross'   => round($w['gross'], 2),
-                'ded'     => round($w['ded'], 2),
-                'net'     => round($w['net'], 2),
-                'status'  => $open ? ['v' => 0, 't' => 'Open', 'c' => 'open'] : ['v' => 1, 't' => 'Closed', 'c' => 'paid'],
-                '_week'   => 'W' . $s->isoWeek,
-                '_open'   => $open,
+                '_id'      => $e->id,
+                'employee' => ['sub' => $who['code']] + $who,
+                'place'    => ['v' => $site, 't' => implode(' · ', array_filter([$site, $e->shift?->name])), 'top' => $site, 'sub' => $e->shift?->name ?? '—'],
+                'days'     => $t['days'],
+                'regular'  => $t['regular'],
+                'ot'       => $t['ot'],
+                'late'     => $t['late'],
+                'under'    => $t['under'],
+                'night'    => $t['night'],
+                'absent'   => $t['absent'],
+                'missing'  => $t['missing'],
             ];
-        }
 
-        $shown = array_slice($list, -12);
-        $chart = [
-            'kind'  => 'cols',
-            'title' => 'Net pay per payroll period',
-            'sub'   => count($shown) < count($list) ? 'Last 12 of ' . count($list) . ' weeks' : count($list) . ' ' . (count($list) === 1 ? 'week' : 'weeks'),
-            'max'   => max(1, ...array_map(fn ($r) => $r['net'], $shown ?: [['net' => 0]])),
-            'cols'  => array_map(fn ($r) => ['label' => $r['_week'], 'v' => $r['net'], 'cur' => $r['_open'], 'tip' => $r['week']['t'] . ' · net ₱' . number_format($r['net'], 2)], $shown),
-        ];
-
-        $ids = [];
-        foreach ($rows as $r) {
-            if ($r['minutes'] > 0 || $r['gross'] > 0) {
-                $ids[$r['id']] = true;
+            foreach ($sum as $k => $v) {
+                $sum[$k] += $t[$k];
             }
+            $with['scans']   += $t['days'] > 0 || $t['missing'] > 0 ? 1 : 0;
+            $with['ot']      += $t['ot'] > 0 ? 1 : 0;
+            $with['absent']  += $t['absent'] > 0 ? 1 : 0;
+            $with['missing'] += $t['missing'] > 0 ? 1 : 0;
         }
 
-        return [$chart, [
-            'title' => 'Payroll periods',
-            'cols'  => [
-                ['week', 'Week', 'code', true], ['period', 'Period', 'text', true], ['workers', 'Workers', 'int'],
-                ['minutes', 'Hours', 'dur'], ['gross', 'Gross', 'money'], ['ded', 'Deductions', 'minus'],
-                ['net', 'Net', 'net'], ['status', 'Status', 'status', true],
+        $people = fn (int $n) => $n . ' ' . ($n === 1 ? 'employee' : 'employees');
+        $tone   = fn (int $n, string $cls) => $n > 0 ? $cls : '';
+
+        return [
+            'report'  => 'dtr',
+            'reports' => self::REPORTS,
+            'presets' => self::PRESETS,
+            'preset'  => '',
+            'from'    => $from->toDateString(),
+            'to'      => $to->toDateString(),
+            'fromC'   => $from,
+            'toC'     => $to,
+            'weeks'   => null,
+            'kpis'    => [
+                ['Employees', (string) count($list), $with['scans'] . ' with scans', null, ''],
+                ['Days worked', number_format($sum['days']), $people($with['scans']), null, ''],
+                ['Regular hours', WorkSchedule::duration($sum['regular']), WorkSchedule::duration($sum['worked']) . ' in all', null, ''],
+                ['Overtime', WorkSchedule::duration($sum['ot']), $people($with['ot']), null, $tone($sum['ot'], 'ot')],
+                ['Late', WorkSchedule::duration($sum['late']), $sum['lates'] . ' ' . ($sum['lates'] === 1 ? 'late arrival' : 'late arrivals'), null, $tone($sum['late'], 'late')],
+                ['Absences', number_format($sum['absent']), $people($with['absent']), null, $tone($sum['absent'], 'bad')],
+                ['Missing scans', number_format($sum['missing']), $people($with['missing']), null, $tone($sum['missing'], 'bad')],
             ],
-            'rows'  => array_reverse($list),
-            'foot'  => ['Total', '', count($ids), $this->sumCol($list, 'minutes'), $this->sumCol($list, 'gross'), $this->sumCol($list, 'ded'), $this->sumCol($list, 'net'), ''],
-        ]];
+            'chart'   => null,
+            'table'   => [
+                'title' => 'Employees DTR',
+                // [key, heading, kind, left-aligned, swatch, tone when not zero]
+                'cols'  => [
+                    ['employee', 'Employee', 'emp', true], ['place', 'Site / Shift', 'pair', true], ['days', 'Days', 'int0'],
+                    ['regular', 'Regular hrs', 'dur0'], ['ot', 'OT', 'dur0', false, null, 'ot'], ['late', 'Late', 'dur0', false, null, 'late'],
+                    ['under', 'Undertime', 'dur0'], ['night', 'Night diff', 'dur0'],
+                    ['absent', 'Absences', 'int0', false, null, 'bad'], ['missing', 'Missing scans', 'int0', false, null, 'bad'],
+                ],
+                'rows'  => $list,
+                'foot'  => ['Total · ' . count($list), '', $sum['days'], $sum['regular'], $sum['ot'], $sum['late'], $sum['under'], $sum['night'], $sum['absent'], $sum['missing']],
+            ],
+            'rows'    => $list,
+            'sites'   => Site::orderBy('name')->get(['id', 'name']),
+            'siteId'  => $siteId,
+            'q'       => $q,
+            'dtr'     => $period,
+        ];
     }
+
+    /**
+     * The DTR's period: the week or the month holding ?at, or the dates asked
+     * for as they were given — a time record is read by the day, so nothing
+     * is widened to whole pay weeks here. Never a period that has not begun.
+     *
+     * @return array{span: string, from: Carbon, to: Carbon, label: string, prev: array, next: ?array, week: array, month: array}
+     */
+    private function dtrPeriod(Request $request): array
+    {
+        $today  = Carbon::now('Asia/Manila')->startOfDay();
+        $starts = (int) (SystemSetting::current()->week_starts_on ?? Carbon::MONDAY);
+        $weekOf = fn (Carbon $d) => $d->copy()->startOfDay()->subDays(($d->dayOfWeek - $starts + 7) % 7);
+        $date   = fn (string $key) => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $request->query($key))
+            ? rescue(fn () => Carbon::createFromFormat('Y-m-d', $request->query($key), 'Asia/Manila')->startOfDay(), null, false)
+            : null;
+
+        $span = (string) $request->query('span');
+        [$a, $b] = [$date('from'), $date('to')];
+
+        if (! in_array($span, ['week', 'month'], true)) {
+            $span = $a && $b ? 'custom' : 'week';
+        }
+
+        if ($span === 'custom') {
+            if ($b->lt($a)) {
+                [$a, $b] = [$b, $a];
+            }
+            if ($a->gt($today)) {
+                [$a, $b] = [$today->copy(), $today->copy()];
+            }
+            $from = $a;
+            $to   = $b->min($a->copy()->addDays(self::DTR_DAYS_MAX - 1));
+            $days = (int) $from->diffInDays($to) + 1;
+
+            $step = fn (int $n) => ['from' => $from->copy()->addDays($n * $days)->toDateString(), 'to' => $to->copy()->addDays($n * $days)->toDateString()];
+            $prev = $step(-1);
+            $next = $from->copy()->addDays($days)->gt($today) ? null : $step(1);
+        } else {
+            $at = $date('at') ?? $today->copy();
+            if ($at->gt($today)) {
+                $at = $today->copy();
+            }
+
+            if ($span === 'month') {
+                $from = $at->copy()->startOfMonth();
+                $to   = $at->copy()->endOfMonth()->startOfDay();
+                $back = $from->copy()->subMonthNoOverflow();
+                $on   = $from->copy()->addMonthNoOverflow();
+            } else {
+                $from = $weekOf($at);
+                $to   = $from->copy()->addDays(6);
+                $back = $from->copy()->subWeek();
+                $on   = $from->copy()->addWeek();
+            }
+
+            $prev = ['span' => $span, 'at' => $back->toDateString()];
+            $next = $on->gt($today) ? null : ['span' => $span, 'at' => $on->toDateString()];
+        }
+
+        // Weekly and Monthly keep to the days on screen: today's week or
+        // month when it is among them, else the one the period opens in.
+        $anchor = ($today->betweenIncluded($from, $to) ? $today : $from)->toDateString();
+
+        return [
+            'span'  => $span,
+            'from'  => $from,
+            'to'    => $to,
+            'label' => DtrService::label($from, $to),
+            'prev'  => $prev,
+            'next'  => $next,
+            'week'  => ['span' => 'week', 'at' => $anchor],
+            'month' => ['span' => 'month', 'at' => $anchor],
+        ];
+    }
+
+    /** One worker's DTR page, for the pop-up. */
+    public function dtr(Request $request, int $employee)
+    {
+        return view('reports._dtr_sheet', $this->sheet($request, $employee));
+    }
+
+    /**
+     * The same page as a PDF file. Drawn by dompdf from the sheet the pop-up
+     * shows, so what is downloaded is what was on screen.
+     */
+    public function dtrPdf(Request $request, int $employee)
+    {
+        $data = $this->sheet($request, $employee);
+
+        $cache = storage_path('framework/cache/dompdf');
+        if (! is_dir($cache)) {
+            @mkdir($cache, 0775, true);
+        }
+
+        $options = new Options();
+        $options->setDefaultFont('DejaVu Sans');
+        $options->setIsRemoteEnabled(false);
+        if (is_dir($cache) && is_writable($cache)) {
+            $options->setFontCache($cache);
+            $options->setTempDir($cache);
+        }
+
+        $pdf = new Dompdf($options);
+        $pdf->loadHtml(view('reports.dtr-pdf', $data)->render(), 'UTF-8');
+        $pdf->setPaper('letter', 'portrait');
+        $pdf->render();
+
+        return response($pdf->output(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $data['file'] . '.pdf"',
+        ]);
+    }
+
+    /** And for Excel: an HTML table under an .xls name, as export() writes. */
+    public function dtrExcel(Request $request, int $employee)
+    {
+        $data = $this->sheet($request, $employee);
+
+        return response(view('reports.dtr-export', $data)->render(), 200, [
+            'Content-Type'        => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $data['file'] . '.xls"',
+        ]);
+    }
+
+    /** What a worker's DTR page says: who, where, under which hours, and each day. */
+    private function sheet(Request $request, int $employee): array
+    {
+        $period = $this->dtrPeriod($request);
+        [$from, $to] = [$period['from'], $period['to']];
+
+        $mine = app(DtrService::class)->range($from->toDateString(), $to->toDateString())[$employee] ?? null;
+        abort_if($mine === null, 404);
+
+        $e     = Employee::withTrashed()->with(['site:id,name', 'shift', 'laborType:id,name'])->findOrFail($employee);
+        $shift = $e->shift ?? Shift::find(Shift::defaultForNewHire());
+        $hours = DtrService::hoursOf($shift, $to->toDateString());
+
+        return [
+            'e'         => $e,
+            'code'      => '#' . str_pad((string) $e->id, 4, '0', STR_PAD_LEFT),
+            'days'      => $mine['days'],
+            'totals'    => $mine['totals'],
+            'period'    => $period['label'],
+            'from'      => $from->toDateString(),
+            'to'        => $to->toDateString(),
+            'labor'     => $e->laborType?->name ?: ($e->position ?: '—'),
+            'site'      => $e->site?->name ?? 'Unassigned',
+            'shift'     => implode(' · ', array_filter([$shift?->name, $hours])) ?: '—',
+            'company'   => SystemSetting::current()->company_name ?: 'Jeyanco Construction',
+            'generated' => Carbon::now('Asia/Manila'),
+            'file'      => 'DTR_' . (Str::slug($e->name) ?: 'employee-' . $e->id) . '_' . $from->toDateString() . '_to_' . $to->toDateString(),
+        ];
+    }
+
+    // ── The reports ──────────────────────────────────────────────────────────
 
     /** One row per worker over the period. */
     private function byEmployee(array $rows, callable $who): array
@@ -620,6 +817,8 @@ class PayrollReportController extends Controller
 
         return match ($type) {
             'dur'            => WorkSchedule::duration((int) round($n)),
+            'dur0'           => $n > 0 ? WorkSchedule::duration((int) round($n)) : '—',
+            'int0'           => $n > 0 ? number_format($n) : '—',
             'int'            => number_format($n),
             'num'            => rtrim(rtrim(number_format($n, 2), '0'), '.'),
             'pct'            => number_format($n, 1) . '%',

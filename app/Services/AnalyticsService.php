@@ -369,8 +369,10 @@ class AnalyticsService
      * Was this worker due on site that day? Not before they were taken on,
      * not after they left or were removed, not on approved leave — and not on a shift that has
      * not started yet, or the night crew would read as absent every morning.
+     *
+     * Public so the Employees DTR counts an absence by this rule and no other.
      */
-    private function due(Employee $e, string $date, ?array $schedule, Carbon $now, array $leave): bool
+    public static function due(Employee $e, string $date, ?array $schedule, Carbon $now, array $leave): bool
     {
         if ($e->created_at && $e->created_at->toDateString() > $date) {
             return false;
@@ -398,7 +400,7 @@ class AnalyticsService
     }
 
     /** Approved leave, as employee => [date => true], clipped to the range. */
-    private function leaveDays(string $from, string $to): array
+    public static function leaveDays(string $from, string $to): array
     {
         $days = [];
 

@@ -96,14 +96,16 @@ class PayrollReportsTest extends TestCase
         $mine = collect($paid['employees'])->firstWhere('employee_id', $this->worker->id)['totals'];
         $this->assertGreaterThan(0, $mine['net']);
 
-        $summary = $this->report(['report' => 'summary', 'from' => '2026-09-15', 'to' => '2026-09-17']);
-        $rows    = $summary->viewData('rows');
-        $this->assertCount(1, $rows, 'one pay week');
-        $this->assertSame('2026-09-14', $summary->viewData('from'), 'whole pay weeks');
-        $this->assertSame('2026-09-20', $summary->viewData('to'));
+        // Asked for by the day, answered by the whole pay week. (Payroll
+        // Summary, which this used to be read off, made way for Employees
+        // DTR on 2026-10-12 — EmployeesDtrTest has that tab.)
+        $widened = $this->report(['report' => 'employee', 'from' => '2026-09-15', 'to' => '2026-09-17']);
+        $rows    = $widened->viewData('rows');
+        $this->assertCount(1, $rows);
+        $this->assertSame('2026-09-14', $widened->viewData('from'), 'whole pay weeks');
+        $this->assertSame('2026-09-20', $widened->viewData('to'));
         $this->assertEqualsWithDelta($mine['gross'], $rows[0]['gross'], 0.001);
         $this->assertEqualsWithDelta($mine['net'], $rows[0]['net'], 0.001);
-        $this->assertSame('Closed', $rows[0]['status']['t']);
 
         $emp = $this->report(['report' => 'employee', 'from' => '2026-09-14', 'to' => '2026-09-20'])->viewData('rows');
         $this->assertSame('Aldrin Santos Sapugay', $emp[0]['employee']['t']);
@@ -121,18 +123,22 @@ class PayrollReportsTest extends TestCase
 
     public function test_the_periods_are_whole_pay_weeks_and_never_ahead_of_today(): void
     {
+        // The payroll reports', that is: the DTR tab keeps its own period, by
+        // the day (EmployeesDtrTest).
+        $pay = ['report' => 'employee'];
+
         // This week: Monday 21 to Sunday 27 September.
-        $week = $this->report(['preset' => 'week']);
+        $week = $this->report($pay + ['preset' => 'week']);
         $this->assertSame(['2026-09-21', '2026-09-27'], [$week->viewData('from'), $week->viewData('to')]);
 
         // This month (the default): the pay weeks that end in September.
-        $month = $this->report([]);
+        $month = $this->report($pay);
         $this->assertSame('month', $month->viewData('preset'));
         $this->assertSame(['2026-08-31', '2026-09-27'], [$month->viewData('from'), $month->viewData('to')]);
         $this->assertSame(4, $month->viewData('weeks'));
 
         // A range reaching past this week stops at its end.
-        $ahead = $this->report(['from' => '2026-09-20', 'to' => '2026-10-20']);
+        $ahead = $this->report($pay + ['from' => '2026-09-20', 'to' => '2026-10-20']);
         $this->assertSame(['2026-09-14', '2026-09-27'], [$ahead->viewData('from'), $ahead->viewData('to')]);
     }
 

@@ -451,7 +451,24 @@
     html[data-bs-theme] .rp .rp-sel select { width: 100% !important; }
     .rp-hb { grid-template-columns: minmax(0, 96px) minmax(0, 1fr) auto !important; }
     .rp-hb .v { min-width: 64px !important; }
-    .rp-col .cv { font-size: 10px !important; }
+}
+
+/* Employees DTR. Seven totals leave one over in rows of three or two, which
+   takes the row to itself. The period — Weekly or Monthly, back, which one,
+   on — is a row of its own with the label in the middle, and a worker's page
+   scrolls sideways inside the pop-up rather than squeezing eleven columns. */
+@media (max-width: 1024px) {
+    .rp-kpis.is-7 .rp-kpi:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 767.98px) {
+    .rp-period { flex: 1 1 100%; }
+    .rp-period .rp-when { flex: 1; min-width: 0 !important; }
+    .rp-t-h .rp-t-hint { display: none; }
+    #dtrModal .dtr-dialog { max-width: calc(100% - 16px) !important; margin: 8px auto !important; }
+    html[data-bs-theme] #dtrModal .dtr-body { padding: 12px !important; overflow-x: auto; }
+    #dtrModal .dtr-sheet { min-width: 780px; }
+    .dtr-acts { width: 100%; }
+    .dtr-acts .rp-btn { flex: 1; justify-content: center; }
 }
 
 
