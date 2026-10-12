@@ -379,6 +379,14 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
 .rm-pane.selecting .rmx-table tbody tr { cursor: pointer; user-select: none; }
 .rm-pane.selecting .rmx-table tbody tr:has(.rmx-check:checked) { background: var(--rmx-accent-bg); }
 
+/* The tags under a worker's name — overtime allowed, a contract's end, a
+   change dated ahead — are a note beside the name, not a second line of it:
+   a size down from the pills in the columns (Michael, 2026-10-12, of
+   "Overtime allowed": "liitan mo lang ng kaunti"). */
+.rmx-pill.rmx-ot, .rmx-pill.rmx-contract, .rmx-pill.rmx-sched { font-size: 10px; line-height: 1.5; padding: 0 7px; gap: 3px; }
+.rmx-pill.rmx-ot i, .rmx-pill.rmx-contract i, .rmx-pill.rmx-sched i { font-size: 10.5px; }
+.rmx-tags:has(.rmx-ot, .rmx-contract, .rmx-sched) { margin-top: 3px; }
+
 /* A change dated ahead, under the worker's name until its day comes. */
 .rmx-sched { gap: 5px; }
 .rmx-sched form { display: inline-flex; margin: 0; }
