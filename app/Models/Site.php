@@ -10,12 +10,21 @@ class Site extends Model
     public const RADIUS_MIN = 50;
     public const RADIUS_MAX = 500;
 
-    protected $fillable = ['name', 'location', 'latitude', 'longitude', 'geofence_radius'];
+    /**
+     * How a project's expected length may be given, and the most of each:
+     * ten years, in whichever unit. The length is kept as it was typed —
+     * "6 months", not 182 days.
+     */
+    public const DURATION_UNITS = ['days' => 3650, 'weeks' => 520, 'months' => 120];
+
+    protected $fillable = ['name', 'location', 'latitude', 'longitude', 'geofence_radius', 'budget', 'duration', 'duration_unit'];
 
     protected $casts = [
         'latitude'        => 'float',
         'longitude'       => 'float',
         'geofence_radius' => 'integer',
+        'budget'          => 'decimal:2',
+        'duration'        => 'integer',
     ];
 
     public function employees()
@@ -26,6 +35,16 @@ class Site extends Model
     public function kiosks()
     {
         return $this->hasMany(Kiosk::class);
+    }
+
+    /** The expected length as words — "6 months", "1 week" — or null. */
+    public function lengthLabel(): ?string
+    {
+        if (! $this->duration || ! isset(self::DURATION_UNITS[$this->duration_unit])) {
+            return null;
+        }
+
+        return $this->duration . ' ' . ($this->duration === 1 ? rtrim($this->duration_unit, 's') : $this->duration_unit);
     }
 
     /** Whether the site has a pin the GPS check can measure against. */

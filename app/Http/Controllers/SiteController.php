@@ -14,6 +14,7 @@ class SiteController extends Controller
             'radiusDefault' => (int) config('kiosk.geofence_radius'),
             'radiusMin'     => Site::RADIUS_MIN,
             'radiusMax'     => Site::RADIUS_MAX,
+            'units'         => array_keys(Site::DURATION_UNITS),
         ]);
     }
 
@@ -44,6 +45,9 @@ class SiteController extends Controller
             'latitude'        => $validated['latitude']        ?? null,
             'longitude'       => $validated['longitude']       ?? null,
             'geofence_radius' => $validated['geofence_radius'] ?? null,
+            'budget'          => $validated['budget']          ?? null,
+            'duration'        => $validated['duration']        ?? null,
+            'duration_unit'   => ($validated['duration'] ?? null) ? $validated['duration_unit'] : null,
         ]);
 
         return response()->json(['success' => true, 'site' => $this->present($site, 0)]);
@@ -65,10 +69,15 @@ class SiteController extends Controller
         ], $this->messages());
 
         $site->name = trim($request->input('name'));
-        foreach (['location', 'latitude', 'longitude', 'geofence_radius'] as $field) {
+        foreach (['location', 'latitude', 'longitude', 'geofence_radius', 'budget', 'duration', 'duration_unit'] as $field) {
             if ($request->exists($field)) {
                 $site->{$field} = $request->input($field);
             }
+        }
+        // A length cleared is cleared whole: no unit left behind with no number.
+        if (! $site->duration) {
+            $site->duration = null;
+            $site->duration_unit = null;
         }
         $site->save();
 
@@ -93,22 +102,43 @@ class SiteController extends Controller
         ]);
     }
 
-    /** What store and update share. A pin is a pair or nothing. */
+    /**
+     * What store and update share. A pin is a pair or nothing; so is a
+     * length, a number with its unit. The budget and the length are both
+     * optional, and a length runs to ten years at most.
+     */
     private function rules(): array
     {
+        $units = array_keys(Site::DURATION_UNITS);
+
         return [
             'latitude'        => 'nullable|numeric|between:-90,90|required_with:longitude',
             'longitude'       => 'nullable|numeric|between:-180,180|required_with:latitude',
             'geofence_radius' => 'nullable|integer|between:' . Site::RADIUS_MIN . ',' . Site::RADIUS_MAX,
+            'budget'          => 'nullable|numeric|min:0|max:999999999999.99',
+            'duration'        => ['nullable', 'integer', 'min:1', function ($attribute, $value, $fail) {
+                $max = Site::DURATION_UNITS[request()->input('duration_unit')] ?? null;
+                if ($max !== null && (int) $value > $max) {
+                    $fail('The expected length can be at most 10 years.');
+                }
+            }],
+            'duration_unit'   => 'nullable|required_with:duration|in:' . implode(',', $units),
         ];
     }
 
     private function messages(): array
     {
         return [
-            'name.required'           => 'Please enter the project name.',
-            'name.unique'             => 'A site with this project name already exists.',
-            'geofence_radius.between' => 'The on-site radius has to be between ' . Site::RADIUS_MIN . ' and ' . Site::RADIUS_MAX . ' metres.',
+            'name.required'               => 'Please enter the project name.',
+            'name.unique'                 => 'A site with this project name already exists.',
+            'geofence_radius.between'     => 'The on-site radius has to be between ' . Site::RADIUS_MIN . ' and ' . Site::RADIUS_MAX . ' metres.',
+            'budget.numeric'              => 'The budget has to be an amount in pesos.',
+            'budget.min'                  => 'The budget cannot be below zero.',
+            'budget.max'                  => 'That budget is too large to keep.',
+            'duration.integer'            => 'The expected length has to be a whole number.',
+            'duration.min'                => 'The expected length has to be at least 1.',
+            'duration_unit.required_with' => 'Pick days, weeks or months for the expected length.',
+            'duration_unit.in'            => 'Pick days, weeks or months for the expected length.',
         ];
     }
 
@@ -126,6 +156,10 @@ class SiteController extends Controller
             'latitude'        => $site->latitude,
             'longitude'       => $site->longitude,
             'geofence_radius' => $site->geofenceRadius(),
+            'budget'          => $site->budget !== null ? (float) $site->budget : null,
+            'duration'        => $site->duration,
+            'duration_unit'   => $site->duration ? $site->duration_unit : null,
+            'length'          => $site->lengthLabel(),
             'employees_count' => $employees,
         ];
     }

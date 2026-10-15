@@ -91,6 +91,20 @@ html[data-bs-theme] .main-content .sm-page > .page-head { margin-bottom: -6px !i
 .sm-radius input[type=range] { width: 100%; accent-color: var(--brand); }
 .sm-radius-ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
+/* Budget and expected length, side by side; one under the other when the
+   form is narrow. */
+.sm-proj { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.sm-peso { position: relative; }
+.sm-peso > span { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted); pointer-events: none; font-size: .86rem; }
+.sm-peso .sm-input { padding-left: 28px; font-variant-numeric: tabular-nums; }
+.sm-dur { display: flex; gap: 6px; }
+.sm-dur input { flex: 1 1 0; min-width: 0; padding: 0 10px 0 13px; font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
+/* No spinner: it took the room the number needs, and nobody clicks to 18. */
+.sm-dur input::-webkit-inner-spin-button, .sm-dur input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.sm-dur select { flex: 0 0 auto; width: 96px; padding: 0 8px 0 11px; cursor: pointer; }
+/* The open list, drawn by the browser, in the theme's colours. */
+.sm-page select.sm-input option { background: var(--surface); color: var(--text-primary); }
+
 .sm-err { font-size: .82rem; color: var(--danger); }
 .sm-actions { display: flex; gap: 10px; }
 .sm-btn {
@@ -160,6 +174,11 @@ html[data-bs-theme="dark"] .sm-map .leaflet-control-attribution { background: co
 .sm-saddr { font-size: .82rem; color: var(--text-secondary); overflow-wrap: anywhere; }
 .sm-smeta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; font-size: 12px; color: var(--text-muted); align-items: center; }
 .sm-nogps { color: var(--warning); }
+/* The project's budget and length, on its card. */
+.sm-sproj { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; }
+.sm-sproj span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-primary); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; font-variant-numeric: tabular-nums; }
+.sm-sproj span i { font-size: 11px; color: var(--brand); }
+.sm-sproj .is-none { font-weight: 500; color: var(--text-muted); }
 .sm-emps { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sm-emps.some { background: var(--success-soft); color: var(--success); }
 .sm-emps.zero { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
@@ -244,6 +263,31 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
                         </div>
                         <input id="smRadius" type="range" min="{{ $radiusMin }}" max="{{ $radiusMax }}" step="25">
                         <div class="sm-radius-ends"><span>{{ $radiusMin }} m</span><span>{{ $radiusMax }} m</span></div>
+                    </div>
+                </div>
+
+                {{-- The project's budget and how long it is expected to run
+                     (Michael, 2026-10-15). Both optional: no star. --}}
+                <div class="sm-proj">
+                    <div class="sm-field">
+                        <label class="sm-label" for="smBudget">{{ __('Budget') }}</label>
+                        <div class="sm-peso">
+                            <span aria-hidden="true">₱</span>
+                            <input id="smBudget" class="sm-input" type="text" inputmode="decimal" maxlength="20"
+                                   placeholder="{{ __('e.g., 2,500,000') }}">
+                        </div>
+                    </div>
+                    <div class="sm-field">
+                        <label class="sm-label" for="smDur">{{ __('Expected length') }}</label>
+                        <div class="sm-dur">
+                            <input id="smDur" class="sm-input" type="number" min="1" max="3650" step="1" inputmode="numeric"
+                                   placeholder="{{ __('e.g. 6') }}">
+                            <select id="smDurUnit" class="sm-input" aria-label="{{ __('Unit of the expected length') }}">
+                                @foreach($units as $unit)
+                                    <option value="{{ $unit }}" @selected($unit === 'months')>{{ __(ucfirst($unit)) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -345,6 +389,25 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
     const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#1668DC';
     const pinned = s => s && s.latitude != null && s.longitude != null;
     const byId = id => S.sites.find(s => s.id === id);
+
+    // The budget box: commas put in on the way out, so 2,500,000 is never
+    // misread as 25,000,000, and taken no notice of when read — the box is
+    // never rewritten under the cursor, which would lose a selection. Empty
+    // is no budget; anything that is not an amount is NaN, and the form says so.
+    const peso = n => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const budgetOf = () => {
+        const t = $('smBudget').value.replace(/[₱,\s]/g, '');
+        if (t === '') return null;
+        return /^\d+(\.\d{1,2})?$/.test(t) ? Number(t) : NaN;
+    };
+    // Whole pesos as they were typed, "2,500,000"; centavos always two places.
+    const showBudget = n => {
+        const d = n != null && Number(n) % 1 ? 2 : 0;
+        $('smBudget').value = n == null ? '' : Number(n).toLocaleString('en-PH', { minimumFractionDigits: d, maximumFractionDigits: 2 });
+    };
+    $('smBudget').addEventListener('blur', () => { const n = budgetOf(); if (n != null && !isNaN(n)) showBudget(n); });
+    $('smBudget').addEventListener('input', hideErr);
+    $('smDur').addEventListener('input', hideErr);
 
     // ── The map ──────────────────────────────────────────────────────────────
     const map = L.map('smMap', { zoomControl: false }).setView([NAGA.lat, NAGA.lng], 14);
@@ -666,7 +729,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 
         const editing = S.editing != null ? byId(S.editing) : null;
         $('smFormTitle').textContent = editing ? 'Edit ' + editing.name : @json(__('Add New Site'));
-        $('smFormHint').textContent  = editing ? 'Move the pin or change the radius, then save' : @json(__('Step 1 name · Step 2 location'));
+        $('smFormHint').textContent  = editing ? 'Change any detail or move the pin, then save' : @json(__('Step 1 name · Step 2 location'));
         $('smFormIcon').className    = editing ? 'fas fa-pen' : 'fas fa-circle-plus';
         $('smSubmitLabel').textContent = editing ? 'Save changes' : @json(__('Add site'));
         $('smSubmit').querySelector('i').className = S.saving ? 'fas fa-spinner fa-spin' : (editing ? 'fas fa-check' : 'fas fa-plus');
@@ -684,6 +747,9 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         S.opened = false;          // the next site starts at step 1 again
         S.radius = snap(RADIUS.def);
         $('smName').value = '';
+        showBudget(null);
+        $('smDur').value = '';
+        $('smDurUnit').value = 'months';
         clearPick();
         hideErr();
         syncLayer();
@@ -718,12 +784,24 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         if (!name) { showErr('Add a project name first.'); $('smName').focus(); return; }
         if (!S.pin && !text) { showErr('Pick a place from the suggestions, type an address, or tap the map to pin it.'); $('smLoc').focus(); return; }
 
+        // The budget and the length are optional, but what is typed has to read.
+        const budget = budgetOf();
+        if (Number.isNaN(budget)) { showErr('Type the budget as an amount in pesos, like 2,500,000.'); $('smBudget').focus(); return; }
+        const durText = $('smDur').value.trim();
+        const duration = durText === '' ? null : Number(durText);
+        if (duration !== null && !(Number.isInteger(duration) && duration >= 1)) {
+            showErr('Type the expected length as a whole number, like 6.'); $('smDur').focus(); return;
+        }
+
         // Words typed over a pin are the address that is saved; the pin stays.
         const location = (S.pin && (!text || text === S.label)) ? S.label : text;
         const body = {
             name, location,
             latitude:  S.pin ? +S.pin.lat.toFixed(7) : null,
             longitude: S.pin ? +S.pin.lng.toFixed(7) : null,
+            budget,
+            duration,
+            duration_unit: duration !== null ? $('smDurUnit').value : null,
         };
         if (S.pin) body.geofence_radius = S.radius;
 
@@ -802,6 +880,10 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
                             <span class="sm-emps ${e ? 'some' : 'zero'}">${e} ${e === 1 ? 'emp' : 'emps'}</span>
                         </div>
                         <div class="sm-saddr">${s.location ? esc(s.location) : '<span class="sm-nogps">No location set</span>'}</div>
+                        <div class="sm-sproj">${s.budget != null || s.length
+                            ? (s.budget != null ? `<span title="Budget"><i class="fas fa-wallet"></i>${peso(s.budget)}</span>` : '')
+                              + (s.length ? `<span title="Expected length"><i class="fas fa-hourglass-half"></i>${esc(s.length)}</span>` : '')
+                            : '<span class="is-none">No budget or length yet</span>'}</div>
                         <div class="sm-smeta">${has
                             ? `${fmtHtml(s.latitude, s.longitude)}<span>· ${s.geofence_radius} m radius</span>`
                             : '<span class="sm-nogps">GPS check off until a pin is added</span>'}</div>
@@ -840,6 +922,9 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         S.editing = id; S.confirm = null; S.flash = null;
         S.geo++; S.place = null;
         $('smName').value = s.name;
+        showBudget(s.budget);
+        $('smDur').value = s.duration || '';
+        $('smDurUnit').value = s.duration_unit || 'months';
         openMap();
         if (pinned(s)) {
             S.typed = false;
