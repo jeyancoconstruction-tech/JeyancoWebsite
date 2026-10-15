@@ -707,6 +707,10 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
                          shift, so the rows under-count it — the summary above
                          has the day's deductions and net. --}}
                     @if(count($days))
+                        {{-- Above the totals, the room a short day leaves,
+                             so they sit on the card's bottom edge
+                             (modules/_fill_screen). --}}
+                        <tbody data-fill-gap aria-hidden="true"><tr><td colspan="{{ $cols }}"></td></tr></tbody>
                         <tfoot>
                             <tr>
                                 <td class="l" colspan="2">{{ __('Day total before deductions & bonus') }}</td>
@@ -769,6 +773,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
                     @endforelse
                     </tbody>
                     @if(count($employees))
+                        <tbody data-fill-gap aria-hidden="true"><tr><td colspan="{{ $cols }}"></td></tr></tbody>
                         <tfoot>
                             <tr>
                                 <td class="l" colspan="2">{{ __('Total') }} · {{ count($employees) }}</td>
@@ -1221,12 +1226,6 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         if (b) { pane = b.dataset.pv; renderPv(); }
     });
     $('pvEmp').addEventListener('change', e => { chosen = e.target.value; renderPv(); });
-
-    // The live feed rewrites the list in place, and with it the height the
-    // list was fitted to; ask for the fit again.
-    document.addEventListener('live:updated', () => {
-        document.dispatchEvent(new Event('fill-screen:refit'));
-    });
 })();
 </script>
 @endpush

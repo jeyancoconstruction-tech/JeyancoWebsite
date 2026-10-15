@@ -71,6 +71,10 @@ html[data-bs-theme] .rp .rp-sel select option { background: var(--surface); colo
 .rp-legend span { display: flex; gap: 6px; align-items: center; }
 .rp-legend i { width: 10px; height: 10px; border-radius: 3px; }
 .rp-hbars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 36px; }
+/* A bar for each of the whole crew would push the table, and its totals, off
+   the screen, and the page would scroll them away. Past what the window can
+   spare, the bars scroll in their own box instead (2026-10-15). */
+.rp-hbars { max-height: clamp(48px, calc(100vh - 640px), 150px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
 @media (max-width: 1100px) { .rp-hbars { grid-template-columns: minmax(0, 1fr); } }
 .rp-hb { display: grid; grid-template-columns: minmax(0, 130px) minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 12.5px; }
 .rp-hb .nm { color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -219,7 +223,8 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
     .sidebar, .topbar, .rp-tabs, .rp-filters, .page-head-actions, .chatbot-fab, .chatbot-window, .rp-tip { display: none !important; }
     .main-content { margin: 0 !important; padding: 0 !important; }
     .rp-card, .rp-kpis { box-shadow: none !important; break-inside: avoid; }
-    .rp-wrap { overflow: visible !important; }
+    .rp-wrap, .rp-hbars { overflow: visible !important; }
+    .rp-hbars { max-height: none !important; }
     .rp-table thead th, .rp-table tfoot td { position: static !important; }
     .rp-print-head { display: block !important; }
 }
@@ -386,9 +391,12 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
     </section>
     @endif
 
-    <section class="rp-card rp-tcard" aria-label="{{ __($table['title']) }}">
+    {{-- Boxed to the screen like Payroll Records' list: the rows scroll under
+         their column heads, and the totals stay on the card's bottom edge
+         however few rows there are (Michael, 2026-10-15). --}}
+    <section class="rp-card rp-tcard" aria-label="{{ __($table['title']) }}" data-fill-screen>
         <div class="rp-t-h"><h3>{{ __($reports[$report]) }}</h3><small>{{ $periodText }}</small>@if($isDtr && $table['rows'])<small class="rp-t-hint">{{ __('Click an employee to open the DTR') }}</small>@endif</div>
-        <div class="rp-wrap">
+        <div class="rp-wrap" data-fill-scroll>
             <table class="rp-table" id="rpTable">
                 <thead>
                     <tr>
@@ -412,6 +420,7 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
                     @endforelse
                 </tbody>
                 @if($table['rows'])
+                    <tbody data-fill-gap aria-hidden="true"><tr><td colspan="{{ count($table['cols']) }}"></td></tr></tbody>
                     <tfoot>
                         <tr>
                             @foreach($table['foot'] as $i => $f)
@@ -426,6 +435,7 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
     </section>
 </div>
 <div class="rp-tip" id="rpTip" hidden></div>
+@include('modules._fill_screen')
 
 @if($isDtr)
 {{-- A worker's DTR. Outside the live region, so a refresh of the list never
