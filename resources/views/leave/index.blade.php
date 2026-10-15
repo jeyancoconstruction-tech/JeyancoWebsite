@@ -316,7 +316,7 @@
             <div class="mod-form-grid">
                 <div class="emp-field full">
                     <label class="ep-label" for="lv_emp">{{ __('Employee') }} <span class="ep-req">*</span></label>
-                    <select class="form-select" id="lv_emp" name="employee_id" required>
+                    <select class="form-select" id="lv_emp" name="employee_id" required data-searchable data-search-required="{{ __('Choose the employee filing the leave.') }}">
                         <option value="">{{ __('— Select —') }}</option>
                         @foreach($employees as $e)<option value="{{ $e->id }}">{{ $e->name }}</option>@endforeach
                     </select>
@@ -601,7 +601,7 @@
             <div class="mod-form-grid">
                 <div class="emp-field full">
                     <label class="ep-label" for="ca_emp">{{ __('Employee') }} <span class="ep-req">*</span></label>
-                    <select class="form-select {{ $err('employee_id') ? 'is-invalid' : '' }}" id="ca_emp" name="employee_id" required>
+                    <select class="form-select {{ $err('employee_id') ? 'is-invalid' : '' }}" id="ca_emp" name="employee_id" required data-searchable data-search-required="{{ __('Choose the employee taking the advance.') }}">
                         <option value="">{{ __('— Select —') }}</option>
                         @foreach($employees as $e)<option value="{{ $e->id }}" @selected((string) $was('employee_id') === (string) $e->id)>{{ $e->name }}</option>@endforeach
                     </select>
@@ -671,6 +671,8 @@
 @include('modules._fill_screen')
 @include('employees._profile_styles')
 @include('employees._modal_styles')
+{{-- The Employee box in File Leave and New Cash Advance: type a name or ID. --}}
+@include('partials.select-search')
 
 @if($tab === 'leave')
 <style>
