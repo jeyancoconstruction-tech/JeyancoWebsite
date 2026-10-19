@@ -272,6 +272,8 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
 .prx-opt:hover { border-color: var(--brand); }
 .prx-opt.on { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand) inset; }
 .prx-pv-pick { margin-top: 14px; max-width: 360px; }
+/* The payslip page itself, framed: what is previewed is what prints. */
+.prx-pv-frame { display: block; width: 100%; height: min(62vh, 760px); margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: #e5e7eb; }
 .prx-pv-empty { margin-top: 16px; padding: 32px 16px; text-align: center; color: var(--text-muted); }
 .prx-mf { padding: 14px 20px; display: flex; gap: 8px; align-items: center; justify-content: flex-end; border-top: 1px solid var(--border); flex-wrap: wrap; }
 .prx-mf .note { margin-right: auto; font-size: 12px; color: var(--text-muted); }
@@ -1123,6 +1125,11 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
             + '</article>';
     }
 
+    function frame(url) {
+        const src = url + (url.includes('?') ? '&' : '?') + 'print=0&embed=1';
+        return '<iframe class="prx-pv-frame" src="' + esc(src) + '" title="Payslip preview"></iframe>';
+    }
+
     function renderPv() {
         const all = slips();
         if (!all.some(s => String(s.id) === chosen)) chosen = all[0] ? String(all[0].id) : null;
@@ -1144,13 +1151,14 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
             sel.innerHTML = all.map(s => '<option value="' + esc(s.id) + '"' + (String(s.id) === chosen ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('');
             sel.closest('.prx-pv-pick').hidden = !all.length;
             const s = all.find(x => String(x.id) === chosen);
-            $('pvSingle').innerHTML = s ? paper(s) : empty;
+            // The payslip page itself, in a frame: the preview is the printout.
+            $('pvSingle').innerHTML = s ? frame(PRINT_URL + '&employee=' + encodeURIComponent(s.id)) : empty;
             go.href = s ? PRINT_URL + '&employee=' + encodeURIComponent(s.id) : '#';
             go.textContent = 'Print / Save as PDF';
             set('pvNote', 'Opens the payslip to print, or to save as PDF.');
             off = !s;
         } else if (pane === 'all') {
-            $('pvAll').innerHTML = all.length ? all.map(paper).join('') : empty;
+            $('pvAll').innerHTML = all.length ? frame(PRINT_URL) : empty;
             go.href = PRINT_URL;
             go.textContent = 'Print / Save as PDF';
             set('pvNote', 'Every payslip in the period, one page each.');

@@ -122,6 +122,12 @@ class Employee extends Model
         return $this->hasMany(Attendance::class);
     }
 
+    /** The second and later fingers. The first is fingerprint_id. */
+    public function extraFingerprints()
+    {
+        return $this->hasMany(EmployeeFingerprint::class);
+    }
+
     // ── Scopes ───────────────────────────────────────────────────────────────
     public function scopeActive(Builder $q): Builder
     {
@@ -329,6 +335,9 @@ class Employee extends Model
         }
 
         $this->forceFill(['status' => self::STATUS_DELETED, 'fingerprint_id' => null, 'photo' => null])->save();
+        if (self::hasExtraFingers()) {
+            $this->extraFingerprints()->delete();
+        }
         if (! $this->trashed()) {
             $this->delete();
         }
@@ -388,6 +397,23 @@ class Employee extends Model
 
     public static function releaseFingerprint(string $fingerprintId, ?int $exceptEmployeeId = null): ?self
     {
+        // A second or later finger of somebody else's. Freed the same way as a
+        // first finger: only when its owner can no longer clock in.
+        if (self::hasExtraFingers()) {
+            $extra = EmployeeFingerprint::with('employee')->where('slot', $fingerprintId)->first();
+
+            if ($extra && (int) $extra->employee_id !== (int) $exceptEmployeeId) {
+                $owner = $extra->employee;
+
+                if (! $owner || $owner->trashed() || $owner->isArchived()
+                    || in_array($owner->status, [self::STATUS_DELETED], true)) {
+                    $extra->delete();
+                } else {
+                    return $owner;
+                }
+            }
+        }
+
         $holder = static::withTrashed()
             ->where('fingerprint_id', $fingerprintId)
             ->when($exceptEmployeeId, fn ($q) => $q->where('id', '!=', $exceptEmployeeId))
@@ -416,6 +442,67 @@ class Employee extends Model
         }
 
         return $holder;                                   // real conflict
+    }
+
+    /**
+     * The worker a sensor slot belongs to — their first finger or any later
+     * one. Every place that turns a scanned slot into a person asks here, so a
+     * second finger clocks in, opens the DTR and posts a complaint exactly as
+     * the first does.
+     */
+    public static function findByFingerprint(string $fingerprintId, bool $withTrashed = false): ?self
+    {
+        $query = fn () => $withTrashed ? static::withTrashed() : static::query();
+
+        if ($employee = $query()->where('fingerprint_id', $fingerprintId)->first()) {
+            return $employee;
+        }
+
+        if (! self::hasExtraFingers()) {
+            return null;
+        }
+
+        $id = EmployeeFingerprint::where('slot', $fingerprintId)->value('employee_id');
+
+        return $id ? $query()->whereKey($id)->first() : null;
+    }
+
+    /** Every slot this worker owns, first finger first. */
+    public function fingerprintSlots(): array
+    {
+        $slots = $this->fingerprint_id ? [(string) $this->fingerprint_id] : [];
+
+        if (self::hasExtraFingers()) {
+            $extras = $this->relationLoaded('extraFingerprints')
+                ? $this->extraFingerprints
+                : $this->extraFingerprints()->orderBy('id')->get();
+
+            foreach ($extras as $row) {
+                $slots[] = (string) $row->slot;
+            }
+        }
+
+        return array_values(array_unique($slots));
+    }
+
+    /**
+     * Whether the extra-fingers table is there yet. A deploy can land this
+     * code a moment before its migration runs; until then a worker simply has
+     * one finger, as before, instead of every scan failing on a missing table.
+     */
+    public static function hasExtraFingers(): bool
+    {
+        static $has = null;
+
+        if ($has === null || app()->runningUnitTests()) {
+            try {
+                $has = Schema::hasTable('employee_fingerprints');
+            } catch (\Throwable $e) {
+                $has = false;
+            }
+        }
+
+        return $has;
     }
 
     /** Why the slot could not be released — a message the kiosk can show as-is. */

@@ -106,6 +106,10 @@
         .slips.one .slip { padding: 8mm; box-shadow: 0 8px 24px rgba(15, 23, 42, .12); }
     }
 
+    /* Framed as Payroll Records' preview: the paper alone. */
+    body.embed .toolbar, body.embed .hint { display: none; }
+    body.embed { background: #e5e7eb; }
+
     @media print {
         html, body { background: #fff; }
         .toolbar, .hint { display: none !important; }
@@ -115,7 +119,7 @@
     }
 </style>
 </head>
-<body>
+<body class="{{ request()->boolean('embed') ? 'embed' : '' }}">
 @php $one = count($slips) === 1; @endphp
 
     <div class="toolbar">

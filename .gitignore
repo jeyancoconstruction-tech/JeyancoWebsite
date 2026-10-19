@@ -22,3 +22,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# The kiosk Pi's secrets
+/kiosk-pi/kiosk.env

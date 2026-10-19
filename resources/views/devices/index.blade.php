@@ -60,6 +60,14 @@
 .kx-off b { font-size: 38px; letter-spacing: .2em; color: #c9d3e2; }
 .kx-off p { margin: 0; font-size: 19px; max-width: 760px; line-height: 1.5; }
 .kx-off p strong { color: #c9d3e2; }
+/* A kiosk that is off: its screen stays in view (the same UI the device runs),
+   with a bar across the top saying it is off and since when. */
+.km-off.is-bar { height: auto; background: transparent; pointer-events: none; z-index: 2; }
+.kx-offbar { display: flex; align-items: center; gap: 14px; padding: 12px 20px; background: rgba(127, 29, 29, .94); color: #fee2e2;
+             font: 600 17px/1.35 Inter, system-ui, sans-serif; border-bottom: 2px solid #ef4444; }
+.kx-offbar b { font-size: 19px; letter-spacing: .12em; color: #fff; white-space: nowrap; }
+.kx-offbar svg { width: 26px; height: 26px; flex: 0 0 auto; }
+.km-glass.is-off .km-screen { filter: grayscale(.55) brightness(.8); }
 .dvc-cap { display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 11.5px; color: var(--text-muted); }
 .dvc-cap b { color: var(--text-secondary); font-weight: 600; }
 
@@ -437,7 +445,7 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 // ── Kiosk console ────────────────────────────────────────────────────────────
-// The chosen kiosk's own screen (its v8 files, at its 1024 × 600), where it is
+// The chosen kiosk's own screen (the online kiosk UI, at 1024 × 600), where it is
 // on the map against its site's pin and geofence, and what it recorded today.
 // Asks every two seconds whether anybody scanned (each scan is handed to the
 // screen as it happens), and every ten for the rest.
@@ -530,20 +538,26 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
         const s = data && data.screen;
         if (!s) return;
         opener.href = box.dataset.screen + '/' + s.kiosk.id + '/screen';
+
+        // The kiosk's own screen (the online kiosk UI, public/kiosk-app) is
+        // always shown — off or on. An off kiosk gets a bar across the top
+        // and a greyed screen, so it is never mistaken for a live one.
+        frame.hidden = false;
+        if (loaded !== s.kiosk.id) { loaded = s.kiosk.id; frame.src = box.dataset.screen + '/' + s.kiosk.id + '/screen'; }
+        glass.classList.toggle('is-off', !s.on);
+
         if (!s.on) {
             const k = s.kiosk;
-            offBox.innerHTML = `<div class="kx-off">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 3v8M6.3 6.3a8 8 0 1011.4 0"/></svg>
+            offBox.classList.add('is-bar');
+            offBox.innerHTML = `<div class="kx-offbar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v8M6.3 6.3a8 8 0 1011.4 0"/></svg>
                 <b>KIOSK IS OFF</b>
-                <p><strong>${esc(k.name)}</strong> ${k.seen_at ? 'has sent no heartbeat since <strong>' + esc(k.seen_at) + '</strong> (' + esc(k.seen) + ').' : 'has never reported to the web.'}</p>
-                <p>Its screen shows here again on its own once it is switched on and online.</p></div>`;
-            offBox.hidden = false; frame.hidden = true;
-            if (loaded !== null) { frame.src = 'about:blank'; loaded = null; }
-            cap.innerHTML = '<span>' + esc(k.name) + ' · off</span><span>View only</span>';
+                <span>${k.seen_at ? 'No heartbeat since ' + esc(k.seen_at) + ' (' + esc(k.seen) + ').' : 'It has never reported to the web.'} This is the screen it will show.</span></div>`;
+            offBox.hidden = false;
+            cap.innerHTML = '<span><b>' + esc(k.name) + '</b> · ' + esc(k.site || '') + ' · off — the kiosk\'s screen, 1024 × 600</span><span>View only</span>';
             return;
         }
-        offBox.hidden = true; frame.hidden = false;
-        if (loaded !== s.kiosk.id) { loaded = s.kiosk.id; frame.src = box.dataset.screen + '/' + s.kiosk.id + '/screen'; }
+        offBox.hidden = true;
         cap.innerHTML = '<span><b>' + esc(s.kiosk.name) + '</b> · ' + esc(s.site || '') + ' · the kiosk\'s own screen, 1024 × 600</span><span>View only — nothing is recorded from here</span>';
     }
 
@@ -624,6 +638,20 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
         return events.some(e => e.kind === 'in' || e.kind === 'out');
     }
 
+    // The kiosk's tab and who is using it, handed to the screen so it moves
+    // as the worker taps (kiosk-monitor.js follows it). Sent when it changes,
+    // and again whenever the screen has just loaded.
+    let viewSent = null, lastView = null;
+    function sendView(view, force) {
+        lastView = view || null;
+        const key = JSON.stringify(lastView);
+        if (!force && key === viewSent) return;
+        if (!frame.contentWindow || frame.hidden) return;
+        viewSent = key;
+        frame.contentWindow.postMessage({ type: 'kiosk-view', view: lastView }, location.origin);
+    }
+    frame.addEventListener('load', () => setTimeout(() => sendView(lastView, true), 1500));
+
     function mark(text, bad) { checked.textContent = text; checked.classList.toggle('bad', !!bad); }
 
     async function load() {
@@ -635,7 +663,7 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
             ((data.screen && data.screen.rejects) || []).forEach(e => { if (!seen.has(e.seq)) { seen.add(e.seq); recent.push(e); } });
             recent = recent.slice(-30);
             showScreen(); renderFacts(); renderLog(); renderPicks(); fit();
-            if (data.screen) drawMap(data.screen.kiosk);
+            if (data.screen) { drawMap(data.screen.kiosk); sendView(data.screen.view); }
         } catch (e) { mark('Could not reach the server — retrying', true); }
     }
 
@@ -646,6 +674,7 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
                 const wasOn = !!(data.screen && data.screen.on);
                 data.kiosks = r.kiosks;
                 mark('Live · ' + r.checked);
+                if (r.screen) sendView(r.screen.view);
                 if (take(r) || !!(r.screen && r.screen.on) !== wasOn) await load();
                 else { renderLog(); renderPicks(); }
             } catch (e) { /* the slow poll says so */ }

@@ -12,6 +12,8 @@ use App\Models\Site;
 use App\Models\Shift;
 use App\Models\SystemSetting;
 use App\Models\AuditLog;
+use App\Models\EmployeeFingerprint;
+use App\Support\KioskScan;
 use App\Support\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -292,14 +294,18 @@ class KioskController extends Controller
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
         $site  = $this->activeSite($request, $kiosk);
 
-        $employees = Employee::with(['laborType', 'shift'])
+        $employees = Employee::with(Employee::hasExtraFingers() ? ['laborType', 'shift', 'extraFingerprints'] : ['laborType', 'shift'])
             ->whereIn('status', [Employee::STATUS_ACTIVE, Employee::STATUS_PENDING])
             ->when($site, fn ($q) => $q->where('site_id', $site->id))
             ->orderBy('name')
             ->get();
 
-        $rows = $employees->map(function (Employee $e) {
+        $required = (int) config('kiosk.fingers_required', 2);
+        $max      = max($required, (int) config('kiosk.fingers_max', 3));
+
+        $rows = $employees->map(function (Employee $e) use ($required, $max) {
             $enrolled = ! empty($e->fingerprint_id);
+            $slots    = $e->fingerprintSlots();
 
             return [
                 'id'               => $e->id,
@@ -307,6 +313,13 @@ class KioskController extends Controller
                 'position'         => $e->position ?: ($e->laborType->name ?? 'Worker'),
                 'shift'            => $this->shiftPayload($e),
                 'fingerprint_id'   => $e->fingerprint_id,
+                // Every finger on file, and how many the office asks for. A
+                // worker stays on the kiosk's ENROLL list until `complete`.
+                'fingerprint_ids'  => $slots,
+                'fingers'          => count($slots),
+                'fingers_required' => $required,
+                'fingers_max'      => $max,
+                'complete'         => count($slots) >= $required,
                 'enrolled'         => $enrolled,
                 // What the kiosk puts on the badge. "Pending" here means the
                 // finger is missing — not the admin-approval status, which the
@@ -329,8 +342,8 @@ class KioskController extends Controller
         // them hunt for the thing they came to do. The enrolled half is a
         // reference list instead, so alphabetical is right there.
         $sorted = $rows->sortBy([
-            fn ($a, $b) => ($a['enrolled'] ? 1 : 0) <=> ($b['enrolled'] ? 1 : 0),
-            fn ($a, $b) => $a['enrolled']
+            fn ($a, $b) => ($a['complete'] ? 1 : 0) <=> ($b['complete'] ? 1 : 0),
+            fn ($a, $b) => $a['complete']
                 ? strcasecmp($a['name'], $b['name'])
                 : strcmp((string) $b['added_at'], (string) $a['added_at']),
         ])->values();
@@ -340,10 +353,12 @@ class KioskController extends Controller
             'site'      => $site ? ['id' => $site->id, 'name' => $site->name] : null,
             'employees' => $sorted,
             'counts'    => [
-                'total'    => $sorted->count(),
-                'pending'  => $sorted->where('enrolled', false)->count(),
-                'enrolled' => $sorted->where('enrolled', true)->count(),
+                'total'      => $sorted->count(),
+                'pending'    => $sorted->where('enrolled', false)->count(),
+                'enrolled'   => $sorted->where('enrolled', true)->count(),
+                'incomplete' => $sorted->where('complete', false)->count(),
             ],
+            'fingers_required' => $required,
         ]);
     }
 
@@ -510,6 +525,7 @@ class KioskController extends Controller
         $this->noteSettingsRead($request);
 
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
+        $this->noteScreen($request, $kiosk);
 
         return response()->json($this->settingsAnswer((string) $request->query('v'), $kiosk));
     }
@@ -578,7 +594,9 @@ class KioskController extends Controller
                   // The site the office set this kiosk to (System Settings →
                   // Kiosks). On every answer, so a switch reaches the kiosk
                   // within one question.
-                  'site'    => $this->assignedSite($kiosk)];
+                  'site'    => $this->assignedSite($kiosk),
+                  // The web's build: a kiosk on an older one reloads itself.
+                  'build'   => KioskAppController::build()];
 
         if ($v === $version) {
             return ['success' => true, 'same' => true, 'v' => $version] + $clock;
@@ -612,6 +630,37 @@ class KioskController extends Controller
         }
     }
 
+    /** Where the kiosk's own screen is, for Device Monitoring to follow. */
+    public const SCREEN_KEY = 'kiosk_screen_';
+
+    /**
+     * What the kiosk is showing right now — the tab, and who is using it —
+     * sent with every settings question and straight after each tap. Device
+     * Monitoring's copy of the screen follows it, so the office sees the
+     * kiosk move as the worker taps. Names only: a worker's DTR and the words
+     * of a complaint never leave the kiosk this way.
+     */
+    private function noteScreen(Request $request, ?Kiosk $kiosk): void
+    {
+        $tab = (string) $request->query('tab', '');
+        if (! $kiosk || ! in_array($tab, ['attendance', 'dtr', 'report', 'register'], true)) {
+            return;
+        }
+
+        $view = json_decode((string) $request->query('view', ''), true);
+        $view = is_array($view) ? $view : [];
+        $text = fn ($v, $n = 80) => is_string($v) && $v !== '' ? mb_substr(strip_tags($v), 0, $n) : null;
+
+        Cache::put(self::SCREEN_KEY . $kiosk->id, [
+            'tab'   => $tab,
+            'who'   => $text($view['who'] ?? null),
+            'step'  => $text($view['step'] ?? null, 40),
+            'armed' => in_array($view['armed'] ?? null, ['time_in', 'time_out'], true) ? $view['armed'] : null,
+            'week'  => (int) ($view['week'] ?? 0) === 1 ? 1 : 0,
+            'at'    => now()->toIso8601String(),
+        ], now()->addMinutes(10));
+    }
+
     /** A shift's day as the kiosk draws it, in 24-hour "H:i" times. */
     private function kioskShift(Shift $shift): array
     {
@@ -642,7 +691,7 @@ class KioskController extends Controller
             'fingerprint_id' => 'required|string',
         ]);
 
-        $employee = Employee::where('fingerprint_id', $request->fingerprint_id)->first();
+        $employee = Employee::findByFingerprint((string) $request->fingerprint_id);
 
         if (!$employee) {
             return response()->json([
@@ -709,7 +758,19 @@ class KioskController extends Controller
             'site_id'     => 'nullable|exists:sites,id',
             'lat'         => 'nullable|numeric|between:-90,90',
             'lng'         => 'nullable|numeric|between:-180,180',
+            'scan_token'  => 'nullable|string|max:64',
         ]);
+
+        // Real-time attendance only: the record must come from a finger read
+        // at a kiosk moments ago, for this same worker. A request made by hand
+        // with somebody's employee id records nothing (config kiosk.device_key).
+        if (KioskScan::enforced() && ! KioskScan::consume($request->input('scan_token'), (int) $request->employee_id)) {
+            return response()->json([
+                'success' => false,
+                'code'    => 'stale_scan',
+                'message' => 'The scan is no longer valid. Scan your finger again.',
+            ]);
+        }
 
         $kiosk = Kiosk::resolve($request->kiosk_id, $request->kiosk_code);
         $site  = $this->activeSite($request, $kiosk);
@@ -1156,6 +1217,39 @@ class KioskController extends Controller
             ]);
         }
 
+        // A worker who already has a first finger: this is another finger
+        // (RSC 2026-10-18 — several fingers per worker), kept beside it. The
+        // first finger is never replaced from the kiosk.
+        if ($employee->fingerprint_id && (string) $employee->fingerprint_id !== $fp && Employee::hasExtraFingers()) {
+            $slots = $employee->fingerprintSlots();
+            $max   = max((int) config('kiosk.fingers_required', 2), (int) config('kiosk.fingers_max', 3));
+
+            if (! in_array($fp, $slots, true)) {
+                if (count($slots) >= $max) {
+                    return response()->json([
+                        'success' => false,
+                        'code'    => 'fingers_full',
+                        'message' => "{$employee->name} already has {$max} fingers on file.",
+                    ]);
+                }
+
+                EmployeeFingerprint::create(['employee_id' => $employee->id, 'slot' => $fp]);
+                $slots[] = $fp;
+            }
+
+            return response()->json([
+                'success'         => true,
+                'message'         => $employee->name . ' finger ' . count($slots) . ' saved at ID #' . $fp,
+                'employee_id'     => $employee->id,
+                'fingerprint_id'  => $fp,
+                'fingerprint_ids' => $slots,
+                'fingers'         => count($slots),
+                'complete'        => count($slots) >= (int) config('kiosk.fingers_required', 2),
+                'status'          => $employee->status,
+                'activated'       => false,
+            ]);
+        }
+
         $employee->fingerprint_id = $fp;
 
         // Enrolment is what activates a worker registered on the web. They are
@@ -1172,6 +1266,8 @@ class KioskController extends Controller
 
         $employee->save();
 
+        $slots = $employee->fingerprintSlots();
+
         return response()->json([
             'success'       => true,
             'message'       => $activated
@@ -1179,6 +1275,9 @@ class KioskController extends Controller
                 : $employee->name . ' fingerprint enrolled at ID #' . $fp,
             'employee_id'   => $employee->id,
             'fingerprint_id'=> $employee->fingerprint_id,
+            'fingerprint_ids' => $slots,
+            'fingers'       => count($slots),
+            'complete'      => count($slots) >= (int) config('kiosk.fingers_required', 2),
             'status'        => $employee->status,
             'activated'     => $activated,
         ]);
@@ -1229,7 +1328,7 @@ class KioskController extends Controller
 
         // Include soft-deleted so a previously removed worker who scans again is
         // restored rather than colliding on the unique fingerprint_id.
-        $employee = Employee::withTrashed()->where('fingerprint_id', $fp)->first();
+        $employee = Employee::findByFingerprint($fp, true);
         if ($employee && $employee->trashed()) {
             $employee->restore();
         }
@@ -1319,7 +1418,7 @@ class KioskController extends Controller
 
         $fp = (string) $request->fingerprint_id;
 
-        $employee = Employee::withTrashed()->where('fingerprint_id', $fp)->first();
+        $employee = Employee::findByFingerprint($fp, true);
         if ($employee && $employee->trashed()) {
             $employee->restore();
         }
@@ -1349,16 +1448,21 @@ class KioskController extends Controller
             ]);
         }
 
+        // Proof of this scan, for the TIME IN / TIME OUT it leads to — and for
+        // the worker's own DTR or a complaint, which still open when the
+        // attendance itself is refused below. One token per finger read.
+        $token = ['scan_token' => KioskScan::issue($employee, $kiosk)];
+
         // The worker belongs to another site, or the kiosk has none: refused
         // before the kiosk offers TIME IN at all.
         if ($refused = $this->siteGate($employee, $site)) {
-            return response()->json($refused);
+            return response()->json($refused + $token);
         }
 
         // Outside the site's radius (or the site has no location): refused at
         // the scan, with the worker named, so TIME IN is never offered.
         if ($gate = $this->locationGate($kiosk, $request)) {
-            return response()->json($gate + ['employee' => ['id' => $employee->id, 'name' => $employee->name]]);
+            return response()->json($gate + ['employee' => $this->kioskEmployeePayload($employee)] + $token);
         }
 
         if (!$employee->kiosk_id && $kiosk) {
@@ -1376,7 +1480,7 @@ class KioskController extends Controller
                 'pending'  => true,
                 'message'  => $employee->name . ' is not registered yet. Enrol their '
                             . 'fingerprint at the kiosk, then they can time in.',
-            ]);
+            ] + $token);
         }
 
         // Suggest the next action — WITHOUT writing anything; /attendance does
@@ -1408,7 +1512,7 @@ class KioskController extends Controller
             'is_new'   => $isNew,
             'pending'  => $employee->isPending(),
             'employee' => $this->kioskEmployeePayload($employee),
-        ]);
+        ] + $token);
     }
 
     /**
@@ -1671,8 +1775,17 @@ class KioskController extends Controller
 
         // Sensor slot numbers. fingerprint_id is a string column, so drop any
         // non-numeric value rather than letting (int) cast it to slot 0.
+        // The second and later fingers too: left out, the Pi's sync would wipe
+        // them off the sensor a minute after they were enrolled.
+        $extras = Employee::hasExtraFingers()
+            ? EmployeeFingerprint::whereHas('employee', fn ($q) => $q->whereNull('deleted_at')
+                    ->whereNotIn('status', [Employee::STATUS_ARCHIVED, Employee::STATUS_DELETED]))
+                ->pluck('slot')
+            : collect();
+
         $fingerprintIds = $employees
             ->pluck('fingerprint_id')
+            ->merge($extras)
             ->filter(fn ($id) => is_numeric($id))
             ->map(fn ($id) => (int) $id)
             ->unique()

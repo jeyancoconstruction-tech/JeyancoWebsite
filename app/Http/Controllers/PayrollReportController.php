@@ -100,8 +100,8 @@ class PayrollReportController extends Controller
         // Who each worker is, and where: read now rather than kept, so a
         // move to another site shows at once.
         $ids   = array_values(array_unique(array_merge(array_column($rows, 'id'), array_column($prev, 'id'))));
-        $staff = Employee::withTrashed()->with(['site:id,name', 'laborType:id,name'])
-            ->whereIn('id', $ids)->get(['id', 'name', 'position', 'site_id', 'labor_type_id'])->keyBy('id');
+        $staff = Employee::withTrashed()->with(['site:id,name', 'shift:id,name', 'laborType:id,name'])
+            ->whereIn('id', $ids)->get(['id', 'name', 'position', 'site_id', 'shift_id', 'labor_type_id'])->keyBy('id');
 
         $siteId = $request->filled('site') ? (int) $request->query('site') : null;
         $q      = trim((string) $request->query('q', ''));
@@ -146,11 +146,81 @@ class PayrollReportController extends Controller
             'table'   => $table,
             // Kept for the tests and anything else that reads the page's rows.
             'rows'    => $table['rows'],
+            'panel'   => $this->panel($rows, $staff, $to, $table['rows']),
             'sites'   => Site::orderBy('name')->get(['id', 'name']),
             'siteId'  => $siteId,
             'q'       => $q,
             'period'  => $period,
         ];
+    }
+
+    /**
+     * What the side panel shows when a worker's row is clicked: where they
+     * are, and everything payroll made of their weeks — pay, overtime, each
+     * deduction — with the cash advances still owed. The same perEmployee()
+     * sums the tables read, so the panel and the row never disagree.
+     */
+    private function panel(array $rows, $staff, Carbon $to, array $listed): array
+    {
+        $per = [];
+        foreach ($this->perEmployee($rows) as $e) {
+            $per[$e['id']] = $e;
+        }
+
+        // The advances tab lists workers payroll may not have this period.
+        $ids = array_keys($per);
+        foreach ($listed as $r) {
+            if (isset($r['employee']['id'])) {
+                $ids[] = (int) $r['employee']['id'];
+            }
+        }
+        $ids = array_values(array_unique($ids));
+
+        $missing = array_diff($ids, $staff->keys()->all());
+        if ($missing) {
+            $staff = $staff->union(Employee::withTrashed()->with(['site:id,name', 'shift:id,name', 'laborType:id,name'])
+                ->whereIn('id', $missing)->get(['id', 'name', 'position', 'site_id', 'shift_id', 'labor_type_id'])->keyBy('id'));
+        }
+
+        $owed = Loan::listed()->whereIn('employee_id', $ids)
+            ->where('issued_on', '<', $to->copy()->addDay()->toDateString())
+            ->get(['employee_id', 'balance'])
+            ->groupBy('employee_id');
+
+        $out = [];
+        foreach ($ids as $id) {
+            $e = $staff[$id] ?? null;
+            if (! $e) {
+                continue;
+            }
+            $p     = $per[$id] ?? null;
+            $loans = ($owed[$id] ?? collect())->filter(fn ($l) => (float) $l->balance > 0);
+
+            $out[$id] = [
+                'name'  => $e->name,
+                'code'  => '#' . str_pad((string) $id, 4, '0', STR_PAD_LEFT),
+                'trade' => $e->laborType?->name ?: ($e->position ?: ''),
+                'site'  => $e->site?->name ?? 'Unassigned',
+                'shift' => $e->shift?->name ?? '',
+                'pay'   => $p ? array_intersect_key($p, array_flip(['workdays', 'minutes', 'otMin', 'regular', 'leave', 'overtime', 'premiums', 'bonus', 'gross',
+                                                                   'sss', 'ph', 'pagibig', 'tax', 'advance', 'vale', 'other', 'ded', 'net'])) : null,
+                'owed'  => round((float) $loans->sum('balance'), 2),
+                'loans' => $loans->count(),
+            ];
+        }
+
+        return $out;
+    }
+
+    /** The paper a report prints on, for the preview: what is seen is what prints. */
+    public function paper(Request $request, PayrollService $payroll)
+    {
+        $data = $this->build($request, $payroll);
+
+        return view('reports.print', $data + [
+            'company'   => SystemSetting::current()->company_name ?: 'Jeyanco Construction',
+            'generated' => Carbon::now('Asia/Manila'),
+        ]);
     }
 
     /**
@@ -409,6 +479,9 @@ class PayrollReportController extends Controller
                 'absent'   => $t['absent'],
                 'missing'  => $t['missing'],
             ];
+            if ($period['span'] === 'week') {
+                $list[array_key_last($list)]['week'] = $this->weekStrip($all[$e->id]['days'] ?? [], $t);
+            }
 
             foreach ($sum as $k => $v) {
                 $sum[$k] += $t[$k];
@@ -443,14 +516,18 @@ class PayrollReportController extends Controller
             'table'   => [
                 'title' => 'Employees DTR',
                 // [key, heading, kind, left-aligned, swatch, tone when not zero]
-                'cols'  => [
-                    ['employee', 'Employee', 'emp', true], ['place', 'Site / Shift', 'pair', true], ['days', 'Days', 'int0'],
+                'cols'  => array_values(array_filter([
+                    ['employee', 'Employee', 'emp', true], ['place', 'Site / Shift', 'pair', true],
+                    $period['span'] === 'week' ? ['week', 'This week', 'week', true] : null,
+                    ['days', 'Days', 'int0'],
                     ['regular', 'Regular hrs', 'dur0'], ['ot', 'OT', 'dur0', false, null, 'ot'], ['late', 'Late', 'dur0', false, null, 'late'],
                     ['under', 'Undertime', 'dur0'], ['night', 'Night diff', 'dur0'],
                     ['absent', 'Absences', 'int0', false, null, 'bad'], ['missing', 'Missing scans', 'int0', false, null, 'bad'],
-                ],
+                ])),
                 'rows'  => $list,
-                'foot'  => ['Total · ' . count($list), '', $sum['days'], $sum['regular'], $sum['ot'], $sum['late'], $sum['under'], $sum['night'], $sum['absent'], $sum['missing']],
+                'foot'  => array_values(array_filter(['Total · ' . count($list), '', $period['span'] === 'week' ? '' : null,
+                    $sum['days'], $sum['regular'], $sum['ot'], $sum['late'], $sum['under'], $sum['night'], $sum['absent'], $sum['missing']],
+                    fn ($v) => $v !== null)),
             ],
             'rows'    => $list,
             'sites'   => Site::orderBy('name')->get(['id', 'name']),
@@ -579,7 +656,7 @@ class PayrollReportController extends Controller
         foreach ($this->perEmployee($rows) as $e) {
             $name = $staff[$e['id']]->site->name ?? 'Unassigned';
             $s = &$sites[$name];
-            $s ??= ['site' => $name, 'ids' => [], 'minutes' => 0, 'regular' => 0, 'premiums' => 0, 'cost' => 0];
+            $s ??= ['site' => $name, 'sid' => $staff[$e['id']]->site_id ?? null, 'ids' => [], 'minutes' => 0, 'regular' => 0, 'premiums' => 0, 'cost' => 0];
             if ($e['minutes'] > 0 || $e['gross'] > 0) {
                 $s['ids'][$e['id']] = true;
             }
@@ -602,6 +679,7 @@ class PayrollReportController extends Controller
         ], $sites), [['Regular pay', 'var(--rp-s1)'], ['OT, premiums & bonus', 'var(--rp-s2)']]);
 
         $list = array_map(fn ($s) => [
+            '_site'    => $s['sid'],
             'site'     => ['v' => $s['site'], 't' => $s['site']],
             'workers'  => count($s['ids']),
             'minutes'  => $s['minutes'],
@@ -831,6 +909,36 @@ class PayrollReportController extends Controller
             'init' => mb_strtoupper(mb_substr($name, 0, 1)),
             'c'    => $palette[$id % count($palette)],
         ];
+    }
+
+    /**
+     * A worker's week as seven squares — worked, absent, a scan missing, a day
+     * off, still running, or nothing yet — off DtrService's own day rows. The
+     * text is what the Excel file and a screen reader get.
+     */
+    private function weekStrip(array $days, array $totals): array
+    {
+        $strip = [];
+        foreach ($days as $d) {
+            $c = match (true) {
+                ($d['kind'] ?? '') === 'absent'      => 'abs',
+                ($d['tone'] ?? '') === 'bad'         => 'miss',
+                ($d['tone'] ?? '') === 'good'        => 'ok',
+                ($d['tone'] ?? '') === 'live'        => 'live',
+                ($d['kind'] ?? '') === 'off'         => 'off',
+                default                              => '',
+            };
+            $at = Carbon::parse($d['date']);
+            $strip[] = ['d' => mb_substr($at->format('D'), 0, 1), 'c' => $c, 'n' => $at->format('D, M j') . (! empty($d['remark']) ? ' · ' . $d['remark'] : '')];
+        }
+
+        $text = implode(' · ', array_filter([
+            $totals['days'] > 0 ? $totals['days'] . ' worked' : null,
+            $totals['absent'] > 0 ? $totals['absent'] . ' absent' : null,
+            $totals['missing'] > 0 ? $totals['missing'] . ' missing scan' : null,
+        ])) ?: '—';
+
+        return ['v' => $totals['days'], 't' => $text, 'days' => $strip];
     }
 
     private function hbars(string $title, string $sub, array $items, array $legend = []): array

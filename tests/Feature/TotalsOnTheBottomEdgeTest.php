@@ -154,12 +154,11 @@ class TotalsOnTheBottomEdgeTest extends TestCase
             $this->assertMatchesRegularExpression('/@media print \{\s*\[data-fill-scroll\] \{ height: auto !important; \}\s*\[data-fill-gap\] \{ display: none !important; \}/', $html, "{$report}: printing");
         }
 
-        // A bar per worker would push the table and its totals below the
-        // screen; past what the window can spare the bars scroll on their own,
-        // and on paper they all print.
+        // The chart card went (UI revision, 2026-10-19): it pushed the table and
+        // its totals below the screen. Shares now sit in the rows as bars.
         $html = $this->html('payroll-reports.index', ['report' => 'employee', 'span' => 'week', 'at' => '2026-09-08']);
-        $this->assertStringContainsString('.rp-hbars { max-height: clamp(48px, calc(100vh - 640px), 150px); overflow-y: auto;', $html);
-        $this->assertStringContainsString('.rp-hbars { max-height: none !important; }', $html);
+        $this->assertStringNotContainsString('class="rp-hbars"', $html);
+        $this->assertStringContainsString('id="rpTable"', $html);
     }
 
     public function test_a_page_without_totals_keeps_the_chat_button_in_its_corner(): void

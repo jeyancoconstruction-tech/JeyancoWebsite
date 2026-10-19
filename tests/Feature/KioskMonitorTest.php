@@ -201,19 +201,21 @@ class KioskMonitorTest extends TestCase
     }
 
     /**
-     * The monitor shows the kiosk's own screen: its v8 files, unchanged, with
-     * kiosk-monitor.js standing in for the Pi, reading from this system.
+     * The monitor shows the kiosk's own screen: the files the kiosk runs, with
+     * kiosk-monitor.js standing in for the Pi, reading from this system. No
+     * SUMMARY tab since the 2026-10-18 RSC.
      */
     public function test_the_kiosk_screen_runs_the_kiosks_own_files(): void
     {
         $kiosk = $this->kiosk('SITE_A', 5);
 
         $page = $this->actingAs($this->admin())->get(route('devices.screen', $kiosk))->assertOk();
-        foreach (['kiosk-monitor.js', 'script.js', 'kiosk-clock.js', 'kiosk-summary.js', 'kiosk-screen.css', 'id="att-panel"', 'id="tab-summary"'] as $bit) {
+        foreach (['kiosk-monitor.js', 'script.js', 'kiosk-clock.js', 'kiosk-dtr.js', 'kiosk-report.js', 'kiosk.css', 'id="att-panel"', 'id="tab-dtr"', 'id="tab-report"'] as $bit) {
             $page->assertSee($bit, false);
         }
-        foreach (['script.js', 'kiosk-clock.js', 'kiosk-summary.js', 'style.css', 'kiosk-sites.css', 'kiosk-v3.css', 'kiosk-screen.css'] as $file) {
-            $this->assertFileExists(public_path('kiosk-screen/' . $file));
+        $page->assertDontSee('id="tab-summary"', false);
+        foreach (['script.js', 'kiosk-clock.js', 'kiosk-dtr.js', 'kiosk-report.js', 'kiosk.css'] as $file) {
+            $this->assertFileExists(public_path('kiosk-app/' . $file));
         }
     }
 

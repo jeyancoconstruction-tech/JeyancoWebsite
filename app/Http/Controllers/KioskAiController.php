@@ -36,9 +36,7 @@ class KioskAiController extends Controller
      */
     public function byFinger(int $fingerId): JsonResponse
     {
-        $employee = Employee::with(['laborType', 'site'])
-            ->where('fingerprint_id', (string) $fingerId)
-            ->first();
+        $employee = Employee::findByFingerprint((string) $fingerId)?->load(['laborType', 'site']);
 
         if (! $employee) {
             return response()->json(['message' => 'Employee not found.'], 404);
@@ -66,9 +64,7 @@ class KioskAiController extends Controller
      */
     public function summary(int $fingerId, PayrollService $payroll): JsonResponse
     {
-        $employee = Employee::with('laborType')
-            ->where('fingerprint_id', (string) $fingerId)
-            ->first();
+        $employee = Employee::findByFingerprint((string) $fingerId)?->load('laborType');
 
         if (! $employee) {
             return response()->json(['success' => false, 'message' => 'Employee not found.'], 404);

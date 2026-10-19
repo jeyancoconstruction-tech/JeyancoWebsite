@@ -29,6 +29,12 @@ class KioskAlert extends Notification
             'color' => '#d97706',
             'link'  => '/employees/register',
         ],
+        // A worker posted a complaint at the kiosk.
+        'kiosk_complaint' => [
+            'icon'  => 'fa-comment-dots',
+            'color' => '#d97706',
+            'link'  => '/complaints',
+        ],
         'kiosk_geofence_ok' => [
             'icon'  => 'fa-location-dot',
             'color' => '#16a34a',

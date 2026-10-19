@@ -91,6 +91,17 @@ class DeviceMonitoringController extends Controller
         $line   = $list->firstWhere('id', $kiosk->id);
         $screen = ['kiosk' => $line, 'on' => $line['state'] !== 'off'];
 
+        // The tab the kiosk is on and who is using it, as it last told us
+        // (KioskController::noteScreen). Older than a minute is not "now".
+        $view = \Illuminate\Support\Facades\Cache::get(KioskController::SCREEN_KEY . $kiosk->id);
+        $screen['view'] = is_array($view) && isset($view['at']) && Carbon::parse($view['at'])->gt($now->copy()->subMinute())
+            ? $view : null;
+        // A screen that reported in the last minute is on, whatever the GPS
+        // heartbeat says — the tracker can be down while the kiosk is in use.
+        if ($screen['view']) {
+            $screen['on'] = true;
+        }
+
         // Each scan as the web answered it (RecordKioskEvent), newest after
         // `since`. A monitor opening asks with since=-1 and gets only the
         // number to start from, not the scans from before it was opened.
@@ -146,12 +157,13 @@ class DeviceMonitoringController extends Controller
     }
 
     /**
-     * The kiosk's own screen — its v8 files, unchanged, in public/kiosk-screen
-     * — drawn from this system's data, for the monitor to hold in a frame.
+     * The kiosk's own screen — the same files the kiosk runs, in
+     * public/kiosk-app — drawn from this system's data, for the monitor to
+     * hold in a frame.
      */
     public function screen(Kiosk $kiosk)
     {
-        $files = glob(public_path('kiosk-screen/*')) ?: [];
+        $files = array_merge(glob(public_path('kiosk-app/*.js')) ?: [], glob(public_path('kiosk-app/*.css')) ?: []);
 
         return view('kiosk-screen', [
             'kiosk' => $kiosk,

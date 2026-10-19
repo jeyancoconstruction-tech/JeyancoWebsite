@@ -1,21 +1,15 @@
 @extends('layouts')
 
+@section('page_title', 'Edit Employee')
+
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/employee-list.css') }}">
 @endpush
 
 @section('content')
-<div class="employee-container">
-    <x-page-header :title="__('Edit Employee Profile')">
-        <x-slot:actions>
-            <a href="{{ route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : []) }}" class="btn btn-outline-secondary shadow-sm px-4">
-                <i class="fas fa-arrow-left me-2"></i>{{ __('Back to Employees') }}
-            </a>
-        </x-slot:actions>
-    </x-page-header>
-
+<div class="employee-container eea-page">
     @if($errors->any())
-        <div class="alert alert-danger border-0 shadow-sm mb-4">
+        <div class="alert alert-danger border-0 shadow-sm mb-3">
             <i class="fas fa-exclamation-circle me-2"></i>
             <ul class="mb-0 mt-1">
                 @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
@@ -23,55 +17,56 @@
         </div>
     @endif
 
-    <div class="row">
-        <div class="col-12">
-            <form action="{{ route('employees.update', $employee->id) }}" method="POST" class="rgx rgx-edit" id="rgxForm" data-mode="edit">
-                @csrf
-                @method('PUT')
+    @php
+        $lt      = $employee->laborType;
+        $fingers = method_exists($employee, 'fingerprintSlots') ? count($employee->fingerprintSlots()) : ($employee->fingerprint_id ? 1 : 0);
+        $needFp  = (int) config('kiosk.fingers_required', 2);
+        $initials = collect(preg_split('/\s+/', trim((string) $employee->name)))->filter()->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('');
+        $statusLabel = ['active' => __('Active'), 'pending' => __('Pending'), 'archived' => __('Archived'), 'deleted' => __('Deleted')][$employee->status] ?? ucfirst((string) $employee->status);
+    @endphp
 
-                {{-- Who is being edited, at a glance. The Employee ID, the
-                     fingerprint and the labor type's rates were read-only
-                     boxes and a card inside Employment & Pay; they are facts
-                     about the worker, not answers to type, so they sit here.
-                     The name follows the name fields as they are typed. --}}
-                @php $lt = $employee->laborType; @endphp
-                <div class="rgx-who">
-                    <span class="rgx-who-av">@include('partials.worker-icon', ['size' => '58%'])</span>
-                    <div class="rgx-who-main">
-                        <div class="rgx-who-name" id="rgxWhoName">{{ $employee->name }}</div>
-                        <div class="rgx-who-meta">
-                            <span class="rgx-tag rgx-tag-id" title="{{ __('Used in Payroll & Reports.') }}">#{{ $employee->id }}</span>
-                            @if($employee->fingerprint_id)
-                                <span class="rgx-tag rgx-tag-ok" title="{{ __('Cannot be changed here.') }}"><i class="fas fa-fingerprint"></i> {{ __('Fingerprint') }} {{ $employee->fingerprint_id }}</span>
-                            @else
-                                <span class="rgx-tag rgx-tag-warn" title="{{ __('Enrolled at the kiosk.') }}"><i class="fas fa-fingerprint"></i> {{ __('No fingerprint yet') }}</span>
-                            @endif
-                            @if($employee->site)
-                                <span class="rgx-tag"><i class="fas fa-location-dot"></i> {{ $employee->site->name }}</span>
-                            @endif
-                            @if($employee->date_hired)
-                                <span class="rgx-tag"><i class="fas fa-calendar"></i> {{ __('Hired') }} {{ $employee->date_hired->format('M j, Y') }}</span>
-                            @endif
-                        </div>
-                    </div>
-                    @if($lt)
-                        <div class="rgx-rates" title="{{ __('Current Labor Type') }}">
-                            <div class="rgx-rate rgx-rate-name"><small>{{ __('Labor type') }}</small><b>{{ $lt->name }}</b></div>
-                            <div class="rgx-rate"><small>{{ __('Daily') }}</small><b>{{ $lt->getFormattedDailyRate() }}</b></div>
-                            <div class="rgx-rate"><small>{{ __('Hourly') }}</small><b>{{ $lt->getFormattedHourlyRate() }}</b></div>
-                            <div class="rgx-rate"><small>{{ __('OT') }}</small><b>{{ $lt->getFormattedOTRate() }}</b></div>
-                        </div>
-                    @endif
+    <a class="eea-back" href="{{ route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : []) }}"><i class="fas fa-arrow-left"></i> {{ __('Back to Employees') }}</a>
+
+    <form action="{{ route('employees.update', $employee->id) }}" method="POST" class="eea" id="rgxForm" data-mode="edit" novalidate>
+        @csrf
+        @method('PUT')
+
+        {{-- Who is being edited, and the figures payroll uses. The name
+             follows the name fields as they are typed (_register_progress). --}}
+        <header class="eea-hero">
+            <span class="eea-ini">{{ $initials ?: '?' }}</span>
+            <div class="eea-id">
+                <h1 id="rgxWhoName">{{ $employee->name }}</h1>
+                <div class="eea-sub">#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }} · {{ $employee->position ?: ($lt->name ?? __('Worker')) }}@if($employee->site) · {{ $employee->site->name }}@endif</div>
+                <div class="eea-chips">
+                    <span class="eea-chip"><i class="st-{{ $employee->status }}"></i>{{ $statusLabel }}</span>
+                    @if($employee->shift)<span class="eea-chip">{{ $employee->shift->name }} · {{ \Carbon\Carbon::parse($employee->shift->starts_at)->format('g:i A') }}</span>@endif
+                    <span class="eea-chip {{ $fingers < $needFp ? 'warn' : '' }}" title="{{ __('Enrolled at the kiosk.') }}"><i class="fas fa-fingerprint"></i>{{ __('Fingerprints') }} {{ $fingers }} {{ __('of') }} {{ $needFp }}</span>
+                    <span class="eea-chip">{{ $employee->isContractual() ? __('Contractual') : __('Regular') }}</span>
                 </div>
+            </div>
+            <dl class="eea-stats">
+                @if($lt)
+                    <div><dt>{{ __('Daily rate') }}</dt><dd>{{ $lt->getFormattedDailyRate() }}</dd></div>
+                    <div><dt>{{ __('Hourly') }}</dt><dd>{{ $lt->getFormattedHourlyRate() }}</dd></div>
+                @endif
+                <div><dt>{{ __('Hired') }}</dt><dd>{{ $employee->date_hired ? $employee->date_hired->format('M j, Y') : '—' }}</dd></div>
+            </dl>
+        </header>
 
-                <div class="ep-section">
-                    <div class="ep-section-head">
+        <div class="eea-card">
+            {{-- The tabs: one per section below, drawn by the script at the
+                 end of the page from the sections' own titles. --}}
+            <nav class="eea-tabs" id="eeaTabs" role="tablist" aria-label="{{ __('Employee sections') }}"></nav>
+            <div class="eea-body" id="eeaBody">
+                <section class="ep-section">
+                    <header class="ep-section-head">
                         <span class="ep-section-icon"><i class="fas fa-helmet-safety"></i></span>
                         <div>
                             <h3 class="ep-section-title">{{ __('Employment & Pay') }}</h3>
-                            <p class="ep-section-sub">{{ __('What the worker is paid and where they are assigned.') }}</p>
+                            <p class="ep-section-sub">{{ __('What the worker does, where, and the rate payroll uses. Pay, shift and site apply from the next day worked.') }}</p>
                         </div>
-                    </div>
+                    </header>
 
                     @php
                         // Workers registered before the name was captured in
@@ -240,25 +235,24 @@
                              goes back with the form, unchanged, as it always did. --}}
                         <input type="hidden" name="fingerprint_id" value="{{ $employee->fingerprint_id }}">
                     </div>
-                </div>
+                </section>
 
                 @include('employees._profile_fields', ['employee' => $employee])
+            </div>
 
-                <div class="ep-actions">
-                    {{-- What has been changed so far, counted in the page. --}}
-                    <div class="rgx-prog" aria-live="polite">
-                        <span class="rgx-dirty" id="rgxDirty">{{ __('No changes yet') }}</span>
-                        <span class="rgx-count"><b id="rgxDone">0</b> {{ __('of') }} <b id="rgxTotal">0</b> {{ __('required filled') }}</span>
-                    </div>
-                    <span class="ep-actions-note"></span>
-                    <a href="{{ route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : []) }}" class="btn btn-outline-secondary px-4">{{ __('Cancel') }}</a>
-                    <button type="submit" class="btn btn-primary fw-bold px-4">
-                        <i class="fas fa-save me-2"></i>{{ __('Save Changes') }}
-                    </button>
+            <footer class="eea-foot">
+                <span class="eea-saved">{{ __('Last saved') }} {{ $employee->updated_at?->format('M j, Y g:i A') }}</span>
+                <span class="eea-sp"></span>
+                {{-- What has been changed so far, counted in the page. --}}
+                <div class="rgx-prog" aria-live="polite">
+                    <span class="rgx-dirty" id="rgxDirty">{{ __('No changes yet') }}</span>
+                    <span class="rgx-count"><b id="rgxDone">0</b> {{ __('of') }} <b id="rgxTotal">0</b> {{ __('required filled') }}</span>
                 </div>
-            </form>
+                <a href="{{ route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : []) }}" class="eea-btn">{{ __('Cancel') }}</a>
+                <button type="submit" class="eea-btn pri" id="eeaSave">{{ __('Save changes') }}</button>
+            </footer>
         </div>
-    </div>
+    </form>
 </div>
 
 {{-- In the head, not the body: a stylesheet the parser only reaches near
@@ -266,6 +260,75 @@
 @push('styles')
     @include('employees._profile_styles')
     @include('employees._register_layout')
+<style>
+/* ── Edit employee (2026-10-19): a worker header, then one section at a
+   time. Theme tokens throughout; the header keeps the rail's navy in both
+   themes. ─────────────────────────────────────────────────────────────── */
+.eea-page { display: flex; flex-direction: column; gap: 12px; }
+.eea-back { align-self: flex-start; font-size: 13px; font-weight: 600; color: var(--text-muted); text-decoration: none; display: inline-flex; gap: 7px; align-items: center; }
+.eea-back:hover { color: var(--brand); }
+.eea { display: flex; flex-direction: column; gap: 14px; }
+
+.eea-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 20px; padding: 22px 24px; border-radius: 14px; color: #fff;
+            background: linear-gradient(120deg, #0f2c57 0%, #143a70 60%, #1a4a8a 100%); }
+.eea-hero::after { content: ''; position: absolute; right: -70px; top: -70px; width: 260px; height: 260px; border-radius: 50%;
+                   border: 1px solid rgba(255,255,255,.07); box-shadow: 0 0 0 40px rgba(255,255,255,.025), 0 0 0 80px rgba(255,255,255,.02); pointer-events: none; }
+.eea-ini { flex: none; width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; font-weight: 800; font-size: 21px;
+           background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); letter-spacing: .02em; }
+.eea-id { min-width: 0; flex: 1; }
+html[data-bs-theme] .eea-hero .eea-id h1 { margin: 0 !important; font-size: 22px !important; font-weight: 700; letter-spacing: -.01em; color: #fff !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eea-sub { color: #b9cbe6; font-size: 13px; margin-top: 2px; }
+.eea-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.eea-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+            background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); color: #fff; }
+.eea-chip i:not(.fas) { width: 7px; height: 7px; border-radius: 50%; background: #9aa9bf; display: inline-block; }
+.eea-chip i.st-active { background: #4ade80; } .eea-chip i.st-pending { background: #fbbf24; }
+.eea-chip .fas { font-size: 10px; opacity: .85; }
+.eea-chip.warn { background: rgba(251,191,36,.18); border-color: rgba(251,191,36,.45); }
+.eea-stats { position: relative; z-index: 1; display: flex; margin: 0; flex: none; }
+.eea-stats div { padding: 0 20px; border-left: 1px solid rgba(255,255,255,.15); }
+.eea-stats div:first-child { border-left: 0; }
+.eea-stats dt { font-size: 11px; color: #9fb6d8; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.eea-stats dd { margin: 3px 0 0; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.eea-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+.eea-tabs { display: flex; gap: 2px; padding: 0 14px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.eea-tabs button { flex: none; background: none; border: 0; padding: 14px 12px 12px; font-weight: 600; font-size: 13.5px; color: var(--text-muted);
+                   display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.eea-tabs button:hover { color: var(--text-primary); }
+.eea-tabs button.on { color: var(--brand); box-shadow: inset 0 -2px 0 var(--brand); }
+.eea-tabs .need { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); display: inline-block; }
+.eea-tabs .chg { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); display: inline-block; }
+
+/* Each section: its name and why on the left, its fields on the right. */
+.eea .eea-body { padding: 4px 24px; }
+.eea .ep-section { display: grid; grid-template-columns: 230px minmax(0, 1fr); column-gap: 28px; row-gap: 0; align-content: start; margin: 0; padding: 22px 0;
+                   background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+.eea .ep-section[hidden] { display: none !important; }
+.eea .ep-section-head { display: block !important; margin: 0 !important; padding: 0 !important; border: 0 !important; grid-column: 1; grid-row: 1 / span 12; }
+.eea .ep-section > :not(.ep-section-head) { grid-column: 2; }
+.eea .ep-section > .row + .row, .eea .ep-section > .row + * { margin-top: 14px; }
+.eea .ep-section-icon, .eea .rgx-chip { display: none !important; }
+.eea .ep-section-title { font-size: 14.5px; font-weight: 700; margin: 0; color: var(--text-primary); }
+.eea .ep-section-sub { display: block !important; font-size: 12.5px; color: var(--text-muted); margin: 4px 0 0; line-height: 1.5; }
+.eea .ep-label { font-size: 12.5px !important; font-weight: 600 !important; text-transform: none !important; letter-spacing: 0 !important; color: var(--text-secondary) !important; margin-bottom: 5px; }
+.eea .form-control, .eea .form-select { min-height: 38px; border-radius: 9px; font-size: 13.5px; }
+.eea .form-control[readonly] { background: var(--bg-subtle); }
+.eea .ep-hint { font-size: 12px; color: var(--text-muted); }
+.eea .ep-subhead { margin: 18px 0 6px !important; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); padding-top: 14px; border-top: 1px dashed var(--border); }
+
+.eea-foot { display: flex; align-items: center; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--border); background: var(--bg-subtle);
+            border-radius: 0 0 14px 14px; position: sticky; bottom: 0; z-index: 5; }
+.eea-saved { font-size: 12.5px; color: var(--text-muted); }
+.eea-sp { flex: 1; }
+.eea-btn { height: 38px; padding: 0 16px; border-radius: 9px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-secondary);
+           font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
+.eea-btn.pri { background: var(--brand); border-color: var(--brand); color: #fff; }
+.eea .rgx-count { font-size: 12.5px; }
+
+@media (max-width: 1100px) { .eea .ep-section { grid-template-columns: 1fr; } .eea .ep-section-head { grid-row: auto; margin-bottom: 12px !important; } .eea .ep-section > :not(.ep-section-head) { grid-column: 1; } .eea-hero { flex-wrap: wrap; } .eea-stats { width: 100%; } }
+@media (max-width: 640px) { .eea-saved { display: none; } .eea-foot { flex-wrap: wrap; } }
+</style>
 @endpush
 
 {{-- site-location-picker.js is not loaded here any more: it existed for the
@@ -343,6 +406,74 @@
     months.addEventListener('input', sync);
     hired.addEventListener('input', sync);
     sync();
+})();
+</script>
+
+<script>
+// ── One section at a time ───────────────────────────────────────────────────
+// The tabs are the sections' own titles. The one with a validation error opens
+// first; a red dot marks a tab with a required field left empty, a blue one a
+// tab with changes. The form posts every section, whichever is showing.
+(function () {
+    const body = document.getElementById('eeaBody');
+    const nav  = document.getElementById('eeaTabs');
+    if (!body || !nav) return;
+    const secs = Array.from(body.querySelectorAll('.ep-section'));
+    const KEY  = 'jeyanco-eea-tab-{{ $employee->id }}';
+
+    const btns = secs.map((sec, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('role', 'tab');
+        const title = (sec.querySelector('.ep-section-title') || {}).textContent || ('Section ' + (i + 1));
+        b.innerHTML = '<span></span>';
+        b.firstChild.textContent = title.trim().replace(/ Information$/, '');
+        b.addEventListener('click', () => show(i));
+        nav.appendChild(b);
+        return b;
+    });
+
+    function show(i) {
+        secs.forEach((s, j) => { s.hidden = j !== i; btns[j].classList.toggle('on', j === i); btns[j].setAttribute('aria-selected', j === i ? 'true' : 'false'); });
+        try { sessionStorage.setItem(KEY, String(i)); } catch (e) {}
+    }
+
+    function marks() {
+        secs.forEach((sec, i) => {
+            const empty = Array.from(sec.querySelectorAll('input[required], select[required], textarea[required]'))
+                .some(f => !f.disabled && f.type !== 'hidden' && String(f.value || '').trim() === '');
+            const changed = !!sec.querySelector('.rgx-changed');
+            const bad = !!sec.querySelector('.is-invalid, .invalid-feedback.d-block');
+            let dot = btns[i].querySelector('i');
+            const cls = bad || empty ? 'need' : (changed ? 'chg' : '');
+            if (!cls) { if (dot) dot.remove(); return; }
+            if (!dot) { dot = document.createElement('i'); btns[i].appendChild(dot); }
+            dot.className = cls;
+        });
+    }
+
+    const firstBad = secs.findIndex(s => s.querySelector('.is-invalid, .invalid-feedback.d-block'));
+    let start = 0;
+    try { start = Number(sessionStorage.getItem(KEY)) || 0; } catch (e) {}
+    show(firstBad >= 0 ? firstBad : Math.min(start, secs.length - 1));
+
+    const form = document.getElementById('rgxForm');
+    form.addEventListener('input', () => setTimeout(marks, 0));
+    form.addEventListener('change', () => setTimeout(marks, 0));
+    window.addEventListener('load', () => setTimeout(marks, 50));
+
+    // A required field left empty in another tab: open it rather than send.
+    form.addEventListener('submit', e => {
+        const miss = Array.from(form.querySelectorAll('input[required], select[required], textarea[required]'))
+            .find(f => !f.disabled && f.type !== 'hidden' && String(f.value || '').trim() === '');
+        if (!miss) return;
+        e.preventDefault();
+        const i = secs.findIndex(s => s.contains(miss));
+        if (i >= 0) show(i);
+        miss.classList.add('is-invalid');
+        miss.focus();
+        marks();
+    });
 })();
 </script>
 

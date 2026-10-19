@@ -1,0 +1,10 @@
+{
+  "LocalNetworkAccessAllowedForUrls": ["https://jeyancowebsite-production.up.railway.app", "https://jeyancopayroll.me"],
+  "InsecurePrivateNetworkRequestsAllowedForUrls": ["https://jeyancowebsite-production.up.railway.app", "https://jeyancopayroll.me"],
+  "TranslateEnabled": false,
+  "PasswordManagerEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "BrowserSignin": 0,
+  "PromptForDownloadLocation": false
+}

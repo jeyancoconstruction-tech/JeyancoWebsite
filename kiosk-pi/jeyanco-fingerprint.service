@@ -1,0 +1,18 @@
+[Unit]
+Description=Jeyanco kiosk fingerprint service (R307 + bridge to the web)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=admin
+WorkingDirectory=/home/admin/jeyanco
+EnvironmentFile=/home/admin/jeyanco/kiosk.env
+Environment=PYTHONUNBUFFERED=1
+# If the Python libraries are in a virtualenv, point this at its python3,
+# e.g. /home/admin/jeyanco/venv/bin/python3
+ExecStart=/usr/bin/python3 /home/admin/jeyanco/testing.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

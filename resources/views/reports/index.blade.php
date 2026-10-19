@@ -2,22 +2,25 @@
 
 @section('page_title', 'Payroll Reports')
 
-{{-- Payroll Reports, a sub-item of Payroll Records. Laid out after Michael's
-     jeyanco-payroll-reports.html (2026-09-26): report tabs, the period, the
-     totals, a chart and a sortable table. Every figure is PayrollService's,
-     as Payroll Records computes it (see PayrollReportController); colours are
-     the theme's tokens. --}}
+{{-- Payroll Reports, a sub-item of Payroll Records. Every figure is
+     PayrollService's, as Payroll Records computes it (see
+     PayrollReportController); colours are the theme's tokens.
+
+     UI revision (2026-10-19): one summary strip instead of tiles, plain tabs,
+     one filter line, no chart card — a share is a bar in its own row — and a
+     row opens a side panel with the worker's pay, overtime, deductions and
+     site. Print / PDF previews the very page that prints (reports/print). --}}
 
 @push('styles')
 <style>
 .rp { --rp-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace; display: flex; flex-direction: column; gap: 10px; }
-.rp { --rp-s1: #2a78d6; --rp-s2: #eb6834; --rp-s3: #1baf7a; --rp-s4: #eda100; --rp-s5: #7c3aed; --rp-s6: #db2777; --rp-s7: #64748b; }
-html[data-bs-theme="dark"] .rp { --rp-s1: #3987e5; --rp-s2: #d95926; --rp-s3: #199e70; --rp-s4: #c98500; --rp-s5: #8b5cf6; --rp-s6: #ec4899; --rp-s7: #94a3b8; }
+.rp, #rpPanel, #dtrModal { --rp-late: #c2570c; --rp-ot: #1d5fd0; --rp-bar: #2a78d6; --rp-bar2: #94a3b8; }
+html[data-bs-theme="dark"] .rp, html[data-bs-theme="dark"] #rpPanel, html[data-bs-theme="dark"] #dtrModal { --rp-late: #f59e42; --rp-ot: #6aa7f5; --rp-bar: #3987e5; --rp-bar2: #64748b; }
 html[data-bs-theme] .main-content .rp > .page-head { margin-bottom: -2px !important; }
 
-.rp-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-xs); }
+.rp-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
 .rp-btn {
-    display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 10px;
+    display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 9px;
     border: 1px solid var(--border-md); background: var(--surface); color: var(--text-primary);
     font-size: 13px; font-weight: 600; white-space: nowrap; text-decoration: none; cursor: pointer;
 }
@@ -26,138 +29,170 @@ html[data-bs-theme] .main-content .rp > .page-head { margin-bottom: -2px !import
 .rp-btn.pri { background: var(--brand); border-color: var(--brand); color: #fff; }
 .rp-btn.pri:hover { color: #fff; filter: brightness(1.06); }
 
-/* Report tabs */
-.rp-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; scrollbar-width: none; }
+/* Report tabs: words on a line, the one open underlined. */
+.rp-tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--border); scrollbar-width: none; }
 .rp-tabs::-webkit-scrollbar { display: none; }
-.rp-tab { display: flex; gap: 8px; align-items: center; color: var(--text-secondary); font-size: 12.5px; font-weight: 600; padding: 0 12px; height: 32px; border-radius: 9px; white-space: nowrap; text-decoration: none; }
-.rp-tab svg { width: 16px; height: 16px; }
-.rp-tab:hover { color: var(--text-primary); background: var(--bg-subtle); }
-.rp-tab.on { background: var(--brand-subtle); color: var(--brand); }
+.rp-tab { position: relative; display: flex; align-items: center; color: var(--text-secondary); font-size: 13px; font-weight: 600; padding: 0 12px; height: 38px; white-space: nowrap; text-decoration: none; }
+.rp-tab:hover { color: var(--text-primary); }
+.rp-tab.on { color: var(--brand); }
+.rp-tab.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--brand); }
 
-/* Filters */
-.rp-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; }
-.rp-chips { display: flex; gap: 4px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
-.rp-sel { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-md); background: var(--surface); border-radius: 10px; padding: 0 10px; height: 32px; margin: 0; }
+/* Filters: one line. */
+.rp-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rp-chips { display: flex; gap: 2px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 9px; padding: 2px; }
+.rp-chips a { display: inline-flex; align-items: center; color: var(--text-secondary); font-size: 12.5px; font-weight: 600; height: 28px; padding: 0 12px; border-radius: 7px; white-space: nowrap; text-decoration: none; }
+.rp-chips a:hover { color: var(--text-primary); }
+.rp-chips a.on { background: var(--surface); color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,.10); }
+.rp-period { display: flex; align-items: center; gap: 4px; }
+.rp-step { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--border-md); border-radius: 9px; background: var(--surface); color: var(--text-primary); text-decoration: none; }
+.rp-step svg { width: 15px; height: 15px; }
+.rp-step:hover { border-color: var(--brand); color: var(--text-primary); }
+.rp-step.off { opacity: .4; pointer-events: none; }
+.rp-step .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.rp-when { min-width: 150px; padding: 0 6px; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--text-primary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rp-sel { display: flex; align-items: center; gap: 7px; border: 1px solid var(--border-md); background: var(--surface); border-radius: 9px; padding: 0 10px; height: 32px; margin: 0; }
 .rp-sel svg { width: 15px; height: 15px; color: var(--text-muted); flex: none; }
 html[data-bs-theme] .rp .rp-sel input,
 html[data-bs-theme] .rp .rp-sel select {
     border: 0 !important; background: transparent !important; box-shadow: none !important; outline: none;
-    height: 34px; padding: 0; color: var(--text-primary); font-size: 13px; font-weight: 500; min-width: 0;
+    height: 30px; padding: 0; color: var(--text-primary); font-size: 13px; font-weight: 500; min-width: 0;
 }
-html[data-bs-theme] .rp .rp-sel input.q { width: 172px; }
-html[data-bs-theme] .rp .rp-sel select { width: 120px; }
-/* The open list, which the browser draws white behind a see-through field. */
+html[data-bs-theme] .rp .rp-sel input.q { width: 180px; }
+html[data-bs-theme] .rp .rp-sel select { width: 130px; }
 html[data-bs-theme] .rp .rp-sel select option { background: var(--surface); color: var(--text-primary); }
 .rp-filters .sp { flex: 1; }
-.rp-lnk { color: var(--brand); font-size: 13px; font-weight: 600; padding: 0 6px; text-decoration: none; }
-.rp-lnk:hover { text-decoration: underline; }
+.rp-lnk { color: var(--text-secondary); font-size: 12.5px; font-weight: 600; padding: 0 4px; text-decoration: none; }
+.rp-lnk:hover { color: var(--brand); }
 
-/* Totals */
-.rp-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-xs); }
-.rp-kpi { background: var(--surface); padding: 7px 12px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.rp-kpi span { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--text-secondary); }
-.rp-kpi b { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
+/* The summary strip: the figures on one line, a hairline between them. */
+.rp-kpis { display: flex; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.rp-kpi { flex: 1 1 130px; padding: 9px 16px; display: flex; flex-direction: column; gap: 1px; min-width: 0; border-left: 1px solid var(--border); }
+.rp-kpi:first-child { border-left: 0; }
+.rp-kpi span { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+.rp-kpi b { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); white-space: nowrap; }
 .rp-kpi b.net { color: var(--brand); }
-.rp-kpi small { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-kpi b.late { color: var(--rp-late); }
+.rp-kpi b.ot { color: var(--rp-ot); }
+.rp-kpi b.bad { color: var(--danger); }
+.rp-kpi small { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rp-kpi small .up { color: var(--success); font-weight: 700; }
 .rp-kpi small .down { color: var(--danger); font-weight: 700; }
 
-/* Chart */
-.rp-chart { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
-.rp-ch-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.rp-ch-h h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); }
-.rp-ch-h small { color: var(--text-muted); font-size: 12px; }
-.rp-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
-.rp-legend span { display: flex; gap: 6px; align-items: center; }
-.rp-legend i { width: 10px; height: 10px; border-radius: 3px; }
-.rp-hbars { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 36px; }
-/* A bar for each of the whole crew would push the table, and its totals, off
-   the screen, and the page would scroll them away. Past what the window can
-   spare, the bars scroll in their own box instead (2026-10-15). */
-.rp-hbars { max-height: clamp(48px, calc(100vh - 640px), 150px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
-@media (max-width: 1100px) { .rp-hbars { grid-template-columns: minmax(0, 1fr); } }
-.rp-hb { display: grid; grid-template-columns: minmax(0, 130px) minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 12.5px; }
-.rp-hb .nm { color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rp-hb .tr { height: 14px; display: flex; gap: 2px; }
-.rp-hb .tr i { display: block; height: 100%; min-width: 2px; }
-.rp-hb .tr i:last-child { border-radius: 0 4px 4px 0; }
-.rp-hb .v { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-primary); min-width: 84px; text-align: right; white-space: nowrap; }
-.rp-empty { padding: 36px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
-.rp-tip { position: fixed; z-index: 1200; pointer-events: none; background: var(--text-primary); color: var(--surface); font-size: 12px; font-weight: 600; padding: 6px 9px; border-radius: 7px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
-
 /* Table */
 .rp-tcard { overflow: hidden; }
-.rp-t-h { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+.rp-t-h { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
 .rp-t-h h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .rp-t-h small { color: var(--text-muted); font-size: 12px; }
+.rp-t-h .rp-t-hint { margin-left: auto; }
 .rp-wrap { overflow: auto; }
 .rp-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 640px; }
-.rp-table thead th { position: sticky; top: 0; z-index: 1; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); font-weight: 700; text-align: right; padding: 7px 10px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.rp-table thead th { position: sticky; top: 0; z-index: 1; font-size: 11.5px; color: var(--text-secondary); font-weight: 600; text-align: right; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border-md); white-space: nowrap; }
 .rp-table th.l, .rp-table td.l { text-align: left; }
 .rp-table thead th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
 .rp-table thead th button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.rp-table thead th svg { width: 10px; height: 10px; opacity: .45; }
+.rp-table thead th svg { width: 10px; height: 10px; opacity: 0; transition: opacity .12s; }
+.rp-table thead th:hover svg { opacity: .45; }
 .rp-table thead th.sorted svg { opacity: 1; color: var(--brand); }
-.rp-table tbody td { padding: 7px 10px; border-bottom: 1px solid var(--border); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 12.5px; color: var(--text-primary); }
+.rp-table tbody td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 13px; color: var(--text-primary); }
 .rp-table tbody tr:hover td { background: var(--bg-subtle); }
 .rp-table td.z { color: var(--text-muted); }
 .rp-table td.ded { color: var(--danger); }
-.rp-table td.net { font-weight: 800; }
+.rp-table td.net { font-weight: 700; }
 .rp-table td.code { font-family: var(--rp-mono); font-weight: 700; }
-.rp-table td.strong { font-weight: 700; }
-.rp-table tfoot td { position: sticky; bottom: 0; background: var(--bg-subtle); font-weight: 800; padding: 8px 10px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; border-top: 1px solid var(--border-md); color: var(--text-primary); }
-.rp-table tfoot td.l { text-align: left; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); }
-.rp-table tfoot td.ded { color: var(--danger); }
-.rp-emp { display: flex; gap: 9px; align-items: center; }
-.rp-av { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: #fff; flex: none; }
-.rp-emp b { font-size: 13px; font-weight: 600; }
-.rp-emp small { display: block; color: var(--text-muted); font-size: 11px; }
-.rp-st { display: inline-flex; gap: 6px; align-items: center; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 3px 9px; }
-.rp-st i { width: 6px; height: 6px; border-radius: 50%; }
-.rp-st.paid { background: var(--success-soft); color: var(--success); } .rp-st.paid i { background: var(--success); }
-.rp-st.open { background: var(--warning-soft); color: var(--warning); } .rp-st.open i { background: var(--warning); }
-.rp-sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
-
-/* ── Employees DTR ────────────────────────────────────────────────────────
-   Late is orange, overtime blue, an absence or a missing scan red — on the
-   list, in the totals above it and on a worker's page. */
-.rp, #dtrModal { --rp-late: #c2570c; --rp-ot: #1d5fd0; }
-html[data-bs-theme="dark"] .rp, html[data-bs-theme="dark"] #dtrModal { --rp-late: #f59e42; --rp-ot: #6aa7f5; }
-.rp-kpis.is-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.rp-kpi b.late, .rp-table td.tone-late { color: var(--rp-late); }
-.rp-kpi b.ot, .rp-table td.tone-ot { color: var(--rp-ot); }
-.rp-kpi b.bad, .rp-table td.tone-bad { color: var(--danger); }
+.rp-table td.strong { font-weight: 600; }
+.rp-table td.tone-late { color: var(--rp-late); }
+.rp-table td.tone-ot { color: var(--rp-ot); }
+.rp-table td.tone-bad { color: var(--danger); }
 .rp-table tbody td[class*="tone-"] { font-weight: 700; }
-.rp-pair b { display: block; font-size: 12.5px; font-weight: 600; }
-.rp-pair small { display: block; color: var(--text-muted); font-size: 11px; }
-.rp-table tbody tr[data-dtr] { cursor: pointer; }
-.rp-t-h .rp-t-hint { margin-left: auto; }
-.rp-table tbody tr[data-dtr]:focus-visible td { background: var(--brand-subtle); outline: none; }
+.rp-table tfoot td { position: sticky; bottom: 0; background: var(--bg-subtle); font-weight: 700; padding: 9px 12px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; border-top: 1px solid var(--border-md); color: var(--text-primary); }
+.rp-table tfoot td.l { text-align: left; font-size: 12px; color: var(--text-secondary); }
+.rp-table tfoot td.ded { color: var(--danger); }
+.rp-table tfoot td.tone-ot { color: var(--rp-ot); }
+.rp-table tfoot td.tone-late { color: var(--rp-late); }
+.rp-table tfoot td.tone-bad { color: var(--danger); }
+.rp-table tbody tr[data-dtr], .rp-table tbody tr[data-emp], .rp-table tbody tr[data-site] { cursor: pointer; }
+.rp-table tbody tr[data-dtr]:focus-visible td, .rp-table tbody tr[data-emp]:focus-visible td, .rp-table tbody tr[data-site]:focus-visible td { background: var(--brand-subtle); outline: none; }
+.rp-table tbody tr.is-open td { background: var(--brand-subtle); }
+.rp-empty { padding: 36px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
-/* The period: Weekly or Monthly, then back, which one, and on. */
-.rp-chips a { display: inline-flex; align-items: center; color: var(--text-secondary); font-size: 12px; font-weight: 600; height: 26px; padding: 0 12px; border-radius: 7px; white-space: nowrap; text-decoration: none; }
-.rp-chips a:hover { color: var(--text-primary); }
-.rp-chips a.on { background: var(--surface); color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
-.rp-period { display: flex; align-items: center; gap: 6px; }
-.rp-step { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border: 1px solid var(--border-md); border-radius: 10px; background: var(--surface); color: var(--text-primary); font-size: 12.5px; font-weight: 600; white-space: nowrap; text-decoration: none; }
-.rp-step svg { width: 14px; height: 14px; flex: none; }
-.rp-step:hover { border-color: var(--brand); color: var(--text-primary); }
-.rp-step.off { opacity: .45; pointer-events: none; }
-.rp-when { min-width: 132px; padding: 0 4px; text-align: center; font-size: 13.5px; font-weight: 700; color: var(--text-primary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Who: the name, then the code, trade and site — no coloured badges. */
+.rp-emp b { display: block; font-size: 13px; font-weight: 600; }
+.rp-emp small { display: block; color: var(--text-muted); font-size: 11.5px; }
+.rp-pair b { display: block; font-size: 13px; font-weight: 500; }
+.rp-pair small { display: block; color: var(--text-muted); font-size: 11.5px; }
 
-/* A worker's DTR: a pop-up in the middle, the page behind it blurred. Scoped
-   to the body class the script sets, so no other dialog's backdrop changes. */
+/* A share as a bar in its row. */
+.rp-share { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.rp-share .tr { width: 84px; height: 6px; border-radius: 3px; background: var(--bg-subtle); overflow: hidden; display: flex; }
+.rp-share .tr i { display: block; height: 100%; background: var(--rp-bar); }
+.rp-share .tr i + i { background: var(--rp-bar2); }
+.rp-share span { min-width: 44px; text-align: right; }
+
+/* Status of an advance. */
+.rp-st { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; border-radius: 6px; padding: 2px 8px; }
+.rp-st.paid { background: var(--success-soft); color: var(--success); }
+.rp-st.open { background: var(--warning-soft); color: var(--warning); }
+
+/* The DTR's week: seven squares. */
+.rp-week { display: inline-flex; gap: 3px; vertical-align: middle; }
+.rp-week i { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; font-style: normal; font-size: 9.5px; font-weight: 700; color: var(--text-muted); background: var(--bg-subtle); border: 1px solid var(--border); }
+.rp-week i.ok { background: var(--success-soft); color: var(--success); border-color: transparent; }
+.rp-week i.abs { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+.rp-week i.miss { background: var(--warning-soft); color: var(--warning); border-color: transparent; }
+.rp-week i.live { background: var(--brand-subtle); color: var(--brand); border-color: transparent; }
+.rp-week i.off { background: transparent; border-style: dashed; }
+
+/* ── The side panel ───────────────────────────────────────────────────── */
+html[data-bs-theme] #rpPanel { width: min(420px, 100vw); background: var(--surface); color: var(--text-primary); border-left: 1px solid var(--border); }
+.rpp-head { padding: 16px 18px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; }
+.rpp-head .who { flex: 1; min-width: 0; }
+.rpp-head b { display: block; font-size: 16px; font-weight: 700; }
+.rpp-head small { display: block; color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+.rpp-x { all: unset; box-sizing: border-box; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; border: 1px solid var(--border-md); cursor: pointer; color: var(--text-secondary); }
+.rpp-x:hover { color: var(--text-primary); border-color: var(--brand); }
+.rpp-x svg { width: 15px; height: 15px; }
+.rpp-net { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.rpp-net span { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+.rpp-net b { font-size: 22px; font-weight: 800; color: var(--brand); font-variant-numeric: tabular-nums; }
+.rpp-body { padding: 4px 18px 18px; overflow-y: auto; }
+.rpp-sec { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.rpp-sec:last-child { border-bottom: 0; }
+.rpp-sec h4 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+.rpp-sec h4 em { font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--brand); background: var(--brand-subtle); border-radius: 5px; padding: 1px 6px; }
+.rpp-sec ul { list-style: none; margin: 0; padding: 0; }
+.rpp-sec li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 13px; }
+.rpp-sec li span { color: var(--text-secondary); }
+.rpp-sec li b { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.rpp-sec li.tot { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 7px; }
+.rpp-sec li.tot b, .rpp-sec li.tot span { font-weight: 700; color: var(--text-primary); }
+.rpp-sec li .neg { color: var(--danger); }
+.rpp-sec li .ot { color: var(--rp-ot); }
+.rpp-sec .none { color: var(--text-muted); font-size: 12.5px; }
+.rpp-acts { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 18px; border-top: 1px solid var(--border); }
+.rpp-acts .rp-btn { height: 32px; font-size: 12.5px; padding: 0 11px; }
+
+/* ── The paper preview ───────────────────────────────────────────────── */
+#rpPaperModal .modal-dialog { max-width: min(1000px, calc(100% - 32px)); }
+html[data-bs-theme] #rpPaperModal .modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.rpv-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.rpv-bar b { font-size: 14px; }
+.rpv-bar small { color: var(--text-muted); font-size: 12px; }
+.rpv-bar .sp { flex: 1; }
+.rpv-frame { display: block; width: 100%; height: min(76vh, 900px); border: 0; background: #e5e7eb; }
+
+/* ── A worker's DTR: a pop-up in the middle, the page behind it blurred ─ */
 body.dtr-open .modal-backdrop { --bs-backdrop-bg: rgba(8, 14, 28, .42); --bs-backdrop-opacity: 1;
     -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
 #dtrModal .dtr-dialog { max-width: min(940px, calc(100% - 32px)); margin-left: auto; margin-right: auto; }
-html[data-bs-theme] #dtrModal .modal-content.dtr-pop { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.28); }
+html[data-bs-theme] #dtrModal .modal-content.dtr-pop { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.28); }
 .dtr-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); flex-wrap: wrap; }
 .dtr-who { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 180px; }
 .dtr-who b { display: block; font-size: 14px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dtr-who small { display: block; font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dtr-av { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; flex: none; font-weight: 700; font-size: 12px; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border-md); }
 .dtr-acts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .dtr-acts .rp-btn { height: 32px; padding: 0 11px; font-size: 12.5px; }
-.dtr-nav { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border-md); border-radius: 10px; background: var(--surface); height: 32px; padding: 0 2px; }
+.dtr-nav { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--border-md); border-radius: 9px; background: var(--surface); height: 32px; padding: 0 2px; }
 .dtr-nav span { min-width: 52px; text-align: center; font-size: 12px; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .dtr-ico { all: unset; box-sizing: border-box; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; color: var(--text-secondary); cursor: pointer; }
 .dtr-ico svg { width: 16px; height: 16px; }
@@ -211,24 +246,27 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
 .dtr-sign span { display: block; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); font-weight: 700; }
 .dtr-gen { margin-top: 14px; font-size: 10.5px; color: var(--text-muted); }
 
-/* Print / PDF: the report alone, on paper. */
+/* Ctrl+P on the page itself: with a worker's DTR open, that page prints;
+   otherwise the report alone. Print / PDF uses reports/print instead. */
 @media print {
-    /* With a worker's DTR open, that page is what prints. */
     body.dtr-open .rp, body.dtr-open .modal-backdrop, body.dtr-open .dtr-bar { display: none !important; }
     body.dtr-open #dtrModal { position: static !important; display: block !important; overflow: visible !important; }
     body.dtr-open #dtrModal .modal-dialog { display: block !important; max-width: none !important; height: auto !important; min-height: 0 !important; margin: 0 !important; transform: none !important; }
     body.dtr-open #dtrModal .modal-content, body.dtr-open #dtrModal .dtr-body { border: 0 !important; box-shadow: none !important; overflow: visible !important; max-height: none !important; background: #fff !important; padding: 0 !important; }
     body.dtr-open .dtr-sheet { --text-primary: #111; --text-secondary: #444; --text-muted: #666; --border: #b8b8b8; --border-md: #8a8a8a; --bg-subtle: #f1f3f5; --surface: #fff; --rp-late: #b45309; --rp-ot: #1d4ed8; --danger: #b91c1c; --success: #15803d; --brand: #1d4ed8; }
 
-    .sidebar, .topbar, .rp-tabs, .rp-filters, .page-head-actions, .chatbot-fab, .chatbot-window, .rp-tip { display: none !important; }
+    .sidebar, .topbar, .rp-tabs, .rp-filters, .page-head-actions, .chatbot-fab, .chatbot-window, #rpPanel, .offcanvas-backdrop { display: none !important; }
     .main-content { margin: 0 !important; padding: 0 !important; }
     .rp-card, .rp-kpis { box-shadow: none !important; break-inside: avoid; }
-    .rp-wrap, .rp-hbars { overflow: visible !important; }
-    .rp-hbars { max-height: none !important; }
+    .rp-wrap { overflow: visible !important; }
     .rp-table thead th, .rp-table tfoot td { position: static !important; }
     .rp-print-head { display: block !important; }
 }
 .rp-print-head { display: none; font-size: 12px; color: var(--text-secondary); margin-top: -8px; }
+@media (max-width: 760px) {
+    .rp-kpi { flex-basis: 45%; border-left: 0; border-top: 1px solid var(--border); }
+    html[data-bs-theme] .rp .rp-sel input.q { width: 140px; }
+}
 </style>
 @endpush
 
@@ -237,40 +275,51 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
     use App\Http\Controllers\PayrollReportController as R;
 
     $isDtr   = $report === 'dtr';
+    $panel   = $panel ?? [];
     $filters = array_filter(['site' => $siteId, 'q' => $q !== '' ? $q : null], fn ($v) => $v !== null && $v !== '');
     // The week or the month on screen follows to every tab, with the site
     // and the search.
     $keepQuery = $filters + ['span' => $period['span'], 'at' => $period['at']];
     $step = fn (array $to) => route('payroll-reports.index', $filters + ['report' => $report] + $to);
 
-    $icons = [
-        'dtr'        => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8.5 15.5l2.2 2.2 4.8-4.8"/>',
-        'employee'   => '<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 010 8M22 21c0-3-2-5-4-5.5"/>',
-        'site'       => '<path d="M12 22s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
-        'overtime'   => '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/>',
-        'deductions' => '<path d="M5 12h14"/><circle cx="12" cy="12" r="9"/>',
-        'advances'   => '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
-    ];
     $svg = fn ($path, $w = '1.8') => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' . $w . '" aria-hidden="true">' . $path . '</svg>';
     $arrow = $svg('<path d="M7 10l5-5 5 5M7 14l5 5 5-5"/>', '2.4');
     // By the pay week a month is the weeks that end in it, so the dates are
     // written out beside the report's name.
     $periodText = $isDtr ? $period['label'] : \App\Services\DtrService::label($fromC, $toC);
 
+    // Zero reads as nothing: a blank cell, so the figures that are there
+    // stand out. The Excel export still writes R::fmt's dash.
+    $isZero = fn ($val) => ! is_array($val) && is_numeric($val) && (float) $val == 0.0;
+
     // A cell: the text is R::fmt's, the same the Excel export writes.
-    $cell = function (array $col, $val) {
+    $cell = function (array $col, $val, array $row) use ($isZero) {
         [$key, , $type] = $col;
         $txt = e(R::fmt($type, $val));
-        return match ($type) {
-            'emp'    => '<div class="rp-emp"><span class="rp-av" style="background:' . e($val['c']) . '">' . e($val['init']) . '</span><div><b>' . e($val['t']) . '</b><small>' . e($val['sub']) . '</small></div></div>',
-            'pair'   => '<div class="rp-pair"><b>' . e($val['top']) . '</b><small>' . e($val['sub']) . '</small></div>',
-            'status' => '<span class="rp-st ' . e($val['c']) . '"><i></i>' . $txt . '</span>',
-            default  => $txt,
+        if (in_array($type, ['money0', 'net0', 'dur0', 'int0'], true) && $isZero($val)) {
+            return '';
+        }
+        $share = function (float $pct, ?float $rest = null) use ($txt) {
+            $pct = max(0, min(100, $pct));
+            return '<span class="rp-share"><span class="tr"><i style="width:' . round($pct, 2) . '%"></i></span><span>' . $txt . '</span></span>';
+        };
+        return match (true) {
+            $type === 'emp'    => '<div class="rp-emp"><b>' . e($val['t']) . '</b><small>' . e($val['sub']) . '</small></div>',
+            $type === 'pair'   => '<div class="rp-pair"><b>' . e($val['top']) . '</b><small>' . e($val['sub']) . '</small></div>',
+            $type === 'status' => '<span class="rp-st ' . e($val['c']) . '">' . $txt . '</span>',
+            $type === 'week'   => '<span class="rp-week" role="img" aria-label="' . e($val['t']) . '">'
+                                . implode('', array_map(fn ($d) => '<i class="' . e($d['c']) . '" title="' . e($d['n']) . '">' . e($d['d']) . '</i>', $val['days'] ?? []))
+                                . '</span>',
+            $type === 'pct'    => $share((float) $val),
+            // What of an advance has been collected, beside the amount.
+            $key === 'paid' && isset($row['principal']) && (float) $row['principal'] > 0
+                               => $share((float) $val / (float) $row['principal'] * 100),
+            default            => $txt,
         };
     };
-    $cls = function (array $col, $val) {
+    $cls = function (array $col, $val) use ($isZero) {
         $type = $col[2];
-        $zero = ! is_array($val) && is_numeric($val) && (float) $val == 0.0;
+        $zero = $isZero($val);
         return trim(implode(' ', array_filter([
             ! empty($col[3]) ? 'l' : '',
             in_array($type, ['net', 'net0'], true) && ! $zero ? 'net' : '',
@@ -283,6 +332,7 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
         ])));
     };
     $sortVal = fn ($val) => is_array($val) ? ($val['v'] ?? '') : $val;
+    $paperUrl = route('payroll-reports.print', array_merge($keepQuery, ['report' => $report]));
 @endphp
 
 <div class="rp" id="reportList" data-live="payroll attendance leave advances settings">
@@ -292,7 +342,7 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
             <a class="rp-btn" href="{{ route('payroll-reports.export', array_merge($keepQuery, ['report' => $report])) }}">
                 {!! $svg('<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13l6 5M15 13l-6 5"/>') !!} {{ __('Export Excel') }}
             </a>
-            <button type="button" class="rp-btn pri" onclick="window.print()">
+            <button type="button" class="rp-btn pri" id="rpPrint" data-paper="{{ $paperUrl }}">
                 {!! $svg('<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z"/>') !!} {{ __('Print / PDF') }}
             </button>
         </x-slot:actions>
@@ -301,17 +351,15 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
 
     <nav class="rp-tabs" aria-label="{{ __('Report') }}">
         @foreach($reports as $k => $t)
-            <a class="rp-tab {{ $k === $report ? 'on' : '' }}" href="{{ route('payroll-reports.index', array_merge($keepQuery, ['report' => $k])) }}" @if($k === $report) aria-current="page" @endif>
-                {!! $svg($icons[$k]) !!}{{ __($t) }}
-            </a>
+            <a class="rp-tab {{ $k === $report ? 'on' : '' }}" href="{{ route('payroll-reports.index', array_merge($keepQuery, ['report' => $k])) }}" @if($k === $report) aria-current="page" @endif>{{ __($t) }}</a>
         @endforeach
     </nav>
 
-    <form class="rp-card rp-filters" method="GET" action="{{ route('payroll-reports.index') }}" id="rpFilters" aria-label="{{ __('Filters') }}">
+    <form class="rp-filters" method="GET" action="{{ route('payroll-reports.index') }}" id="rpFilters" aria-label="{{ __('Filters') }}">
         <input type="hidden" name="report" value="{{ $report }}">
-        {{-- The period, the same on every tab (Michael, 2026-10-12): Weekly or
-             Monthly, then back, which one, and on. No date fields. It rides
-             along in the form so a site or a name keeps the period. --}}
+        {{-- The period, the same on every tab: Weekly or Monthly, then back,
+             which one, and on. No date fields. It rides along in the form so
+             a site or a name keeps the period. --}}
         <input type="hidden" name="span" value="{{ $period['span'] }}">
         <input type="hidden" name="at" value="{{ $period['at'] }}">
         <div class="rp-chips" role="group" aria-label="{{ __('Period') }}">
@@ -319,14 +367,15 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
             <a href="{{ $step($period['month']) }}" class="{{ $period['span'] === 'month' ? 'on' : '' }}" @if($period['span'] === 'month') aria-current="true" @endif>{{ __('Monthly') }}</a>
         </div>
         <div class="rp-period">
-            <a class="rp-step" href="{{ $step($period['prev']) }}" id="rpPrev">{!! $svg('<path d="M15 6l-6 6 6 6"/>', '2.4') !!}{{ __('Previous') }}</a>
+            <a class="rp-step" href="{{ $step($period['prev']) }}" id="rpPrev" title="{{ __('Previous') }}">{!! $svg('<path d="M15 6l-6 6 6 6"/>', '2.4') !!}<span class="lbl">{{ __('Previous') }}</span></a>
             <span class="rp-when" id="rpWhen" aria-live="polite" @if(! $isDtr && $period['span'] === 'month') title="{{ __('The pay weeks that end in this month') }}" @endif>{{ $period['label'] }}</span>
             @if($period['next'])
-                <a class="rp-step" href="{{ $step($period['next']) }}" id="rpNext">{{ __('Next') }}{!! $svg('<path d="M9 6l6 6-6 6"/>', '2.4') !!}</a>
+                <a class="rp-step" href="{{ $step($period['next']) }}" id="rpNext" title="{{ __('Next') }}">{!! $svg('<path d="M9 6l6 6-6 6"/>', '2.4') !!}<span class="lbl">{{ __('Next') }}</span></a>
             @else
-                <span class="rp-step off" id="rpNext" aria-disabled="true" title="{{ __('Nothing after this yet') }}">{{ __('Next') }}{!! $svg('<path d="M9 6l6 6-6 6"/>', '2.4') !!}</span>
+                <span class="rp-step off" id="rpNext" aria-disabled="true" title="{{ __('Nothing after this yet') }}">{!! $svg('<path d="M9 6l6 6-6 6"/>', '2.4') !!}<span class="lbl">{{ __('Next') }}</span></span>
             @endif
         </div>
+        <span class="sp"></span>
         <label class="rp-sel">
             {!! $svg('<path d="M12 22s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z"/>', '2') !!}
             <select name="site" aria-label="{{ __('Site') }}" id="rpSite">
@@ -340,8 +389,7 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
             {!! $svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', '2') !!}
             <input class="q" type="search" name="q" value="{{ $q }}" placeholder="{{ __('Employee name or ID') }}" aria-label="{{ __('Employee') }}" id="rpQ">
         </label>
-        <span class="sp"></span>
-        <a class="rp-lnk" href="{{ route('payroll-reports.index', ['report' => $report]) }}">{{ __('Reset') }}</a>
+        @if($filters)<a class="rp-lnk" href="{{ route('payroll-reports.index', ['report' => $report, 'span' => $period['span'], 'at' => $period['at']]) }}">{{ __('Clear') }}</a>@endif
     </form>
 
     <section class="rp-kpis {{ count($kpis) === 7 ? 'is-7' : '' }}" aria-label="{{ __('Totals') }}">
@@ -353,66 +401,54 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
                     @if($sub !== null)
                         {{ $sub }}
                     @elseif($delta !== null)
-                        {{ __('vs previous') }} <span class="{{ $delta >= 0 ? 'up' : 'down' }}">{{ $delta >= 0 ? '↑' : '↓' }} {{ number_format(abs($delta), 1) }}%</span>
+                        <span class="{{ $delta >= 0 ? 'up' : 'down' }}">{{ $delta >= 0 ? '↑' : '↓' }} {{ number_format(abs($delta), 1) }}%</span> {{ __('vs previous') }}
                     @else
-                        {{ __('No earlier period to compare') }}
+                        {{ __('No earlier period') }}
                     @endif
                 </small>
             </div>
         @endforeach
     </section>
 
-    {{-- The DTR has no chart: its totals, then everybody. --}}
-    @if($chart)
-    <section class="rp-card rp-chart" aria-label="{{ __('Chart') }}">
-        <div class="rp-ch-h"><h3>{{ __($chart['title']) }}</h3><small>{{ $chart['sub'] }}</small></div>
-        @if(! empty($chart['legend']))
-            <div class="rp-legend">
-                @foreach($chart['legend'] as [$n, $c])<span><i style="background:{{ $c }}"></i>{{ __($n) }}</span>@endforeach
-            </div>
-        @endif
-        @if($chart['items'])
-            <div class="rp-hbars">
-                @foreach($chart['items'] as $x)
-                    <div class="rp-hb">
-                        <span class="nm" title="{{ $x['label'] }}">{{ $x['label'] }}</span>
-                        <span class="tr">
-                            @foreach($x['parts'] as $pt)
-                                @if($pt['v'] > 0)<i style="width:{{ round($pt['v'] / $chart['max'] * 100, 3) }}%;background:{{ $pt['c'] }}" data-tip="{{ $x['label'] }} · {{ $pt['n'] }}: {{ $pt['fmt'] }}"></i>@endif
-                            @endforeach
-                        </span>
-                        <span class="v">{{ $x['fmt'] }}</span>
-                    </div>
-                @endforeach
-            </div>
-        @else
-            <div class="rp-empty">{{ __('Nothing to show for this period.') }}</div>
-        @endif
-    </section>
-    @endif
-
     {{-- Boxed to the screen like Payroll Records' list: the rows scroll under
          their column heads, and the totals stay on the card's bottom edge
-         however few rows there are (Michael, 2026-10-15). --}}
+         however few rows there are. --}}
     <section class="rp-card rp-tcard" aria-label="{{ __($table['title']) }}" data-fill-screen>
-        <div class="rp-t-h"><h3>{{ __($reports[$report]) }}</h3><small>{{ $periodText }}</small>@if($isDtr && $table['rows'])<small class="rp-t-hint">{{ __('Click an employee to open the DTR') }}</small>@endif</div>
+        <div class="rp-t-h">
+            <h3>{{ __($reports[$report]) }}</h3><small>{{ $periodText }}</small>
+            @if($table['rows'])
+                <small class="rp-t-hint">{{ $isDtr ? __('Click an employee to open the DTR') : ($report === 'site' ? __('Click a site to see its crew') : __('Click an employee for pay, OT and deductions')) }}</small>
+            @endif
+        </div>
         <div class="rp-wrap" data-fill-scroll>
             <table class="rp-table" id="rpTable">
                 <thead>
                     <tr>
                         @foreach($table['cols'] as $i => $col)
                             <th class="{{ ! empty($col[3]) ? 'l' : '' }}" aria-sort="none">
-                                <button type="button" data-sort="{{ $i }}">@if(! empty($col[4]))<span class="rp-sw" style="background:{{ $col[4] }}"></span>@endif{{ __($col[1]) }}{!! $arrow !!}</button>
+                                <button type="button" data-sort="{{ $i }}">{{ __($col[1]) }}{!! $arrow !!}</button>
                             </th>
                         @endforeach
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($table['rows'] as $row)
-                        <tr @if($isDtr) data-dtr="{{ $row['_id'] }}" tabindex="0" role="button" aria-label="{{ __('Open the DTR of :name', ['name' => $row['employee']['t']]) }}" @endif>
+                        @php
+                            $empId = $row['employee']['id'] ?? null;
+                            $name  = $row['employee']['t'] ?? '';
+                        @endphp
+                        @if($isDtr)
+                        <tr data-dtr="{{ $row['_id'] }}" tabindex="0" role="button" aria-label="{{ __('Open the DTR of :name', ['name' => $name]) }}">
+                        @elseif($report === 'site' && ! empty($row['_site']))
+                        <tr data-site="{{ route('payroll-reports.index', ['report' => 'employee', 'site' => $row['_site'], 'span' => $period['span'], 'at' => $period['at']]) }}" tabindex="0" role="link" aria-label="{{ __('See the crew of :site', ['site' => $row['site']['t']]) }}">
+                        @elseif($empId && isset($panel[$empId]))
+                        <tr data-emp="{{ $empId }}" tabindex="0" role="button" aria-label="{{ __('Show the pay of :name', ['name' => $name]) }}">
+                        @else
+                        <tr>
+                        @endif
                             @foreach($table['cols'] as $col)
                                 @php $val = $row[$col[0]] ?? null; @endphp
-                                <td class="{{ $cls($col, $val) }}" data-v="{{ $sortVal($val) }}">{!! $cell($col, $val) !!}</td>
+                                <td class="{{ $cls($col, $val) }}" data-v="{{ $sortVal($val) }}">{!! $cell($col, $val, $row) !!}</td>
                             @endforeach
                         </tr>
                     @empty
@@ -424,8 +460,11 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
                     <tfoot>
                         <tr>
                             @foreach($table['foot'] as $i => $f)
-                                @php $col = $table['cols'][$i]; @endphp
-                                <td class="{{ $i === 0 ? 'l' : trim(($col[2] === 'minus' && (float) $f > 0 ? 'ded ' : '') . (! empty($col[5]) && (float) $f > 0 ? 'tone-' . $col[5] : '')) }}">{{ $i === 0 ? $f : R::fmt($col[2] === 'net0' || $col[2] === 'money0' ? 'money' : $col[2], $f) }}</td>
+                                @php
+                                    $col   = $table['cols'][$i];
+                                    $blank = $i > 0 && in_array($col[2], ['dur0', 'int0'], true) && $isZero($f);
+                                @endphp
+                                <td class="{{ $i === 0 ? 'l' : trim(($col[2] === 'minus' && (float) $f > 0 ? 'ded ' : '') . (! empty($col[5]) && (float) $f > 0 ? 'tone-' . $col[5] : '')) }}">{{ $i === 0 ? $f : ($blank ? '' : R::fmt($col[2] === 'net0' || $col[2] === 'money0' ? 'money' : $col[2], $f)) }}</td>
                             @endforeach
                         </tr>
                     </tfoot>
@@ -433,9 +472,46 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
             </table>
         </div>
     </section>
+
+    {{-- What the side panel reads. Inside the live region, so a refresh
+         brings the figures with the rows. --}}
+    @unless($isDtr)
+        <script type="application/json" id="rpPanelData">@json($panel)</script>
+    @endunless
 </div>
-<div class="rp-tip" id="rpTip" hidden></div>
 @include('modules._fill_screen')
+
+@unless($isDtr)
+{{-- A worker's figures, from a row. --}}
+<div class="offcanvas offcanvas-end" tabindex="-1" id="rpPanel" aria-labelledby="rppName">
+    <div class="rpp-head">
+        <div class="who"><b id="rppName"></b><small id="rppMeta"></small></div>
+        <button type="button" class="rpp-x" data-bs-dismiss="offcanvas" aria-label="{{ __('Close') }}">{!! $svg('<path d="M6 6l12 12M18 6L6 18"/>', '2.4') !!}</button>
+    </div>
+    <div class="rpp-net"><span>{{ __('Net pay') }} · {{ $periodText }}</span><b id="rppNet"></b></div>
+    <div class="rpp-body" id="rppBody"></div>
+    <div class="rpp-acts">
+        <a class="rp-btn" id="rppDtr" href="#">{{ __('Open DTR') }}</a>
+        <a class="rp-btn" id="rppSlip" href="#" target="_blank" rel="noopener">{{ __('Payslip') }}</a>
+        <a class="rp-btn" id="rppProfile" href="#">{{ __('Employee profile') }}</a>
+    </div>
+</div>
+@endunless
+
+{{-- Print / PDF: the paper itself, in a frame — what is seen is what prints. --}}
+<div class="modal fade" id="rpPaperModal" tabindex="-1" aria-labelledby="rpvTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="rpv-bar">
+                <div><b id="rpvTitle">{{ __($reports[$report]) }}</b> <small>{{ $periodText }}</small></div>
+                <span class="sp"></span>
+                <button type="button" class="rp-btn" data-bs-dismiss="modal">{{ __('Close') }}</button>
+                <button type="button" class="rp-btn pri" id="rpvPrint">{!! $svg('<path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M8 14h8v7H8z"/>') !!} {{ __('Print / Save as PDF') }}</button>
+            </div>
+            <iframe class="rpv-frame" id="rpvFrame" title="{{ __('Print preview') }}"></iframe>
+        </div>
+    </div>
+</div>
 
 @if($isDtr)
 {{-- A worker's DTR. Outside the live region, so a refresh of the list never
@@ -445,7 +521,7 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
         <div class="modal-content dtr-pop">
             <div class="dtr-bar">
                 <div class="dtr-who">
-                    <span class="rp-av" id="dtrAv"></span>
+                    <span class="dtr-av" id="dtrAv"></span>
                     <div style="min-width:0"><b id="dtrTitle"></b><small id="dtrSub"></small></div>
                 </div>
                 <div class="dtr-acts">
@@ -483,47 +559,167 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
     // Sort by any column; again to reverse. The list is a live region: when
     // it is redrawn the rows come back in the server's order, so the order
     // asked for is put back — the DTR's arrows step through it.
-    const table = document.getElementById('rpTable');
-    if (table) {
-        let sorted = null, dir = -1;
-        const order = () => {
-            if (sorted === null) return;
-            const i = sorted, body = table.tBodies[0];
-            const rows = [...body.rows].filter(r => r.cells.length > 1);
-            const num = s => /^-?\d+(\.\d+)?$/.test(s);
-            rows.sort((a, c) => {
-                const x = a.cells[i].dataset.v || '', y = c.cells[i].dataset.v || '';
-                return (num(x) && num(y) ? parseFloat(x) - parseFloat(y) : x.localeCompare(y)) * dir;
-            });
-            rows.forEach(r => body.appendChild(r));
-            table.querySelectorAll('thead th').forEach((th, j) => {
-                th.classList.toggle('sorted', j === i);
-                th.setAttribute('aria-sort', j === i ? (dir > 0 ? 'ascending' : 'descending') : 'none');
-            });
-        };
-        table.querySelector('thead').addEventListener('click', e => {
-            const b = e.target.closest('[data-sort]');
-            if (!b) return;
-            const i = +b.dataset.sort;
-            dir = sorted === i ? -dir : -1;
-            sorted = i;
-            order();
+    const table = () => document.getElementById('rpTable');
+    let sorted = null, dir = -1;
+    const order = () => {
+        const t = table();
+        if (sorted === null || !t) return;
+        const i = sorted, body = t.tBodies[0];
+        const rows = [...body.rows].filter(r => r.cells.length > 1);
+        const num = s => /^-?\d+(\.\d+)?$/.test(s);
+        rows.sort((a, c) => {
+            const x = a.cells[i].dataset.v || '', y = c.cells[i].dataset.v || '';
+            return (num(x) && num(y) ? parseFloat(x) - parseFloat(y) : x.localeCompare(y)) * dir;
         });
-        document.addEventListener('live:updated', order);
-    }
-
-    // The chart's figures on hover.
-    const tip = document.getElementById('rpTip');
-    document.addEventListener('pointermove', e => {
-        const t = e.target.closest && e.target.closest('.rp [data-tip]');
-        if (!t) { tip.hidden = true; return; }
-        tip.textContent = t.dataset.tip;
-        tip.hidden = false;
-        tip.style.left = e.clientX + 'px';
-        tip.style.top = e.clientY + 'px';
+        rows.forEach(r => body.appendChild(r));
+        t.querySelectorAll('thead th').forEach((th, j) => {
+            th.classList.toggle('sorted', j === i);
+            th.setAttribute('aria-sort', j === i ? (dir > 0 ? 'ascending' : 'descending') : 'none');
+        });
+    };
+    document.addEventListener('click', e => {
+        const b = e.target.closest && e.target.closest('#rpTable thead [data-sort]');
+        if (!b) return;
+        const i = +b.dataset.sort;
+        dir = sorted === i ? -dir : -1;
+        sorted = i;
+        order();
     });
+    document.addEventListener('live:updated', order);
+
+    // A site's row opens its crew on Payroll by Employee.
+    const goSite = row => { window.location.href = row.dataset.site; };
+    document.addEventListener('click', e => {
+        const row = e.target.closest && e.target.closest('#rpTable tbody tr[data-site]');
+        if (row) goSite(row);
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && e.target.matches && e.target.matches('#rpTable tbody tr[data-site]')) goSite(e.target);
+    });
+
+    // Print / PDF: the paper in a frame; its own print prints it.
+    const pm = document.getElementById('rpPaperModal'), frame = document.getElementById('rpvFrame');
+    document.addEventListener('click', e => {
+        const b = e.target.closest && e.target.closest('#rpPrint');
+        if (!b) return;
+        frame.src = b.dataset.paper;
+        bootstrap.Modal.getOrCreateInstance(pm).show();
+    });
+    document.getElementById('rpvPrint').addEventListener('click', () => {
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+        catch (err) { window.open(frame.src, '_blank', 'noopener'); }
+    });
+    pm.addEventListener('hidden.bs.modal', () => { frame.removeAttribute('src'); });
 })();
 </script>
+@unless($isDtr)
+@php
+    $jsLinks = [
+        'report'  => $report,
+        'dtr'     => route('payroll-reports.index', ['report' => 'dtr', 'span' => $period['span'], 'at' => $period['at']]),
+        'slip'    => route('payslip.batch', ['from' => $from, 'to' => $to, 'employee' => 0]),
+        'profile' => route('employees.edit', ['employee' => 0]),
+    ];
+@endphp
+<script>
+// A worker's pay, overtime and deductions, from a row — the section the open
+// report is about first. The figures are the same sums the row shows.
+(function () {
+    const el = document.getElementById('rpPanel');
+    if (!el) return;
+    const L = @json($jsLinks);
+    const $ = id => document.getElementById(id);
+    const fmt = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const peso = n => '₱' + fmt.format(Number(n) || 0);
+    const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const dur = m => { m = Math.round(Number(m) || 0); return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; };
+    const data = () => { try { return JSON.parse($('rpPanelData').textContent || '{}'); } catch (e) { return {}; } };
+    let openRow = null;
+
+    const li = (k, v, c) => '<li><span>' + esc(k) + '</span><b class="' + (c || '') + '">' + v + '</b></li>';
+    const tot = (k, v, c) => '<li class="tot"><span>' + esc(k) + '</span><b class="' + (c || '') + '">' + v + '</b></li>';
+    const sec = (title, inner, mine) => '<section class="rpp-sec"><h4>' + esc(title) + (mine ? ' <em>This report</em>' : '') + '</h4>' + inner + '</section>';
+
+    function sections(w) {
+        const p = w.pay;
+        const none = '<div class="none">Nothing this period.</div>';
+        const out = {};
+
+        out.pay = p ? '<ul>'
+            + li('Days worked', esc(p.workdays)) + li('Hours', dur(p.minutes))
+            + li('Gross pay', peso(p.gross)) + li('Deductions', '−' + peso(p.ded), 'neg')
+            + tot('Net pay', peso(p.net)) + '</ul>' : none;
+
+        out.ot = p && p.otMin > 0 ? '<ul>'
+            + li('Regular hours', dur(Math.max(0, p.minutes - p.otMin)))
+            + li('Overtime hours', dur(p.otMin), 'ot')
+            + tot('Overtime pay', peso(p.overtime)) + '</ul>' : '<div class="none">No overtime this period.</div>';
+
+        if (p) {
+            const kinds = [['SSS', p.sss], ['PhilHealth', p.ph], ['Pag-IBIG', p.pagibig], ['Withholding tax', p.tax],
+                           ['Cash advance', p.advance], ['Vale', p.vale], ['Other', p.other]].filter(k => Number(k[1]) > 0);
+            out.ded = kinds.length ? '<ul>' + kinds.map(k => li(k[0], '−' + peso(k[1]), 'neg')).join('')
+                + tot('Total deductions', '−' + peso(p.ded), 'neg') + '</ul>' : '<div class="none">No deductions this period.</div>';
+
+            const earn = [['Regular pay', p.regular, true], ['Paid leave', p.leave], ['Overtime', p.overtime],
+                          ['Holiday, rest day & night', Math.max(0, p.premiums - p.overtime)], ['Bonus', p.bonus]]
+                .filter(k => k[2] || Number(k[1]) > 0);
+            out.earn = '<ul>' + earn.map(k => li(k[0], peso(k[1]))).join('') + tot('Gross pay', peso(p.gross)) + '</ul>';
+        } else {
+            out.ded = none;
+            out.earn = none;
+        }
+
+        out.adv = w.owed > 0 ? '<ul>' + li('Advances still open', esc(w.loans)) + tot('Balance owed', peso(w.owed)) + '</ul>'
+                             : '<div class="none">No cash advance owed.</div>';
+
+        out.where = '<ul>' + li('Site', esc(w.site)) + (w.shift ? li('Shift', esc(w.shift)) : '')
+            + (w.trade ? li('Trade', esc(w.trade)) : '') + '</ul>';
+        return out;
+    }
+
+    const ORDER = {
+        employee:   ['pay', 'earn', 'ded', 'ot', 'adv', 'where'],
+        overtime:   ['ot', 'pay', 'earn', 'ded', 'adv', 'where'],
+        deductions: ['ded', 'pay', 'earn', 'ot', 'adv', 'where'],
+        advances:   ['adv', 'ded', 'pay', 'earn', 'ot', 'where'],
+    };
+    const TITLE = { pay: 'Pay this period', earn: 'Earnings', ded: 'Deductions', ot: 'Overtime', adv: 'Cash advance', where: 'Site & section' };
+
+    function show(row) {
+        const id = row.dataset.emp, w = data()[id];
+        if (!w) return;
+        const s = sections(w), order = ORDER[L.report] || ORDER.employee;
+
+        $('rppName').textContent = w.name;
+        $('rppMeta').textContent = [w.code, w.trade, w.site].filter(Boolean).join(' · ');
+        $('rppNet').textContent = w.pay ? peso(w.pay.net) : '—';
+        $('rppBody').innerHTML = order.map((k, i) => sec(TITLE[k], s[k], i === 0)).join('');
+        $('rppDtr').href = L.dtr + '&q=' + encodeURIComponent(w.code.replace('#', ''));
+        $('rppSlip').href = L.slip.replace(/employee=0\b/, 'employee=' + encodeURIComponent(id));
+        $('rppSlip').hidden = !w.pay;
+        $('rppProfile').href = L.profile.replace(/\/0\/edit/, '/' + encodeURIComponent(id) + '/edit');
+
+        if (openRow) openRow.classList.remove('is-open');
+        openRow = row;
+        row.classList.add('is-open');
+        bootstrap.Offcanvas.getOrCreateInstance(el).show();
+    }
+
+    document.addEventListener('click', e => {
+        const row = e.target.closest && e.target.closest('#rpTable tbody tr[data-emp]');
+        if (row) show(row);
+    });
+    document.addEventListener('keydown', e => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('#rpTable tbody tr[data-emp]')) {
+            e.preventDefault();
+            show(e.target);
+        }
+    });
+    el.addEventListener('hidden.bs.offcanvas', () => { if (openRow) openRow.classList.remove('is-open'); openRow = null; });
+})();
+</script>
+@endunless
 @if($isDtr)
 @php
     // One worker's page and its two downloads, for the period on screen. The
@@ -566,12 +762,13 @@ html[data-bs-theme] #dtrModal .dtr-body { padding: 18px 20px 20px; background: v
 
         current = String(id);
         const mine = ++asked;
-        const row = list[i], badge = row.querySelector('.rp-av'), name = row.querySelector('.rp-emp b'), code = row.querySelector('.rp-emp small');
+        const row = list[i], name = row.querySelector('.rp-emp b'), code = row.querySelector('.rp-emp small');
+        const full = name ? name.textContent.trim() : '';
+        const init = full.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
-        $('dtrTitle').textContent = name ? name.textContent : '';
+        $('dtrTitle').textContent = full;
         $('dtrSub').textContent = [code ? code.textContent : '', links.period].filter(Boolean).join(' · ');
-        $('dtrAv').textContent = badge ? badge.textContent : '';
-        $('dtrAv').style.background = badge ? badge.style.background : '';
+        $('dtrAv').textContent = init;
         $('dtrPdf').href = of(links.pdf, current);
         $('dtrXls').href = of(links.xls, current);
         $('dtrPos').textContent = (i + 1) + ' / ' + list.length;

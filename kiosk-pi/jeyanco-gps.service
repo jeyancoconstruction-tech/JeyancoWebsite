@@ -1,0 +1,16 @@
+[Unit]
+Description=Jeyanco kiosk GPS tracker (NEO-M8L heartbeat to the web)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=admin
+WorkingDirectory=/home/admin/jeyanco
+EnvironmentFile=/home/admin/jeyanco/kiosk.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/admin/jeyanco/gps_tracker.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

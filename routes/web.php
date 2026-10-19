@@ -22,6 +22,12 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// THE KIOSK SCREEN, hosted here (RSC 2026-10-18: "Host online the kiosk, not
+// just in local host"). The Pi's Chromium opens this page; the page talks to
+// this site for everything, and to the Pi's own fingerprint service at
+// http://127.0.0.1:5000 for the sensor. No sign-in: the kiosk is a device.
+Route::get('/kiosk', [\App\Http\Controllers\KioskAppController::class, 'show'])->name('kiosk.app');
+
 Route::middleware('guest')->group(function () {
 
     // LOGIN
@@ -180,6 +186,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/search', [SearchController::class, 'search'])->name('search');
     Route::get('/search/suggestions', [SearchController::class, 'suggestions'])->name('search.suggestions');
 
+    // --- COMPLAINTS posted by workers at the kiosk ---
+    Route::get  ('/complaints',             [\App\Http\Controllers\ComplaintController::class, 'index'])->name('complaints.index');
+    Route::patch('/complaints/{complaint}', [\App\Http\Controllers\ComplaintController::class, 'update'])->name('complaints.update');
+
     // --- NOTIFICATIONS ---
     Route::get('/notifications',              [NotificationController::class, 'index'])->name('notifications.index');
     Route::patch('/notifications/read-all',   [NotificationController::class, 'readAll'])->name('notifications.readAll');
@@ -311,6 +321,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware('module:payroll-reports')->group(function () {
         Route::get('/payroll-reports', [\App\Http\Controllers\PayrollReportController::class, 'index'])->name('payroll-reports.index');
         Route::get('/payroll-reports/export', [\App\Http\Controllers\PayrollReportController::class, 'export'])->name('payroll-reports.export');
+        Route::get('/payroll-reports/print', [\App\Http\Controllers\PayrollReportController::class, 'paper'])->name('payroll-reports.print');
         // Employees DTR: one worker's page for the pop-up, and its downloads.
         Route::get('/payroll-reports/dtr/{employee}', [\App\Http\Controllers\PayrollReportController::class, 'dtr'])->whereNumber('employee')->name('payroll-reports.dtr');
         Route::get('/payroll-reports/dtr/{employee}/pdf', [\App\Http\Controllers\PayrollReportController::class, 'dtrPdf'])->whereNumber('employee')->name('payroll-reports.dtr.pdf');
