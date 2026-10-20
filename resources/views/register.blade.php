@@ -321,39 +321,103 @@ tr.rmx-row-card:hover .rmx-name { color: var(--brand, #1668DC); }
 /* The whole row opens the worker; its checkbox and buttons keep their own jobs. */
 tr.rmx-row-card { cursor: pointer; }
 
-/* The worker dialog. Who they are is said once, in the navy head; the body
-   is the pay as three figures and then the rest as a plain list. */
-#workerModal .emp-head { align-items: center; padding: 18px 20px; }
-.wm-av { width: 52px; height: 52px; border-radius: 14px; flex: none; display: grid; place-items: center;
-    background: rgba(255,255,255,.10); color: #8fbef7; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
-#workerModal .emp-head-title { font-size: 17px; margin-bottom: 3px; }
-.wm-id { font: 600 11.5px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #cfe0f5;
-    background: rgba(255,255,255,.10); padding: 3px 6px; border-radius: 5px; margin-right: 6px; }
-.wm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
-.wm-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
-    background: rgba(255,255,255,.08); color: #cfe0f5; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
-.wm-chip i { font-size: 10px; }
-.wm-chip.ok { background: rgba(18,183,106,.18); color: #86efac; box-shadow: inset 0 0 0 1px rgba(18,183,106,.40); }
-.wm-chip.warn { background: rgba(247,144,9,.16); color: #fcd34d; box-shadow: inset 0 0 0 1px rgba(247,144,9,.40); }
+/* The worker dialog (2026-10-20 revision). Nearly the whole screen, flat, in
+   the theme's own tokens: who they are in the head, pay / shift / fingers /
+   how complete the record is on the left, and the record itself on the right
+   in four bands that share the height between them. */
+#workerModal .wkm-dialog { width: calc(100vw - 48px); max-width: 1320px; margin: 24px auto; }
+.wkm { height: min(820px, calc(100vh - 48px)); display: flex; flex-direction: column; overflow: hidden;
+    background: var(--surface, #fff); color: var(--text-primary, #101828);
+    border: 1px solid var(--border-md, #d3dbe6); border-radius: 12px; box-shadow: 0 30px 80px rgba(0, 0, 0, .35); }
+.wkm-head { flex: none; display: flex; align-items: center; gap: 14px; padding: 16px 22px; border-bottom: 1px solid var(--border, #e4e9f0); }
+/* The worker icon: black on safety yellow, the same in light and dark. */
+.wkm-ico { flex: none; width: 50px; height: 50px; border-radius: 10px; display: grid; place-items: center;
+    background: #f5b73b; color: #111; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.wkm-who { flex: 1; min-width: 0; }
+html[data-bs-theme] .wkm-who h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.01em; color: var(--text-primary, #101828);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wkm-who p { margin: 3px 0 0; color: var(--text-secondary, #475467); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.wkm-id { font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-muted, #8590a2); }
+.wkm-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted, #8590a2); }
+.wkm-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text-secondary, #475467);
+    padding: 5px 10px; border: 1px solid var(--border-md, #d3dbe6); border-radius: 6px; }
+.wkm-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--success, #12b76a); }
+.wkm-x { width: 34px; height: 34px; border-radius: 7px; display: grid; place-items: center; padding: 0; cursor: pointer;
+    border: 1px solid var(--border-md, #d3dbe6); background: none; color: var(--text-muted, #8590a2); }
+.wkm-x:hover { color: var(--text-primary, #101828); background: var(--bg-subtle, #f3f5f8); }
 
-.wm-pay { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--border, #e4e9f0); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
-.wm-pay > div { padding: 11px 14px; border-left: 1px solid var(--border, #e4e9f0); min-width: 0; }
-.wm-pay > div:first-child { border-left: 0; }
-.wm-pay span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted, #667085); margin-bottom: 3px; }
-.wm-pay b { font-size: 17px; font-weight: 700; color: var(--text-primary, #101828); font-variant-numeric: tabular-nums; letter-spacing: -.01em; white-space: nowrap; }
-.wm-pay small { font-size: 11.5px; font-weight: 500; color: var(--text-muted, #667085); margin-left: 2px; }
+.wkm-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px minmax(0, 1fr); }
+.wkm-aside { display: flex; flex-direction: column; overflow-y: auto; background: var(--bg-subtle, #f7f9fb); border-right: 1px solid var(--border, #e4e9f0); }
+.wkm-blk { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; padding: 18px 22px; border-bottom: 1px solid var(--border, #e4e9f0); }
+.wkm-blk:last-child { border-bottom: 0; }
+.wkm-k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted, #8590a2); }
+.wkm-big { margin-top: 4px; font-size: 30px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wkm-big small { margin-left: 4px; font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--text-muted, #8590a2); }
+.wkm-pay2 { display: grid; grid-template-columns: 1fr 1fr; margin-top: 12px; border: 1px solid var(--border, #e4e9f0); border-radius: 8px; background: var(--surface, #fff); }
+.wkm-pay2 div { padding: 8px 12px; min-width: 0; }
+.wkm-pay2 div + div { border-left: 1px solid var(--border, #e4e9f0); }
+.wkm-pay2 span { display: block; font-size: 11.5px; color: var(--text-muted, #8590a2); }
+.wkm-pay2 b { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wkm-kv { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; margin: 0; font-size: 13px; }
+.wkm-kv dt { font-weight: 400; color: var(--text-muted, #8590a2); }
+.wkm-kv dd { margin: 0; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.wkm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.wkm-row > span { font-size: 12px; color: var(--text-secondary, #475467); font-variant-numeric: tabular-nums; }
+.wkm-slots { display: flex; gap: 6px; margin-top: 10px; }
+.wkm-slot { flex: 1; min-width: 0; height: 36px; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 12px; color: var(--text-muted, #8590a2); border: 1px dashed var(--border-md, #d3dbe6); }
+.wkm-slot.on { border: 1px solid rgba(18, 183, 106, .45); background: rgba(18, 183, 106, .10); color: var(--success, #12b76a); font-weight: 600; }
+.wkm-note { margin-top: 9px; font-size: 12px; color: var(--warning, #d97706); display: flex; gap: 6px; align-items: center; }
+.wkm-meter { height: 5px; margin-top: 10px; border-radius: 3px; overflow: hidden; background: var(--border, #e4e9f0); }
+.wkm-meter i { display: block; height: 100%; background: var(--brand, #1668dc); }
+.wkm-miss { margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--text-muted, #8590a2); }
 
-.wm-group { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border, #e4e9f0); }
-.wm-group:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
-.wm-group h6 { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand, #1668DC); margin: 0 0 8px; }
-.wm-list { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
-.wm-list > div { min-width: 0; }
-.wm-list > .wide { grid-column: 1 / -1; }
-.wm-list dt { font-size: 11.5px; font-weight: 600; color: var(--text-muted, #667085); margin-bottom: 1px; }
-.wm-list dd { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--text-primary, #101828); overflow-wrap: anywhere; }
-.wm-list dd.none { color: var(--text-muted, #98A2B3); font-weight: 500; }
-.emp-foot a.emp-btn-cancel, .emp-foot a.emp-btn-save { text-decoration: none; }
-@media (max-width: 575px) { .wm-pay b { font-size: 15px; } }
+.wkm-main { display: grid; grid-template-rows: repeat(4, minmax(min-content, 1fr)); overflow-y: auto; }
+.wkm-sec { display: flex; flex-direction: column; justify-content: center; padding: 18px 26px; border-bottom: 1px solid var(--border, #e4e9f0); }
+.wkm-sec:last-child { border-bottom: 0; }
+.wkm-sec.split { display: grid; grid-template-columns: 1fr 1.5fr; padding: 0; }
+.wkm-sec.split > div { display: flex; flex-direction: column; justify-content: center; padding: 18px 26px; min-width: 0; }
+.wkm-sec.split > div + div { border-left: 1px solid var(--border, #e4e9f0); }
+.wkm-sec-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+html[data-bs-theme] .wkm-sec-h h3 { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--text-primary, #101828); }
+.wkm-sec-h span { margin-left: auto; font-size: 12px; color: var(--text-muted, #8590a2); font-variant-numeric: tabular-nums; }
+.wkm-grid { display: grid; gap: 14px 24px; margin: 0; }
+.wkm-grid.g6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.wkm-grid.g5 { grid-template-columns: 1.6fr 1fr 1fr 1fr .6fr; }
+.wkm-grid.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.wkm-grid.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.wkm-grid.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.wkm-grid > div { min-width: 0; }
+.wkm-grid dt { margin-bottom: 5px; font-size: 12.5px; font-weight: 400; color: var(--text-muted, #8590a2); }
+.wkm-grid dd { margin: 0; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.wkm-grid dd.none { font-weight: 400; color: var(--text-muted, #8590a2); opacity: .75; }
+
+.wkm-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--border, #e4e9f0); }
+.wkm-meta { flex: 1; font-size: 12px; color: var(--text-muted, #8590a2); }
+.wkm-btn { height: 38px; padding: 0 16px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
+    text-decoration: none; border: 1px solid var(--border-md, #d3dbe6); color: var(--text-primary, #101828); background: var(--surface, #fff); }
+.wkm-btn:hover { background: var(--bg-subtle, #f3f5f8); color: var(--text-primary, #101828); }
+.wkm-btn.pri { background: var(--brand, #1668dc); border-color: var(--brand, #1668dc); color: #fff; }
+.wkm-btn.pri:hover { filter: brightness(1.08); color: #fff; }
+.wkm-btn i { font-size: 12px; opacity: .85; }
+
+@media (max-width: 1100px) {
+    .wkm-grid.g6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .wkm-grid.g5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .wkm-sec.split { grid-template-columns: 1fr; }
+    .wkm-sec.split > div + div { border-left: 0; border-top: 1px solid var(--border, #e4e9f0); }
+}
+@media (max-width: 860px) {
+    #workerModal .wkm-dialog { width: calc(100vw - 16px); margin: 8px auto; }
+    .wkm { height: calc(100vh - 16px); }
+    .wkm-body { display: block; overflow-y: auto; }
+    .wkm-aside { overflow: visible; border-right: 0; border-bottom: 1px solid var(--border, #e4e9f0); }
+    .wkm-main { display: block; overflow: visible; }
+    .wkm-grid.g6, .wkm-grid.g5, .wkm-grid.g4, .wkm-grid.g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .wkm-status { display: none; }
+    .wkm-meta { display: none; }
+    .wkm-btn { flex: 1; justify-content: center; }
+}
 
 /* ── Bulk actions ─────────────────────────────────────────────────────────
    Tick workers on the Active list and a bar comes up from the bottom:
@@ -663,8 +727,23 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                                 'hiredAs'  => $e->isContractual()
                                     ? __('Contractual') . ($e->end_of_contract ? ' · ' . __('until') . ' ' . $e->end_of_contract->format('M j, Y') : '')
                                     : __('Regular'),
-                                'ice'      => collect([$e->emergency_contact_name, $e->emergency_contact_relation ? '(' . $e->emergency_contact_relation . ')' : null])->filter()->implode(' ') ?: null,
+                                'ice'      => $e->emergency_contact_name,
+                                'iceRel'   => $e->emergency_contact_relation,
                                 'icePhone' => $e->emergency_contact_phone,
+                                'street'   => $e->address_street,
+                                'brgy'     => $e->address_barangay,
+                                'city'     => $e->address_city,
+                                'prov'     => $e->address_province,
+                                'zip'      => $e->address_postal,
+                                'sss'      => $e->sss_number,
+                                'philhealth' => $e->philhealth_number,
+                                'pagibig'  => $e->pagibig_number,
+                                'tin'      => $e->tin_number,
+                                'hourly'   => '₱' . number_format((float) $e->rate_per_hour, 2),
+                                'dailyFig' => $e->laborType ? '₱' . number_format((float) $e->laborType->daily_rate, 2) : null,
+                                'slots'    => $e->fingerprintSlots(),
+                                'need'     => (int) config('kiosk.fingers_required', 2),
+                                'updated'  => $e->updated_at?->format('M j, Y · g:i A'),
                                 'edit'     => route('employees.edit', $e->id),
                                 'profile'  => route('employees.show', $e->id),
                             ];
@@ -2277,38 +2356,73 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
     // it too, so both are looked up when a worker is first opened.
     const modal = { show: () => bootstrap.Modal.getOrCreateInstance(document.getElementById('workerModal')).show() };
     const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const fact = (label, value, wide) => `<div class="${wide ? 'wide' : ''}"><dt>${label}</dt><dd class="${value ? '' : 'none'}">${esc(value || '—')}</dd></div>`;
-    // "₱150.00 / hr" → the figure large, its unit small beside it.
-    const money = (label, value) => {
-        const [fig, unit] = String(value || '—').split(/\s*\/\s*/);
-        return `<div><span>${label}</span><b>${esc(fig)}</b>${unit ? `<small>/ ${esc(unit)}</small>` : ''}</div>`;
-    };
     const $ = id => document.getElementById(id);
+
+    // The record in four bands. Each field is [label, value, blank]; a band
+    // says how many of its fields are filled in.
+    const field = ([label, value, blank]) => `<div><dt>${label}</dt>` +
+        (value ? `<dd>${esc(value)}</dd>` : `<dd class="none">${blank || 'Not recorded'}</dd>`) + `</div>`;
+    const band = (title, fields, cols) =>
+        `<div class="wkm-sec-h"><h3>${title}</h3><span>${fields.filter(f => f[1]).length} of ${fields.length}</span></div>` +
+        `<dl class="wkm-grid ${cols}">${fields.map(field).join('')}</dl>`;
 
     function open(row) {
         let d;
         try { d = JSON.parse(row.dataset.emp || '{}'); } catch (e) { return; }
         $('wmTitle').textContent = d.name;
-        $('wmSub').innerHTML = (d.id ? `<span class="wm-id">${esc(d.id)}</span>` : '') + esc([d.role, d.site].filter(Boolean).join(' · '));
-        $('wmChips').innerHTML = [
-            d.fp ? `<span class="wm-chip ok"><i class="fas fa-fingerprint"></i>${esc(d.fp)}</span>`
-                 : `<span class="wm-chip warn"><i class="fas fa-fingerprint"></i>No fingerprint yet</span>`,
-        ].join('');
-        $('wmPay').innerHTML =
-            money('Rate', d.rate) + money('Daily', d.daily) +
-            `<div><span>Logs</span><b>${esc(String(d.logs ?? 0))}</b><small>scans</small></div>`;
-        const group = (title, rows) => `<section class="wm-group"><h6>${title}</h6><dl class="wm-list">${rows}</dl></section>`;
+        $('wmSub').innerHTML = [d.id ? `<span class="wkm-id">${esc(d.id)}</span>` : '', esc(d.role || ''), esc(d.site || ''),
+                                d.overtime ? esc('Overtime ' + d.overtime.toLowerCase()) : '']
+            .filter(Boolean).join('<span class="wkm-dot"></span>');
+
+        const personal = [['Date of birth', d.born], ['Place of birth', d.birthplace], ['Gender', d.gender],
+                          ['Civil status', d.civil], ['Nationality', d.nation], ['Blood type', d.blood]];
+        const contact  = [['Mobile number', d.phone], ['Email', d.email]];
+        const ice      = [['Contact person', d.ice], ['Relationship', d.iceRel], ['Contact number', d.icePhone]];
+        const address  = [['House no. / street', d.street], ['Barangay', d.brgy], ['City / municipality', d.city],
+                          ['Province', d.prov], ['ZIP', d.zip, '—']];
+        const ids      = [['SSS', d.sss, 'Not issued yet'], ['PhilHealth', d.philhealth, 'Not issued yet'],
+                          ['Pag-IBIG', d.pagibig, 'Not issued yet'], ['TIN', d.tin, 'Not issued yet']];
+
         $('wmFacts').innerHTML =
-            group('Personal',
-                fact('Born', d.born) + fact('Birthplace', d.birthplace) +
-                fact('Gender', d.gender) + fact('Civil status', d.civil) +
-                fact('Nationality', d.nation) + fact('Blood type', d.blood)) +
-            group('Contact',
-                fact('Phone', d.phone) + fact('Email', d.email) + fact('Address', d.place, true)) +
-            group('In case of emergency',
-                fact('Contact', d.ice) + fact('Phone', d.icePhone)) +
-            group('Work',
-                fact('Hired', d.hired) + fact('Shift', d.shift) + fact('Employment type', d.hiredAs, !d.overtime) + (d.overtime ? fact('Overtime', d.overtime) : ''));
+            `<section class="wkm-sec">${band('Personal', personal, 'g6')}</section>` +
+            `<section class="wkm-sec split"><div>${band('Contact', contact, 'g2')}</div><div>${band('In case of emergency', ice, 'g3')}</div></section>` +
+            `<section class="wkm-sec">${band('Address', address, 'g5')}</section>` +
+            `<section class="wkm-sec">${band('Government IDs', ids, 'g4')}</section>`;
+
+        // How complete the record is, and what is missing, in plain words.
+        const all     = [...personal, ...contact, ...ice, ...address, ...ids];
+        const filled  = all.filter(f => f[1]).length;
+        const gaps    = personal.concat(contact).filter(f => !f[1]).map(f => f[0].toLowerCase());
+        if (ice.some(f => !f[1]))     gaps.push('emergency contact');
+        if (address.some(f => !f[1])) gaps.push('address');
+        if (ids.some(f => !f[1]))     gaps.push('government IDs');
+
+        const slots = Array.isArray(d.slots) ? d.slots : [];
+        const need  = Math.max(1, Number(d.need) || 2);
+        const boxes = Array.from({ length: Math.max(need, slots.length) }, (_, i) => slots[i]
+            ? `<div class="wkm-slot on"><i class="fas fa-fingerprint"></i>Slot ${esc(slots[i])}</div>`
+            : `<div class="wkm-slot">Not enrolled</div>`).join('');
+        const short = need - slots.length;
+
+        const big = d.dailyFig ? `${esc(d.dailyFig)}<small>/ day</small>` : `${esc(d.hourly || '—')}<small>/ hr</small>`;
+        $('wmAside').innerHTML =
+            `<div class="wkm-blk"><div class="wkm-k">${d.dailyFig ? 'Daily rate' : 'Hourly rate'}</div><div class="wkm-big">${big}</div>` +
+              `<div class="wkm-pay2"><div><span>Per hour</span><b>${esc(d.hourly || '—')}</b></div><div><span>Scans</span><b>${esc(String(d.logs ?? 0))}</b></div></div></div>` +
+            `<div class="wkm-blk"><dl class="wkm-kv">` +
+              `<dt>Shift</dt><dd>${esc(d.shift || 'Not set')}</dd>` +
+              `<dt>Hired</dt><dd>${esc(d.hired || 'Not recorded')}</dd>` +
+              `<dt>Employment</dt><dd>${esc(d.hiredAs || '—')}</dd>` +
+            `</dl></div>` +
+            `<div class="wkm-blk"><div class="wkm-row"><div class="wkm-k">Fingerprints</div><span>${slots.length} of ${need}</span></div>` +
+              `<div class="wkm-slots">${boxes}</div>` +
+              (short > 0 ? `<div class="wkm-note"><i class="fas fa-circle-exclamation"></i>Enrol ${short === 1 ? 'one more finger' : short + ' more fingers'} at the kiosk</div>` : '') +
+            `</div>` +
+            `<div class="wkm-blk"><div class="wkm-row"><div class="wkm-k">Profile</div><span>${filled} of ${all.length} recorded</span></div>` +
+              `<div class="wkm-meter"><i style="width:${Math.round(filled / all.length * 100)}%"></i></div>` +
+              (gaps.length ? `<div class="wkm-miss">Missing: ${esc(gaps.join(', '))}</div>` : '') +
+            `</div>`;
+
+        $('wmUpdated').textContent = d.updated ? 'Last updated ' + d.updated : '';
         $('wmProfile').href = d.profile;
         $('wmEdit').href = d.edit;
         modal.show();
@@ -2329,29 +2443,29 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
 </script>
 
 {{-- ── A worker, opened from their row ───────────────────────────────────────
-     Centred, in the same dress as the Leave & Advances dialogs: the navy head,
-     the worker's icon, their record at a glance, and the two ways on — the
-     full profile, or Edit (the Register Employee form). Filled from the row. --}}
+     Nearly the whole screen: who they are in the head; pay, shift, fingers and
+     how complete the record is on the left; the record on the right; and the
+     two ways on — the full profile, or Edit. Filled from the row. --}}
 <div class="modal fade" id="workerModal" tabindex="-1" aria-labelledby="wmTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:560px">
-        <div class="modal-content emp-modal">
-            <div class="emp-head">
-                <span class="wm-av">@include('partials.worker-icon', ['size' => '60%'])</span>
-                <div class="emp-head-text">
-                    <h6 class="emp-head-title" id="wmTitle">{{ __('Worker') }}</h6>
-                    <p class="emp-head-sub" id="wmSub"></p>
-                    <div class="wm-chips" id="wmChips"></div>
+    <div class="modal-dialog modal-dialog-centered wkm-dialog">
+        <div class="modal-content wkm">
+            <div class="wkm-head">
+                <span class="wkm-ico">@include('partials.worker-icon', ['size' => '66%'])</span>
+                <div class="wkm-who">
+                    <h2 id="wmTitle">{{ __('Worker') }}</h2>
+                    <p id="wmSub"></p>
                 </div>
-                <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
+                <span class="wkm-status">{{ __('Active') }}</span>
+                <button type="button" class="wkm-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
             </div>
-            <div class="modal-body emp-body">
-                <div class="wm-pay" id="wmPay"></div>
-                <div id="wmFacts"></div>
+            <div class="wkm-body">
+                <aside class="wkm-aside" id="wmAside"></aside>
+                <div class="wkm-main" id="wmFacts"></div>
             </div>
-            <div class="emp-foot">
-                <p class="emp-foot-note">{{ __('Edit opens the full employee form.') }}</p>
-                <a class="emp-btn-cancel" id="wmProfile" href="#"><i class="ti ti-id" aria-hidden="true"></i>{{ __('Full profile') }}</a>
-                <a class="emp-btn-save" id="wmEdit" href="#"><i class="fas fa-pen" aria-hidden="true"></i>{{ __('Edit') }}</a>
+            <div class="wkm-foot">
+                <span class="wkm-meta" id="wmUpdated"></span>
+                <a class="wkm-btn" id="wmProfile" href="#"><i class="fas fa-id-badge" aria-hidden="true"></i>{{ __('Full profile') }}</a>
+                <a class="wkm-btn pri" id="wmEdit" href="#"><i class="fas fa-pen" aria-hidden="true"></i>{{ __('Edit employee') }}</a>
             </div>
         </div>
     </div>

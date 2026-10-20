@@ -718,7 +718,11 @@ class EmployeeController extends Controller
 
         $pending  = Employee::pending()->with($with)->withCount('attendances')
                         ->orderByDesc('created_at')->get();
-        $active   = Employee::active()->with($with)->withCount('attendances')
+        // The worker card counts each Active worker's fingers: load them here,
+        // not one query per row.
+        $active   = Employee::active()
+                        ->with(Employee::hasExtraFingers() ? array_merge($with, ['extraFingerprints']) : $with)
+                        ->withCount('attendances')
                         ->orderBy('name')->get();
         $archived = Employee::archived()->with($with)->withCount('attendances')
                         ->orderByDesc('archived_at')->get();

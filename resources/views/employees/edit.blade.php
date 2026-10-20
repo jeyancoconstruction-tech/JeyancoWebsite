@@ -19,9 +19,15 @@
 
     @php
         $lt      = $employee->laborType;
-        $fingers = method_exists($employee, 'fingerprintSlots') ? count($employee->fingerprintSlots()) : ($employee->fingerprint_id ? 1 : 0);
+        $slots   = method_exists($employee, 'fingerprintSlots') ? $employee->fingerprintSlots() : array_filter([(string) $employee->fingerprint_id]);
+        $fingers = count($slots);
         $needFp  = (int) config('kiosk.fingers_required', 2);
-        $initials = collect(preg_split('/\s+/', trim((string) $employee->name)))->filter()->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('');
+        // How complete the record is: the profile fields with an answer.
+        $profileFields = ['birth_date', 'birth_place', 'gender', 'civil_status', 'nationality', 'blood_type',
+                          'phone', 'email', 'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
+                          'address_street', 'address_barangay', 'address_city', 'address_province', 'address_postal',
+                          'sss_number', 'philhealth_number', 'pagibig_number', 'tin_number'];
+        $profileDone = collect($profileFields)->filter(fn ($f) => filled($employee->{$f}))->count();
         $statusLabel = ['active' => __('Active'), 'pending' => __('Pending'), 'archived' => __('Archived'), 'deleted' => __('Deleted')][$employee->status] ?? ucfirst((string) $employee->status);
     @endphp
 
@@ -34,7 +40,7 @@
         {{-- Who is being edited, and the figures payroll uses. The name
              follows the name fields as they are typed (_register_progress). --}}
         <header class="eea-hero">
-            <span class="eea-ini">{{ $initials ?: '?' }}</span>
+            <span class="eea-ico">@include('partials.worker-icon', ['size' => '66%'])</span>
             <div class="eea-id">
                 <h1 id="rgxWhoName">{{ $employee->name }}</h1>
                 <div class="eea-sub">#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }} · {{ $employee->position ?: ($lt->name ?? __('Worker')) }}@if($employee->site) · {{ $employee->site->name }}@endif</div>
@@ -55,11 +61,37 @@
         </header>
 
         <div class="eea-card">
-            {{-- The tabs: one per section below, drawn by the script at the
-                 end of the page from the sections' own titles. --}}
-            <nav class="eea-tabs" id="eeaTabs" role="tablist" aria-label="{{ __('Employee sections') }}"></nav>
+            <aside class="eea-rail">
+                {{-- The sections: one per section below, drawn by the script at
+                     the end of the page from the sections' own titles. --}}
+                <nav class="eea-tabs" id="eeaTabs" role="tablist" aria-label="{{ __('Employee sections') }}"></nav>
+                <div class="eea-railbox">
+                    <div>
+                        <div class="eea-row"><span class="eea-k">{{ __('Profile') }}</span><span>{{ $profileDone }} {{ __('of') }} {{ count($profileFields) }} {{ __('recorded') }}</span></div>
+                        <div class="eea-meter"><i style="width: {{ round($profileDone / count($profileFields) * 100) }}%"></i></div>
+                    </div>
+                    <div>
+                        <div class="eea-row"><span class="eea-k">{{ __('Fingerprints') }}</span><span>{{ $fingers }} {{ __('of') }} {{ $needFp }}</span></div>
+                        <div class="eea-slots">
+                            @for($i = 0; $i < max($needFp, $fingers); $i++)
+                                @if(isset($slots[$i]))
+                                    <span class="eea-slot on"><i class="fas fa-fingerprint"></i>{{ __('Slot') }} {{ $slots[$i] }}</span>
+                                @else
+                                    <span class="eea-slot">{{ __('Empty') }}</span>
+                                @endif
+                            @endfor
+                        </div>
+                        @if($fingers < $needFp)
+                            <div class="eea-note"><i class="fas fa-circle-exclamation"></i>{{ $needFp - $fingers === 1 ? __('One more at the kiosk') : __(':n more at the kiosk', ['n' => $needFp - $fingers]) }}</div>
+                        @endif
+                    </div>
+                    <p class="eea-help"><b>{{ __('Changes apply tomorrow') }}</b>{{ __('Pay, shift and site take effect from the next day worked. Days already worked keep their old values.') }}</p>
+                </div>
+            </aside>
+
+            <div class="eea-panel">
             <div class="eea-body" id="eeaBody">
-                <section class="ep-section">
+                <section class="ep-section eea-emp">
                     <header class="ep-section-head">
                         <span class="ep-section-icon"><i class="fas fa-helmet-safety"></i></span>
                         <div>
@@ -80,21 +112,24 @@
                         $suffix = old('name_suffix', $employee->name_suffix ?: $parts['name_suffix']);
                     @endphp
 
+                    {{-- Three groups, each a full row: the name, the role and its
+                         rate, and where / when they work. --}}
+                    <p class="eea-grp">{{ __('Name') }}</p>
                     <div class="row g-3">
                         {{-- Name, in parts. `name` is composed from these on save. --}}
-                        <div class="col-md-4 col-lg-3">
+                        <div class="col-md-4">
                             <label class="ep-label" for="first_name">{{ __('First Name') }} <span class="ep-req">*</span></label>
                             <input type="text" id="first_name" name="first_name" value="{{ $first }}"
                                    class="form-control @error('first_name') is-invalid @enderror" required>
                             @error('first_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
-                        <div class="col-md-4 col-lg-2">
+                        <div class="col-md-4">
                             <label class="ep-label" for="middle_name">{{ __('Middle Name') }}</label>
                             <input type="text" id="middle_name" name="middle_name" value="{{ $middle }}"
                                    class="form-control @error('middle_name') is-invalid @enderror">
                             @error('middle_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
-                        <div class="col-md-4 col-lg-3">
+                        <div class="col-md-4">
                             <label class="ep-label" for="last_name">{{ __('Last Name') }} <span class="ep-req">*</span></label>
                             <div class="input-group ep-suffix-group">
                                 <input type="text" id="last_name" name="last_name" value="{{ $last }}"
@@ -109,12 +144,15 @@
                             @error('last_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             @error('name_suffix')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
+                    </div>
 
+                    <p class="eea-grp">{{ __('Role & rate') }}</p>
+                    <div class="row g-3">
                         {{-- Labor Type comes before Position because it answers it:
                              the position IS the labor type, and `position` — the
                              column payroll reads — is derived from it on save
                              either way. --}}
-                        <div class="col-md-6 col-lg-4">
+                        <div class="col-md-4">
                             <label class="ep-label" for="labor_type_select">{{ __('Labor Type') }} <span class="ep-req">*</span></label>
                             <select id="labor_type_select" name="labor_type_id" class="form-select" required>
                                 <option value="">{{ __('— Select Labor Type —') }}</option>
@@ -128,6 +166,48 @@
                                 @endforeach
                             </select>
                             <span class="ep-hint">{{ __('Choose a Labor Type to automatically fill the Position.') }}</span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="ep-label" for="rate_per_hour">{{ __('Rate Per Hour') }} <span class="ep-req">*</span></label>
+                            <input type="number" step="0.01" id="rate_per_hour" name="rate_per_hour"
+                                   value="{{ $employee->rate_per_hour }}"
+                                   class="form-control" style="cursor:not-allowed;" readonly required>
+                            <span class="ep-hint">{{ __('Calculated from Labor Type (Daily ÷ 8).') }}</span>
+                        </div>
+
+                        {{-- Filled from the labor type and locked
+                             (_position_from_labor.blade.php). --}}
+                        <div class="col-md-4">
+                            <label class="ep-label" for="job_title">{{ __('Position / Job Title') }} <span class="ep-req">*</span></label>
+                            <input type="text" id="job_title" name="job_title" required
+                                   value="{{ old('job_title', $employee->job_title) }}"
+                                   class="form-control @error('job_title') is-invalid @enderror"
+                                   placeholder="{{ __('e.g. Mason') }}">
+                            @error('job_title')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <span class="ep-hint js-position-hint"></span>
+                        </div>
+                    </div>
+
+                    <p class="eea-grp">{{ __('Assignment') }}</p>
+                    <div class="row g-3">
+                        {{-- Site Assignment --}}
+                        <div class="col-md-6 col-lg-3">
+                            <label class="ep-label" for="site_select">{{ __('Site Assignment') }} <span class="ep-req">*</span></label>
+                            <select name="site_id" id="site_select" required class="form-select">
+                                <option value="">{{ __('— Select a site —') }}</option>
+                                @foreach($sites as $site)
+                                    <option value="{{ $site->id }}"
+                                            {{ $employee->site_id == $site->id ? 'selected' : '' }}>
+                                        {{ $site->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            {{-- No New Site button, as on Register Employee. A site is made
+                                 on the Sites page, which is the screen that owns them. The
+                                 panel that used to open here carried its own name field, its
+                                 own map and its own save, inside a form already asking for
+                                 twenty-five other things. --}}
                         </div>
 
                         {{-- Which crew they are on. Changing it moves them from
@@ -147,51 +227,12 @@
                             <span class="ep-hint">{{ __('Applies from the next day worked.') }}</span>
                         </div>
 
-                        <div class="col-md-6 col-lg-2">
-                            <label class="ep-label" for="rate_per_hour">{{ __('Rate Per Hour') }} <span class="ep-req">*</span></label>
-                            <input type="number" step="0.01" id="rate_per_hour" name="rate_per_hour"
-                                   value="{{ $employee->rate_per_hour }}"
-                                   class="form-control" style="cursor:not-allowed;" readonly required>
-                            <span class="ep-hint">{{ __('Calculated from Labor Type (Daily ÷ 8).') }}</span>
-                        </div>
-
-                        {{-- Filled from the labor type and locked
-                             (_position_from_labor.blade.php). --}}
-                        <div class="col-md-6 col-lg-3">
-                            <label class="ep-label" for="job_title">{{ __('Position / Job Title') }} <span class="ep-req">*</span></label>
-                            <input type="text" id="job_title" name="job_title" required
-                                   value="{{ old('job_title', $employee->job_title) }}"
-                                   class="form-control @error('job_title') is-invalid @enderror"
-                                   placeholder="{{ __('e.g. Mason') }}">
-                            @error('job_title')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            <span class="ep-hint js-position-hint"></span>
-                        </div>
-
                         <div class="col-md-6 col-lg-3">
                             <label class="ep-label" for="date_hired">{{ __('Date Hired') }}</label>
                             <input type="date" id="date_hired" name="date_hired"
                                    value="{{ old('date_hired', $employee->date_hired?->format('Y-m-d')) }}"
                                    class="form-control @error('date_hired') is-invalid @enderror">
                             @error('date_hired')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        </div>
-
-                        {{-- Site Assignment --}}
-                        <div class="col-md-6 col-lg-6">
-                            <label class="ep-label" for="site_select">{{ __('Site Assignment') }} <span class="ep-req">*</span></label>
-                            <select name="site_id" id="site_select" required class="form-select">
-                                <option value="">{{ __('— Select a site —') }}</option>
-                                @foreach($sites as $site)
-                                    <option value="{{ $site->id }}"
-                                            {{ $employee->site_id == $site->id ? 'selected' : '' }}>
-                                        {{ $site->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            {{-- No New Site button, as on Register Employee. A site is made
-                                 on the Sites page, which is the screen that owns them. The
-                                 panel that used to open here carried its own name field, its
-                                 own map and its own save, inside a form already asking for
-                                 twenty-five other things. --}}
                         </div>
 
                         {{-- How they were hired, as Register employee asks on its
@@ -214,7 +255,7 @@
                             @error('employment_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             <span class="ep-hint" id="employment_hint"></span>
                         </div>
-                        <div class="col-md-6 col-lg-2" id="contract_months_field" @if($empType !== $contractual) hidden @endif>
+                        <div class="col-md-6 col-lg-3" id="contract_months_field" @if($empType !== $contractual) hidden @endif>
                             <label class="ep-label" for="contract_months">{{ __('Contract Length') }} <span class="ep-req">*</span></label>
                             <input type="number" id="contract_months" name="contract_months" min="1" max="{{ \App\Models\Employee::CONTRACT_MONTHS_MAX }}" step="1"
                                    value="{{ $empMonths }}" placeholder="{{ __('e.g. 6') }}"
@@ -251,6 +292,7 @@
                 <a href="{{ route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : []) }}" class="eea-btn">{{ __('Cancel') }}</a>
                 <button type="submit" class="eea-btn pri" id="eeaSave">{{ __('Save changes') }}</button>
             </footer>
+            </div>
         </div>
     </form>
 </div>
@@ -261,73 +303,111 @@
     @include('employees._profile_styles')
     @include('employees._register_layout')
 <style>
-/* ── Edit employee (2026-10-19): a worker header, then one section at a
-   time. Theme tokens throughout; the header keeps the rail's navy in both
-   themes. ─────────────────────────────────────────────────────────────── */
+/* ── Edit employee (2026-10-20 revision): a flat worker header, then the
+   sections on a rail at the left and the open one filling the rest of the
+   screen, Save always at its foot. Theme tokens throughout. ─────────────── */
 .eea-page { display: flex; flex-direction: column; gap: 12px; }
 .eea-back { align-self: flex-start; font-size: 13px; font-weight: 600; color: var(--text-muted); text-decoration: none; display: inline-flex; gap: 7px; align-items: center; }
 .eea-back:hover { color: var(--brand); }
-.eea { display: flex; flex-direction: column; gap: 14px; }
+.eea { display: flex; flex-direction: column; gap: 16px; }
 
-.eea-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 20px; padding: 22px 24px; border-radius: 14px; color: #fff;
-            background: linear-gradient(120deg, #0f2c57 0%, #143a70 60%, #1a4a8a 100%); }
-.eea-hero::after { content: ''; position: absolute; right: -70px; top: -70px; width: 260px; height: 260px; border-radius: 50%;
-                   border: 1px solid rgba(255,255,255,.07); box-shadow: 0 0 0 40px rgba(255,255,255,.025), 0 0 0 80px rgba(255,255,255,.02); pointer-events: none; }
-.eea-ini { flex: none; width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; font-weight: 800; font-size: 21px;
-           background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22); letter-spacing: .02em; }
+.eea-hero { display: flex; align-items: center; gap: 16px; }
+/* The worker icon: black on safety yellow, the same in light and dark. */
+.eea-ico { flex: none; width: 56px; height: 56px; border-radius: 12px; display: grid; place-items: center;
+           background: #f5b73b; color: #111; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); }
 .eea-id { min-width: 0; flex: 1; }
-html[data-bs-theme] .eea-hero .eea-id h1 { margin: 0 !important; font-size: 22px !important; font-weight: 700; letter-spacing: -.01em; color: #fff !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.eea-sub { color: #b9cbe6; font-size: 13px; margin-top: 2px; }
-.eea-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.eea-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
-            background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); color: #fff; }
-.eea-chip i:not(.fas) { width: 7px; height: 7px; border-radius: 50%; background: #9aa9bf; display: inline-block; }
-.eea-chip i.st-active { background: #4ade80; } .eea-chip i.st-pending { background: #fbbf24; }
-.eea-chip .fas { font-size: 10px; opacity: .85; }
-.eea-chip.warn { background: rgba(251,191,36,.18); border-color: rgba(251,191,36,.45); }
-.eea-stats { position: relative; z-index: 1; display: flex; margin: 0; flex: none; }
-.eea-stats div { padding: 0 20px; border-left: 1px solid rgba(255,255,255,.15); }
-.eea-stats div:first-child { border-left: 0; }
-.eea-stats dt { font-size: 11px; color: #9fb6d8; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-.eea-stats dd { margin: 3px 0 0; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html[data-bs-theme] .eea-hero .eea-id h1 { margin: 0 !important; font-size: 22px !important; font-weight: 600; letter-spacing: -.015em; color: var(--text-primary) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eea-sub { color: var(--text-secondary); font-size: 13px; margin-top: 3px; }
+.eea-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.eea-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 5px;
+            border: 1px solid var(--border-md); color: var(--text-secondary); }
+.eea-chip i:not(.fas) { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); display: inline-block; }
+.eea-chip i.st-active { background: var(--success, #12b76a); } .eea-chip i.st-pending { background: var(--warning, #d97706); }
+.eea-chip .fas { font-size: 10px; }
+.eea-chip.warn { color: var(--warning, #d97706); }
+.eea-stats { display: flex; margin: 0; flex: none; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.eea-stats div { padding: 9px 20px; }
+.eea-stats div + div { border-left: 1px solid var(--border); }
+.eea-stats dt { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.eea-stats dd { margin: 3px 0 0; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-primary); }
 
-.eea-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
-.eea-tabs { display: flex; gap: 2px; padding: 0 14px; border-bottom: 1px solid var(--border); overflow-x: auto; }
-.eea-tabs button { flex: none; background: none; border: 0; padding: 14px 12px 12px; font-weight: 600; font-size: 13.5px; color: var(--text-muted);
-                   display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
-.eea-tabs button:hover { color: var(--text-primary); }
-.eea-tabs button.on { color: var(--brand); box-shadow: inset 0 -2px 0 var(--brand); }
-.eea-tabs .need { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); display: inline-block; }
-.eea-tabs .chg { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); display: inline-block; }
+/* The rail and the open section side by side, down to the bottom of the screen. */
+.eea-card { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; min-height: calc(100vh - 250px); }
+.eea-rail { display: flex; flex-direction: column; gap: 12px; }
+.eea-tabs { display: flex; flex-direction: column; gap: 2px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.eea-tabs button { background: none; border: 0; border-radius: 7px; padding: 13px 12px; font-weight: 500; font-size: 13.5px; color: var(--text-secondary);
+                   display: flex; align-items: center; gap: 10px; cursor: pointer; text-align: left; }
+.eea-tabs button > .fas, .eea-tabs button > .far { width: 16px; text-align: center; font-size: 12px; color: var(--text-muted); }
+.eea-tabs button:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.eea-tabs button.on { background: color-mix(in srgb, var(--brand) 10%, transparent); color: var(--text-primary); font-weight: 600; box-shadow: inset 2px 0 0 var(--brand); }
+.eea-tabs button.on > .fas, .eea-tabs button.on > .far { color: var(--brand); }
+.eea-tabs .cnt { margin-left: auto; font-size: 11.5px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.eea-tabs .cnt.done { color: var(--success, #12b76a); }
+.eea-tabs .dotm { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
+.eea-tabs .dotm.need { background: var(--danger); }
+.eea-tabs .dotm.chg { background: var(--brand); }
 
-/* Each section: its name and why on the left, its fields on the right. */
-.eea .eea-body { padding: 4px 24px; }
-.eea .ep-section { display: grid; grid-template-columns: 230px minmax(0, 1fr); column-gap: 28px; row-gap: 0; align-content: start; margin: 0; padding: 22px 0;
+.eea-railbox { flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.eea-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.eea-k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.eea-meter { height: 5px; margin-top: 10px; border-radius: 3px; overflow: hidden; background: var(--border); }
+.eea-meter i { display: block; height: 100%; background: var(--brand); }
+.eea-slots { display: flex; gap: 6px; margin-top: 10px; }
+.eea-slot { flex: 1; min-width: 0; height: 34px; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 6px;
+            font-size: 12px; color: var(--text-muted); border: 1px dashed var(--border-md); }
+.eea-slot.on { border: 1px solid rgba(18,183,106,.45); background: rgba(18,183,106,.10); color: var(--success, #12b76a); font-weight: 600; }
+.eea-note { margin-top: 9px; font-size: 12px; color: var(--warning, #d97706); display: flex; gap: 6px; align-items: center; }
+.eea-help { margin: auto 0 0; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; line-height: 1.55; color: var(--text-muted); }
+.eea-help b { display: block; margin-bottom: 2px; font-weight: 600; color: var(--text-secondary); }
+
+.eea-panel { display: flex; flex-direction: column; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.eea .eea-body { flex: 1; display: flex; flex-direction: column; }
+
+/* The open section: its name and why across the top, its fields the full width under it. */
+.eea .ep-section { flex: 1; display: flex; flex-direction: column; margin: 0; padding: 0 24px 20px;
                    background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
 .eea .ep-section[hidden] { display: none !important; }
-.eea .ep-section-head { display: block !important; margin: 0 !important; padding: 0 !important; border: 0 !important; grid-column: 1; grid-row: 1 / span 12; }
-.eea .ep-section > :not(.ep-section-head) { grid-column: 2; }
-.eea .ep-section > .row + .row, .eea .ep-section > .row + * { margin-top: 14px; }
+.eea .ep-section-head { display: block !important; margin: 0 -24px 6px !important; padding: 16px 24px 14px !important; border: 0 !important; border-bottom: 1px solid var(--border) !important; }
 .eea .ep-section-icon, .eea .rgx-chip { display: none !important; }
-.eea .ep-section-title { font-size: 14.5px; font-weight: 700; margin: 0; color: var(--text-primary); }
-.eea .ep-section-sub { display: block !important; font-size: 12.5px; color: var(--text-muted); margin: 4px 0 0; line-height: 1.5; }
-.eea .ep-label { font-size: 12.5px !important; font-weight: 600 !important; text-transform: none !important; letter-spacing: 0 !important; color: var(--text-secondary) !important; margin-bottom: 5px; }
-.eea .form-control, .eea .form-select { min-height: 38px; border-radius: 9px; font-size: 13.5px; }
-.eea .form-control[readonly] { background: var(--bg-subtle); }
-.eea .ep-hint { font-size: 12px; color: var(--text-muted); }
-.eea .ep-subhead { margin: 18px 0 6px !important; font-size: 12.5px; font-weight: 700; color: var(--text-secondary); padding-top: 14px; border-top: 1px dashed var(--border); }
+html[data-bs-theme] .eea .ep-section-title { font-size: 15px; font-weight: 600; margin: 0; color: var(--text-primary); }
+.eea .ep-section-sub { display: block !important; font-size: 12.5px; color: var(--text-muted); margin: 3px 0 0; line-height: 1.5; }
+.eea .ep-section > .row { margin-top: 0; }
+.eea .ep-section > .row + .row { margin-top: 14px; }
+.eea .ep-label { font-size: 12.5px !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: 0 !important; color: var(--text-secondary) !important; margin-bottom: 6px; }
+.eea .form-control, .eea .form-select { min-height: 40px; border-radius: 8px; font-size: 13.5px; }
+.eea .form-control[readonly] { background: transparent; border-style: dashed; }
+.eea .ep-hint { font-size: 11.5px; color: var(--text-muted); }
+.eea .ep-subhead, .eea .eea-grp { display: flex; align-items: center; gap: 12px; margin: 20px 0 12px !important; padding: 0; border: 0;
+                                   font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.eea .ep-subhead::after, .eea .eea-grp::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-.eea-foot { display: flex; align-items: center; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--border); background: var(--bg-subtle);
-            border-radius: 0 0 14px 14px; position: sticky; bottom: 0; z-index: 5; }
-.eea-saved { font-size: 12.5px; color: var(--text-muted); }
+/* The other sections' fields: each row shared out across the full width. */
+.eea .ep-section:not(.eea-emp) > .row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 14px 18px; margin: 0; }
+.eea .ep-section:not(.eea-emp) > .row > * { width: auto; max-width: none; padding: 0; margin: 0; }
+.eea .ep-section:not(.eea-emp) > .row:first-of-type { margin-top: 14px; }
+
+.eea-foot { display: flex; align-items: center; gap: 10px; padding: 13px 24px; border-top: 1px solid var(--border); background: var(--bg-subtle);
+            border-radius: 0 0 10px 10px; position: sticky; bottom: 0; z-index: 5; }
+.eea-saved { font-size: 12px; color: var(--text-muted); }
 .eea-sp { flex: 1; }
-.eea-btn { height: 38px; padding: 0 16px; border-radius: 9px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-secondary);
-           font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
+.eea-btn { height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-primary);
+           font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
+.eea-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .eea-btn.pri { background: var(--brand); border-color: var(--brand); color: #fff; }
-.eea .rgx-count { font-size: 12.5px; }
+.eea-btn.pri:hover { filter: brightness(1.08); color: #fff; }
+.eea .rgx-count { font-size: 12px; }
 
-@media (max-width: 1100px) { .eea .ep-section { grid-template-columns: 1fr; } .eea .ep-section-head { grid-row: auto; margin-bottom: 12px !important; } .eea .ep-section > :not(.ep-section-head) { grid-column: 1; } .eea-hero { flex-wrap: wrap; } .eea-stats { width: 100%; } }
-@media (max-width: 640px) { .eea-saved { display: none; } .eea-foot { flex-wrap: wrap; } }
+@media (max-width: 1100px) {
+    .eea-hero { flex-wrap: wrap; } .eea-stats { width: 100%; } .eea-stats div { flex: 1; }
+    .eea .ep-section:not(.eea-emp) > .row { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+    .eea-card { grid-template-columns: 1fr; min-height: 0; }
+    .eea-tabs { flex-direction: row; overflow-x: auto; }
+    .eea-tabs button { flex: none; }
+    .eea-railbox { display: none; }
+}
+@media (max-width: 640px) { .eea-saved { display: none; } .eea-foot { flex-wrap: wrap; } .eea .ep-section:not(.eea-emp) > .row { grid-template-columns: 1fr; } }
 </style>
 @endpush
 
@@ -426,8 +506,10 @@ html[data-bs-theme] .eea-hero .eea-id h1 { margin: 0 !important; font-size: 22px
         b.type = 'button';
         b.setAttribute('role', 'tab');
         const title = (sec.querySelector('.ep-section-title') || {}).textContent || ('Section ' + (i + 1));
-        b.innerHTML = '<span></span>';
-        b.firstChild.textContent = title.trim().replace(/ Information$/, '');
+        // The section's own icon, its name, and how many of its fields are filled.
+        const icon = sec.querySelector('.ep-section-icon i');
+        b.innerHTML = (icon ? `<i class="${icon.className}"></i>` : '') + '<span></span><span class="cnt"></span>';
+        b.querySelector('span').textContent = title.trim().replace(/ Information$/, '');
         b.addEventListener('click', () => show(i));
         nav.appendChild(b);
         return b;
@@ -444,11 +526,22 @@ html[data-bs-theme] .eea-hero .eea-id h1 { margin: 0 !important; font-size: 22px
                 .some(f => !f.disabled && f.type !== 'hidden' && String(f.value || '').trim() === '');
             const changed = !!sec.querySelector('.rgx-changed');
             const bad = !!sec.querySelector('.is-invalid, .invalid-feedback.d-block');
-            let dot = btns[i].querySelector('i');
+
+            const fields = Array.from(sec.querySelectorAll('input, select, textarea'))
+                .filter(f => f.type !== 'hidden' && !f.disabled && !f.readOnly && f.name);
+            const filled = fields.filter(f => String(f.value || '').trim() !== '').length;
+            const cnt = btns[i].querySelector('.cnt');
+            if (cnt) {
+                const done = fields.length && filled === fields.length;
+                cnt.className = 'cnt' + (done ? ' done' : '');
+                cnt.innerHTML = done ? '<i class="fas fa-check"></i>' : `${filled}/${fields.length}`;
+            }
+
+            let dot = btns[i].querySelector('.dotm');
             const cls = bad || empty ? 'need' : (changed ? 'chg' : '');
             if (!cls) { if (dot) dot.remove(); return; }
             if (!dot) { dot = document.createElement('i'); btns[i].appendChild(dot); }
-            dot.className = cls;
+            dot.className = 'dotm ' + cls;
         });
     }
 
