@@ -13,8 +13,8 @@
     <title>{{ $kiosk->name }} — Kiosk screen</title>
     <base href="{{ asset('kiosk-app') }}/">
     <link rel="icon" href="JeyancoLogo.png">
-    <link rel="stylesheet" href="vendor/inter/inter.css">
-    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="lib/inter/inter.css">
+    <link rel="stylesheet" href="lib/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="kiosk.css?v={{ $v }}">
     <style>
         /* The monitor's own mark, so a photo of it is never taken for the kiosk. */

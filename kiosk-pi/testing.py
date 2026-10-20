@@ -301,6 +301,34 @@ def window_fullscreen():
 uart   = serial.Serial(SERIAL_PORT, baudrate=BAUD_RATE, timeout=1)
 finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)
 
+# v14: BANTAY SA SENSOR. Pagkatapos ng matagal na walang gumagamit, minsan
+# nagugulo ang usapan sa R307 (naiiwang kalahating packet sa serial): akala
+# ng loop ay may daliri pero hindi mabasa, kaya SCANNING… nang walang tigil
+# hanggang i-restart ang service. Ngayon, kapag ganoon nang SENSOR_STUCK_SECONDS
+# (sunod-sunod na sirang basa, malabong basa o error), kusang isinasara at
+# binubuksan ulit ang serial — parang restart, pero sensor lang.
+SENSOR_STUCK_SECONDS = 15
+
+
+def reopen_sensor(why):
+    """Isara at buksan ulit ang serial sa R307. DAPAT hawak ang sensor_lock."""
+    global uart, finger
+    print(f"🔄 Binubuksan ulit ang sensor: {why}")
+    try:
+        uart.close()
+    except Exception:
+        pass
+    time.sleep(0.5)
+    try:
+        uart = serial.Serial(SERIAL_PORT, baudrate=BAUD_RATE, timeout=1)
+        uart.reset_input_buffer()
+        finger = adafruit_fingerprint.Adafruit_Fingerprint(uart)   # nagve-verify na ito
+        print("✅ Sumagot ulit ang sensor.")
+    except Exception as e:
+        # Susubukan ulit ng loop sa susunod; ang mga finger.* ay magre-raise
+        # lang at sasaluhin ng loop.
+        print(f"⚠ Hindi pa sumasagot ang sensor ({e}) — susubukan ulit.")
+
 # ── SHARED STATE ──────────────────────────────────────────────
 scan_result   = {"status": "no_finger"}
 
@@ -579,7 +607,10 @@ def _look():
         if img != adafruit_fingerprint.OK:
             return "bad", None, None
 
-        scan_result = {"status": "scanning"}
+        # v14: ang daliring nakapatong pa at may resulta na ay hindi na
+        # "scanning" — dati kumikislap ang SCANNING… sa ibabaw ng resulta.
+        if held_fid is None:
+            scan_result = {"status": "scanning"}
 
         # Convert image to template (CharBuffer1)
         if finger.image_2_tz(1) != adafruit_fingerprint.OK:
@@ -605,14 +636,51 @@ def _unknown_finger():
     time.sleep(MIN_RESULT_SECONDS)         # sa labas na ng lock
 
 
+def post_scan_attendance(payload):
+    """
+    v14: Ang /scan-attendance, na may isang ulit sa bagong koneksyon.
+
+    Pagkatapos ng matagal na walang scan, ang keep-alive na koneksyon sa web
+    ay tahimik nang pinutol ng mobile data / ng Railway. Ang unang scan ay
+    naghihintay sa patay na koneksyon hanggang mag-timeout — SCANNING… sa
+    screen, tapos "Cannot connect". Kapag pumalya, itinatapon ang mga lumang
+    koneksyon (http.close()) at inuulit nang isang beses sa bago.
+
+    Ligtas ulitin: kinikilala lang ng /scan-attendance ang tao, walang
+    naitatala (ang kiosk ang nagtatala, ayon sa pinindot ng worker).
+    """
+    try:
+        return http.post(f"{LARAVEL_API}/scan-attendance", json=payload, timeout=(4, 6))
+    except (requests.ConnectionError, requests.Timeout) as e:
+        print(f"⚠ Patay ang koneksyon sa web ({e.__class__.__name__}) — bagong koneksyon, isang ulit.")
+        http.close()
+        return http.post(f"{LARAVEL_API}/scan-attendance", json=payload, timeout=(4, 8))
+
+
 def attendance_scan_loop():
     global scan_result, is_enrolling, held_fid, held_result, awaiting_attach, scan_seq
+
+    # v14: kailan nagsimula ang sunod-sunod na hindi mabasa (bad / blur /
+    # error). None kapag maayos ang huling tingin.
+    trouble_since = None
 
     while True:
         try:
             # Skip kung nag-eenroll — WAG hahawakan ang serial port.
             if is_enrolling:
+                trouble_since = None
                 time.sleep(0.5)
+                continue
+
+            # v14: matagal nang hindi mabasa — buksan ulit ang sensor.
+            if trouble_since and (time.time() - trouble_since) > SENSOR_STUCK_SECONDS:
+                with sensor_lock:
+                    if not is_enrolling:
+                        reopen_sensor(f"{SENSOR_STUCK_SECONDS}s nang hindi mabasa")
+                trouble_since = None
+                held_fid = None
+                held_result = None
+                scan_result = {"status": "no_finger"}
                 continue
 
             what, fid, confidence = _look()
@@ -620,6 +688,11 @@ def attendance_scan_loop():
             if what == "busy":
                 time.sleep(0.3)
                 continue
+
+            if what in ("bad", "blur"):
+                trouble_since = trouble_since or time.time()
+            else:
+                trouble_since = None
 
             if what == "none":
                 held_fid = None          # naalis na — puwede nang mag-tag ulit
@@ -684,11 +757,7 @@ def attendance_scan_loop():
                 payload = {"fingerprint_id": str(fid)}
                 payload.update(site_params())
 
-                res = http.post(
-                    f"{LARAVEL_API}/scan-attendance",
-                    json=payload,
-                    timeout=5
-                )
+                res  = post_scan_attendance(payload)
                 data = res.json()
 
                 if data.get("success"):
@@ -760,6 +829,14 @@ def attendance_scan_loop():
         except Exception as e:
             print(f"Scan loop error: {e}")
             scan_result = {"status": "no_finger"}
+            # v14: error sa serial = hindi rin mabasa. Linisin ang naiwang
+            # kalahating packet; kapag tuloy-tuloy, bubuksan ulit sa itaas.
+            trouble_since = trouble_since or time.time()
+            try:
+                with sensor_lock:
+                    uart.reset_input_buffer()
+            except Exception:
+                pass
             time.sleep(1)
 
 # ══════════════════════════════════════════════════════════════
