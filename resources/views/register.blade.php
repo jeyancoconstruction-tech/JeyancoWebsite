@@ -321,102 +321,78 @@ tr.rmx-row-card:hover .rmx-name { color: var(--brand, #1668DC); }
 /* The whole row opens the worker; its checkbox and buttons keep their own jobs. */
 tr.rmx-row-card { cursor: pointer; }
 
-/* The worker dialog (2026-10-20 revision). Nearly the whole screen, flat, in
-   the theme's own tokens: who they are in the head, pay / shift / fingers /
-   how complete the record is on the left, and the record itself on the right
-   in four bands that share the height between them. */
-#workerModal .wkm-dialog { width: calc(100vw - 48px); max-width: 1320px; margin: 24px auto; }
-.wkm { height: min(820px, calc(100vh - 48px)); display: flex; flex-direction: column; overflow: hidden;
-    background: var(--surface, #fff); color: var(--text-primary, #101828);
-    border: 1px solid var(--border-md, #d3dbe6); border-radius: 12px; box-shadow: 0 30px 80px rgba(0, 0, 0, .35); }
-.wkm-head { flex: none; display: flex; align-items: center; gap: 14px; padding: 16px 22px; border-bottom: 1px solid var(--border, #e4e9f0); }
-/* The worker icon: black on safety yellow, the same in light and dark. */
-.wkm-ico { flex: none; width: 50px; height: 50px; border-radius: 10px; display: grid; place-items: center;
-    background: #f5b73b; color: #111; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
-.wkm-who { flex: 1; min-width: 0; }
-html[data-bs-theme] .wkm-who h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.01em; color: var(--text-primary, #101828);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wkm-who p { margin: 3px 0 0; color: var(--text-secondary, #475467); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
-.wkm-id { font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-muted, #8590a2); }
-.wkm-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted, #8590a2); }
-.wkm-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--text-secondary, #475467);
-    padding: 5px 10px; border: 1px solid var(--border-md, #d3dbe6); border-radius: 6px; }
-.wkm-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--success, #12b76a); }
-.wkm-x { width: 34px; height: 34px; border-radius: 7px; display: grid; place-items: center; padding: 0; cursor: pointer;
-    border: 1px solid var(--border-md, #d3dbe6); background: none; color: var(--text-muted, #8590a2); }
-.wkm-x:hover { color: var(--text-primary, #101828); background: var(--bg-subtle, #f3f5f8); }
+/* The worker card (2026-10-20 revision). Sized to what it holds: a
+   construction stripe, who they are, the figures in one strip, the record as
+   a two-column spec sheet, and the two ways on. Theme tokens throughout; the
+   worker icon is black on safety yellow in light and dark alike. */
+#workerModal .wkc-dialog { max-width: 780px; }
+.wkc { overflow: hidden; background: var(--surface, #fff); color: var(--text-primary, #101828);
+       border: 1px solid var(--border-md, #d3dbe6); border-radius: 14px; box-shadow: 0 24px 70px rgba(0, 0, 0, .35); }
+.wkc::before { content: ''; display: block; height: 4px; flex: none;
+               background: repeating-linear-gradient(-45deg, #f5b73b 0 14px, #1a1a1a 14px 28px); }
+.wkc-head { display: flex; align-items: center; gap: 14px; padding: 18px 20px 16px; }
+.wkc-ico { flex: none; width: 56px; height: 56px; border-radius: 12px; display: grid; place-items: center;
+           background: #f5b73b; color: #111; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.wkc-who { flex: 1; min-width: 0; }
+html[data-bs-theme] .wkc-who h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.015em; color: var(--text-primary, #101828);
+                                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wkc-who p { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; color: var(--text-secondary, #475467); }
+.wkc-id { font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-muted, #8590a2); }
+.wkc-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted, #8590a2); }
+.wkc-status { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border: 1px solid var(--border-md, #d3dbe6); border-radius: 999px;
+              font-size: 12px; font-weight: 600; color: var(--text-secondary, #475467); }
+.wkc-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--success, #12b76a); }
+.wkc-x { width: 32px; height: 32px; padding: 0; border-radius: 8px; display: grid; place-items: center; cursor: pointer;
+         border: 1px solid var(--border-md, #d3dbe6); background: none; color: var(--text-muted, #8590a2); }
+.wkc-x:hover { color: var(--text-primary, #101828); background: var(--bg-subtle, #f3f5f8); }
 
-.wkm-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 320px minmax(0, 1fr); }
-.wkm-aside { display: flex; flex-direction: column; overflow-y: auto; background: var(--bg-subtle, #f7f9fb); border-right: 1px solid var(--border, #e4e9f0); }
-.wkm-blk { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; padding: 18px 22px; border-bottom: 1px solid var(--border, #e4e9f0); }
-.wkm-blk:last-child { border-bottom: 0; }
-.wkm-k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted, #8590a2); }
-.wkm-big { margin-top: 4px; font-size: 30px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.wkm-big small { margin-left: 4px; font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--text-muted, #8590a2); }
-.wkm-pay2 { display: grid; grid-template-columns: 1fr 1fr; margin-top: 12px; border: 1px solid var(--border, #e4e9f0); border-radius: 8px; background: var(--surface, #fff); }
-.wkm-pay2 div { padding: 8px 12px; min-width: 0; }
-.wkm-pay2 div + div { border-left: 1px solid var(--border, #e4e9f0); }
-.wkm-pay2 span { display: block; font-size: 11.5px; color: var(--text-muted, #8590a2); }
-.wkm-pay2 b { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.wkm-kv { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; margin: 0; font-size: 13px; }
-.wkm-kv dt { font-weight: 400; color: var(--text-muted, #8590a2); }
-.wkm-kv dd { margin: 0; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.wkm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.wkm-row > span { font-size: 12px; color: var(--text-secondary, #475467); font-variant-numeric: tabular-nums; }
-.wkm-slots { display: flex; gap: 6px; margin-top: 10px; }
-.wkm-slot { flex: 1; min-width: 0; height: 36px; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 6px;
-    font-size: 12px; color: var(--text-muted, #8590a2); border: 1px dashed var(--border-md, #d3dbe6); }
-.wkm-slot.on { border: 1px solid rgba(18, 183, 106, .45); background: rgba(18, 183, 106, .10); color: var(--success, #12b76a); font-weight: 600; }
-.wkm-note { margin-top: 9px; font-size: 12px; color: var(--warning, #d97706); display: flex; gap: 6px; align-items: center; }
-.wkm-meter { height: 5px; margin-top: 10px; border-radius: 3px; overflow: hidden; background: var(--border, #e4e9f0); }
-.wkm-meter i { display: block; height: 100%; background: var(--brand, #1668dc); }
-.wkm-miss { margin-top: 10px; font-size: 12px; line-height: 1.6; color: var(--text-muted, #8590a2); }
+.wkc-stats { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.25fr; margin: 0 20px; border: 1px solid var(--border, #e4e9f0); border-radius: 10px; background: var(--bg-subtle, #f7f9fb); }
+.wkc-stats > div { padding: 11px 14px; min-width: 0; }
+.wkc-stats > div + div { border-left: 1px solid var(--border, #e4e9f0); }
+.wkc-stats > div > span { display: block; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted, #8590a2); }
+.wkc-stats b { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 18px; font-weight: 600; letter-spacing: -.01em;
+               font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-primary, #101828); }
+.wkc-stats b small { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--text-muted, #8590a2); }
+.wkc-stats b.short { color: var(--warning, #d97706); }
+.wkc-bars { display: inline-flex; gap: 3px; }
+.wkc-bars i { width: 16px; height: 6px; border-radius: 2px; background: var(--border-md, #d3dbe6); }
+.wkc-bars i.on { background: var(--success, #12b76a); }
 
-.wkm-main { display: grid; grid-template-rows: repeat(4, minmax(min-content, 1fr)); overflow-y: auto; }
-.wkm-sec { display: flex; flex-direction: column; justify-content: center; padding: 18px 26px; border-bottom: 1px solid var(--border, #e4e9f0); }
-.wkm-sec:last-child { border-bottom: 0; }
-.wkm-sec.split { display: grid; grid-template-columns: 1fr 1.5fr; padding: 0; }
-.wkm-sec.split > div { display: flex; flex-direction: column; justify-content: center; padding: 18px 26px; min-width: 0; }
-.wkm-sec.split > div + div { border-left: 1px solid var(--border, #e4e9f0); }
-.wkm-sec-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
-html[data-bs-theme] .wkm-sec-h h3 { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--text-primary, #101828); }
-.wkm-sec-h span { margin-left: auto; font-size: 12px; color: var(--text-muted, #8590a2); font-variant-numeric: tabular-nums; }
-.wkm-grid { display: grid; gap: 14px 24px; margin: 0; }
-.wkm-grid.g6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.wkm-grid.g5 { grid-template-columns: 1.6fr 1fr 1fr 1fr .6fr; }
-.wkm-grid.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.wkm-grid.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.wkm-grid.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.wkm-grid > div { min-width: 0; }
-.wkm-grid dt { margin-bottom: 5px; font-size: 12.5px; font-weight: 400; color: var(--text-muted, #8590a2); }
-.wkm-grid dd { margin: 0; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
-.wkm-grid dd.none { font-weight: 400; color: var(--text-muted, #8590a2); opacity: .75; }
+.wkc-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; padding: 16px 20px 6px; max-height: calc(100vh - 330px); overflow-y: auto; }
+.wkc-blk { padding: 12px 0; border-top: 1px solid var(--border, #e4e9f0); min-width: 0; }
+.wkc-blk.full { grid-column: 1 / -1; }
+.wkc-blk h3 { display: flex; justify-content: space-between; margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted, #8590a2); }
+.wkc-blk h3 span { font-weight: 500; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+.wkc-spec { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
+.wkc-spec dt { font-weight: 400; color: var(--text-muted, #8590a2); white-space: nowrap; }
+.wkc-spec dd { margin: 0; min-width: 0; text-align: right; font-weight: 500; color: var(--text-primary, #101828); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wkc-spec dd.none, .wkc-ids b.none { font-weight: 400; color: var(--text-muted, #8590a2); opacity: .75; }
+.wkc-ids { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.wkc-ids div { padding: 8px 10px; border: 1px dashed var(--border-md, #d3dbe6); border-radius: 8px; min-width: 0; }
+.wkc-ids div.on { border-style: solid; }
+.wkc-ids span { display: block; font-size: 11.5px; color: var(--text-muted, #8590a2); }
+.wkc-ids b { display: block; font-size: 13px; font-weight: 500; color: var(--text-primary, #101828); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.wkm-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--border, #e4e9f0); }
-.wkm-meta { flex: 1; font-size: 12px; color: var(--text-muted, #8590a2); }
-.wkm-btn { height: 38px; padding: 0 16px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600;
-    text-decoration: none; border: 1px solid var(--border-md, #d3dbe6); color: var(--text-primary, #101828); background: var(--surface, #fff); }
-.wkm-btn:hover { background: var(--bg-subtle, #f3f5f8); color: var(--text-primary, #101828); }
-.wkm-btn.pri { background: var(--brand, #1668dc); border-color: var(--brand, #1668dc); color: #fff; }
-.wkm-btn.pri:hover { filter: brightness(1.08); color: #fff; }
-.wkm-btn i { font-size: 12px; opacity: .85; }
+.wkc-foot { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border, #e4e9f0); background: var(--bg-subtle, #f7f9fb); }
+.wkc-meter { flex: 1; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted, #8590a2); }
+.wkc-meter span { width: 120px; height: 5px; border-radius: 3px; overflow: hidden; background: var(--border, #e4e9f0); }
+.wkc-meter i { display: block; height: 100%; background: var(--brand, #1668dc); }
+.wkc-btn { height: 36px; padding: 0 15px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; text-decoration: none;
+           border: 1px solid var(--border-md, #d3dbe6); color: var(--text-primary, #101828); background: var(--surface, #fff); }
+.wkc-btn:hover { background: var(--bg-subtle, #f3f5f8); color: var(--text-primary, #101828); }
+.wkc-btn.pri { background: var(--brand, #1668dc); border-color: var(--brand, #1668dc); color: #fff; }
+.wkc-btn.pri:hover { filter: brightness(1.08); color: #fff; }
+.wkc-btn i { font-size: 12px; opacity: .85; }
 
-@media (max-width: 1100px) {
-    .wkm-grid.g6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .wkm-grid.g5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .wkm-sec.split { grid-template-columns: 1fr; }
-    .wkm-sec.split > div + div { border-left: 0; border-top: 1px solid var(--border, #e4e9f0); }
-}
-@media (max-width: 860px) {
-    #workerModal .wkm-dialog { width: calc(100vw - 16px); margin: 8px auto; }
-    .wkm { height: calc(100vh - 16px); }
-    .wkm-body { display: block; overflow-y: auto; }
-    .wkm-aside { overflow: visible; border-right: 0; border-bottom: 1px solid var(--border, #e4e9f0); }
-    .wkm-main { display: block; overflow: visible; }
-    .wkm-grid.g6, .wkm-grid.g5, .wkm-grid.g4, .wkm-grid.g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .wkm-status { display: none; }
-    .wkm-meta { display: none; }
-    .wkm-btn { flex: 1; justify-content: center; }
+@media (max-width: 640px) {
+    .wkc-status { display: none; }
+    .wkc-stats { grid-template-columns: 1fr 1fr; }
+    .wkc-stats > div:nth-child(3) { border-left: 0; }
+    .wkc-stats > div:nth-child(n+3) { border-top: 1px solid var(--border, #e4e9f0); }
+    .wkc-body { grid-template-columns: 1fr; }
+    .wkc-ids { grid-template-columns: 1fr 1fr; }
+    .wkc-meter { display: none; }
+    .wkc-btn { flex: 1; justify-content: center; }
 }
 
 /* ── Bulk actions ─────────────────────────────────────────────────────────
@@ -743,7 +719,6 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                                 'dailyFig' => $e->laborType ? '₱' . number_format((float) $e->laborType->daily_rate, 2) : null,
                                 'slots'    => $e->fingerprintSlots(),
                                 'need'     => (int) config('kiosk.fingers_required', 2),
-                                'updated'  => $e->updated_at?->format('M j, Y · g:i A'),
                                 'edit'     => route('employees.edit', $e->id),
                                 'profile'  => route('employees.show', $e->id),
                             ];
@@ -2358,71 +2333,55 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
     const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const $ = id => document.getElementById(id);
 
-    // The record in four bands. Each field is [label, value, blank]; a band
-    // says how many of its fields are filled in.
-    const field = ([label, value, blank]) => `<div><dt>${label}</dt>` +
-        (value ? `<dd>${esc(value)}</dd>` : `<dd class="none">${blank || 'Not recorded'}</dd>`) + `</div>`;
-    const band = (title, fields, cols) =>
-        `<div class="wkm-sec-h"><h3>${title}</h3><span>${fields.filter(f => f[1]).length} of ${fields.length}</span></div>` +
-        `<dl class="wkm-grid ${cols}">${fields.map(field).join('')}</dl>`;
+    // The record as a spec sheet. Each row is [label, value]; a block says
+    // how many of its fields are filled in.
+    const NONE = 'Not recorded';
+    const spec = rows => `<dl class="wkc-spec">${rows.map(([label, value, blank]) =>
+        `<dt>${label}</dt>` + (value ? `<dd title="${esc(value)}">${esc(value)}</dd>` : `<dd class="none">${blank || NONE}</dd>`)).join('')}</dl>`;
+    const block = (title, rows, filled, total) =>
+        `<section class="wkc-blk"><h3>${title}${total ? `<span>${filled} of ${total}</span>` : ''}</h3>${spec(rows)}</section>`;
+    const has = (...v) => v.filter(Boolean).length;
+    const join = (...v) => v.filter(Boolean).join(' · ');
 
     function open(row) {
         let d;
         try { d = JSON.parse(row.dataset.emp || '{}'); } catch (e) { return; }
         $('wmTitle').textContent = d.name;
-        $('wmSub').innerHTML = [d.id ? `<span class="wkm-id">${esc(d.id)}</span>` : '', esc(d.role || ''), esc(d.site || ''),
-                                d.overtime ? esc('Overtime ' + d.overtime.toLowerCase()) : '']
-            .filter(Boolean).join('<span class="wkm-dot"></span>');
+        $('wmSub').innerHTML = [d.id ? `<span class="wkc-id">${esc(d.id)}</span>` : '', esc(d.role || ''), esc(d.site || '')]
+            .filter(Boolean).join('<span class="wkc-dot"></span>');
 
-        const personal = [['Date of birth', d.born], ['Place of birth', d.birthplace], ['Gender', d.gender],
-                          ['Civil status', d.civil], ['Nationality', d.nation], ['Blood type', d.blood]];
-        const contact  = [['Mobile number', d.phone], ['Email', d.email]];
-        const ice      = [['Contact person', d.ice], ['Relationship', d.iceRel], ['Contact number', d.icePhone]];
-        const address  = [['House no. / street', d.street], ['Barangay', d.brgy], ['City / municipality', d.city],
-                          ['Province', d.prov], ['ZIP', d.zip, '—']];
-        const ids      = [['SSS', d.sss, 'Not issued yet'], ['PhilHealth', d.philhealth, 'Not issued yet'],
-                          ['Pag-IBIG', d.pagibig, 'Not issued yet'], ['TIN', d.tin, 'Not issued yet']];
-
-        $('wmFacts').innerHTML =
-            `<section class="wkm-sec">${band('Personal', personal, 'g6')}</section>` +
-            `<section class="wkm-sec split"><div>${band('Contact', contact, 'g2')}</div><div>${band('In case of emergency', ice, 'g3')}</div></section>` +
-            `<section class="wkm-sec">${band('Address', address, 'g5')}</section>` +
-            `<section class="wkm-sec">${band('Government IDs', ids, 'g4')}</section>`;
-
-        // How complete the record is, and what is missing, in plain words.
-        const all     = [...personal, ...contact, ...ice, ...address, ...ids];
-        const filled  = all.filter(f => f[1]).length;
-        const gaps    = personal.concat(contact).filter(f => !f[1]).map(f => f[0].toLowerCase());
-        if (ice.some(f => !f[1]))     gaps.push('emergency contact');
-        if (address.some(f => !f[1])) gaps.push('address');
-        if (ids.some(f => !f[1]))     gaps.push('government IDs');
-
+        // The figures, in one strip.
         const slots = Array.isArray(d.slots) ? d.slots : [];
         const need  = Math.max(1, Number(d.need) || 2);
-        const boxes = Array.from({ length: Math.max(need, slots.length) }, (_, i) => slots[i]
-            ? `<div class="wkm-slot on"><i class="fas fa-fingerprint"></i>Slot ${esc(slots[i])}</div>`
-            : `<div class="wkm-slot">Not enrolled</div>`).join('');
-        const short = need - slots.length;
+        const bars  = Array.from({ length: Math.max(need, slots.length) }, (_, i) => `<i class="${i < slots.length ? 'on' : ''}"></i>`).join('');
+        $('wmStats').innerHTML =
+            `<div><span>Daily</span><b>${esc(d.dailyFig || '—')}</b></div>` +
+            `<div><span>Hourly</span><b>${esc(d.hourly || '—')}</b></div>` +
+            `<div><span>Scans</span><b>${esc(String(d.logs ?? 0))}<small>logged</small></b></div>` +
+            `<div title="${esc(slots.length ? 'Slot ' + slots.join(', ') : 'No fingerprint yet')}"><span>Fingerprints</span>` +
+              `<b class="${slots.length < need ? 'short' : ''}">${slots.length}/${need}<span class="wkc-bars">${bars}</span></b></div>`;
 
-        const big = d.dailyFig ? `${esc(d.dailyFig)}<small>/ day</small>` : `${esc(d.hourly || '—')}<small>/ hr</small>`;
-        $('wmAside').innerHTML =
-            `<div class="wkm-blk"><div class="wkm-k">${d.dailyFig ? 'Daily rate' : 'Hourly rate'}</div><div class="wkm-big">${big}</div>` +
-              `<div class="wkm-pay2"><div><span>Per hour</span><b>${esc(d.hourly || '—')}</b></div><div><span>Scans</span><b>${esc(String(d.logs ?? 0))}</b></div></div></div>` +
-            `<div class="wkm-blk"><dl class="wkm-kv">` +
-              `<dt>Shift</dt><dd>${esc(d.shift || 'Not set')}</dd>` +
-              `<dt>Hired</dt><dd>${esc(d.hired || 'Not recorded')}</dd>` +
-              `<dt>Employment</dt><dd>${esc(d.hiredAs || '—')}</dd>` +
-            `</dl></div>` +
-            `<div class="wkm-blk"><div class="wkm-row"><div class="wkm-k">Fingerprints</div><span>${slots.length} of ${need}</span></div>` +
-              `<div class="wkm-slots">${boxes}</div>` +
-              (short > 0 ? `<div class="wkm-note"><i class="fas fa-circle-exclamation"></i>Enrol ${short === 1 ? 'one more finger' : short + ' more fingers'} at the kiosk</div>` : '') +
-            `</div>` +
-            `<div class="wkm-blk"><div class="wkm-row"><div class="wkm-k">Profile</div><span>${filled} of ${all.length} recorded</span></div>` +
-              `<div class="wkm-meter"><i style="width:${Math.round(filled / all.length * 100)}%"></i></div>` +
-              (gaps.length ? `<div class="wkm-miss">Missing: ${esc(gaps.join(', '))}</div>` : '') +
-            `</div>`;
+        const ids = [['SSS', d.sss], ['PhilHealth', d.philhealth], ['Pag-IBIG', d.pagibig], ['TIN', d.tin]];
+        $('wmFacts').innerHTML =
+            block('Work', [['Shift', d.shift, 'Not set'], ['Hired', d.hired], ['Employment', d.hiredAs, '—']]
+                .concat(d.overtime ? [['Overtime', d.overtime]] : [])) +
+            block('Personal', [['Born', d.born], ['Gender · Civil status', join(d.gender, d.civil)], ['Nationality', d.nation],
+                               ['Birthplace · Blood', join(d.birthplace, d.blood)]],
+                  has(d.born, d.birthplace, d.gender, d.civil, d.nation, d.blood), 6) +
+            block('Contact', [['Mobile', d.phone], ['Email', d.email],
+                              ['Emergency', d.ice ? d.ice + (d.iceRel ? ' (' + d.iceRel + ')' : '') : ''], ['Emergency no.', d.icePhone]],
+                  has(d.phone, d.email, d.ice, d.iceRel, d.icePhone), 5) +
+            block('Address', [['Street', d.street], ['Barangay', d.brgy], ['City', d.city], ['Province · ZIP', join(d.prov, d.zip)]],
+                  has(d.street, d.brgy, d.city, d.prov, d.zip), 5) +
+            `<section class="wkc-blk full"><h3>Government IDs<span>${has(...ids.map(x => x[1]))} of 4</span></h3><div class="wkc-ids">` +
+              ids.map(([label, v]) => `<div class="${v ? 'on' : ''}"><span>${label}</span><b class="${v ? '' : 'none'}">${v ? esc(v) : 'Not issued yet'}</b></div>`).join('') +
+            `</div></section>`;
 
-        $('wmUpdated').textContent = d.updated ? 'Last updated ' + d.updated : '';
+        // How complete the record is.
+        const filled = has(d.born, d.birthplace, d.gender, d.civil, d.nation, d.blood, d.phone, d.email, d.ice, d.iceRel, d.icePhone,
+                           d.street, d.brgy, d.city, d.prov, d.zip, d.sss, d.philhealth, d.pagibig, d.tin);
+        $('wmMeter').innerHTML = `<span><i style="width:${Math.round(filled / 20 * 100)}%"></i></span>Profile ${filled} of 20 recorded`;
+
         $('wmProfile').href = d.profile;
         $('wmEdit').href = d.edit;
         modal.show();
@@ -2443,29 +2402,27 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
 </script>
 
 {{-- ── A worker, opened from their row ───────────────────────────────────────
-     Nearly the whole screen: who they are in the head; pay, shift, fingers and
-     how complete the record is on the left; the record on the right; and the
-     two ways on — the full profile, or Edit. Filled from the row. --}}
+     A card sized to what it holds: who they are, the figures in one strip,
+     the record as a spec sheet, and the two ways on — the full profile, or
+     Edit. Filled from the row. --}}
 <div class="modal fade" id="workerModal" tabindex="-1" aria-labelledby="wmTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered wkm-dialog">
-        <div class="modal-content wkm">
-            <div class="wkm-head">
-                <span class="wkm-ico">@include('partials.worker-icon', ['size' => '66%'])</span>
-                <div class="wkm-who">
+    <div class="modal-dialog modal-dialog-centered wkc-dialog">
+        <div class="modal-content wkc">
+            <div class="wkc-head">
+                <span class="wkc-ico">@include('partials.worker-icon', ['size' => '66%'])</span>
+                <div class="wkc-who">
                     <h2 id="wmTitle">{{ __('Worker') }}</h2>
                     <p id="wmSub"></p>
                 </div>
-                <span class="wkm-status">{{ __('Active') }}</span>
-                <button type="button" class="wkm-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
+                <span class="wkc-status">{{ __('Active') }}</span>
+                <button type="button" class="wkc-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times"></i></button>
             </div>
-            <div class="wkm-body">
-                <aside class="wkm-aside" id="wmAside"></aside>
-                <div class="wkm-main" id="wmFacts"></div>
-            </div>
-            <div class="wkm-foot">
-                <span class="wkm-meta" id="wmUpdated"></span>
-                <a class="wkm-btn" id="wmProfile" href="#"><i class="fas fa-id-badge" aria-hidden="true"></i>{{ __('Full profile') }}</a>
-                <a class="wkm-btn pri" id="wmEdit" href="#"><i class="fas fa-pen" aria-hidden="true"></i>{{ __('Edit employee') }}</a>
+            <div class="wkc-stats" id="wmStats"></div>
+            <div class="wkc-body" id="wmFacts"></div>
+            <div class="wkc-foot">
+                <div class="wkc-meter" id="wmMeter"></div>
+                <a class="wkc-btn" id="wmProfile" href="#"><i class="fas fa-id-badge" aria-hidden="true"></i>{{ __('Full profile') }}</a>
+                <a class="wkc-btn pri" id="wmEdit" href="#"><i class="fas fa-pen" aria-hidden="true"></i>{{ __('Edit') }}</a>
             </div>
         </div>
     </div>
