@@ -12,7 +12,7 @@ class Complaint extends Model
 
     /** What a complaint can be about, as the kiosk's buttons and the web's filter name them. */
     public const CATEGORIES = [
-        'pay'        => 'Pay / Sahod',
+        'pay'        => 'Pay',
         'attendance' => 'Attendance / DTR',
         'safety'     => 'Safety',
         'equipment'  => 'Tools & equipment',

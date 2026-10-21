@@ -87,8 +87,8 @@ class PageHeaderTest extends TestCase
             'attendance history'      => ['/attendance?tab=history'],
             'employees'               => ['/employees/register'],
             'register employee'       => ['/employees/register?register=1'],
-            'employee profile'        => ['/employees/{worker}'],
-            'edit employee'           => ['/employees/{worker}/edit'],
+            // The worker's profile and Edit employee have a header of their
+            // own since 2026-10-20; see the test after this one.
             'leave'                   => ['/leave-advances'],
             'cash advances'           => ['/leave-advances?tab=advances'],
             'sites'                   => ['/sites'],
@@ -138,6 +138,31 @@ class PageHeaderTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<p[\s>]/', $m[0], "$url: no subtitle under the title");
         foreach (['sx-eyebrow', 'pp-crumb', 'ca-crumb', 'rmx-sub', 'sx-sub', 'ana-sub'] as $old) {
             $this->assertStringNotContainsString($old, $page, "$url: $old");
+        }
+    }
+
+    /**
+     * The two pages about one worker were redesigned on 2026-10-20 with a
+     * header of their own: the worker icon, the name and the worker's tags.
+     * Still one header, and the name is the page's only title. Edit employee
+     * keeps its way back to the list above it.
+     */
+    public function test_a_workers_profile_and_edit_page_open_with_the_workers_own_header(): void
+    {
+        foreach ([
+            '/employees/{worker}'      => ['epf-hero', ''],
+            '/employees/{worker}/edit' => ['eea-hero', 'Back to Employees'],
+        ] as $url => [$hero, $above]) {
+            $url  = strtr($url, ['{worker}' => $this->worker->id]);
+            $page = $this->content($this->actingAs($this->admin)->get($url)->assertOk()->getContent());
+
+            $this->assertSame(1, substr_count($page, '<header class="' . $hero . '">'), "$url: its own header");
+            $this->assertStringNotContainsString('class="page-head', $page, "$url: not the shared one as well");
+            $this->assertSame(1, preg_match_all('/<h1\b/', $page), "$url: one page title");
+            $this->assertMatchesRegularExpression('~<h1\b[^>]*>Juan Dela Cruz</h1>~', $page, "$url: the worker's name");
+
+            $before = strstr($this->markupOnly($page), '<header class="' . $hero . '">', true);
+            $this->assertSame($above, trim(strip_tags($before)), "$url: what is shown above the header");
         }
     }
 

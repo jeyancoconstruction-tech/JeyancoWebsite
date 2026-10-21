@@ -389,10 +389,10 @@ class EmployeeContractTest extends TestCase
         $html = $this->actingAs($this->admin)->get(route('employees.register'))->getContent();
         $this->assertMatchesRegularExpression('/class="rmx-pill rmx-pill-warn rmx-contract"/', $row($ana, $html));
 
-        // The profile says it as well.
+        // The profile says it as well, in its Employment card.
         $this->actingAs($this->admin)->get(route('employees.show', $ana->id))->assertOk()
-            ->assertSeeInOrder(['Employment Type', 'Contractual', 'until Apr 12, 2027']);
+            ->assertSee('<dt>Employment</dt><dd>Contractual · until Apr 12, 2027</dd>', false);
         $this->actingAs($this->admin)->get(route('employees.show', $ben->id))->assertOk()
-            ->assertSeeInOrder(['Employment Type', 'Regular']);
+            ->assertSee('<dt>Employment</dt><dd>Regular</dd>', false);
     }
 }

@@ -108,7 +108,7 @@ const I18N = {
         'rep.nohist': 'No reports yet.', 'rep.open': 'OPEN', 'rep.resolved': 'RESOLVED', 'rep.answer': 'Office',
         'rep.left': '{n} left today', 'rep.limit': 'You have sent the most reports allowed today. Please talk to the office.',
         'rep.failed': 'Not sent — {msg}', 'rep.timer': 'Closes in {t}',
-        'cat.pay': 'Pay / Sahod', 'cat.attendance': 'Attendance / DTR', 'cat.safety': 'Safety',
+        'cat.pay': 'Pay', 'cat.attendance': 'Attendance / DTR', 'cat.safety': 'Safety',
         'cat.equipment': 'Tools & equipment', 'cat.treatment': 'Treatment at work', 'cat.other': 'Other',
         'q.1': 'My time in is missing', 'q.2': 'My hours are wrong', 'q.3': 'My pay is short',
         'q.4': 'Unsafe work area', 'q.5': 'Broken tool or equipment', 'q.6': 'Please call me',

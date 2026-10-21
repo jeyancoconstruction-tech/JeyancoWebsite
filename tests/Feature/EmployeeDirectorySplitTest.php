@@ -61,10 +61,11 @@ class EmployeeDirectorySplitTest extends TestCase
     }
 
     /**
-     * View Details is laid out like Register Employee — the same sections in
-     * the same order — so that everything the form collects has somewhere to
-     * be read. Before this, six personal fields were shown out of the twenty
-     * the form asks for, and the rest were entered and then invisible.
+     * Everything Register Employee collects has a card to be read in. Before
+     * this, six personal fields were shown out of the twenty the form asks
+     * for, and the rest were entered and then invisible. Since the redesign of
+     * 2026-10-20 the record is four cards side by side (Personal, Contact &
+     * emergency, Address, Government IDs) with Employment down the right.
      */
     public function test_the_details_page_uses_the_same_sections_as_the_registration_form(): void
     {
@@ -73,11 +74,10 @@ class EmployeeDirectorySplitTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('employees.show', $employee->id))
             ->assertOk()
-            ->assertSee('Employment & Pay')
-            ->assertSee('Personal Information')
-            ->assertSee('Contact Information')
-            ->assertSee('Address')
-            ->assertSee('Government IDs');
+            ->assertSeeInOrder([
+                '<h3>Personal</h3>', '<h3>Contact &amp; emergency</h3>', '<h3>Address</h3>',
+                '<h3>Government IDs</h3>', '<h3>Employment</h3>',
+            ], false);
     }
 
     public function test_the_details_page_shows_the_personal_facts_the_office_asks_for(): void
@@ -97,7 +97,7 @@ class EmployeeDirectorySplitTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('employees.show', $employee->id))
             ->assertOk()
-            ->assertSee('Personal Information')
+            ->assertSee('<h3>Personal</h3>', false)
             ->assertSee('Female')
             ->assertSee('Naga City')
             // City and province are their own fields here, as they are on the
@@ -126,12 +126,16 @@ class EmployeeDirectorySplitTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('Gender', $html);
-        $this->assertStringContainsString('Place of Birth', $html);
+        $this->assertStringContainsString('Place of birth', $html);
         $this->assertStringContainsString('Not recorded', $html);
         $this->assertStringContainsString('Not issued yet', $html);
     }
 
-    /** Contractual is gone: the profile names no employee type or contract. */
+    /**
+     * The old pay-type Contractual is gone: a regular worker's profile names no
+     * employee type or contract. (Contractual as "hired for N months" came
+     * back on 2026-10-12; EmployeeContractTest covers that worker.)
+     */
     public function test_the_profile_shows_no_employee_type_or_contract(): void
     {
         $employee = $this->regular('Ana Reyes');
@@ -139,7 +143,7 @@ class EmployeeDirectorySplitTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('employees.show', $employee->id))
             ->assertOk()
-            ->assertSee('Rate Per Hour')
+            ->assertSeeInOrder(['Rate', '₱100.00 / hr'])
             ->assertDontSee('Employee Type')
             ->assertDontSee('Contractual')
             ->assertDontSee('Contract Amount')
