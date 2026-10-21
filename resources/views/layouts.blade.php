@@ -431,43 +431,23 @@
                 <span class="nav-pending-badge" id="navPendingBadge" data-count-url="{{ route('employees.register.live') }}"
                       title="{{ __('Workers waiting in Pending') }}" @if($pendingKiosk < 1) style="display:none" @endif>{{ $pendingKiosk }}</span>
             </a>
-            @php
-                // Complaints workers posted at the kiosk. Read safely: a page
-                // must still open in the moment before the table is migrated.
-                try { $openComplaints = \App\Models\Complaint::where('status', 'open')->count(); }
-                catch (\Throwable $e) { $openComplaints = 0; }
-                $onComplaints = request()->is('complaints*');
-            @endphp
-            {{-- Complaints sit inside Leave & Advances (2026-10-19). An account
-                 that cannot open that group still reaches them here. --}}
-            @unless(auth()->user()?->canAccessModule('leave'))
-                <a class="nav-link {{ $onComplaints ? 'active' : '' }}" href="{{ route('complaints.index') }}">
-                    <i data-lucide="message-square-warning"></i> <span>{{ __('Complaints') }}</span>
-                    @if($openComplaints > 0)<span class="nav-pending-badge" title="{{ __('Open complaints') }}">{{ $openComplaints }}</span>@endif
-                </a>
-            @endunless
             {{-- Leave & Advances holds its two sections as sub-items, set up
                  like Payroll Records (Michael, 2026-09-26): Cash Advances first,
                  then Leave. They replaced the tab row on the page. Cash Advances
                  shows only to an account that can open it. --}}
             @if(auth()->user()?->canAccessModule('leave'))
                 @php
-                    $inLeave    = request()->is('leave-advances*') || $onComplaints;
-                    $leaveTab   = $onComplaints ? 'complaints'
-                                : (request('tab') === 'advances' && auth()->user()->canAccessModule('loans') ? 'advances' : 'leave');
+                    $inLeave    = request()->is('leave-advances*');
+                    $leaveTab   = request('tab') === 'advances' && auth()->user()->canAccessModule('loans') ? 'advances' : 'leave';
                     $leaveItems = [];
                     if (auth()->user()->canAccessModule('loans')) {
                         $leaveItems['advances'] = [__('Cash Advances'), route('leave.index', ['tab' => 'advances'])];
                     }
                     $leaveItems['leave'] = [__('Leave'), route('leave.index')];
-                    $leaveItems['complaints'] = [__('Complaints'), route('complaints.index')];
                 @endphp
                 <button type="button" class="nav-link nav-parent {{ $inLeave ? 'has-on' : '' }}" id="navLeaveBtn" aria-controls="navSubLeave" aria-expanded="{{ $inLeave ? 'true' : 'false' }}">
                     <i data-lucide="calendar-days"></i> <span>{{ __('Leave & Advances') }}</span>
                     <span class="nav-end">
-                        @if($openComplaints > 0)
-                            <span class="nav-dot" title="{{ $openComplaints }} {{ __('open complaint(s)') }}"></span>
-                        @endif
                         <svg class="nav-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
                     </span>
                 </button>
@@ -475,18 +455,27 @@
                     <div class="nav-sub-in">
                         <div class="nav-sub-list" role="group" aria-label="{{ __('Leave & Advances') }}">
                             @foreach($leaveItems as $key => [$name, $href])
-                                <a class="nav-sub-link {{ $inLeave && $leaveTab === $key ? 'on' : '' }}" href="{{ $href }}" @if($inLeave && $leaveTab === $key) aria-current="page" @endif>
-                                    <span>{{ $name }}</span>
-                                    @if($key === 'complaints' && $openComplaints > 0)
-                                        <span class="nav-sub-badge" title="{{ __('Open complaints') }}">{{ $openComplaints }}</span>
-                                    @endif
-                                </a>
+                                <a class="nav-sub-link {{ $inLeave && $leaveTab === $key ? 'on' : '' }}" href="{{ $href }}" @if($inLeave && $leaveTab === $key) aria-current="page" @endif>{{ $name }}</a>
                             @endforeach
                         </div>
                     </div>
                 </div>
                 <script>jeyancoNavGroup('navLeaveBtn', 'navSubLeave', 'jeyanco-nav-leave', {{ $inLeave ? 'true' : 'false' }});</script>
             @endif
+            @php
+                // Complaints workers posted at the kiosk. Read safely: a page
+                // must still open in the moment before the table is migrated.
+                try { $openComplaints = \App\Models\Complaint::where('status', 'open')->count(); }
+                catch (\Throwable $e) { $openComplaints = 0; }
+                $onComplaints = request()->is('complaints*');
+            @endphp
+            {{-- Complaints is its own entry, right under Leave & Advances
+                 (Michael, 2026-10-21). It was that group's third sub-item
+                 from 2026-10-19; every account reaches it here now. --}}
+            <a class="nav-link {{ $onComplaints ? 'active' : '' }}" href="{{ route('complaints.index') }}">
+                <i data-lucide="message-square-warning"></i> <span>{{ __('Complaints') }}</span>
+                @if($openComplaints > 0)<span class="nav-pending-badge nav-alert" title="{{ __('Open complaints') }}">{{ $openComplaints }}</span>@endif
+            </a>
 
             <div class="menu-section">{{ __('PROJECT') }}</div>
             <a class="nav-link {{ request()->is('sites*') ? 'active' : '' }}" href="{{ route('sites.index') }}">

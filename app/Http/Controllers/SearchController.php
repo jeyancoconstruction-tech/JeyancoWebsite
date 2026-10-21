@@ -530,6 +530,8 @@ class SearchController extends Controller
                 'cash advance advances vale loan instalment installment balance deduction borrow', Modules::ADVANCES),
             $page('Workforce', 'Leave', 'Leave & Advances · filed leave', route('leave.index'), 'calendar-days',
                 'leave vacation sick emergency maternity paternity bereavement absence day off paid unpaid file', Modules::LEAVE),
+            $page('Workforce', 'Complaints', 'Reports workers sent from the kiosk, to answer', route('complaints.index'), 'message-square-warning',
+                'complaints complaint report reports kiosk safety concern issue feedback answer resolve inbox'),
 
             // ── PROJECT ──────────────────────────────────────────────────
             $page('Project', 'Sites', 'Project sites, map pins and geofence', route('sites.index'), 'map-pin',

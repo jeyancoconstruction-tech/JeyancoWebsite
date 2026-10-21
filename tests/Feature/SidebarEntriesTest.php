@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Complaint;
+use App\Models\Employee;
 use App\Models\PayrollRun;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -164,6 +166,41 @@ class SidebarEntriesTest extends TestCase
         // Elsewhere the group is folded.
         $this->assertStringContainsString('<div class="nav-sub folded" id="navSubLeave">',
             $this->actingAs($admin)->get('/dashboard')->getContent());
+    }
+
+    /**
+     * Michael, 2026-10-21: Complaints came out of Leave & Advances and is an
+     * entry of its own, right under that group, carrying the open count.
+     */
+    public function test_complaints_is_its_own_entry_right_under_leave_and_advances(): void
+    {
+        $worker = Employee::create(['name' => 'Ana Villanueva', 'status' => Employee::STATUS_ACTIVE,
+            'fingerprint_id' => '7', 'rate_per_hour' => 100]);
+        Complaint::create(['employee_id' => $worker->id, 'category' => 'pay', 'message' => 'Short by one day.']);
+        Complaint::create(['employee_id' => $worker->id, 'category' => 'safety', 'message' => 'Loose scaffold.']);
+
+        foreach ([User::ROLE_ADMIN, User::ROLE_HR] as $i => $role) {
+            $user = $this->user($role, 'rail.complaints' . $i);
+            $html = $this->actingAs($user)->get(route('complaints.index'))->assertOk()->getContent();
+            $rail = substr($html, strpos($html, '<nav class="nav-menu">'));
+            $rail = substr($rail, 0, strpos($rail, '</nav>'));
+
+            $link = '<a class="nav-link active" href="' . route('complaints.index') . '">';
+            $this->assertStringContainsString($link, $rail, "{$role}: Complaints is a lit entry of its own");
+            $this->assertSame(1, substr_count($rail, 'href="' . route('complaints.index') . '"'), 'one Complaints link');
+
+            // Not inside the group, and the group is not opened by it.
+            $group = substr($rail, strpos($rail, 'id="navSubLeave"'));
+            $group = substr($group, 0, strpos($group, '</div>'));
+            $this->assertStringNotContainsString('complaints', $group);
+            $this->assertStringContainsString('<div class="nav-sub folded" id="navSubLeave">', $rail);
+
+            // Right under Leave & Advances, before the Project section.
+            $this->assertLessThan(strpos($rail, $link), strpos($rail, 'id="navSubLeave"'));
+            $this->assertLessThan(strpos($rail, 'PROJECT'), strpos($rail, $link));
+
+            $this->assertMatchesRegularExpression('~<span>Complaints</span>\s*<span class="nav-pending-badge nav-alert" title="Open complaints">2</span>~', $rail);
+        }
     }
 
     /** Off the rail is not off the system. */

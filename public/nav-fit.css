@@ -372,6 +372,11 @@ html[data-bs-theme="dark"] .nav-menu {
     text-align: center;
 }
 
+/* Open complaints keep the red they had as a sub-item, on a main row. */
+.nav-pending-badge.nav-alert {
+    background: #ef4444 !important; color: #fff !important; box-shadow: none !important;
+}
+
 /* Same type as a main row at each tier; the line follows the icon. */
 @media (min-height: 940px) {
     /* The larger type needs the room: a little less padding keeps the

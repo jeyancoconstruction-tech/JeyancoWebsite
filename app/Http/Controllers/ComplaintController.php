@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Complaints workers posted at the kiosk, for the office to read and answer
- * (Leave & Advances → Complaints). Grouped by site or by employee; the one
+ * (Complaints, under Leave & Advances in the sidebar). Grouped by site or by employee; the one
  * picked opens beside the list with its answer box. The worker sees the
  * answer and the status the next time they scan in the kiosk's REPORT tab.
  */
