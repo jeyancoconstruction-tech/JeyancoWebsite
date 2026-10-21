@@ -78,7 +78,8 @@ class KioskController extends Controller
     }
 
     /**
-     * A worker records attendance only at the site they are assigned to.
+     * A worker records attendance only at a site they are assigned to: their
+     * main site, or one of the other sites they also work at (2026-10-21).
      *
      * The kiosk stands at one site at a time (set on the web), and the
      * office decides who works where. A worker from Site A scanning at the
@@ -96,8 +97,9 @@ class KioskController extends Controller
             ];
         }
 
-        if ((int) $employee->site_id !== (int) $site->id) {
-            $home = $employee->site?->name;
+        if (! $employee->worksAt((int) $site->id)) {
+            $home = collect([$employee->site?->name])->merge($employee->otherSiteList()->pluck('name'))->filter()
+                ->join(', ', ' and ') ?: null;
 
             return [
                 'success'  => false,
@@ -286,8 +288,9 @@ class KioskController extends Controller
      * a browser cannot — the fingerprint.
      *
      * Scoped to where the device is standing, so a kiosk at Site C lists the
-     * people working at Site C. Those still missing a finger come first,
-     * because they are the only rows anyone needs to act on.
+     * people working at Site C, as their main site or one of their others.
+     * Those still missing a finger come first, because they are the only rows
+     * anyone needs to act on.
      */
     public function roster(Request $request)
     {
@@ -296,7 +299,7 @@ class KioskController extends Controller
 
         $employees = Employee::with(Employee::hasExtraFingers() ? ['laborType', 'shift', 'extraFingerprints'] : ['laborType', 'shift'])
             ->whereIn('status', [Employee::STATUS_ACTIVE, Employee::STATUS_PENDING])
-            ->when($site, fn ($q) => $q->where('site_id', $site->id))
+            ->when($site, fn ($q) => $q->atSite($site->id))
             ->orderBy('name')
             ->get();
 

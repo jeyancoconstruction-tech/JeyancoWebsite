@@ -271,6 +271,18 @@
                             <span class="ep-hint">{{ __('Leaves the Active list after this date.') }}</span>
                         </div>
 
+                        {{-- Other sites they also work at, besides the main one. --}}
+                        <div class="col-12">
+                            <span class="ep-label" id="eeaOtherSitesLabel">{{ __('Other Sites') }}</span>
+                            @include('employees._other_sites', [
+                                'sites'   => $sites,
+                                'chosen'  => old('other_site_ids', \App\Models\Employee::hasOtherSites() ? $employee->otherSiteList()->pluck('id')->all() : []),
+                                'main'    => 'site_select',
+                                'labelId' => 'eeaOtherSitesLabel',
+                            ])
+                            <span class="ep-hint">{{ __('Optional. They can scan at these sites too. The site above stays their main site for payroll and reports.') }}</span>
+                        </div>
+
                         {{-- Employee ID, fingerprint and the labor type's rates are
                              shown in the strip at the top. The fingerprint still
                              goes back with the form, unchanged, as it always did. --}}

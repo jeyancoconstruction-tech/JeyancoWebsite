@@ -342,6 +342,12 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                             <span class="rw-hp" id="rwRateHint" data-say="{{ __('Fills in from the labor type.') }}">{{ __('Fills in from the labor type.') }}</span>
                             <span class="rw-em" data-say="{{ __('Enter a rate above ₱0.') }}">{{ __('Enter a rate above ₱0.') }}</span>
                         </div>
+                        {{-- Other sites they also work at, besides the one above. --}}
+                        <div class="rw-f">
+                            <span class="rw-label" id="rwOtherSitesLabel">{{ __('Other sites') }}</span>
+                            @include('employees._other_sites', ['sites' => $sites, 'chosen' => [], 'main' => 'site_select', 'labelId' => 'rwOtherSitesLabel'])
+                            <span class="rw-hp">{{ __('Optional. They can scan at these sites too.') }}</span>
+                        </div>
                         {{-- The date hired is on the first step, with the
                              contract it starts.
                              No photo field: Railway wipes uploads on every deploy.
@@ -791,6 +797,8 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
     // ── Review ──────────────────────────────────────────────────────────────
     const chosen = name => { const s = input(name), o = s && s.options[s.selectedIndex]; return o && o.value ? (o.dataset.name || o.textContent.trim()) : ''; };
     const fullName = () => [val('first_name'), val('middle_name'), val('last_name'), val('name_suffix')].filter(Boolean).join(' ');
+    const otherSites = () => Array.from(form.querySelectorAll('.osx input[type="checkbox"]:checked:not(:disabled)'))
+        .map(i => i.nextElementSibling.textContent.trim()).join(', ');
 
     function review() {
         const shift = $('rwShift').querySelector('button.on');
@@ -799,7 +807,7 @@ html[data-bs-theme] #regWizard .rw-b { flex: 1 1 auto; min-height: 0; overflow-y
                 .concat(onContract() ? [['Contract length', val('contract_months') ? val('contract_months') + (val('contract_months') === '1' ? ' month' : ' months') : ''],
                                         ['Contract ends', $('rwEnds').value]] : [])],
             [2, NAMES[1], [['Name', fullName()], ['Labor type', chosen('labor_type_id')], ['Position', val('job_title')], ['Shift', shift ? shift.dataset.name : ''],
-                           ['Rate per hour', val('rate_per_hour') ? peso(val('rate_per_hour')) : ''], ['Site', chosen('site_id')]]],
+                           ['Rate per hour', val('rate_per_hour') ? peso(val('rate_per_hour')) : ''], ['Site', chosen('site_id')], ['Other sites', otherSites()]]],
             [3, NAMES[2], [['Date of birth', dated(val('birth_date'))], ['Place of birth', val('birth_place')], ['Gender', val('gender')], ['Civil status', val('civil_status')],
                            ['Nationality', val('nationality')], ['Blood type', val('blood_type')]]],
             [4, NAMES[3], [['Street', val('address_street')], ['Barangay', val('address_barangay')], ['City / Municipality', val('address_city')], ['Province', val('address_province')],

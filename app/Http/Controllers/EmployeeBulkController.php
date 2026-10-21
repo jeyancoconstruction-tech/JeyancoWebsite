@@ -19,9 +19,9 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
- * The bar under a selection on Employees: transfer site, change shift,
- * change labor type, add bonus — each for everybody ticked, and each with a
- * way back.
+ * The bar under a selection on Employees: transfer site, add or take off
+ * another site, change shift, change labor type, add bonus — each for
+ * everybody ticked, and each with a way back.
  *
  * A change takes effect from a date, today at the earliest. That is the
  * whole of how the past is kept: the days already worked hold the site and
@@ -46,6 +46,44 @@ class EmployeeBulkController extends Controller
             'already' => $site ? 'Everybody selected is already at :to.' : 'Nobody selected has a site to be taken off.',
             'log'     => $site ? 'Transferred :n to :to' : 'Took :n off their site',
         ]);
+    }
+
+    /**
+     * Another site the workers ticked also work at, added or taken off. Their
+     * main site stays as it is: the kiosk at either one takes their scans,
+     * and lists and payroll still file them under the main site.
+     */
+    public function otherSite(Request $request): JsonResponse
+    {
+        if (! Employee::hasOtherSites()) {
+            return $this->refuse('Other sites are not ready yet. Please try again in a minute.');
+        }
+
+        $data = $this->check($request, [
+            'site_id' => 'required|integer|exists:sites,id',
+            'mode'    => ['required', Rule::in(['add', 'remove'])],
+        ]);
+        $site = Site::findOrFail($data['site_id']);
+        $id   = (int) $site->id;
+        $has  = fn (Employee $e) => $e->otherSiteList()->contains('id', $id);
+
+        if ($data['mode'] === 'add') {
+            return $this->change($data, EmployeeChange::SITE_ADD, $id, [], [
+                'to'      => $site->name,
+                'done'    => ':n can now also scan at :to',
+                'later'   => ':n can also scan at :to from :date',
+                'already' => 'Everybody selected already works at :to.',
+                'log'     => 'Added :to as another site for :n',
+            ], fn (Employee $e) => (int) $e->site_id !== $id && ! $has($e));
+        }
+
+        return $this->change($data, EmployeeChange::SITE_DROP, $id, [], [
+            'to'      => $site->name,
+            'done'    => ':n taken off :to',
+            'later'   => ':n will be taken off :to on :date',
+            'already' => 'Nobody selected has :to as another site. A main site is changed with Transfer site.',
+            'log'     => 'Took :n off :to, one of their other sites',
+        ], $has);
     }
 
     public function shift(Request $request): JsonResponse
@@ -228,7 +266,10 @@ class EmployeeBulkController extends Controller
         });
 
         $kept = $rows->count() - $undone;
-        $what = $isBonus ? 'bonus' : ['site' => 'site transfer', 'shift' => 'shift change', 'labor' => 'labor type change', 'overtime' => 'overtime change'][$rows->first()->kind];
+        $what = $isBonus ? 'bonus' : [
+            'site' => 'site transfer', 'shift' => 'shift change', 'labor' => 'labor type change', 'overtime' => 'overtime change',
+            EmployeeChange::SITE_ADD => 'added site', EmployeeChange::SITE_DROP => 'site removal',
+        ][$rows->first()->kind];
 
         if ($isBonus) {
             app(ActivityRecorder::class)->noteExplicit('Payroll Settings', null);
@@ -281,16 +322,20 @@ class EmployeeBulkController extends Controller
      * Put one change on file for everybody it would actually move, and make
      * it now unless it is dated ahead.
      *
-     * @param  array<string, string>  $say  the words for this kind of change
+     * @param  array<string, string>  $say    the words for this kind of change
+     * @param  \Closure|null           $needs  whom it would change; by default
+     *                                         those not on $toId already
      */
-    private function change(array $data, string $kind, ?int $toId, array $detail, array $say): JsonResponse
+    private function change(array $data, string $kind, ?int $toId, array $detail, array $say, ?\Closure $needs = null): JsonResponse
     {
         $on     = Carbon::parse($data['effective_on'])->toDateString();
         $later  = $on > EmployeeChange::earliestDate();
-        $column = EmployeeChange::COLUMNS[$kind];
+        $other  = in_array($kind, [EmployeeChange::SITE_ADD, EmployeeChange::SITE_DROP], true);
+        $needs ??= fn (Employee $e) => (int) $e->{EmployeeChange::COLUMNS[$kind]} !== (int) $toId;
 
-        $workers = Employee::active()->whereIn('id', $data['ids'])->orderBy('name')->get();
-        $moving  = $workers->filter(fn (Employee $e) => (int) $e->{$column} !== (int) $toId)->values();
+        $workers = Employee::active()->whereIn('id', $data['ids'])->orderBy('name')
+            ->when($other, fn ($q) => $q->with('otherSites'))->get();
+        $moving  = $workers->filter($needs)->values();
 
         if ($moving->isEmpty()) {
             return $this->refuse(str_replace(':to', $say['to'], $say['already']));
@@ -300,9 +345,14 @@ class EmployeeBulkController extends Controller
         $by    = $this->actor();
         $made  = collect();
 
-        DB::transaction(function () use ($moving, $kind, $toId, $detail, $on, $later, $batch, $by, $made) {
-            // A newer decision replaces one still waiting for its day.
-            EmployeeChange::waiting()->where('kind', $kind)->whereIn('employee_id', $moving->pluck('id'))->delete();
+        DB::transaction(function () use ($moving, $kind, $toId, $detail, $on, $later, $batch, $by, $made, $other) {
+            // A newer decision replaces one still waiting for its day. For
+            // another site, that is one about the same site, either way.
+            EmployeeChange::waiting()
+                ->where(fn ($q) => $other
+                    ? $q->whereIn('kind', [EmployeeChange::SITE_ADD, EmployeeChange::SITE_DROP])->where('to_id', $toId)
+                    : $q->where('kind', $kind))
+                ->whereIn('employee_id', $moving->pluck('id'))->delete();
 
             foreach ($moving as $worker) {
                 $change = EmployeeChange::create([

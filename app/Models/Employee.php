@@ -91,9 +91,19 @@ class Employee extends Model
     ];
 
     // ── Relationships ────────────────────────────────────────────────────────
+    /** The main site: the one lists, reports and payroll file the worker under. */
     public function site()
     {
         return $this->belongsTo(Site::class);
+    }
+
+    /**
+     * The other sites the worker also works at (2026-10-21). The kiosk at
+     * any of them takes their scans; nothing else reads them.
+     */
+    public function otherSites()
+    {
+        return $this->belongsToMany(Site::class, 'employee_site')->withTimestamps()->orderBy('sites.name');
     }
 
     public function kiosk()
@@ -503,6 +513,77 @@ class Employee extends Model
         }
 
         return $has;
+    }
+
+    /** Whether the other-sites table is there yet: a page must still open the moment before it is migrated. */
+    public static function hasOtherSites(): bool
+    {
+        static $has = null;
+
+        if ($has === null || app()->runningUnitTests()) {
+            try {
+                $has = Schema::hasTable('employee_site');
+            } catch (\Throwable $e) {
+                $has = false;
+            }
+        }
+
+        return $has;
+    }
+
+    /**
+     * The other sites, without the main one, by name. A site that became the
+     * main site by a transfer is not listed twice.
+     *
+     * @return \Illuminate\Support\Collection<int, Site>
+     */
+    public function otherSiteList()
+    {
+        if (! self::hasOtherSites()) {
+            return collect();
+        }
+
+        return $this->otherSites->reject(fn (Site $s) => (int) $s->id === (int) $this->site_id)->values();
+    }
+
+    /** Every site the worker may scan at: the main one first, then the others. */
+    public function siteIds(): array
+    {
+        return collect([$this->site_id])->merge($this->otherSiteList()->pluck('id'))
+            ->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+    }
+
+    public function worksAt(?int $siteId): bool
+    {
+        return $siteId !== null && in_array($siteId, $this->siteIds(), true);
+    }
+
+    /** The workers at a site: theirs as the main site, or as one of the others. */
+    public function scopeAtSite(Builder $query, int $siteId): Builder
+    {
+        return $query->where(function (Builder $q) use ($siteId) {
+            $q->where('site_id', $siteId);
+            if (self::hasOtherSites()) {
+                $q->orWhereHas('otherSites', fn (Builder $s) => $s->where('sites.id', $siteId));
+            }
+        });
+    }
+
+    /**
+     * Put the other sites as a form sent them. The main site is never one of
+     * them, and a list that was not sent at all leaves them as they are.
+     */
+    public function syncOtherSites(?array $ids): void
+    {
+        if ($ids === null || ! self::hasOtherSites()) {
+            return;
+        }
+
+        $ids = collect($ids)->filter(fn ($id) => filled($id))->map(fn ($id) => (int) $id)
+            ->reject(fn (int $id) => $id === (int) $this->site_id)->unique()->values()->all();
+
+        $this->otherSites()->sync($ids);
+        $this->unsetRelation('otherSites');
     }
 
     /** Why the slot could not be released — a message the kiosk can show as-is. */

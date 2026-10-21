@@ -187,6 +187,8 @@ html[data-bs-theme] .rmx .rmx-search input {
 .rmx-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; padding: 2px 8px; border-radius: 20px; white-space: nowrap;
     background: var(--rmx-chip); color: var(--rmx-txt-2); border: var(--rmx-bw) solid var(--rmx-line); }
 .rmx-pill i { font-size: 12px; }
+/* "+1" beside the main site: the other sites a worker also works at. */
+.rmx-pill.rmx-more-sites { margin-left: 4px; padding: 2px 7px; font-weight: 700; cursor: help; }
 .rmx-pill-ok     { background: var(--rmx-ok-bg);     color: var(--rmx-ok-fg);     border-color: transparent; }
 .rmx-pill-warn   { background: var(--rmx-warn-bg);   color: var(--rmx-warn-fg);   border-color: transparent; }
 .rmx-pill-accent { background: var(--rmx-accent-bg); color: var(--rmx-accent-fg); border-color: transparent; }
@@ -682,6 +684,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                                 'name'     => $e->name,
                                 'role'     => $e->laborType?->name ?: ($e->job_title ?: $e->position),
                                 'site'     => $e->site?->name,
+                                'otherSites' => $e->otherSiteList()->pluck('name')->implode(', ') ?: null,
                                 'rate'     => '₱' . number_format((float) $e->rate_per_hour, 2) . ' / hr',
                                 'daily'    => $e->laborType ? '₱' . number_format((float) $e->laborType->daily_rate, 2) . ' / day' : null,
                                 'fp'       => $e->fingerprint_id ? __('Slot') . ' ' . $e->fingerprint_id : null,
@@ -725,8 +728,10 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                         @endphp
                         {{-- The ids are what the bulk dialogs compare against: who is
                              already at the site, on the shift or of the labor
-                             type being changed to, and so is left as they are. --}}
-                        <tr class="rmx-row-card" data-live-key="emp-{{ $e->id }}" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}" data-shift="{{ $e->shift?->name }}" data-site-id="{{ $e->site_id }}" data-shift-id="{{ $e->shift_id }}" data-labor-id="{{ $e->labor_type_id }}" data-ot="{{ $e->overtime_allowed ? 1 : 0 }}">
+                             type being changed to, and so is left as they are.
+                             data-sites is every site they work at, for the Site
+                             filter; data-other-site-ids the ones besides the main. --}}
+                        <tr class="rmx-row-card" data-live-key="emp-{{ $e->id }}" data-emp="{{ json_encode($card) }}" data-site="{{ $e->site?->name }}" data-sites="{{ json_encode($e->otherSiteList()->pluck('name')->prepend($e->site?->name)->filter()->values()) }}" data-labor="{{ $e->laborType?->name }}" data-shift="{{ $e->shift?->name }}" data-site-id="{{ $e->site_id }}" data-shift-id="{{ $e->shift_id }}" data-labor-id="{{ $e->labor_type_id }}" data-ot="{{ $e->overtime_allowed ? 1 : 0 }}" data-other-site-ids="{{ $e->otherSiteList()->pluck('id')->implode(',') }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td><button type="button" class="rmx-open" aria-haspopup="dialog" aria-label="{{ __('Details of :name', ['name' => $e->name]) }}">@include('employees._person', ['e' => $e, 'displayName' => $e->name])</button>
                                 {{-- A change dated ahead: what it will be and from
@@ -891,7 +896,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                     </thead>
                     <tbody id="rmRemovedBody" data-live="employees attendance sites settings">
                     @forelse($removed as $e)
-                        <tr data-live-key="emp-{{ $e->id }}" data-site="{{ $e->site?->name }}" data-labor="{{ $e->laborType?->name }}">
+                        <tr data-live-key="emp-{{ $e->id }}" data-site="{{ $e->site?->name }}" data-sites="{{ json_encode($e->otherSiteList()->pluck('name')->prepend($e->site?->name)->filter()->values()) }}" data-labor="{{ $e->laborType?->name }}">
                             <td class="rmx-check-col"><input type="checkbox" class="rmx-check" value="{{ $e->id }}" aria-label="Select {{ $e->name }}"></td>
                             <td>@include('employees._person', ['e' => $e, 'displayName' => $e->name])</td>
                             <td>@include('employees._site', ['e' => $e])</td>
@@ -940,6 +945,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
     <button type="button" class="rmx-abar-clr" id="rmxActsClear">{{ __('Clear') }}</button>
     <span class="rmx-abar-sep" aria-hidden="true"></span>
     <button type="button" class="rmx-abtn" data-act="site"><i class="ti ti-map-pin" aria-hidden="true"></i>{{ __('Transfer site') }}</button>
+    <button type="button" class="rmx-abtn" data-act="sites"><i class="ti ti-map-pins" aria-hidden="true"></i>{{ __('Add site') }}</button>
     <button type="button" class="rmx-abtn" data-act="shift"><i class="ti ti-moon" aria-hidden="true"></i>{{ __('Change shift') }}</button>
     <button type="button" class="rmx-abtn" data-act="labor"><i class="ti ti-tool" aria-hidden="true"></i>{{ __('Change labor type') }}</button>
     {{-- Who may take overtime. From the day the first worker is allowed,
@@ -1223,6 +1229,15 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                 <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times" aria-hidden="true"></i></button>
             </div>
             <div class="modal-body emp-body">
+                {{-- Add site: another site they also work at, or one taken off. --}}
+                <div class="emp-field" id="bkMode" hidden>
+                    <span class="ep-label" id="bkModeLabel">{{ __('Action') }}</span>
+                    <div class="bk-seg" id="bkModeSeg" role="group" aria-labelledby="bkModeLabel">
+                        <button type="button" data-mode="add" class="on" aria-pressed="true"><i class="ti ti-map-pin-plus" aria-hidden="true"></i>{{ __('Add a site') }}</button>
+                        <button type="button" data-mode="remove" aria-pressed="false"><i class="ti ti-map-pin-minus" aria-hidden="true"></i>{{ __('Take off a site') }}</button>
+                    </div>
+                </div>
+
                 {{-- Transfer site / Change shift: one button per choice. --}}
                 <div class="emp-field" id="bkTo">
                     <span class="ep-label" id="bkToLabel">{{ __('Move to') }}</span>
@@ -1785,6 +1800,14 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
     const stateOf = pane => { if (!state.has(pane)) state.set(pane, { site: null, labor: null, shift: null }); return state.get(pane); };
     const rowsOf  = pane => Array.from(pane.querySelectorAll('tbody > tr[data-site]'));
     const valueOf = (tr, key) => tr.dataset[key] || '';
+    // A worker can be at more than one site: the main one and the others
+    // (data-sites). Picking any of them shows the worker, and each site's
+    // count includes them. A row without the list has its main site only.
+    const sitesOf = tr => {
+        try { const list = JSON.parse(tr.dataset.sites || 'null'); if (Array.isArray(list)) return list; } catch (e) {}
+        return tr.dataset.site ? [tr.dataset.site] : [];
+    };
+    const valuesOf = (tr, key) => key !== 'site' ? [valueOf(tr, key)] : (l => l.length ? l : [''])(sitesOf(tr));
     // The search box: every word typed has to be in the worker's name or
     // number, whatever the capitals or accents ("renono" finds Reñono).
     const search  = document.getElementById('rmxSearch');
@@ -1792,7 +1815,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
     let words     = [];
     const found   = tr => !words.length || (t => words.every(w => t.includes(w)))(fold(tr.querySelector('.rmx-who')?.textContent || ''));
     // null is "all"; '' is the rows with nothing in the column.
-    const matches = (tr, f, skip) => found(tr) && Object.keys(KEYS).every(k => k === skip || f[k] === null || valueOf(tr, k) === f[k]);
+    const matches = (tr, f, skip) => found(tr) && Object.keys(KEYS).every(k => k === skip || f[k] === null || valuesOf(tr, k).includes(f[k]));
     const nameOf  = (key, value) => value === '' ? KEYS[key].none : value;
     const sitePick = document.getElementById('rmxSite');
 
@@ -1855,7 +1878,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
         const f    = stateOf(pane);
         const pool = rowsOf(pane).filter(tr => matches(tr, f, key));
         const counts = new Map();
-        pool.forEach(tr => counts.set(valueOf(tr, key), (counts.get(valueOf(tr, key)) || 0) + 1));
+        pool.forEach(tr => valuesOf(tr, key).forEach(v => counts.set(v, (counts.get(v) || 0) + 1)));
 
         const items = [[null, KEYS[key].all, pool.length]]
             .concat([...counts.keys()].filter(Boolean).sort((a, b) => a.localeCompare(b)).map(v => [v, v, counts.get(v)]));
@@ -2030,23 +2053,39 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             const box = pane.querySelector('.rmx-check[value="' + id + '"]');
             const tr  = box && box.closest('tr');
             if (!tr) return null;
+            const others = (tr.dataset.otherSiteIds || '').split(',').filter(Boolean);
             return {
                 id: id,
                 name: (tr.querySelector('.rmx-name')?.textContent || '').trim(),
                 site: tr.dataset.siteId || '', shift: tr.dataset.shiftId || '', labor: tr.dataset.laborId || '',
                 siteName: tr.dataset.site || '', shiftName: tr.dataset.shift || '', laborName: tr.dataset.labor || '',
                 ot: tr.dataset.ot === '1', otName: tr.dataset.ot === '1' ? 'Overtime allowed' : 'No overtime',
+                // The other sites they also work at, and every site by name.
+                others: others,
+                sitesName: [tr.dataset.site || ''].concat(others.map(v => (cfg.sites.find(s => String(s.id) === v) || {}).name))
+                    .filter(Boolean).join(' + '),
             };
         }).filter(Boolean);
     }
 
     // ── The dialog ──────────────────────────────────────────────────────────
-    const TITLE = { site: @json(__('Transfer site')), shift: @json(__('Change shift')), labor: @json(__('Change labor type')), overtime: @json(__('Allow overtime')), bonus: @json(__('Add bonus')) };
-    const ICON  = { site: 'fa-location-dot', shift: 'fa-moon', labor: 'fa-helmet-safety', overtime: 'fa-clock', bonus: 'fa-gift' };
+    const TITLE = { site: @json(__('Transfer site')), sites: @json(__('Add site')), shift: @json(__('Change shift')), labor: @json(__('Change labor type')), overtime: @json(__('Allow overtime')), bonus: @json(__('Add bonus')) };
+    const ICON  = { site: 'fa-location-dot', sites: 'fa-map-location-dot', shift: 'fa-moon', labor: 'fa-helmet-safety', overtime: 'fa-clock', bonus: 'fa-gift' };
     const modal = () => bootstrap.Modal.getOrCreateInstance(modalEl);
     const show  = (id, on) => { $(id).hidden = !on; };
 
-    let act = null, choice = null, people = [], sending = false;
+    // mode: Add site adds another site ('add') or takes one off ('remove').
+    let act = null, choice = null, mode = 'add', people = [], sending = false;
+
+    function setMode(m) {
+        mode = m;
+        $('bkModeSeg').querySelectorAll('button').forEach(b => {
+            b.classList.toggle('on', b.dataset.mode === m);
+            b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false');
+        });
+        $('bkTitle').textContent = m === 'add' ? @json(__('Add site')) : @json(__('Remove site'));
+    }
+    $('bkModeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', function () { setMode(b.dataset.mode); update(); }));
 
     // One button per site or shift; the one pressed is the choice.
     function segments(options) {
@@ -2084,7 +2123,8 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
         $('bkIcon').className = 'fas ' + ICON[kind];
         $('bkSub').textContent = many(people.length, 'employee') + ' selected';
 
-        show('bkTo', kind === 'site' || kind === 'shift' || kind === 'overtime');
+        show('bkMode', kind === 'sites');
+        show('bkTo', kind === 'site' || kind === 'sites' || kind === 'shift' || kind === 'overtime');
         show('bkLabor', kind === 'labor');
         ['bkAmount', 'bkReason', 'bkPeriod', 'bkTotal'].forEach(id => show(id, kind === 'bonus'));
         show('bkFlow', kind !== 'bonus');
@@ -2095,6 +2135,11 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             $('bkEffHelp').textContent = 'Scans from this date count at the new site.';
             segments(cfg.sites.map(s => ({ v: String(s.id), icon: 'map-pin', label: s.name }))
                 .concat([{ v: '', icon: 'map-pin-off', label: 'Unassigned' }]));
+        } else if (kind === 'sites') {
+            setMode('add');
+            $('bkToLabel').textContent = 'Site';
+            $('bkEffHelp').textContent = 'The kiosk follows the change from this date.';
+            segments(cfg.sites.map(s => ({ v: String(s.id), icon: 'map-pin', label: s.name })));
         } else if (kind === 'shift') {
             $('bkToLabel').textContent = 'Change to';
             $('bkEffHelp').textContent = 'The new schedule applies to scans from this date.';
@@ -2160,6 +2205,29 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                 note += skipped(choice === '' ? 'already without a site' : 'already at ' + to.name);
             }
             label = 'Transfer ' + many(moving.length, 'employee');
+            ready = !!to && moving.length > 0;
+        } else if (act === 'sites') {
+            // Another site they also work at. Their main site stays: Add
+            // skips whoever is at the site already (main or other), Remove
+            // skips whoever does not have it as another site.
+            const to  = cfg.sites.find(s => String(s.id) === choice);
+            const add = mode === 'add';
+            moving = !to ? people
+                   : add ? people.filter(p => p.site !== choice && !p.others.includes(choice))
+                         : people.filter(p => p.others.includes(choice));
+            standing(moving, 'sitesName', 'No site');
+            after(to ? (add ? 'Also at ' : 'Off ') + to.name : 'Choose a site', to ? 'Main site stays the same' : '');
+            if (!to) {
+                note = add ? 'Pick the site they will also work at.' : 'Pick the site to take them off.';
+            } else if (add) {
+                note = (to.kiosks ? 'From the effective date ' + to.name + '’s kiosk takes their scans too, as well as their main site’s.'
+                                  : to.name + ' has no kiosk yet, so they cannot scan there until a kiosk is set to it.')
+                     + ' Their main site, payroll and past attendance are not changed.' + skipped('already at ' + to.name);
+            } else {
+                note = 'From the effective date ' + to.name + '’s kiosk no longer takes their scans. Their main site, payroll and past attendance are not changed.'
+                     + skipped('without ' + to.name + ' as another site');
+            }
+            label = (add ? 'Add site for ' : 'Remove site for ') + many(moving.length, 'employee');
             ready = !!to && moving.length > 0;
         } else if (act === 'shift') {
             const to = cfg.shifts.find(s => String(s.id) === choice);
@@ -2278,6 +2346,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             if (!on || on < cfg.today) { fail('Pick today or a later date. Days already worked are not changed.'); return; }
             body.effective_on = on;
             if (act === 'site')  body.site_id = choice === '' ? null : Number(choice);
+            if (act === 'sites') { body.site_id = Number(choice); body.mode = mode; }
             if (act === 'shift') body.shift_id = Number(choice);
             if (act === 'labor') { body.labor_type_id = Number(choice); body.use_rate = $('bkUseRate').checked; }
             if (act === 'overtime') body.allow = choice === '1';
@@ -2364,6 +2433,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
         const ids = [['SSS', d.sss], ['PhilHealth', d.philhealth], ['Pag-IBIG', d.pagibig], ['TIN', d.tin]];
         $('wmFacts').innerHTML =
             block('Work', [['Shift', d.shift, 'Not set'], ['Hired', d.hired], ['Employment', d.hiredAs, '—']]
+                .concat(d.otherSites ? [['Other sites', d.otherSites]] : [])
                 .concat(d.overtime ? [['Overtime', d.overtime]] : [])) +
             block('Personal', [['Born', d.born], ['Gender · Civil status', join(d.gender, d.civil)], ['Nationality', d.nation],
                                ['Birthplace · Blood', join(d.birthplace, d.blood)]],

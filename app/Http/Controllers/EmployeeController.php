@@ -270,7 +270,7 @@ class EmployeeController extends Controller
             'shift_id'       => 'nullable|exists:shifts,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->whereNull('deleted_at')],
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ], $this->profileRules($request), $this->employmentRules()), [
+        ], self::OTHER_SITE_RULES, $this->profileRules($request), $this->employmentRules()), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
             'first_name.required_without' => 'The first name is required.',
             'last_name.required_with'     => 'The last name is required.',
@@ -313,6 +313,8 @@ class EmployeeController extends Controller
             // case activates immediately.
             'status'         => $fingerprintId ? Employee::STATUS_ACTIVE : Employee::STATUS_PENDING,
         ], $this->profileData($request, $laborType), $identity, $this->employmentData($request))));
+
+        $employee->syncOtherSites($this->otherSiteIds($request));
 
         EmployeeAlert::fire(auth()->user(), 'new_employee',
             'New Employee Registered',
@@ -369,7 +371,7 @@ class EmployeeController extends Controller
             'site_id'        => $request->boolean('profile_form') ? 'required|exists:sites,id' : 'nullable|exists:sites,id',
             'shift_id'       => 'nullable|exists:shifts,id',
             'fingerprint_id' => ['nullable', 'string', Rule::unique('employees', 'fingerprint_id')->ignore($id)->whereNull('deleted_at')],
-        ], $this->profileRules($request), $this->employmentRules()), [
+        ], self::OTHER_SITE_RULES, $this->profileRules($request), $this->employmentRules()), [
             'fingerprint_id.unique' => 'This Fingerprint ID is already registered.',
             'first_name.required_without' => 'The first name is required.',
             'last_name.required_with'     => 'The last name is required.',
@@ -406,10 +408,29 @@ class EmployeeController extends Controller
         }
 
         $employee->update($updateData);
+        $employee->syncOtherSites($this->otherSiteIds($request));
 
         // A worker still pending is edited from the Pending tab; land back on it.
         return redirect()->route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : [])
             ->with('success', 'Employee updated successfully!');
+    }
+
+    // ── Other sites ───────────────────────────────────────────────────────────
+
+    /** The sites a worker also works at, besides the main one (employees/_other_sites). */
+    private const OTHER_SITE_RULES = [
+        'other_site_ids'   => 'nullable|array',
+        'other_site_ids.*' => 'nullable|integer|exists:sites,id',
+    ];
+
+    /**
+     * The other sites a form sent, or null when it sent none at all. The
+     * picker always posts a blank first entry, so ticking nothing still
+     * arrives (as "none") and is told apart from a form without the picker.
+     */
+    private function otherSiteIds(Request $request): ?array
+    {
+        return $request->has('other_site_ids') ? (array) $request->input('other_site_ids', []) : null;
     }
 
     // ── Worker profile (Register Employee form) ───────────────────────────────
@@ -713,8 +734,9 @@ class EmployeeController extends Controller
      */
     public function register()
     {
-        // shift: the worker card on an Active row names it.
-        $with = ['laborType', 'site', 'kiosk', 'shift'];
+        // shift: the worker card on an Active row names it. otherSites: the
+        // Site column, its filter and the bulk dialog read every site.
+        $with = Employee::hasOtherSites() ? ['laborType', 'site', 'kiosk', 'shift', 'otherSites'] : ['laborType', 'site', 'kiosk', 'shift'];
 
         $pending  = Employee::pending()->with($with)->withCount('attendances')
                         ->orderByDesc('created_at')->get();
@@ -798,6 +820,7 @@ class EmployeeController extends Controller
             'overtimeRule' => \App\Support\OvertimePermission::load()->startsOn(),
             'urls'     => [
                 'site'  => route('employees.bulk-site'),
+                'sites' => route('employees.bulk-other-site'),
                 'shift' => route('employees.bulk-shift'),
                 'labor' => route('employees.bulk-labor'),
                 'overtime' => route('employees.bulk-overtime'),

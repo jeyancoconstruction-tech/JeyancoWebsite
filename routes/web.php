@@ -103,6 +103,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     // ticked, from a date, and the Undo that follows it. Adding a bonus the
     // same way sits with the other bonus routes further down.
     Route::post  ('/employees/bulk-site',  [\App\Http\Controllers\EmployeeBulkController::class, 'site'])->name('employees.bulk-site');
+    // Another site they also work at, added or taken off; the main site stays.
+    Route::post  ('/employees/bulk-other-site', [\App\Http\Controllers\EmployeeBulkController::class, 'otherSite'])->name('employees.bulk-other-site');
     Route::post  ('/employees/bulk-shift', [\App\Http\Controllers\EmployeeBulkController::class, 'shift'])->name('employees.bulk-shift');
     Route::post  ('/employees/bulk-labor', [\App\Http\Controllers\EmployeeBulkController::class, 'labor'])->name('employees.bulk-labor');
     // Who may take overtime: allowed for the workers ticked, or stopped.

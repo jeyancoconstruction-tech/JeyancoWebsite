@@ -29,6 +29,12 @@ class EmployeeChange extends Model
     public const BONUS = 'bonus';
     /** Allowed to take overtime, or not: to_id is 1 or 0. Read by App\Support\OvertimePermission. */
     public const OVERTIME = 'overtime';
+    /**
+     * Another site the worker also works at, added or taken off; to_id is the
+     * site. The main site (SITE) is not touched by either (2026-10-21).
+     */
+    public const SITE_ADD  = 'site_add';
+    public const SITE_DROP = 'site_drop';
 
     /** The worker column each kind of change is written to. */
     public const COLUMNS = [
@@ -95,6 +101,8 @@ class EmployeeChange extends Model
             self::SHIFT => $this->moveTo($employee, 'shift_id', Shift::whereKey($this->to_id)->exists()),
             self::LABOR => $this->changeLabor($employee),
             self::OVERTIME => $this->moveTo($employee, 'overtime_allowed', true),
+            self::SITE_ADD  => $this->addSite($employee),
+            self::SITE_DROP => $this->dropSite($employee),
             default     => false,
         };
 
@@ -119,6 +127,38 @@ class EmployeeChange extends Model
         $employee->update([$column => $this->to_id]);
 
         return true;
+    }
+
+    /** One more site to scan at. Not their main site, and not one they have already. */
+    private function addSite(Employee $employee): bool
+    {
+        if (! Employee::hasOtherSites() || ! Site::whereKey($this->to_id)->exists()
+            || (int) $employee->site_id === (int) $this->to_id || $this->hasOther($employee)) {
+            return false;
+        }
+
+        $employee->otherSites()->attach($this->to_id);
+        $employee->unsetRelation('otherSites');
+
+        return true;
+    }
+
+    /** Off one of the other sites. The main site is moved by a transfer instead. */
+    private function dropSite(Employee $employee): bool
+    {
+        if (! Employee::hasOtherSites() || ! $this->hasOther($employee)) {
+            return false;
+        }
+
+        $employee->otherSites()->detach($this->to_id);
+        $employee->unsetRelation('otherSites');
+
+        return true;
+    }
+
+    private function hasOther(Employee $employee): bool
+    {
+        return $employee->otherSites()->where('sites.id', $this->to_id)->exists();
     }
 
     /**
@@ -186,7 +226,25 @@ class EmployeeChange extends Model
         }
 
         $employee = $this->employee;
-        $column   = self::COLUMNS[$this->kind] ?? null;
+
+        // Another site added or taken off: back the other way, unless it has
+        // been changed again since (or became their main site by a transfer).
+        if ($this->kind === self::SITE_ADD || $this->kind === self::SITE_DROP) {
+            $added = $this->kind === self::SITE_ADD;
+
+            if (! $employee || $this->hasOther($employee) !== $added
+                || (! $added && (int) $employee->site_id === (int) $this->to_id)) {
+                return false;
+            }
+
+            $added ? $employee->otherSites()->detach($this->to_id) : $employee->otherSites()->attach($this->to_id);
+            $employee->unsetRelation('otherSites');
+            $this->delete();
+
+            return true;
+        }
+
+        $column = self::COLUMNS[$this->kind] ?? null;
 
         if (! $employee || ! $column || (int) $employee->{$column} !== (int) $this->to_id) {
             return false;
@@ -270,6 +328,8 @@ class EmployeeChange extends Model
             self::SITE  => $this->to_id ? 'moved to ' . $this->targetName() : 'taken off their site',
             self::SHIFT, self::LABOR => 'changed to ' . $this->targetName(),
             self::OVERTIME => $this->to_id ? 'allowed to take overtime' : 'stopped from taking overtime',
+            self::SITE_ADD  => 'also at ' . $this->siteName(),
+            self::SITE_DROP => 'taken off ' . $this->siteName(),
             default     => 'changed',
         };
     }
@@ -279,11 +339,18 @@ class EmployeeChange extends Model
     {
         return match ($this->kind) {
             self::SITE  => $this->to_id ? (Site::whereKey($this->to_id)->value('name') ?? 'another site') : 'No site',
+            self::SITE_ADD  => 'Also at ' . $this->siteName(),
+            self::SITE_DROP => 'Off ' . $this->siteName(),
             self::SHIFT => Shift::whereKey($this->to_id)->value('name') ?? 'another shift',
             self::LABOR => LaborType::whereKey($this->to_id)->value('name') ?? 'another labor type',
             self::OVERTIME => $this->to_id ? 'Overtime allowed' : 'No overtime',
             default     => '',
         };
+    }
+
+    private function siteName(): string
+    {
+        return Site::whereKey($this->to_id)->value('name') ?? 'another site';
     }
 
     /**

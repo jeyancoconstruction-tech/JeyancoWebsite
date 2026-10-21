@@ -127,6 +127,9 @@
                     <dt>{{ __('Hired') }}</dt><dd>{{ $employee->date_hired?->format('M d, Y') ?: __('Not recorded') }}</dd>
                     <dt>{{ __('Employment') }}</dt><dd>{{ $employee->isContractual() ? __('Contractual') . ($employee->end_of_contract ? ' · ' . __('until') . ' ' . $employee->end_of_contract->format('M d, Y') : '') : __('Regular') }}</dd>
                     <dt>{{ __('Site') }}</dt><dd>{{ $employee->site->name ?? __('Not assigned') }}</dd>
+                    @if(($others = $employee->otherSiteList())->isNotEmpty())
+                        <dt>{{ __('Other sites') }}</dt><dd>{{ $others->pluck('name')->implode(', ') }}</dd>
+                    @endif
                     <dt>{{ __('Vale balance') }}</dt><dd class="{{ ($employee->vale ?? 0) > 0 ? 'warn' : '' }}">₱{{ number_format($employee->vale ?? 0, 2) }}</dd>
                 </dl>
             </section>

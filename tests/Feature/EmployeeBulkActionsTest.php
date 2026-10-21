@@ -142,7 +142,7 @@ class EmployeeBulkActionsTest extends TestCase
         $html = $this->actingAs($this->admin)->get(route('employees.register'))->assertOk()->getContent();
 
         $this->assertStringContainsString('id="rmxActs"', $html);
-        foreach (['site' => 'Transfer site', 'shift' => 'Change shift', 'labor' => 'Change labor type', 'bonus' => 'Add bonus'] as $act => $label) {
+        foreach (['site' => 'Transfer site', 'sites' => 'Add site', 'shift' => 'Change shift', 'labor' => 'Change labor type', 'bonus' => 'Add bonus'] as $act => $label) {
             $this->assertMatchesRegularExpression('/<button type="button" class="rmx-abtn" data-act="' . $act . '">.*?' . $label . '<\/button>/s', $html);
         }
         $this->assertStringContainsString('id="rmxBulkModal"', $html);

@@ -79,10 +79,12 @@ class EmployeesColumnFilterTest extends TestCase
 
         $html = $this->page();
 
-        $this->assertStringContainsString('data-site="Site A" data-labor="Welder"', $this->pane($html, 'active'));
-        $this->assertStringContainsString('data-site="" data-labor=""', $this->pane($html, 'active'), 'blank is "No site" / "No labor type"');
+        // data-sites: every site the worker is at, main first (2026-10-21), so
+        // the Site filter finds a worker under any of them.
+        $this->assertStringContainsString('data-site="Site A" data-sites="[&quot;Site A&quot;]" data-labor="Welder"', $this->pane($html, 'active'));
+        $this->assertStringContainsString('data-site="" data-sites="[]" data-labor=""', $this->pane($html, 'active'), 'blank is "No site" / "No labor type"');
         // Each row also carries the key a live patch finds it by.
-        $this->assertMatchesRegularExpression('/<tr data-live-key="emp-\d+" data-site="Site A" data-labor="Welder">/', $this->pane($html, 'removed'));
+        $this->assertMatchesRegularExpression('/<tr data-live-key="emp-\d+" data-site="Site A" data-sites="\[&quot;Site A&quot;\]" data-labor="Welder">/', $this->pane($html, 'removed'));
         $this->assertMatchesRegularExpression('/<tr data-live-key="emp-\d+" data-site="Site A">/', $this->pane($html, 'pending'));
     }
 
