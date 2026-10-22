@@ -151,6 +151,9 @@
         v = v && v.tab ? v : { tab: 'attendance' };
 
         if (J.currentTab() !== v.tab) J.switchTab(v.tab);
+        // Light or dark, and the tab dock up or tucked away — as on the kiosk.
+        if (J.setTheme) J.setTheme(v.theme === 'light' ? 'light' : 'dark', true);
+        if (J.setDock) J.setDock(v.dock !== 0);
         // A finger on the kiosk's sensor: the same card, with the same name.
         if (v.tab === 'attendance' && J.mirrorChoose) J.mirrorChoose(v.step === 'choose' ? v.who : null);
 

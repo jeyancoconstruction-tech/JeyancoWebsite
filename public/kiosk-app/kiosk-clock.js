@@ -1,7 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────
-//  JEYANCO KIOSK — ATTENDANCE TAB (v14, RSC 2026-10-19)
+//  JEYANCO KIOSK — ATTENDANCE TAB (v15, 2026-10-22)
 //
-//  The crew list is the screen; the scanner is a slim bar under it.
+//  The crew list is the screen, a worker icon on every row; under it one
+//  line of words — no scanner on screen until a finger is on the sensor.
 //
 //    1. A worker puts a finger on the sensor.
 //    2. A card opens with their name and where they stand today, and two
@@ -102,10 +103,12 @@
         return relNow(sh) < rel(sh, sh.cut) ? 'am' : 'pm';
     }
 
-    // ── The scan bar ─────────────────────────────────────────────────────
+    // ── The line under the list ──────────────────────────────────────────
+    // Words only (v15): what to do, or why the kiosk cannot take a scan.
     function renderIdle() {
         if (!$('att-panel')) return;
         scanningShown = false;
+        $('att-panel').classList.toggle('down', !synced() || !!(J.sensorDown && J.sensorDown()));
         if (!synced()) {
             J.setRing('att-ring', 'att-icon', 'muted');
             $('att-status-text').textContent = t('att.waitclock');
@@ -237,8 +240,9 @@
     function showResult(o) {
         clearTimeout(popTimer); clearInterval(barTimer);
         pop = { mode: 'result', emp: o.employee || null };
-        const icons = { in: 'right-to-bracket', out: 'right-from-bracket', none: 'hand', warn: 'triangle-exclamation', rej: 'circle-xmark' };
-        $('sr-verb').innerHTML = `<i class="fas fa-${icons[o.kind] || 'circle-info'}"></i><span>${esc(o.verb)}</span>`
+        // Plain marks: the card draws the round badge around them.
+        const icons = { in: 'right-to-bracket', out: 'right-from-bracket', none: 'info', warn: 'exclamation', rej: 'xmark' };
+        $('sr-verb').innerHTML = `<i class="fas fa-${icons[o.kind] || 'info'}"></i><span>${esc(o.verb)}</span>`
                                + (o.verbSub ? `<small>· ${esc(o.verbSub)}</small>` : '');
         setWho(o.employee);
         const time = $('sr-time');
@@ -587,6 +591,10 @@
         $('board-count').innerHTML = '';
     }
 
+    // The chips above the list: everybody, or only those working / at lunch / not back.
+    let boardFilter = 'all';
+    const FILTERS = { working: s => s === 'working' || s === 'ot', lunch: s => s === 'lunch', notback: s => s === 'notback' };
+
     function cell(v, auto) {
         if (!v) return '<span class="t-dash">—</span>';
         const m = String(v).match(/^(\d{1,2}:\d{2})\s*([AP]M)?$/i);
@@ -610,22 +618,30 @@
         if (!rows.length) { renderBoardMessage(t(board.loaded ? 'mon.none' : (boardOk ? 'mon.loading' : 'mon.failed'))); return; }
         const just = Date.now() < justUntil ? justId : null;
 
-        $('monitor-body').innerHTML = rows.map(r => {
-            const id = r.employee_id != null ? r.employee_id : r.id;
+        // The one who just scanned goes to the top, for as long as the blue sweep lasts.
+        const idOf = r => (r.employee_id != null ? r.employee_id : r.id);
+        const ordered = just === null ? rows : rows.filter(r => idOf(r) === just).concat(rows.filter(r => idOf(r) !== just));
+        const keep = FILTERS[boardFilter];
+        const shown = keep ? ordered.filter(r => keep(stateOf(r))) : ordered;
+
+        $('monitor-body').innerHTML = shown.length ? shown.map(r => {
+            const id = idOf(r);
             const cls = [r.working ? 'row-working' : '', just !== null && id === just ? 'just' : ''].join(' ').trim();
             return `<tr class="${cls}">
-                <td><div class="mon-name">${esc(r.name)}</div>
-                    <div class="mon-sub">${esc(r.pending ? t('mon.pending') : (r.position || ''))}</div></td>
+                <td><div class="mon-who"><span class="w-av"><span class="wk"></span></span><div>
+                    <div class="mon-name">${esc(r.name)}</div>
+                    <div class="mon-sub">${esc(r.pending ? t('mon.pending') : (r.position || ''))}</div></div></div></td>
                 <td>${cell(r.am_in, false)}</td>
                 <td>${cell(r.am_out, r.am_out_auto)}</td>
                 <td>${cell(r.pm_in, false)}</td>
                 <td>${cell(r.pm_out, r.pm_out_auto)}</td>
                 <td>${badge(stateOf(r))}</td>
             </tr>`;
-        }).join('');
+        }).join('') : `<tr class="mon-empty"><td colspan="6"><i class="fas fa-hard-hat"></i>${esc(t('mon.f.none'))}</td></tr>`;
 
-        const working = rows.filter(r => r.working).length;
-        $('board-count').innerHTML = `<span class="chip ok">${esc(t('mon.count', { n: rows.length, w: working }))}</span>`;
+        const chip = (key, label) => `<button type="button" class="chip${boardFilter === key ? ' on' : ''}" data-filter="${key}">${esc(label)}</button>`;
+        $('board-count').innerHTML = chip('all', t('mon.f.all', { n: rows.length }))
+            + chip('working', t('mon.f.working')) + chip('lunch', t('mon.f.lunch')) + chip('notback', t('mon.f.notback'));
     }
 
     // ── Start / stop (switchTab in script.js) ────────────────────────────
@@ -671,6 +687,13 @@
         $('btn-time-in').addEventListener('click', () => choose('time_in'));
         $('btn-time-out').addEventListener('click', () => choose('time_out'));
         $('sp-cancel').addEventListener('click', closePop);
+        $('board-count').addEventListener('click', e => {
+            const b = e.target.closest('[data-filter]');
+            if (!b) return;
+            boardFilter = b.dataset.filter;
+            renderBoard();
+            const wrap = $('board-wrap'); if (wrap) wrap.scrollTop = 0;
+        });
         // A tap on the dark around the card closes a choice (never a save).
         $('scan-pop').addEventListener('click', e => { if (e.target === $('scan-pop') && pop && pop.mode !== 'busy') closePop(); });
 

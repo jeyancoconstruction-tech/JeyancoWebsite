@@ -558,7 +558,16 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
             return;
         }
         offBox.hidden = true;
-        cap.innerHTML = '<span><b>' + esc(s.kiosk.name) + '</b> · ' + esc(s.site || '') + ' · the kiosk\'s own screen, 1024 × 600</span><span>View only — nothing is recorded from here</span>';
+        paintCap(s.view);
+    }
+
+    // Under the screen: whose it is, and how it looks right now (light or dark,
+    // the tab menu up or tucked away) — as the kiosk last reported.
+    function paintCap(v) {
+        const s = data && data.screen;
+        if (!s || !s.on) return;
+        const look = v ? ' · ' + (v.theme === 'light' ? 'Light' : 'Dark') + ' mode · menu ' + (v.dock === 0 ? 'hidden' : 'shown') : '';
+        cap.innerHTML = '<span><b>' + esc(s.kiosk.name) + '</b> · ' + esc(s.site || '') + ' · the kiosk\'s own screen, 1024 × 600' + look + '</span><span>View only — nothing is recorded from here</span>';
     }
 
     function renderFacts() {
@@ -674,7 +683,7 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
                 const wasOn = !!(data.screen && data.screen.on);
                 data.kiosks = r.kiosks;
                 mark('Live · ' + r.checked);
-                if (r.screen) sendView(r.screen.view);
+                if (r.screen) { sendView(r.screen.view); paintCap(r.screen.view); }
                 if (take(r) || !!(r.screen && r.screen.on) !== wasOn) await load();
                 else { renderLog(); renderPicks(); }
             } catch (e) { /* the slow poll says so */ }

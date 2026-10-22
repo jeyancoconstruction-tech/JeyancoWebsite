@@ -33,6 +33,7 @@ const I18N = {
         'site.nocode': 'This kiosk does not know its code yet — is the fingerprint service running on the Pi?',
         'st.sensor': 'Sensor', 'st.web': 'Server', 'st.sensor.off': 'Sensor offline', 'st.web.off': 'Server offline',
         'tab.attendance': 'ATTENDANCE', 'tab.dtr': 'MY DTR', 'tab.report': 'REPORT', 'tab.enroll': 'ENROLL',
+        'dock.peek': 'Tap the screen for the menu', 'theme.toggle': 'Light or dark',
         'pill.am': 'AM SESSION', 'pill.pm': 'PM SESSION', 'pill.night': 'NIGHT SHIFT', 'pill.off': 'OFF-SHIFT',
         'worker': 'Worker', 'shift.of': '{shift} shift',
 
@@ -85,6 +86,7 @@ const I18N = {
         'mon.loading': 'Loading attendance…', 'mon.none': 'No attendance yet today', 'mon.failed': 'Cannot load the list — retrying',
         'mon.workingb': 'WORKING', 'mon.doneb': 'DONE', 'mon.lunchb': 'LUNCH', 'mon.notbackb': 'NOT BACK', 'mon.otb': 'OVERTIME',
         'mon.pending': 'Pending registration', 'mon.count': '{n} today · {w} working',
+        'mon.f.all': 'All {n}', 'mon.f.working': 'Working', 'mon.f.lunch': 'Lunch', 'mon.f.notback': 'Not back', 'mon.f.none': 'Nobody here right now',
 
         'dtr.verify': 'SCAN TO OPEN YOUR DTR', 'dtr.privacy': 'Only you can open your own DTR.',
         'dtr.unlock': 'SCAN YOUR FINGER', 'dtr.scanning': 'SCANNING…', 'dtr.loading': 'OPENING YOUR DTR…',
@@ -158,6 +160,7 @@ const I18N = {
         'site.nocode': 'Hindi pa alam ng kiosk ang code nito — tumatakbo ba ang fingerprint service sa Pi?',
         'st.sensor': 'Sensor', 'st.web': 'Server', 'st.sensor.off': 'Patay ang sensor', 'st.web.off': 'Walang server',
         'tab.attendance': 'ATTENDANCE', 'tab.dtr': 'DTR KO', 'tab.report': 'REKLAMO', 'tab.enroll': 'DALIRI',
+        'dock.peek': 'Pindutin ang screen para sa menu', 'theme.toggle': 'Maliwanag o madilim',
         'pill.am': 'AM SESSION', 'pill.pm': 'PM SESSION', 'pill.night': 'NIGHT SHIFT', 'pill.off': 'WALANG SHIFT',
         'worker': 'Manggagawa', 'shift.of': 'Shift: {shift}',
 
@@ -209,6 +212,7 @@ const I18N = {
         'mon.loading': 'Kinukuha ang attendance…', 'mon.none': 'Wala pang pasok ngayong araw', 'mon.failed': 'Hindi makuha ang listahan — susubukan ulit',
         'mon.workingb': 'NASA LOOB', 'mon.doneb': 'TAPOS NA', 'mon.lunchb': 'TANGHALIAN', 'mon.notbackb': 'WALA PA', 'mon.otb': 'OVERTIME',
         'mon.pending': 'Hindi pa rehistrado', 'mon.count': '{n} ngayon · {w} nasa loob',
+        'mon.f.all': 'Lahat {n}', 'mon.f.working': 'Nasa loob', 'mon.f.lunch': 'Tanghalian', 'mon.f.notback': 'Di pa bumalik', 'mon.f.none': 'Walang tao rito ngayon',
 
         'dtr.verify': 'I-SCAN PARA BUKSAN ANG DTR', 'dtr.privacy': 'Ikaw lang ang makakabukas ng sarili mong DTR.',
         'dtr.unlock': 'I-SCAN ANG DALIRI', 'dtr.scanning': 'BINABASA…', 'dtr.loading': 'BINUBUKSAN ANG DTR MO…',
@@ -298,6 +302,7 @@ function applyLanguage() {
     if (pickedEmp && !ENROLLING) renderPick(); else if (!pickedEmp && !ENROLLING) resetEnrollIdle();
     renderRoster();
     updateClock();
+    moveTabInd();
     window.dispatchEvent(new CustomEvent('langchange', { detail: { lang: LANG } }));
 }
 
@@ -545,7 +550,7 @@ function normaliseSettings(att) {
 // Names only — never a worker's DTR or the words of a complaint.
 function viewState() {
     const tab = currentTab();
-    const v = { tab };
+    const v = { tab, theme: currentTheme(), dock: dockShown ? 1 : 0 };
     // ATTENDANCE: the card a finger opened — who, and choosing / saving / the answer.
     if (tab === 'attendance' && window.jeyanco.popView) Object.assign(v, window.jeyanco.popView() || {});
     if (tab === 'dtr' && window.jeyanco.dtrView) Object.assign(v, window.jeyanco.dtrView() || {});
@@ -646,6 +651,7 @@ function switchTab(tab) {
 
     document.querySelectorAll('.tab-content').forEach(x => x.classList.toggle('active', x === panel));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    moveTabInd();
     lastTouch = Date.now();
 
     if (tab === 'attendance') { if (window.startAttendancePolling) window.startAttendancePolling(); }
@@ -675,6 +681,93 @@ function watchIdle() {
         if (typeof hold === 'function' && hold()) return;
         switchTab('attendance');
     }, 5000);
+}
+
+// Device Monitoring's copy of this screen: the theme and the dock follow the
+// kiosk (kiosk-monitor.js), never this page's own clock or taps.
+const MIRROR = !!window.KIOSK_MONITOR;
+
+// ── THE DOCK ─────────────────────────────────────────────────────────────
+// The four tabs sit in a dock at the bottom. On ATTENDANCE it slides away
+// when nobody has touched the screen for DOCK_IDLE_MS, so the list has the
+// room; a tap anywhere brings it back. On the other tabs it stays.
+const DOCK_IDLE_MS = 8000;
+let dockShown = true;
+
+function setDock(show) {
+    show = !!show;
+    if (show === dockShown && document.body.classList.contains('dock-hidden') === !show) return;
+    dockShown = show;
+    document.body.classList.toggle('dock-hidden', !show);
+}
+
+function watchDock() {
+    if (MIRROR) return;
+    document.addEventListener('pointerdown', () => setDock(true), { passive: true, capture: true });
+    setInterval(() => {
+        if (currentTab() !== 'attendance') { setDock(true); return; }
+        if (Date.now() - lastTouch >= DOCK_IDLE_MS) setDock(false);
+    }, 1000);
+}
+
+/** The blue block behind the open tab, slid under it. */
+function moveTabInd() {
+    const ind = document.getElementById('tab-ind');
+    const btn = document.querySelector('.tab-btn.active');
+    if (!ind || !btn) return;
+    ind.style.width = btn.offsetWidth + 'px';
+    ind.style.transform = `translateX(${btn.offsetLeft - 6}px)`;
+}
+
+// ── LIGHT / DARK ─────────────────────────────────────────────────────────
+// By itself: light from 6 AM to 6 PM by the server's clock, dark otherwise.
+// The ☀/☾ button overrides it until the next change-over, then it is
+// automatic again — so one worker's tap does not stick for days.
+const THEME_KEY = 'jeyanco_theme';
+let themeManual = null;          // { theme, part } while a tap overrides
+
+try { themeManual = JSON.parse(localStorage.getItem(THEME_KEY) || 'null'); } catch (e) { themeManual = null; }
+
+function autoTheme() {
+    const h = (CLOCK_SYNCED ? kioskNow() : new Date()).getHours();
+    return h >= 6 && h < 18 ? 'light' : 'dark';
+}
+
+function currentTheme() {
+    return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+}
+
+function setTheme(theme, animate) {
+    theme = theme === 'light' ? 'light' : 'dark';
+    if (theme === currentTheme() && document.documentElement.dataset.theme) return;
+    const root = document.documentElement;
+    if (animate) {
+        root.classList.add('theme-anim');
+        setTimeout(() => root.classList.remove('theme-anim'), 350);
+    }
+    root.dataset.theme = theme;
+}
+
+function applyTheme(animate) {
+    if (MIRROR) return;
+    const part = autoTheme();
+    if (themeManual && themeManual.part !== part) {
+        themeManual = null;
+        try { localStorage.removeItem(THEME_KEY); } catch (e) { /* ignore */ }
+    }
+    setTheme(themeManual ? themeManual.theme : part, animate);
+}
+
+function toggleTheme() {
+    if (MIRROR) return;
+    const next = currentTheme() === 'light' ? 'dark' : 'light';
+    const part = autoTheme();
+    themeManual = next === part ? null : { theme: next, part };
+    try {
+        if (themeManual) localStorage.setItem(THEME_KEY, JSON.stringify(themeManual));
+        else localStorage.removeItem(THEME_KEY);
+    } catch (e) { /* ignore */ }
+    setTheme(next, true);
 }
 
 // ── LISTS THAT SCROLL BY THEMSELVES ──────────────────────────────────────
@@ -902,8 +995,9 @@ function setRing(ringId, iconId, state) {
     const icon = document.getElementById(iconId);
     if (!ring || !icon) return;
     ring.className = 'fp-ring';
-    const icons = { success: 'fa-check', error: 'fa-xmark', muted: 'fa-hand-pointer' };
-    icon.className = 'fas fp-icon ' + (icons[state] || 'fa-fingerprint');
+    // No fingerprint picture: a hand while it waits, then a check or a cross.
+    const icons = { success: 'fa-check', error: 'fa-xmark', scanning: 'fa-ellipsis' };
+    icon.className = 'fas fp-icon ' + (icons[state] || 'fa-hand-pointer');
     if (state && state !== 'idle') ring.classList.add(state);
 }
 
@@ -1262,6 +1356,8 @@ Object.assign(window.jeyanco, {
     setStatus,
     sensorDown: () => STATUS.sensor === false,
     holds: {},          // tab => () => true while that tab must not be left
+    // Device Monitoring sets these from what the kiosk reports.
+    setTheme, setDock,
 });
 
 // ── INIT ─────────────────────────────────────────────────────────────────
@@ -1270,8 +1366,16 @@ window.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
     document.getElementById('reg-start-btn').addEventListener('click', startEnroll);
     document.getElementById('roster-refresh').addEventListener('click', loadRoster);
+    const themeBtn = document.getElementById('btn-theme');
+    if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
+    applyTheme(false);
+    setInterval(() => applyTheme(true), 30000);
+    window.addEventListener('clocksynced', () => applyTheme(false));
     applyLanguage();
+    window.addEventListener('resize', moveTabInd);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveTabInd);
+    watchDock();
     setInterval(updateClock, 1000);
     watchAutoScroll();
     ['#roster-list', '#board-wrap'].forEach(sel => enableDragScroll(document.querySelector(sel)));

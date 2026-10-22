@@ -660,6 +660,9 @@ class KioskController extends Controller
             'step'  => $text($view['step'] ?? null, 40),
             'armed' => in_array($view['armed'] ?? null, ['time_in', 'time_out'], true) ? $view['armed'] : null,
             'week'  => (int) ($view['week'] ?? 0) === 1 ? 1 : 0,
+            // How the screen looks: light or dark, and whether the tab dock is up.
+            'theme' => ($view['theme'] ?? null) === 'light' ? 'light' : 'dark',
+            'dock'  => (int) ($view['dock'] ?? 1) === 0 ? 0 : 1,
             'at'    => now()->toIso8601String(),
         ], now()->addMinutes(10));
     }

@@ -2,7 +2,8 @@
 {{-- The attendance kiosk, served from the web (KioskAppController). Its CSS
      and scripts are in public/kiosk-app. Four tabs, by the 2026-10-18 RSC:
      ATTENDANCE, MY DTR, REPORT (complaints) and ENROLL — the SUMMARY tab and
-     the payroll card are gone; the kiosk shows attendance and the DTR. --}}
+     the payroll card are gone; the kiosk shows attendance and the DTR.
+     v15 (2026-10-22): light and dark, the tabs in a dock that hides. --}}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -21,6 +22,18 @@
         window.JEYANCO = @json($config);
         window.JEYANCO_API_BASE   = window.JEYANCO.api;
         window.JEYANCO_FLASK_BASE = window.JEYANCO.flask;
+
+        // Light or dark before the first paint (script.js keeps it after):
+        // light 6 AM – 6 PM by the server's clock, unless a tap chose otherwise.
+        (function () {
+            var c = window.JEYANCO, d = new Date();
+            if (typeof c.server_time === 'number') {
+                d = new Date(c.server_time + (typeof c.tz_offset === 'number' ? (c.tz_offset + d.getTimezoneOffset()) * 60000 : 0));
+            }
+            var part = d.getHours() >= 6 && d.getHours() < 18 ? 'light' : 'dark', pick = null;
+            try { pick = JSON.parse(localStorage.getItem('jeyanco_theme') || 'null'); } catch (e) {}
+            document.documentElement.dataset.theme = pick && pick.part === part ? pick.theme : part;
+        })();
     </script>
 </head>
 <body>
