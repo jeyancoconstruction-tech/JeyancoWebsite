@@ -150,8 +150,8 @@ class KioskSiteFromWebTest extends TestCase
         $this->assertFalse($answer['last_known']);
     }
 
-    /** Moved to Site Beta with no signal: the last position is still Alpha's, so Beta refuses. */
-    public function test_the_last_known_position_counts_when_there_is_no_fix(): void
+    /** Real-time attendance only: with no live fix the last position is not used, wherever it was. */
+    public function test_the_last_known_position_is_not_used_when_there_is_no_fix(): void
     {
         config(['kiosk.enforce_location' => true]);
         $this->pinned('Site Alpha');
@@ -159,16 +159,36 @@ class KioskSiteFromWebTest extends TestCase
         $this->kioskAt($b, self::HOME, 'no_fix', 900);               // last fix: at Site Alpha, 15 min ago
 
         $answer = $this->timeIn($this->worker($b));
-        $this->assertSame('outside_location', $answer['code']);
-        $this->assertTrue($answer['last_known']);
-        $this->assertStringContainsString('last known position', $answer['message']);
+        $this->assertSame('gps_offline', $answer['code']);
+        $this->assertSame(0, Attendance::count());
     }
 
-    public function test_the_last_known_position_inside_the_radius_is_accepted(): void
+    public function test_the_last_known_position_inside_the_radius_is_refused_without_a_live_fix(): void
     {
         config(['kiosk.enforce_location' => true]);
         $a = $this->pinned('Site Alpha');
         $this->kioskAt($a, self::HOME, 'no_fix', 900);
+
+        $answer = $this->timeIn($this->worker($a));
+        $this->assertFalse($answer['success']);
+        $this->assertSame('gps_offline', $answer['code']);
+        $this->assertSame(0, Attendance::count());
+    }
+
+    public function test_a_gps_gone_quiet_is_refused_even_if_its_last_status_was_a_fix(): void
+    {
+        config(['kiosk.enforce_location' => true]);
+        $a = $this->pinned('Site Alpha');
+        $this->kioskAt($a, self::HOME, 'fix', 900);                  // said "fix" 15 min ago, silent since
+
+        $this->assertSame('gps_offline', $this->timeIn($this->worker($a))['code']);
+    }
+
+    public function test_a_live_fix_inside_the_radius_is_accepted(): void
+    {
+        config(['kiosk.enforce_location' => true]);
+        $a = $this->pinned('Site Alpha');
+        $this->kioskAt($a, self::HOME, 'fix', 0);
 
         $this->assertTrue($this->timeIn($this->worker($a))['success']);
     }

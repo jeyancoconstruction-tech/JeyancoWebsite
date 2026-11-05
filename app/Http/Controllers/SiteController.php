@@ -3,18 +3,53 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Employee;
+use App\Models\EmployeeChange;
+use App\Models\Shift;
 use App\Models\Site;
 
 class SiteController extends Controller
 {
-    /** Render the Site Management module page. */
+    /**
+     * Render the Site Management module page.
+     *
+     * The crew and the shifts are for the step after a site is added (RSC
+     * 2026-10-18: "after adding a site, group of employee must be added then
+     * assign schedule"). The page sends the choice to the Employees bulk
+     * actions, so it is dated, logged and undone the same way as there.
+     */
     public function index()
     {
+        $others = Employee::hasOtherSites();
+
+        $crew = Employee::active()->orderBy('name')
+            ->with(array_merge(['site:id,name', 'shift:id,name'], $others ? ['otherSites:id'] : []))
+            ->get(['id', 'name', 'site_id', 'shift_id'])
+            ->map(fn (Employee $e) => [
+                'id'     => $e->id,
+                'name'   => $e->name,
+                'site'   => $e->site_id ? (int) $e->site_id : null,
+                'where'  => $e->site?->name,
+                'shift'  => $e->shift_id ? (int) $e->shift_id : null,
+                'others' => $others ? $e->otherSiteList()->pluck('id')->map(fn ($id) => (int) $id)->all() : [],
+            ])->values();
+
+        $time = fn ($t) => $t ? \Carbon\Carbon::parse($t)->format('g:i A') : null;
+
         return view('sites.index', [
             'radiusDefault' => (int) config('kiosk.geofence_radius'),
             'radiusMin'     => Site::RADIUS_MIN,
             'radiusMax'     => Site::RADIUS_MAX,
             'units'         => array_keys(Site::DURATION_UNITS),
+            'crew'          => $crew,
+            'shifts'        => Shift::orderBy('id')->get()->map(fn (Shift $s) => [
+                'id'   => $s->id,
+                'name' => $s->name,
+                'from' => $time($s->starts_at),
+                'to'   => $time($s->pm_ends_at),
+            ])->values(),
+            'otherSites'    => $others,
+            'today'         => EmployeeChange::earliestDate(),
         ]);
     }
 

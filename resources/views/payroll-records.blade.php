@@ -272,6 +272,13 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
 .prx-opt:hover { border-color: var(--brand); }
 .prx-opt.on { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand) inset; }
 .prx-pv-pick { margin-top: 14px; max-width: 360px; }
+/* The searchable box, sized like the page's other pickers (.prx-sel). */
+html[data-bs-theme] .prx-pv-pick .ss-input {
+    height: 32px !important; min-height: 32px; padding-left: 32px !important; border-radius: 9px !important;
+    border-color: var(--border-md) !important; background-color: var(--surface) !important;
+    font-size: 12.5px !important; font-weight: 500; color: var(--text-primary);
+}
+.prx-pv-pick .ss-glass { left: 11px; width: 14px; height: 14px; }
 /* The payslip page itself, framed: what is previewed is what prints. */
 .prx-pv-frame { display: block; width: 100%; height: min(62vh, 760px); margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: #e5e7eb; }
 .prx-pv-empty { margin-top: 16px; padding: 32px 16px; text-align: center; color: var(--text-muted); }
@@ -859,9 +866,11 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
                     </div>
 
                     <div data-pane="single" hidden>
-                        <label class="prx-sel prx-pv-pick">
-                            <select id="pvEmp" aria-label="{{ __('Employee') }}"></select>
-                        </label>
+                        {{-- Searchable by name or ID (RSC 2026-10-18: "Searching for
+                             employees, avoid dropdown list"). --}}
+                        <div class="prx-pv-pick">
+                            <select id="pvEmp" class="form-select" aria-label="{{ __('Employee') }}" data-searchable data-search-placeholder="{{ __('Search name or ID') }}"></select>
+                        </div>
                         <div id="pvSingle"></div>
                     </div>
                     <div data-pane="all" id="pvAll" hidden></div>
@@ -935,6 +944,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
 </div>{{-- /prx --}}
 
 @include('modules._fill_screen')
+@include('partials.select-search')
 @endsection
 
 @push('scripts')
@@ -1149,6 +1159,7 @@ html[data-bs-theme] .prx-modal .prx-mh h3 { margin: 0 !important; font-size: 17p
         if (pane === 'single') {
             const sel = $('pvEmp');
             sel.innerHTML = all.map(s => '<option value="' + esc(s.id) + '"' + (String(s.id) === chosen ? ' selected' : '') + '>' + esc(s.name) + '</option>').join('');
+            if (window.JeyancoSelectSearch) JeyancoSelectSearch.refresh(sel);
             sel.closest('.prx-pv-pick').hidden = !all.length;
             const s = all.find(x => String(x.id) === chosen);
             // The payslip page itself, in a frame: the preview is the printout.

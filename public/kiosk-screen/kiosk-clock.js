@@ -646,7 +646,7 @@
         const map = {
             already_in: ['warn', 'att.already.t'], no_open: ['warn', 'att.noopen.t'], just_timed_in: ['warn', 'att.justin.t'],
             repeat: ['none', 'att.repeat.t'], wrong_shift: ['rej', 'att.wrongshift.t'], not_registered: ['rej', 'att.notreg.t'],
-            mode_buttons: ['none', 'att.modebtn.t'], no_gps: ['rej', 'att.gps.t'], outside_location: ['rej', 'att.gps.t'],
+            mode_buttons: ['none', 'att.modebtn.t'], no_gps: ['rej', 'att.gps.t'], gps_offline: ['rej', 'att.gps.t'], outside_location: ['rej', 'att.gps.t'],
             // v10: the worker is assigned to another site, or the kiosk has none.
             wrong_site: ['rej', 'att.site.t'], no_site: ['rej', 'att.nosite.t'], no_site_location: ['rej', 'att.gps.t'],
         };

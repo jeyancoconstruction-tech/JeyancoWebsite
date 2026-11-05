@@ -466,7 +466,7 @@ html[data-bs-theme="dark"] #dvMap .leaflet-control-attribution { background: col
     const WARN = { already_in: 'ALREADY TIMED IN', no_open: 'NO OPEN TIME IN', just_timed_in: 'JUST TIMED IN',
                    just_timed_out: 'JUST TIMED OUT', session_done: 'SESSION DONE', wrong_shift: 'REJECTED',
                    not_registered: 'NOT REGISTERED YET', mode_buttons: 'PRESS A BUTTON FIRST',
-                   no_gps: 'LOCATION NOT CONFIRMED', outside_location: 'LOCATION NOT CONFIRMED',
+                   no_gps: 'LOCATION NOT CONFIRMED', gps_offline: 'LOCATION NOT CONFIRMED', outside_location: 'LOCATION NOT CONFIRMED',
                    wrong_site: 'NOT ASSIGNED TO THIS SITE', no_site: 'NO SITE SET', no_site_location: 'LOCATION NOT CONFIRMED' };
     const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 

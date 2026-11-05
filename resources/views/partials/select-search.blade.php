@@ -1,6 +1,7 @@
 {{-- A <select data-searchable> gets a box to type a name or ID into
      (public/js/select-search.js). Included once by a page that has one;
-     File Leave and New Cash Advance were the first (Michael, 2026-10-15).
+     File Leave and New Cash Advance were the first (Michael, 2026-10-15);
+     the payslip preview's employee box followed (RSC 2026-10-18).
 
      The list's look is the address suggestions' (.ap-list): the same
      surface, border, shadow and brand tint on the row in hand. --}}

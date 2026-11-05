@@ -26,13 +26,16 @@ return [
     | When enabled, a fingerprint clock-in/out is accepted only if the kiosk is
     | within `geofence_radius` metres of its assigned site's coordinates (the
     | designated location the admin sets on the dashboard map). If the kiosk has
-    | GPS turned off / no fix, the attendance is rejected. A kiosk whose site has
-    | no coordinates set is left ungated. Turn this off to disable the check.
+    | GPS turned off / no live satellite fix, the attendance is rejected — the
+    | last known position is never used (real-time attendance only). A site
+    | with no coordinates set is refused until the office sets them. The office
+    | can turn the check off in System Settings → Kiosks ("Require live GPS");
+    | this flag is the deploy-level master switch.
     */
     'enforce_location' => filter_var(env('KIOSK_ENFORCE_LOCATION', true), FILTER_VALIDATE_BOOL),
 
-    // How stale a cached GPS fix may be (seconds) before it can no longer prove
-    // where the kiosk is at clock time. Falls back to `offline_after`.
+    // How old the GPS's last heartbeat may be (seconds) for its fix to count as
+    // live at clock time; older and attendance is refused. Falls back to `offline_after`.
     'location_max_age' => (int) env('KIOSK_LOCATION_MAX_AGE', 120),
 
     /*

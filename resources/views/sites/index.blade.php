@@ -11,6 +11,8 @@
      search-as-you-type; Nominatim's rules forbid that use. Neither needs a key. --}}
 
 @push('styles')
+@include('employees._profile_styles')
+@include('employees._modal_styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 {{-- The site pins, kiosk badges and key, as on the dashboard's map. --}}
 <link rel="stylesheet" href="{{ asset('site-map.css') }}?v={{ @filemtime(public_path('site-map.css')) ?: '1' }}">
@@ -199,6 +201,36 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
     outline: 2px solid var(--brand); outline-offset: 2px;
 }
 
+.sm-ic.crew { color: var(--brand); }
+
+/* ── Add workers: the Employees bulk dialog's look (register.blade.php) ──── */
+#smCrewModal .emp-body { display: grid; gap: 16px; }
+#smCrewModal .emp-field + .emp-field { margin-top: 0; }
+#smCrewModal [hidden] { display: none !important; }
+#smCrewModal .emp-foot { justify-content: flex-end; }
+#smCrewModal .emp-btn-save:disabled { opacity: .45; cursor: not-allowed; }
+#smCrewModal .bk-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+#smCrewModal .bk-seg button { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border: 1px solid var(--border); border-radius: 9px; font-size: 13px; font-weight: 600;
+    color: var(--text-primary); background: var(--bg-surface); }
+#smCrewModal .bk-seg button i { font-size: 13px; color: var(--text-muted); }
+#smCrewModal .bk-seg button:hover { border-color: var(--border-md); }
+#smCrewModal .bk-seg button.on { border-color: var(--brand); background: var(--brand-subtle); color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+#smCrewModal .bk-seg button.on i { color: inherit; }
+#smCrewModal .bk-seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+#smCrewModal .bk-err { margin: 0; font-size: 12.5px; color: var(--danger); }
+.cw-list { max-height: 240px; overflow-y: auto; margin-top: 8px; border: 1px solid var(--border); border-radius: 9px; }
+.cw-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: 0; cursor: pointer; font-size: 13px; color: var(--text-primary); }
+.cw-row + .cw-row { border-top: 1px solid var(--border); }
+.cw-row:hover { background: var(--bg-subtle); }
+.cw-row input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--brand); cursor: pointer; }
+.cw-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cw-meta { flex: none; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.cw-none { padding: 14px 12px; font-size: 13px; color: var(--text-muted); }
+.cw-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+.cw-all { all: unset; cursor: pointer; font-weight: 600; color: var(--brand); }
+.cw-all:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+
 @media (max-width: 1050px) {
     .sm-grid { grid-template-columns: 1fr; }
     .sm-mapbox { min-height: 360px; }
@@ -225,7 +257,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         <form class="sm-card" id="smForm" novalidate autocomplete="off">
             <div class="sm-ch">
                 <h2><i class="fas fa-circle-plus" id="smFormIcon"></i><span id="smFormTitle">{{ __('Add New Site') }}</span></h2>
-                <span class="sm-hint" id="smFormHint">{{ __('Step 1 name · Step 2 location') }}</span>
+                <span class="sm-hint" id="smFormHint">{{ __('Step 1 name · Step 2 location · Step 3 workers & schedule') }}</span>
             </div>
             <div class="sm-body">
                 <div class="sm-field">
@@ -335,6 +367,65 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         </div>
     </section>
 </div>
+
+{{-- Add workers: opens by itself once a new site is saved, and from a site
+     card's button any time after (RSC 2026-10-18: "after adding a site, group
+     of employee must be added then assign schedule"). Laid out like the
+     Employees bulk dialog, and sent to the same actions, so each change is
+     dated, logged and can be undone the same way. --}}
+<div class="modal fade" id="smCrewModal" tabindex="-1" aria-hidden="true" aria-labelledby="smCrewTitle">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable emp-dialog" style="max-width:520px;">
+        <div class="modal-content emp-modal">
+            <div class="emp-head">
+                <span class="emp-head-icon" aria-hidden="true"><i class="fas fa-users"></i></span>
+                <div class="emp-head-text">
+                    <h6 class="emp-head-title" id="smCrewTitle">{{ __('Add workers') }}</h6>
+                    <p class="emp-head-sub" id="smCrewSite"></p>
+                </div>
+                <button type="button" class="emp-head-x" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i class="fas fa-times" aria-hidden="true"></i></button>
+            </div>
+            <div class="modal-body emp-body">
+                <div class="emp-field">
+                    <label class="ep-label" for="smCrewFind">{{ __('Workers') }} <span class="ep-req">*</span></label>
+                    <input class="form-control" type="search" id="smCrewFind" placeholder="{{ __('Search name or ID') }}" autocomplete="off">
+                    <div class="cw-list" id="smCrewList" role="group" aria-label="{{ __('Workers') }}"></div>
+                    <div class="cw-bar"><span id="smCrewCount" aria-live="polite"></span><button type="button" class="cw-all" id="smCrewAll">{{ __('Select all') }}</button></div>
+                </div>
+
+                @if($otherSites)
+                <div class="emp-field">
+                    <span class="ep-label" id="smCrewModeLabel">{{ __('Site') }}</span>
+                    <div class="bk-seg" id="smCrewMode" role="group" aria-labelledby="smCrewModeLabel">
+                        <button type="button" data-mode="main" class="on" aria-pressed="true"><i class="fas fa-location-dot" aria-hidden="true"></i>{{ __('Move here') }}</button>
+                        <button type="button" data-mode="other" aria-pressed="false"><i class="fas fa-plus" aria-hidden="true"></i>{{ __('Add as another site') }}</button>
+                    </div>
+                </div>
+                @endif
+
+                <div class="emp-field">
+                    <label class="ep-label" for="smCrewShift">{{ __('Shift') }} <span class="ep-req">*</span></label>
+                    <select class="form-select" id="smCrewShift">
+                        <option value="">{{ __('Choose a shift') }}</option>
+                        @foreach($shifts as $s)
+                            <option value="{{ $s['id'] }}">{{ $s['name'] }}@if($s['from'] && $s['to']) ({{ $s['from'] }} – {{ $s['to'] }})@endif</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="emp-field">
+                    <label class="ep-label" for="smCrewOn">{{ __('Effective date') }}</label>
+                    <input class="form-control" type="date" id="smCrewOn" min="{{ $today }}" value="{{ $today }}">
+                </div>
+
+                <p class="bk-err" id="smCrewErr" role="alert" hidden></p>
+            </div>
+            <div class="emp-foot">
+                <button type="button" class="emp-btn-cancel" data-bs-dismiss="modal">{{ __('Skip for now') }}</button>
+                <button type="button" class="emp-btn-save" id="smCrewSave"><i class="fas fa-check" aria-hidden="true"></i> <span>{{ __('Add workers') }}</span></button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -351,6 +442,11 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         site:  id => @json(url('/sites')) + '/' + id,
         // Every site and kiosk, read the way the dashboard's map reads them.
         map:   @json(route('dashboard.map')),
+        // Step 3 goes through the Employees bulk actions.
+        crewMain:  @json(route('employees.bulk-site')),
+        crewOther: @json(route('employees.bulk-other-site')),
+        crewShift: @json(route('employees.bulk-shift')),
+        crewUndo:  @json(route('employees.bulk-undo')),
     };
     const RADIUS = { def: @json($radiusDefault), min: @json($radiusMin), max: @json($radiusMax), step: 25 };
     const NAGA   = { lat: 13.6218, lng: 123.1948 };   // the dashboard's default centre
@@ -729,7 +825,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 
         const editing = S.editing != null ? byId(S.editing) : null;
         $('smFormTitle').textContent = editing ? 'Edit ' + editing.name : @json(__('Add New Site'));
-        $('smFormHint').textContent  = editing ? 'Change any detail or move the pin, then save' : @json(__('Step 1 name · Step 2 location'));
+        $('smFormHint').textContent  = editing ? 'Change any detail or move the pin, then save' : @json(__('Step 1 name · Step 2 location · Step 3 workers & schedule'));
         $('smFormIcon').className    = editing ? 'fas fa-pen' : 'fas fa-circle-plus';
         $('smSubmitLabel').textContent = editing ? 'Save changes' : @json(__('Add site'));
         $('smSubmit').querySelector('i').className = S.saving ? 'fas fa-spinner fa-spin' : (editing ? 'fas fa-check' : 'fas fa-plus');
@@ -819,6 +915,8 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
             resetForm();
             await loadSites();
             layer.refresh();
+            // A new site goes straight on to step 3: its crew and their shift.
+            if (editing == null) openCrew(data.site.id);
         } catch (err) {
             S.saving = false;
             showErr(err.message);
@@ -889,6 +987,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
                             : '<span class="sm-nogps">GPS check off until a pin is added</span>'}</div>
                     </div>
                     <div class="sm-acts">
+                        <button type="button" class="sm-ic crew" data-crew="${s.id}" title="Add workers" aria-label="Add workers to ${esc(s.name)}"><i class="fas fa-user-plus"></i></button>
                         <button type="button" class="sm-ic edit" data-edit="${s.id}" title="Edit" aria-label="Edit ${esc(s.name)}"><i class="fas fa-pen"></i></button>
                         <button type="button" class="sm-ic del" data-del="${s.id}" title="Remove" aria-label="Remove ${esc(s.name)}"><i class="fas fa-trash-can"></i></button>
                     </div>
@@ -902,6 +1001,7 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         const b = e.target.closest('button');
         if (!b) return;
         if (b.dataset.show)  return showOnMap(+b.dataset.show);
+        if (b.dataset.crew)  return openCrew(+b.dataset.crew);
         if (b.dataset.edit)  return startEdit(+b.dataset.edit);
         if (b.dataset.del)   { S.confirm = +b.dataset.del; renderSites(); return; }
         if ('no' in b.dataset) { S.confirm = null; renderSites(); return; }
@@ -965,6 +1065,173 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         } catch (err) {
             btn.disabled = false;
             Notify.error(err.message);
+        }
+    }
+
+    // ── Step 3: the crew, then their schedule ────────────────────────────────
+    // Every active worker, with the site and shift they have now. Kept up to
+    // date here as the step moves them, so "Already here" stays true.
+    const CREW  = @json($crew);
+    const TODAY = @json($today);
+    const C = { site: null, picked: new Set(), sending: false, mode: 'main' };
+
+    const code  = id => '#' + String(id).padStart(4, '0');
+    const fold  = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const mode  = () => C.mode;
+    const here  = w => mode() === 'other' ? (w.site === C.site || w.others.includes(C.site)) : w.site === C.site;
+
+    // A name, or an ID as the rest of the app shows it: "22", "0022", "#0022".
+    function crewShown() {
+        const q = fold($('smCrewFind').value).replace(/^#/, '');
+        if (!q) return CREW;
+        const n = /^\d+$/.test(q) ? String(Number(q)) : null;
+        return CREW.filter(w => fold(w.name).includes(q) || (n !== null && String(w.id) === n));
+    }
+
+    function drawCrew() {
+        const list = crewShown();
+        $('smCrewList').innerHTML = list.length
+            ? list.map(w => `<label class="cw-row">
+                    <input type="checkbox" value="${w.id}"${C.picked.has(w.id) ? ' checked' : ''}>
+                    <span class="cw-nm">${esc(w.name)}</span>
+                    <span class="cw-meta">${here(w) ? 'At this site' : (w.where ? esc(w.where) : 'Unassigned')}</span>
+                </label>`).join('')
+            : `<div class="cw-none">${CREW.length
+                ? 'No employee matches “' + esc($('smCrewFind').value.trim()) + '”.'
+                : 'No active employees yet.'}</div>`;
+
+        const all = list.length && list.every(w => C.picked.has(w.id));
+        $('smCrewAll').textContent = all ? 'Clear' : 'Select all';
+        $('smCrewAll').hidden = !list.length;
+
+        const n = C.picked.size;
+        $('smCrewCount').textContent = n + ' selected';
+        $('smCrewSave').disabled = C.sending || !n;
+    }
+
+    function openCrew(id) {
+        const s = byId(id);
+        if (!s) return;
+        C.site = id; C.picked = new Set(); C.sending = false;
+        $('smCrewSite').textContent = s.name;
+        $('smCrewFind').value = '';
+        $('smCrewShift').value = '';
+        $('smCrewOn').value = TODAY;
+        $('smCrewErr').hidden = true;
+        setMode('main');
+        drawCrew();
+        bootstrap.Modal.getOrCreateInstance($('smCrewModal')).show();
+    }
+
+    $('smCrewModal').addEventListener('shown.bs.modal', () => $('smCrewFind').focus());
+    $('smCrewFind').addEventListener('input', drawCrew);
+    function setMode(m) {
+        C.mode = m;
+        document.querySelectorAll('#smCrewMode [data-mode]').forEach(b => {
+            b.classList.toggle('on', b.dataset.mode === m);
+            b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false');
+        });
+    }
+    document.querySelectorAll('#smCrewMode [data-mode]').forEach(b => b.addEventListener('click', () => { setMode(b.dataset.mode); drawCrew(); }));
+    $('smCrewList').addEventListener('change', e => {
+        const id = Number(e.target.value);
+        if (e.target.checked) C.picked.add(id); else C.picked.delete(id);
+        drawCrew();
+    });
+    $('smCrewAll').addEventListener('click', () => {
+        const list = crewShown();
+        const all = list.every(w => C.picked.has(w.id));
+        list.forEach(w => all ? C.picked.delete(w.id) : C.picked.add(w.id));
+        drawCrew();
+    });
+
+    // The bulk actions answer 422 with only a message when there is nothing
+    // to change ("already at …"): that is said, not treated as a failure.
+    async function send(url, body) {
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            body: JSON.stringify(body),
+        });
+        let data = {};
+        try { data = await r.json(); } catch (e) {}
+        const ok = r.ok && data.success !== false;
+        return { ok, data, broken: !ok && (!!data.errors || !data.message || r.status !== 422) };
+    }
+    const said = d => (d.errors && Object.values(d.errors)[0] && Object.values(d.errors)[0][0]) || d.message;
+
+    $('smCrewSave').addEventListener('click', async () => {
+        if (C.sending) return;
+        const fail = m => { $('smCrewErr').textContent = m; $('smCrewErr').hidden = false; };
+        $('smCrewErr').hidden = true;
+
+        const ids   = [...C.picked];
+        const shift = $('smCrewShift').value;
+        const on    = $('smCrewOn').value;
+        const how   = mode();
+        if (!ids.length) return fail('Select at least one worker.');
+        if (!shift) { $('smCrewShift').focus(); return fail('Choose a shift.'); }
+        if (!on || on < TODAY) return fail('Pick today or a later date. Days already worked are not changed.');
+
+        C.sending = true; drawCrew();
+        try {
+            // 2. The workers onto the site …
+            const a = await send(how === 'other' ? URLS.crewOther : URLS.crewMain,
+                Object.assign({ ids, site_id: C.site, effective_on: on }, how === 'other' ? { mode: 'add' } : {}));
+            if (a.broken) return fail(said(a.data) || 'Could not add them to the site. Try again.');
+
+            // 3. … then their schedule.
+            const b = await send(URLS.crewShift, { ids, shift_id: Number(shift), effective_on: on });
+            if (b.broken) {
+                return fail((a.ok ? a.data.message + ', but their shift was not set: ' : '')
+                    + (said(b.data) || 'Could not set their shift. Try again.'));
+            }
+
+            // What changed today shows at once; a later date waits for its day.
+            const before = CREW.filter(w => ids.includes(w.id)).map(w => Object.assign({}, w, { others: w.others.slice() }));
+            const site = byId(C.site);
+            CREW.forEach(w => {
+                if (!ids.includes(w.id)) return;
+                if (a.ok && !a.data.later) {
+                    if (how === 'other') { if (!w.others.includes(C.site)) w.others.push(C.site); }
+                    else { w.site = C.site; w.where = site ? site.name : w.where; }
+                }
+                if (b.ok && !b.data.later) w.shift = Number(shift);
+            });
+
+            const batches = [a, b].filter(x => x.ok && x.data.batch).map(x => x.data.batch);
+            const line = [a, b].map(x => x.data.message).filter(Boolean).join(' · ');
+
+            bootstrap.Modal.getOrCreateInstance($('smCrewModal')).hide();
+            await loadSites();
+            layer.refresh();
+
+            if (!batches.length) { Notify.info(line); return; }
+            Notify.success(line, {
+                timeout: 10000,
+                action: { label: @json(__('Undo')), run: () => undoCrew(batches, before) },
+            });
+        } catch (err) {
+            fail('Network error. Please try again.');
+        } finally {
+            C.sending = false; drawCrew();
+        }
+    });
+
+    async function undoCrew(batches, before) {
+        try {
+            const lines = [];
+            for (const batch of batches.slice().reverse()) {
+                const { ok, data } = await send(URLS.crewUndo, { batch });
+                if (!ok) { Notify.error(data.message || 'Could not undo that.'); return; }
+                lines.push(data.message);
+            }
+            before.forEach(old => { const w = CREW.find(x => x.id === old.id); if (w) Object.assign(w, old); });
+            await loadSites();
+            layer.refresh();
+            Notify.info(lines.join(' · '));
+        } catch (err) {
+            Notify.error('Network error. Please try again.');
         }
     }
 

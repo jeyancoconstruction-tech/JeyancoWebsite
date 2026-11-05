@@ -73,6 +73,21 @@ class SearchableEmployeePickerTest extends TestCase
         }
     }
 
+    /** RSC 2026-10-18: the payslip preview's employee box is searchable too. */
+    public function test_the_payslip_preview_picker_is_searchable(): void
+    {
+        $html = $this->actingAs($this->admin)->get(route('payroll-records'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<select id="pvEmp" class="form-select" aria-label="Employee" data-searchable/', $html);
+        $this->assertSame(1, substr_count($html, '/js/select-search.js?v='), 'the script is loaded once');
+        // The page fills the select itself, so it asks the box to read it again.
+        $this->assertStringContainsString('JeyancoSelectSearch.refresh(sel);', $html);
+
+        $js = file_get_contents(public_path('js/select-search.js'));
+        $this->assertStringContainsString('function refresh(select)', $js);
+        $this->assertStringContainsString('refresh: refresh', $js);
+    }
+
     public function test_the_script_keeps_the_select_in_charge(): void
     {
         $js = file_get_contents(public_path('js/select-search.js'));

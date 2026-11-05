@@ -51,16 +51,21 @@
         var needed  = select.required;
         var message = select.dataset.searchRequired || 'Choose a name from the list.';
 
-        // The choices, minus the "— Select —" line.
+        // The choices, minus the "— Select —" line. Read again by refresh()
+        // when a page fills the select itself (the payslip preview).
         var items = [];
-        Array.prototype.forEach.call(select.options, function (o) {
-            if (o.value === '') { return; }
-            var code = numeric.test(o.value) ? pad(o.value) : '';
-            items.push({
-                value: o.value, text: o.text.trim(), code: code ? '#' + code : '',
-                key: norm(o.text) + (code ? ' ' + code + ' ' + o.value : '')
+        function load() {
+            items = [];
+            Array.prototype.forEach.call(select.options, function (o) {
+                if (o.value === '') { return; }
+                var code = numeric.test(o.value) ? pad(o.value) : '';
+                items.push({
+                    value: o.value, text: o.text.trim(), code: code ? '#' + code : '',
+                    key: norm(o.text) + (code ? ' ' + code + ' ' + o.value : '')
+                });
             });
-        });
+        }
+        load();
 
         var wrap = document.createElement('div');
         wrap.className = 'ss';
@@ -78,6 +83,7 @@
         input.setAttribute('aria-autocomplete', 'list');
         input.setAttribute('aria-expanded', 'false');
         input.setAttribute('aria-controls', listId);
+        if (select.getAttribute('aria-label')) { input.setAttribute('aria-label', select.getAttribute('aria-label')); }
         wrap.insertBefore(input, select);
 
         var glass = document.createElement('span');
@@ -285,14 +291,22 @@
             select.form.addEventListener('reset', function () { setTimeout(show, 0); });
         }
 
+        select._ssRefresh = function () { load(); if (!list.hidden) { open(input.value); } show(); };
+
         show();
+    }
+
+    // The options were replaced: read them again, and show the one picked.
+    function refresh(select) {
+        if (!select.dataset.searchReady) { enhance(select); return; }
+        if (select._ssRefresh) { select._ssRefresh(); }
     }
 
     function all(root) {
         (root || document).querySelectorAll('select[data-searchable]').forEach(enhance);
     }
 
-    window.JeyancoSelectSearch = { enhance: enhance, all: all };
+    window.JeyancoSelectSearch = { enhance: enhance, refresh: refresh, all: all };
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () { all(); });

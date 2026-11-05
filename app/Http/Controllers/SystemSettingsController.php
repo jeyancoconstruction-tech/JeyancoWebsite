@@ -58,7 +58,7 @@ class SystemSettingsController extends Controller
         'table_density'              => ['table density', ''],
         'signin_intro'               => ['intro animation', ''],
         'google_sign_in'             => ['Google sign-in', ''],
-        'kiosk_location_check'       => ['reject scans out of range', ''],
+        'kiosk_location_check'       => ['require live GPS', ''],
     ];
 
     /** Switches: saved as true/false, written to the Audit Log as on/off. */

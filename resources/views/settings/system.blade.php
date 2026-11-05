@@ -642,11 +642,12 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                         <div class="ks-add-hint">@error('name'){{ $message }} @enderror @error('code'){{ $message }}@else{{ __('The code must match KIOSK_CODE in testing.py on that kiosk\'s Pi.') }}@enderror</div>
                                     </details>
                                 </div></div>
-                            {{-- On: a scan the kiosk cannot place inside its site's radius is
-                                 refused, as it always was. Off is for a broken GPS, so the
-                                 crew can still scan in; the site check still holds. --}}
-                            <div class="ss-row"><div class="lb"><b>{{ __('Reject scans out of range') }}</b><small>{{ __("On: a kiosk outside its site's radius, or with no GPS, refuses the scan. Turn it off if the kiosk's location is broken, so workers can still scan in.") }}</small></div>
-                                <div class="ss-tgrow"><input type="hidden" name="kiosk_location_check" value="0"><label class="ss-tg"><input type="checkbox" name="kiosk_location_check" value="1" @checked($isOn('kiosk_location_check')) aria-label="{{ __('Reject scans out of range') }}" data-track data-saved="{{ $sw('kiosk_location_check') }}" data-label="{{ __('Reject scans out of range') }}"><span></span></label><small></small></div></div>
+                            {{-- On: real-time attendance only. A scan is recorded only while
+                                 the kiosk's GPS has a live fix inside its site's radius; no
+                                 signal, no record. Off is for a broken GPS, so the crew can
+                                 still scan in; the site check still holds. --}}
+                            <div class="ss-row"><div class="lb"><b>{{ __('Require live GPS') }}</b><small>{{ __("Refuses scans when the kiosk has no GPS signal or is outside its site's radius.") }}</small></div>
+                                <div class="ss-tgrow"><input type="hidden" name="kiosk_location_check" value="0"><label class="ss-tg"><input type="checkbox" name="kiosk_location_check" value="1" @checked($isOn('kiosk_location_check')) aria-label="{{ __('Require live GPS') }}" data-track data-saved="{{ $sw('kiosk_location_check') }}" data-label="{{ __('Require live GPS') }}"><span></span></label><small></small></div></div>
                             <div class="ss-row"><div class="lb"><b>{{ __('Scan mode') }}</b><small>{{ __('Automatic fills the next slot: 1st in, 1st out, 2nd in, 2nd out.') }}</small></div>
                                 <div class="ss-inp"><div class="ss-seg" role="radiogroup" aria-label="{{ __('Scan mode') }}">
                                     @foreach([SystemSetting::KIOSK_AUTO => 'Automatic', SystemSetting::KIOSK_BUTTONS => 'Worker picks'] as $val => $label)

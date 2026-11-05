@@ -214,26 +214,33 @@ class KioskController extends Controller
         }
 
         // Current position: the coordinates sent with the scan, else the
-        // kiosk's latest position — its current fix, or when it has none
-        // right now (indoors, under a roof), the last one it had. The last
-        // position stays until a new fix replaces it, so a kiosk carried from
-        // Site A to Site B with no signal still reads as Site A, and is
-        // refused at Site B until the GPS finds it there.
+        // kiosk's latest position. Real-time attendance only (RSC): the
+        // position must be a live satellite fix. A kiosk whose GPS is offline,
+        // has no fix (indoors, under a roof) or has gone quiet is refused —
+        // its last known position is not used.
         $curLat = $request->input('lat');
         $curLng = $request->input('lng');
-        $last   = false;
 
         if ($curLat === null || $curLng === null) {
             $fix = \App\Support\KioskStatus::of($kiosk)['fix']
                 ?? ($request->kiosk_id ? Cache::get('kiosk_location_' . $request->kiosk_id) : null);
 
             if ($fix && ($fix['lat'] ?? null) !== null && ($fix['lng'] ?? null) !== null) {
+                $maxAge = (int) (config('kiosk.location_max_age') ?: config('kiosk.offline_after'));
+                $live   = ($fix['status'] ?? null) === 'fix'
+                    && isset($fix['last_seen'])
+                    && Carbon::parse($fix['last_seen'])->diffInSeconds(now()) <= $maxAge;
+
+                if (! $live) {
+                    return [
+                        'success' => false,
+                        'code'    => 'gps_offline',
+                        'message' => "The kiosk's GPS has no live satellite fix, so attendance cannot be recorded right now.",
+                    ];
+                }
+
                 $curLat = $fix['lat'];
                 $curLng = $fix['lng'];
-                $maxAge = (int) (config('kiosk.location_max_age') ?: config('kiosk.offline_after'));
-                $last   = ($fix['status'] ?? null) !== 'fix'
-                    || ! isset($fix['last_seen'])
-                    || Carbon::parse($fix['last_seen'])->diffInSeconds(now()) > $maxAge;
             }
         }
 
@@ -252,11 +259,10 @@ class KioskController extends Controller
             return [
                 'success'    => false,
                 'code'       => 'outside_location',
-                'message'    => ($last ? 'The kiosk\'s last known position is ' : 'The kiosk is ')
-                                . number_format($distance) . ' m from ' . $site->name
+                'message'    => 'The kiosk is ' . number_format($distance) . ' m from ' . $site->name
                                 . ' (limit ' . $radius . ' m), so attendance cannot be accepted.',
                 'distance_m' => round($distance, 1),
-                'last_known' => $last,
+                'last_known' => false,
             ];
         }
 

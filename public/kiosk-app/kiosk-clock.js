@@ -334,7 +334,7 @@
         if (d.employee && d.employee.id) {
             // Known, but the web turned the scan away (another site, no GPS…).
             const map = { wrong_site: 'att.site.t', no_site: 'att.nosite.t', not_registered: 'att.notreg.t',
-                          no_gps: 'att.gps.t', outside_location: 'att.gps.t', no_site_location: 'att.gps.t',
+                          no_gps: 'att.gps.t', gps_offline: 'att.gps.t', outside_location: 'att.gps.t', no_site_location: 'att.gps.t',
                           device_key: 'att.servererr' };
             showResult({ kind: 'rej', verb: t(map[d.code] || 'bdg.rejected'), employee: d.employee, notes: [['bad', d.message || '']] });
             return;
@@ -532,7 +532,7 @@
             already_in: ['warn', 'att.already.t'], no_open: ['warn', 'att.noopen.t'], just_timed_in: ['warn', 'att.justin.t'],
             just_timed_out: ['warn', 'att.justout.t'], session_done: ['none', 'att.sessdone.t'],
             wrong_shift: ['rej', 'att.wrongshift.t'], not_registered: ['rej', 'att.notreg.t'],
-            mode_buttons: ['none', 'att.modebtn.t'], no_gps: ['rej', 'att.gps.t'], outside_location: ['rej', 'att.gps.t'],
+            mode_buttons: ['none', 'att.modebtn.t'], no_gps: ['rej', 'att.gps.t'], gps_offline: ['rej', 'att.gps.t'], outside_location: ['rej', 'att.gps.t'],
             wrong_site: ['rej', 'att.site.t'], no_site: ['rej', 'att.nosite.t'], no_site_location: ['rej', 'att.gps.t'],
             stale_scan: ['warn', 'att.stale.t'],
         };

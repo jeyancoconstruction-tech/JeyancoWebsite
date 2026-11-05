@@ -17,9 +17,10 @@ use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
- * System Settings → Kiosks → "Reject scans out of range" (Michael,
- * 2026-09-30). On, which is how it has always been, a kiosk that cannot
- * place itself inside its site's radius refuses the scan. Off, for when the
+ * System Settings → Kiosks → "Require live GPS" (Michael,
+ * 2026-09-30; real-time rule, RSC 2026-10-18). On, which is how it has always
+ * been, a kiosk without a live satellite fix inside its site's radius refuses
+ * the scan — its last known position does not count. Off, for when the
  * kiosk's location is broken, the crew can still scan in. The kiosk still
  * records only its own site's workers either way.
  */
@@ -66,13 +67,13 @@ class KioskLocationSwitchTest extends TestCase
         ]);
     }
 
-    private function kioskAt(Site $site, ?array $fix): Kiosk
+    private function kioskAt(Site $site, ?array $fix, string $status = 'fix', int $ago = 5): Kiosk
     {
         $kiosk = Kiosk::updateOrCreate(['code' => 'SITE_A'], ['name' => 'Site A Kiosk', 'site_id' => $site->id, 'is_active' => true]);
         Cache::forget('kiosk_location_' . $kiosk->id);
         if ($fix) {
-            Cache::put('kiosk_location_' . $kiosk->id, ['lat' => $fix['lat'], 'lng' => $fix['lng'], 'status' => 'fix',
-                'last_seen' => now()->subSeconds(5)->toIso8601String()], now()->addDay());
+            Cache::put('kiosk_location_' . $kiosk->id, ['lat' => $fix['lat'], 'lng' => $fix['lng'], 'status' => $status,
+                'last_seen' => now()->subSeconds($ago)->toIso8601String()], now()->addDay());
         }
 
         return $kiosk;
@@ -102,7 +103,44 @@ class KioskLocationSwitchTest extends TestCase
         $this->assertSame(0, Attendance::count());
     }
 
+    public function test_on_a_live_fix_inside_the_radius_records_the_scan(): void
+    {
+        $a = $this->site();
+        $this->kioskAt($a, self::HOME);
+
+        $this->assertTrue($this->timeIn($this->worker($a))['success']);
+    }
+
+    public function test_on_a_kiosk_without_a_live_fix_refuses_the_scan_even_inside_the_radius(): void
+    {
+        $a = $this->site();
+        $this->worker($a);
+
+        foreach ([['no_fix', 5], ['fix', 900]] as [$status, $ago]) {
+            $this->kioskAt($a, self::HOME, $status, $ago);
+
+            $answer = $this->timeIn(\App\Models\Employee::first());
+            $this->assertSame('gps_offline', $answer['code'], "$status, $ago s ago");
+
+            $this->postJson('/api/kiosk/scan-attendance', ['fingerprint_id' => '7', 'kiosk_code' => 'SITE_A'])
+                ->assertJsonPath('code', 'gps_offline');
+            $this->postJson('/api/kiosk/clock', ['fingerprint_id' => '7', 'type' => 'time_in', 'kiosk_code' => 'SITE_A'])
+                ->assertJsonPath('code', 'gps_offline');
+        }
+        $this->assertSame(0, Attendance::count());
+    }
+
     // ── Off: the crew can still scan in ──────────────────────────────────
+
+    public function test_off_a_kiosk_without_a_live_fix_records_the_scan(): void
+    {
+        $this->switchOff();
+        $a = $this->site();
+        $this->kioskAt($a, self::HOME, 'no_fix', 900);
+
+        $this->assertTrue($this->timeIn($this->worker($a))['success']);
+        $this->assertSame(1, Attendance::count());
+    }
 
     public function test_off_a_kiosk_outside_the_radius_records_the_scan(): void
     {
@@ -165,7 +203,7 @@ class KioskLocationSwitchTest extends TestCase
         $this->kioskAt($this->site(), self::HOME);
 
         $this->actingAs($this->admin())->get(route('system-settings.kiosk'))->assertOk()
-            ->assertSee('Reject scans out of range')
+            ->assertSee('Require live GPS')
             ->assertSee('name="kiosk_location_check" value="1" checked', false);
 
         $this->put(route('system-settings.kiosk.update'), [
@@ -174,7 +212,7 @@ class KioskLocationSwitchTest extends TestCase
 
         SystemSetting::forget();
         $this->assertFalse(SystemSetting::current()->checksKioskLocation());
-        $this->assertTrue(AuditLog::where('description', 'like', '%reject scans out of range on → off%')->exists());
+        $this->assertTrue(AuditLog::where('description', 'like', '%require live GPS on → off%')->exists());
 
         // Each kiosk's card says the check is off instead of "refusing scans".
         $this->get(route('system-settings.kiosk'))

@@ -80,7 +80,7 @@
     const REASON = {
         already_in: 'att.already.t', no_open: 'att.noopen.t', just_timed_in: 'att.justin.t', just_timed_out: 'att.justout.t',
         session_done: 'att.sessdone.t', wrong_shift: 'att.wrongshift.t', not_registered: 'att.notreg.t',
-        mode_buttons: 'att.modebtn.t', no_gps: 'att.gps.t', outside_location: 'att.gps.t',
+        mode_buttons: 'att.modebtn.t', no_gps: 'att.gps.t', gps_offline: 'att.gps.t', outside_location: 'att.gps.t',
         wrong_site: 'att.site.t', no_site: 'att.nosite.t', no_site_location: 'att.gps.t',
         stale_scan: 'att.stale.t',
     };
