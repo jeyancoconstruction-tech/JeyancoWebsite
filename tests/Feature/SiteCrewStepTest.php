@@ -51,7 +51,7 @@ class SiteCrewStepTest extends TestCase
 
         $html = $this->actingAs($this->admin())->get(route('sites.index'))->assertOk()->getContent();
 
-        foreach (['id="smCrewModal"', 'id="smCrewList"', 'id="smCrewShift"', 'id="smCrewOn"', 'id="smCrewSave"', 'id="smCrewMode"',
+        foreach (['id="smCrewModal"', 'id="smCrewList"', 'id="smCrewShift"', 'id="smCrewCal"', 'id="smCrewSites"', 'id="smCrewSave"', 'id="smCrewMode"',
                   'Step 3 workers &amp; schedule', 'data-crew=', 'Skip for now'] as $part) {
             $this->assertStringContainsString($part, $html, $part);
         }

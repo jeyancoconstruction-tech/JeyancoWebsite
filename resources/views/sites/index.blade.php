@@ -230,6 +230,35 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 .cw-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
 .cw-all { all: unset; cursor: pointer; font-weight: 600; color: var(--brand); }
 .cw-all:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+#smCrewSites { max-height: 168px; }
+
+/* The dates: File Leave's calendar (leave/index.blade.php), picking a range. */
+.lvc { border: 1px solid var(--border-md); border-radius: 10px; background: var(--surface); padding: 8px; }
+.lvc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.lvc-month { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.lvc-nav {
+    width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface);
+    color: var(--text-secondary); display: grid; place-items: center; cursor: pointer; font-size: 11px;
+}
+.lvc-nav:hover { border-color: var(--brand); color: var(--brand); }
+.lvc-nav:disabled { opacity: .4; cursor: default; border-color: var(--border); color: var(--text-secondary); }
+.lvc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.lvc-dow span { text-align: center; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); padding: 2px 0 4px; }
+.lvc-day {
+    height: 28px; border: 1px solid transparent; border-radius: 7px; background: none; cursor: pointer;
+    font-size: 12.5px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums;
+}
+.lvc-day:hover { background: var(--bg-subtle); border-color: var(--border-md); }
+.lvc-day.is-out { color: var(--text-muted); opacity: .45; }
+.lvc-day.is-today { border-color: var(--brand); }
+.lvc-day.is-in { background: var(--brand-subtle); color: var(--brand); border-radius: 0; }
+.lvc-day.is-on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.lvc-day:disabled { opacity: .3; cursor: default; background: none; border-color: transparent; }
+.lvc-day:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.lvc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.lvc-count { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.lvc-count.has { color: var(--brand); }
+.lvc-clear { border: 0; background: none; padding: 0; font-size: 12px; font-weight: 600; color: var(--danger); cursor: pointer; }
 
 @media (max-width: 1050px) {
     .sm-grid { grid-template-columns: 1fr; }
@@ -399,6 +428,8 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
                         <button type="button" data-mode="main" class="on" aria-pressed="true"><i class="fas fa-location-dot" aria-hidden="true"></i>{{ __('Move here') }}</button>
                         <button type="button" data-mode="other" aria-pressed="false"><i class="fas fa-plus" aria-hidden="true"></i>{{ __('Add as another site') }}</button>
                     </div>
+                    {{-- Another site: which ones. Their main site stays. --}}
+                    <div class="cw-list" id="smCrewSites" role="group" aria-label="{{ __('Sites to add') }}" hidden></div>
                 </div>
                 @endif
 
@@ -412,17 +443,27 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
                     </select>
                 </div>
 
-                <div class="emp-grid">
-                    <div class="emp-field">
-                        <label class="ep-label" for="smCrewOn">{{ __('Start date') }}</label>
-                        <input class="form-control" type="date" id="smCrewOn" min="{{ $today }}" value="{{ $today }}">
+                {{-- One calendar: the first day clicked is the start, the second
+                     the end. A move takes a start only. Another site can end:
+                     the day after the end it is taken off by itself. --}}
+                <div class="emp-field">
+                    <span class="ep-label" id="smCrewDatesLabel">{{ __('Start date') }}</span>
+                    <div class="lvc" id="smCrewCal" role="group" aria-labelledby="smCrewDatesLabel">
+                        <div class="lvc-head">
+                            <button type="button" class="lvc-nav" data-step="-1" aria-label="{{ __('Previous month') }}"><i class="fas fa-chevron-left"></i></button>
+                            <b class="lvc-month" aria-live="polite"></b>
+                            <button type="button" class="lvc-nav" data-step="1" aria-label="{{ __('Next month') }}"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <div class="lvc-grid lvc-dow" aria-hidden="true">
+                            <span>{{ __('Sun') }}</span><span>{{ __('Mon') }}</span><span>{{ __('Tue') }}</span><span>{{ __('Wed') }}</span><span>{{ __('Thu') }}</span><span>{{ __('Fri') }}</span><span>{{ __('Sat') }}</span>
+                        </div>
+                        <div class="lvc-grid lvc-days"></div>
+                        <div class="lvc-foot">
+                            <span class="lvc-count has" id="smCrewRange" aria-live="polite"></span>
+                            <button type="button" class="lvc-clear" id="smCrewNoEnd" hidden>{{ __('Remove end date') }}</button>
+                        </div>
                     </div>
-                    {{-- Another site can be for a set time: the day after this,
-                         it is taken off by itself. Blank, it stays. --}}
-                    <div class="emp-field" id="smCrewUntilField" hidden>
-                        <label class="ep-label" for="smCrewUntil">{{ __('End date') }} <span class="ep-optional">{{ __('(optional)') }}</span></label>
-                        <input class="form-control" type="date" id="smCrewUntil" min="{{ $today }}">
-                    </div>
+                    <span class="ep-hint" id="smCrewDatesHint"></span>
                 </div>
 
                 <p class="bk-err" id="smCrewErr" role="alert" hidden></p>
@@ -1081,7 +1122,9 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
     // date here as the step moves them, so "Already here" stays true.
     const CREW  = @json($crew);
     const TODAY = @json($today);
-    const C = { site: null, picked: new Set(), sending: false, mode: 'main' };
+    // from / to: the dates picked (to only for another site); sites: the
+    // sites to add as another site, the one opened ticked to begin with.
+    const C = { site: null, picked: new Set(), sending: false, mode: 'main', from: null, to: null, view: null, sites: new Set() };
 
     const code  = id => '#' + String(id).padStart(4, '0');
     const fold  = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
@@ -1124,10 +1167,9 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         $('smCrewSite').textContent = s.name;
         $('smCrewFind').value = '';
         $('smCrewShift').value = '';
-        $('smCrewOn').value = TODAY;
-        $('smCrewUntil').value = '';
-        $('smCrewUntil').min = TODAY;
         $('smCrewErr').hidden = true;
+        C.from = TODAY; C.to = null; C.view = parseDay(TODAY); C.view.setDate(1);
+        C.sites = new Set([id]);
         setMode('main');
         drawCrew();
         bootstrap.Modal.getOrCreateInstance($('smCrewModal')).show();
@@ -1135,20 +1177,86 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 
     $('smCrewModal').addEventListener('shown.bs.modal', () => $('smCrewFind').focus());
     $('smCrewFind').addEventListener('input', drawCrew);
-    // The end can be no earlier than the start.
-    $('smCrewOn').addEventListener('change', () => {
-        $('smCrewUntil').min = $('smCrewOn').value || TODAY;
-        if ($('smCrewUntil').value && $('smCrewUntil').value < $('smCrewUntil').min) $('smCrewUntil').value = '';
-    });
     function setMode(m) {
         C.mode = m;
-        // An end date is for another site only; a move stays until changed.
-        $('smCrewUntilField').hidden = m !== 'other';
+        // A move stays until it is changed, so it has no end date.
+        if (m !== 'other') C.to = null;
+        if ($('smCrewSites')) $('smCrewSites').hidden = m !== 'other';
         document.querySelectorAll('#smCrewMode [data-mode]').forEach(b => {
             b.classList.toggle('on', b.dataset.mode === m);
             b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false');
         });
+        drawSites();
+        drawCal();
     }
+
+    // ── Another site: which ones ──
+    function drawSites() {
+        const box = $('smCrewSites');
+        if (!box) return;
+        box.innerHTML = S.sites.map(s => `<label class="cw-row">
+                <input type="checkbox" value="${s.id}"${C.sites.has(s.id) ? ' checked' : ''}>
+                <span class="cw-nm">${esc(s.name)}</span>
+                <span class="cw-meta">${s.id === C.site ? 'This site' : (s.location ? esc(s.location) : '')}</span>
+            </label>`).join('');
+    }
+    if ($('smCrewSites')) {
+        $('smCrewSites').addEventListener('change', e => {
+            const id = Number(e.target.value);
+            if (e.target.checked) C.sites.add(id); else C.sites.delete(id);
+        });
+    }
+
+    // ── The dates: one calendar ──
+    // First click: the start. Second click, on or after it: the end (another
+    // site only). A click after that starts again. Days gone by are shut.
+    const pad2     = n => String(n).padStart(2, '0');
+    const dayKey   = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    const parseDay = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+    const shortDay = k => parseDay(k).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+    function drawCal() {
+        const cal = $('smCrewCal');
+        if (!C.view) return;
+        cal.querySelector('.lvc-month').textContent = C.view.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        const first = parseDay(TODAY); first.setDate(1);
+        cal.querySelector('[data-step="-1"]').disabled = C.view <= first;
+
+        const start = new Date(C.view); start.setDate(1 - C.view.getDay());
+        let html = '';
+        for (let i = 0; i < 42; i++) {
+            const d = new Date(start); d.setDate(start.getDate() + i);
+            const k = dayKey(d);
+            const on = k === C.from || k === C.to;
+            const inside = C.to && k > C.from && k < C.to;
+            html += `<button type="button" class="lvc-day${d.getMonth() !== C.view.getMonth() ? ' is-out' : ''}${k === TODAY ? ' is-today' : ''}${on ? ' is-on' : ''}${inside ? ' is-in' : ''}"`
+                  + ` data-day="${k}"${k < TODAY ? ' disabled' : ''} aria-pressed="${on}">${d.getDate()}</button>`;
+        }
+        cal.querySelector('.lvc-days').innerHTML = html;
+
+        const other = C.mode === 'other';
+        $('smCrewDatesLabel').textContent = other ? 'Start and end date' : 'Start date';
+        $('smCrewRange').textContent = C.to
+            ? shortDay(C.from) + ' – ' + shortDay(C.to)
+            : 'From ' + shortDay(C.from) + (other ? ' · no end date' : '');
+        $('smCrewNoEnd').hidden = !C.to;
+        $('smCrewDatesHint').textContent = other
+            ? (C.to ? 'Taken off this site by itself after ' + shortDay(C.to) + '. Their main site stays.'
+                    : 'Click a second day to set an end date, or leave it with no end.')
+            : '';
+    }
+
+    $('smCrewCal').addEventListener('click', e => {
+        const nav = e.target.closest('[data-step]');
+        if (nav) { C.view.setMonth(C.view.getMonth() + Number(nav.dataset.step)); drawCal(); return; }
+        const b = e.target.closest('.lvc-day');
+        if (!b || b.disabled) return;
+        const k = b.dataset.day;
+        if (C.mode === 'other' && C.from && !C.to && k >= C.from && k !== C.from) C.to = k;
+        else { C.from = k; C.to = null; }
+        drawCal();
+    });
+    $('smCrewNoEnd').addEventListener('click', () => { C.to = null; drawCal(); });
     document.querySelectorAll('#smCrewMode [data-mode]').forEach(b => b.addEventListener('click', () => { setMode(b.dataset.mode); drawCrew(); }));
     $('smCrewList').addEventListener('change', e => {
         const id = Number(e.target.value);
@@ -1184,42 +1292,49 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 
         const ids   = [...C.picked];
         const shift = $('smCrewShift').value;
-        const on    = $('smCrewOn').value;
+        const on    = C.from;
         const how   = mode();
-        const until = how === 'other' ? $('smCrewUntil').value : '';
+        const until = how === 'other' ? C.to : null;
+        const sites = how === 'other' ? S.sites.filter(s => C.sites.has(s.id)).map(s => s.id) : [C.site];
         if (!ids.length) return fail('Select at least one worker.');
+        if (!sites.length) return fail('Tick at least one site.');
         if (!shift) { $('smCrewShift').focus(); return fail('Choose a shift.'); }
         if (!on || on < TODAY) return fail('Pick today or a later date. Days already worked are not changed.');
-        if (until && until < on) { $('smCrewUntil').focus(); return fail('The end date cannot be before the start date.'); }
 
         C.sending = true; drawCrew();
         try {
-            // 2. The workers onto the site …
-            const a = await send(how === 'other' ? URLS.crewOther : URLS.crewMain,
-                Object.assign({ ids, site_id: C.site, effective_on: on }, how === 'other' ? { mode: 'add', until: until || null } : {}));
-            if (a.broken) return fail(said(a.data) || 'Could not add them to the site. Try again.');
+            // 2. The workers onto the site, or the sites ticked …
+            const moves = [];
+            for (const id of sites) {
+                const a = await send(how === 'other' ? URLS.crewOther : URLS.crewMain,
+                    Object.assign({ ids, site_id: id, effective_on: on }, how === 'other' ? { mode: 'add', until } : {}));
+                if (a.broken) return fail(said(a.data) || 'Could not add them to the site. Try again.');
+                moves.push([id, a]);
+            }
 
             // 3. … then their schedule.
             const b = await send(URLS.crewShift, { ids, shift_id: Number(shift), effective_on: on });
             if (b.broken) {
-                return fail((a.ok ? a.data.message + ', but their shift was not set: ' : '')
+                const done = moves.filter(([, a]) => a.ok).map(([, a]) => a.data.message).join(' · ');
+                return fail((done ? done + ', but their shift was not set: ' : '')
                     + (said(b.data) || 'Could not set their shift. Try again.'));
             }
 
             // What changed today shows at once; a later date waits for its day.
             const before = CREW.filter(w => ids.includes(w.id)).map(w => Object.assign({}, w, { others: w.others.slice() }));
-            const site = byId(C.site);
             CREW.forEach(w => {
                 if (!ids.includes(w.id)) return;
-                if (a.ok && !a.data.later) {
-                    if (how === 'other') { if (!w.others.includes(C.site)) w.others.push(C.site); }
-                    else { w.site = C.site; w.where = site ? site.name : w.where; }
-                }
+                moves.forEach(([id, a]) => {
+                    if (!a.ok || a.data.later) return;
+                    if (how === 'other') { if (!w.others.includes(id)) w.others.push(id); }
+                    else { const s = byId(id); w.site = id; w.where = s ? s.name : w.where; }
+                });
                 if (b.ok && !b.data.later) w.shift = Number(shift);
             });
 
-            const batches = [a, b].filter(x => x.ok && x.data.batch).map(x => x.data.batch);
-            const line = [a, b].map(x => x.data.message).filter(Boolean).join(' · ');
+            const all = moves.map(([, a]) => a).concat([b]);
+            const batches = all.filter(x => x.ok && x.data.batch).map(x => x.data.batch);
+            const line = all.map(x => x.data.message).filter(Boolean).join(' · ');
 
             bootstrap.Modal.getOrCreateInstance($('smCrewModal')).hide();
             await loadSites();
