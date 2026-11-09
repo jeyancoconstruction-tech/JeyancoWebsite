@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Employee;
+use App\Models\EmployeeChange;
 use App\Models\LaborType;
 use App\Models\Shift;
 use App\Models\Site;
@@ -102,5 +103,54 @@ class SiteCrewStepTest extends TestCase
 
         // The site's card counts them.
         $this->getJson(route('sites.list'))->assertJsonPath('sites.0.employees_count', 2);
+    }
+
+    /** Another site for a set time: from the start date to the end date, then off by itself. */
+    public function test_another_site_with_an_end_date_comes_off_by_itself(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-09 09:00', 'Asia/Manila'));
+        $admin = $this->admin();
+        $home  = Site::create(['name' => 'Tower 1']);
+        $away  = Site::create(['name' => 'Tower 2']);
+        $ana   = $this->worker('Ana Villanueva', $home);
+
+        $this->actingAs($admin)->postJson(route('employees.bulk-other-site'), [
+            'ids' => [$ana->id], 'site_id' => $away->id, 'mode' => 'add',
+            'effective_on' => '2026-11-09', 'until' => '2026-11-20',
+        ])->assertOk()->assertJsonPath('until', '2026-11-20')
+          ->assertJsonPath('message', '1 can now also scan at Tower 2 until Nov 20');
+
+        $this->assertSame([$home->id, $away->id], $ana->fresh()->siteIds());
+        $off = EmployeeChange::waiting()->where('employee_id', $ana->id)->sole();
+        $this->assertSame(EmployeeChange::SITE_DROP, $off->kind);
+        $this->assertSame('2026-11-21', $off->effective_on->toDateString(), 'taken off the day after the last day');
+
+        // The last day: still there.
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-20 17:00', 'Asia/Manila'));
+        EmployeeChange::applyDue();
+        $this->assertContains($away->id, $ana->fresh()->siteIds());
+
+        // The day after: off, by itself; the main site stays.
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-21 06:00', 'Asia/Manila'));
+        EmployeeChange::applyDue();
+        $this->assertSame([$home->id], $ana->fresh()->siteIds());
+    }
+
+    public function test_the_end_date_cannot_be_before_the_start_and_undo_takes_back_both(): void
+    {
+        $this->travelTo(\Carbon\Carbon::parse('2026-11-09 09:00', 'Asia/Manila'));
+        $admin = $this->admin();
+        $away  = Site::create(['name' => 'Tower 2']);
+        $ana   = $this->worker('Ana Villanueva', Site::create(['name' => 'Tower 1']));
+        $body  = ['ids' => [$ana->id], 'site_id' => $away->id, 'mode' => 'add', 'effective_on' => '2026-11-12'];
+
+        $this->actingAs($admin)->postJson(route('employees.bulk-other-site'), $body + ['until' => '2026-11-10'])
+            ->assertStatus(422)->assertJsonValidationErrors(['until' => 'The end date cannot be before the start date.']);
+
+        $batch = $this->postJson(route('employees.bulk-other-site'), $body + ['until' => '2026-11-15'])->assertOk()->json('batch');
+        $this->assertSame(2, EmployeeChange::waiting()->where('batch', $batch)->count(), 'the start and the end, both waiting');
+
+        $this->postJson(route('employees.bulk-undo'), ['batch' => $batch])->assertOk()->assertJsonPath('undone', 2);
+        $this->assertSame(0, EmployeeChange::where('batch', $batch)->count());
     }
 }

@@ -62,19 +62,25 @@ class EmployeeBulkController extends Controller
         $data = $this->check($request, [
             'site_id' => 'required|integer|exists:sites,id',
             'mode'    => ['required', Rule::in(['add', 'remove'])],
+            // The last day they work there. Optional: left out, the site stays.
+            'until'   => 'nullable|date|after_or_equal:effective_on',
+        ], [
+            'until.after_or_equal' => 'The end date cannot be before the start date.',
         ]);
         $site = Site::findOrFail($data['site_id']);
         $id   = (int) $site->id;
         $has  = fn (Employee $e) => $e->otherSiteList()->contains('id', $id);
 
         if ($data['mode'] === 'add') {
-            return $this->change($data, EmployeeChange::SITE_ADD, $id, [], [
+            $answer = $this->change($data, EmployeeChange::SITE_ADD, $id, [], [
                 'to'      => $site->name,
                 'done'    => ':n can now also scan at :to',
                 'later'   => ':n can also scan at :to from :date',
                 'already' => 'Everybody selected already works at :to.',
                 'log'     => 'Added :to as another site for :n',
             ], fn (Employee $e) => (int) $e->site_id !== $id && ! $has($e));
+
+            return filled($data['until'] ?? null) ? $this->endOn($answer, $site, $data['until']) : $answer;
         }
 
         return $this->change($data, EmployeeChange::SITE_DROP, $id, [], [
@@ -269,7 +275,7 @@ class EmployeeBulkController extends Controller
         $what = $isBonus ? 'bonus' : [
             'site' => 'site transfer', 'shift' => 'shift change', 'labor' => 'labor type change', 'overtime' => 'overtime change',
             EmployeeChange::SITE_ADD => 'added site', EmployeeChange::SITE_DROP => 'site removal',
-        ][$rows->first()->kind];
+        ][$rows->last()->kind]; // the first one made: an added site, not the end waiting behind it
 
         if ($isBonus) {
             app(ActivityRecorder::class)->noteExplicit('Payroll Settings', null);
@@ -307,13 +313,13 @@ class EmployeeBulkController extends Controller
     // ── Shared ────────────────────────────────────────────────────────────────
 
     /** Who, and from when — the half every change asks the same way. */
-    private function check(Request $request, array $rules): array
+    private function check(Request $request, array $rules, array $messages = []): array
     {
         return $request->validate($rules + [
             'ids'          => 'required|array|min:1',
             'ids.*'        => 'integer',
             'effective_on' => 'required|date|after_or_equal:' . EmployeeChange::earliestDate(),
-        ], [
+        ], $messages + [
             'effective_on.after_or_equal' => 'Pick today or a later date. Days already worked are not changed.',
         ]);
     }
@@ -395,6 +401,45 @@ class EmployeeBulkController extends Controller
             // or null while everybody still does.
             'overtime_rule' => OvertimePermission::load()->startsOn(),
         ]);
+    }
+
+    /**
+     * Another site for a set time: the day after the last one, it is taken
+     * off again by itself. Put on file as a change waiting for that day, in
+     * the same batch, so the worker's row shows it and Undo takes back both.
+     */
+    private function endOn(JsonResponse $answer, Site $site, string $until): JsonResponse
+    {
+        $data = $answer->getData(true);
+
+        if (empty($data['success']) || empty($data['batch'])) {
+            return $answer;
+        }
+
+        $off   = Carbon::parse($until)->addDay()->toDateString();
+        $by    = $this->actor();
+        $added = EmployeeChange::where('batch', $data['batch'])->where('kind', EmployeeChange::SITE_ADD)->get();
+
+        foreach ($added as $row) {
+            EmployeeChange::create([
+                'batch'        => $data['batch'],
+                'employee_id'  => $row->employee_id,
+                'kind'         => EmployeeChange::SITE_DROP,
+                'effective_on' => $off,
+                'to_id'        => $site->id,
+                'created_by'   => $by,
+            ]);
+        }
+
+        $last = Carbon::parse($until)->format('M d, Y');
+        AuditLog::record('Employees', 'updated',
+            "{$site->name} ends for {$this->count($added->count())} after {$last}; taken off on "
+            . Carbon::parse($off)->format('M d, Y') . ' (waiting until then).');
+
+        $data['message'] .= ' until ' . Carbon::parse($until)->format('M d');
+        $data['until']    = $until;
+
+        return response()->json($data);
     }
 
     private function refuse(string $message, int $status = 422): JsonResponse

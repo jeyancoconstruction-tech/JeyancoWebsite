@@ -412,9 +412,17 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
                     </select>
                 </div>
 
-                <div class="emp-field">
-                    <label class="ep-label" for="smCrewOn">{{ __('Effective date') }}</label>
-                    <input class="form-control" type="date" id="smCrewOn" min="{{ $today }}" value="{{ $today }}">
+                <div class="emp-grid">
+                    <div class="emp-field">
+                        <label class="ep-label" for="smCrewOn">{{ __('Start date') }}</label>
+                        <input class="form-control" type="date" id="smCrewOn" min="{{ $today }}" value="{{ $today }}">
+                    </div>
+                    {{-- Another site can be for a set time: the day after this,
+                         it is taken off by itself. Blank, it stays. --}}
+                    <div class="emp-field" id="smCrewUntilField" hidden>
+                        <label class="ep-label" for="smCrewUntil">{{ __('End date') }} <span class="ep-optional">{{ __('(optional)') }}</span></label>
+                        <input class="form-control" type="date" id="smCrewUntil" min="{{ $today }}">
+                    </div>
                 </div>
 
                 <p class="bk-err" id="smCrewErr" role="alert" hidden></p>
@@ -1117,6 +1125,8 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         $('smCrewFind').value = '';
         $('smCrewShift').value = '';
         $('smCrewOn').value = TODAY;
+        $('smCrewUntil').value = '';
+        $('smCrewUntil').min = TODAY;
         $('smCrewErr').hidden = true;
         setMode('main');
         drawCrew();
@@ -1125,8 +1135,15 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
 
     $('smCrewModal').addEventListener('shown.bs.modal', () => $('smCrewFind').focus());
     $('smCrewFind').addEventListener('input', drawCrew);
+    // The end can be no earlier than the start.
+    $('smCrewOn').addEventListener('change', () => {
+        $('smCrewUntil').min = $('smCrewOn').value || TODAY;
+        if ($('smCrewUntil').value && $('smCrewUntil').value < $('smCrewUntil').min) $('smCrewUntil').value = '';
+    });
     function setMode(m) {
         C.mode = m;
+        // An end date is for another site only; a move stays until changed.
+        $('smCrewUntilField').hidden = m !== 'other';
         document.querySelectorAll('#smCrewMode [data-mode]').forEach(b => {
             b.classList.toggle('on', b.dataset.mode === m);
             b.setAttribute('aria-pressed', b.dataset.mode === m ? 'true' : 'false');
@@ -1169,15 +1186,17 @@ button.sm-btn:focus-visible, button.sm-ic:focus-visible, button.sm-smark:focus-v
         const shift = $('smCrewShift').value;
         const on    = $('smCrewOn').value;
         const how   = mode();
+        const until = how === 'other' ? $('smCrewUntil').value : '';
         if (!ids.length) return fail('Select at least one worker.');
         if (!shift) { $('smCrewShift').focus(); return fail('Choose a shift.'); }
         if (!on || on < TODAY) return fail('Pick today or a later date. Days already worked are not changed.');
+        if (until && until < on) { $('smCrewUntil').focus(); return fail('The end date cannot be before the start date.'); }
 
         C.sending = true; drawCrew();
         try {
             // 2. The workers onto the site …
             const a = await send(how === 'other' ? URLS.crewOther : URLS.crewMain,
-                Object.assign({ ids, site_id: C.site, effective_on: on }, how === 'other' ? { mode: 'add' } : {}));
+                Object.assign({ ids, site_id: C.site, effective_on: on }, how === 'other' ? { mode: 'add', until: until || null } : {}));
             if (a.broken) return fail(said(a.data) || 'Could not add them to the site. Try again.');
 
             // 3. … then their schedule.
