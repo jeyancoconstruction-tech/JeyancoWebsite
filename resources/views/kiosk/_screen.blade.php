@@ -1,52 +1,80 @@
-{{-- The kiosk's screen: header, the four tabs and the dock. Shared by the
-     kiosk itself (kiosk/app) and its mirror in Device Monitoring (kiosk-screen).
-     v15 (2026-10-22, the approved redesign): the attendance list is the
-     screen; a finger opens the card; the tabs sit in a dock at the bottom
-     that hides when nobody touches the screen; light and dark. --}}
+{{-- The kiosk's screen: header, the tabs and the menu. Shared by the kiosk
+     itself (kiosk/app) and its mirror in Device Monitoring (kiosk-screen).
+     v16 (2026-11-09, RSC "make it simple, less info"): a site board. The
+     clock leads; the list is a name, the last time in and a word for the
+     status; the office's controls (language, light/dark, full screen,
+     enrolment, the sensor and server) sit behind the ⋯ button. Every id the
+     scripts use is kept. --}}
 <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
 <header class="k-top">
     <div class="k-brand">
         <img src="JeyancoLogo.png" alt="Jeyanco">
-        <div style="min-width:0">
-            <div class="k-brand-name">JEYANCO CONSTRUCTION</div>
-            <div class="k-brand-site waiting" id="site-name"><i class="fas fa-location-dot"></i><span id="site-name-text">…</span></div>
-        </div>
-    </div>
-    <div class="k-clock">
-        <div class="k-clock-time unsynced" id="digital-clock">--:--:--</div>
-        <div class="k-clock-date" id="digital-date"></div>
+        <div class="k-brand-name">JEYANCO</div>
+        <span class="k-sep"></span>
+        <div class="k-brand-site waiting" id="site-name"><i class="fas fa-location-dot"></i><span id="site-name-text">…</span></div>
     </div>
     <div class="k-tools">
-        <div class="session-pill" id="session-pill"><i class="fas fa-sun"></i><span id="session-label"></span></div>
-        <div class="k-status">
-            <span><i class="k-dot" id="dot-sensor"></i><span id="lbl-sensor" data-i18n="st.sensor">Sensor</span></span>
-            <span><i class="k-dot" id="dot-web"></i><span id="lbl-web" data-i18n="st.web">Server</span></span>
-        </div>
-        <div class="lang-switch">
-            <button class="lang-opt" data-lang="en" type="button">EN</button>
-            <button class="lang-opt" data-lang="tl" type="button">TL</button>
-        </div>
-        <button class="theme-btn" id="btn-theme" type="button" data-i18n-aria="theme.toggle" aria-label="Light or dark">
-            <i class="fas fa-sun"></i><i class="fas fa-moon"></i>
-            <span class="theme-knob"><i class="fas fa-sun"></i><i class="fas fa-moon"></i></span>
-        </button>
-        <div class="win-ctl">
-            <button class="win-btn" id="btn-fullscreen" type="button"><i class="fas fa-expand"></i></button>
-            <button class="win-btn" id="btn-minimize" type="button"><i class="fas fa-window-minimize"></i></button>
-            <div class="win-tip" id="win-tip" hidden></div>
+        <span class="k-health" id="k-health"><i></i><span id="k-health-text"></span></span>
+        <button class="k-more" id="btn-more" type="button" aria-haspopup="true" aria-expanded="false" data-i18n-aria="menu.open" aria-label="Menu"><i class="fas fa-ellipsis"></i></button>
+
+        {{-- The office's controls. The ids are the ones the scripts have always used. --}}
+        <div class="k-menu" id="k-menu" hidden>
+            <div class="k-menu-cap" data-i18n="menu.office">For the office</div>
+            <div class="k-menu-row"><i class="fas fa-language"></i><span data-i18n="menu.lang">Language</span>
+                <div class="lang-switch">
+                    <button class="lang-opt" data-lang="en" type="button">EN</button>
+                    <button class="lang-opt" data-lang="tl" type="button">TL</button>
+                </div>
+            </div>
+            <div class="k-menu-row"><i class="fas fa-circle-half-stroke"></i><span data-i18n="menu.theme">Light / dark</span>
+                <button class="theme-btn" id="btn-theme" type="button" data-i18n-aria="theme.toggle" aria-label="Light or dark">
+                    <i class="fas fa-sun"></i><i class="fas fa-moon"></i>
+                    <span class="theme-knob"><i class="fas fa-sun"></i><i class="fas fa-moon"></i></span>
+                </button>
+            </div>
+            <div class="k-menu-row"><i class="fas fa-expand"></i><span data-i18n="menu.window">Window</span>
+                <div class="win-ctl">
+                    <button class="win-btn" id="btn-fullscreen" type="button"><i class="fas fa-expand"></i></button>
+                    <button class="win-btn" id="btn-minimize" type="button"><i class="fas fa-window-minimize"></i></button>
+                    <div class="win-tip" id="win-tip" hidden></div>
+                </div>
+            </div>
+            <hr>
+            <button class="k-menu-row k-menu-go" type="button" data-go="register"><i class="fas fa-fingerprint"></i><span data-i18n="tab.enroll">ENROLL</span><b id="k-menu-enroll"></b></button>
+            <div class="k-menu-row"><i class="fas fa-signal"></i>
+                <div class="k-status">
+                    <span><i class="k-dot" id="dot-sensor"></i><span id="lbl-sensor" data-i18n="st.sensor">Sensor</span></span>
+                    <span><i class="k-dot" id="dot-web"></i><span id="lbl-web" data-i18n="st.web">Server</span></span>
+                </div>
+            </div>
         </div>
     </div>
 </header>
 <div class="site-warning" id="site-warning" hidden></div>
 
 <!-- ═══ ATTENDANCE (kiosk-clock.js) ═════════════════════════════════════
-     The crew list is the screen. No scanner on it: a finger on the sensor
-     opens a card with the worker's name and TIME IN / TIME OUT. -->
+     Left: the clock and what to do. Right: who is on site today. A finger
+     on the sensor opens a card with the worker's name and TIME IN / OUT. -->
 <main class="tab-content active" id="tab-attendance">
-    <section class="panel board-panel">
+    <section class="k-left">
+        <div class="k-clock-date" id="digital-date"></div>
+        <div class="k-clock-time unsynced" id="digital-clock">--:--</div>
+        <div class="session-pill" id="session-pill"><i class="fas fa-sun"></i><span id="session-label"></span></div>
+
+        <!-- What to do, or what is wrong. -->
+        <div class="scan-bar" id="att-panel">
+            <div class="fp-ring" id="att-ring"><i class="fas fp-icon fa-fingerprint" id="att-icon"></i></div>
+            <div class="sb-text">
+                <span class="fp-status-text" id="att-status-text"></span>
+                <span class="fp-hint" id="att-hint"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="board-panel">
         <div class="panel-label">
             <span data-i18n="mon.title">TODAY AT THIS SITE</span>
-            <span class="live-tag"><i></i>LIVE</span>
+            <b class="board-n" id="board-n"></b>
             <span class="spacer"></span><span class="board-count" id="board-count"></span>
         </div>
         <div class="board-wrap" id="board-wrap">
@@ -54,27 +82,16 @@
                 <thead>
                     <tr>
                         <th data-i18n="mon.employee">Employee</th>
-                        <th data-i18n="mon.amin">AM In</th>
-                        <th data-i18n="mon.amout">AM Out</th>
-                        <th data-i18n="mon.pmin">PM In</th>
-                        <th data-i18n="mon.pmout">PM Out</th>
+                        <th data-i18n="mon.lastin">Last in</th>
                         <th data-i18n="mon.status">Status</th>
                     </tr>
                 </thead>
                 <tbody id="monitor-body">
-                    <tr class="mon-empty"><td colspan="6"><i class="fas fa-hard-hat"></i><span data-i18n="mon.loading">Loading attendance…</span></td></tr>
+                    <tr class="mon-empty"><td colspan="3"><span data-i18n="mon.loading">Loading attendance…</span></td></tr>
                 </tbody>
             </table>
         </div>
     </section>
-
-    <!-- One line of words under the list: what to do, or what is wrong. -->
-    <div class="scan-bar" id="att-panel">
-        <div class="sb-text">
-            <span class="fp-status-text" id="att-status-text"></span>
-            <span class="fp-hint" id="att-hint"></span>
-        </div>
-    </div>
 
     <!-- A finger was read: who it is, and IN or OUT. Then what was recorded. -->
     <div class="scan-pop" id="scan-pop" hidden>
@@ -102,7 +119,6 @@
 <!-- ═══ MY DTR (kiosk-dtr.js) ═══════════════════════════════════════════ -->
 <main class="tab-content" id="tab-dtr">
     <section class="panel">
-        <div class="panel-label"><i class="fas fa-shield-halved"></i><span data-i18n="dtr.verify">SCAN TO OPEN YOUR DTR</span></div>
         <div class="fp-display" id="dtr-scan">
             <div class="fp-ring" id="dtr-ring"><i class="fas fp-icon fa-hand-pointer" id="dtr-icon"></i></div>
             <div class="fp-status-text" id="dtr-status"></div>
@@ -122,8 +138,7 @@
         </div>
     </section>
     <section class="panel">
-        <div class="panel-label"><i class="fas fa-calendar-days"></i><span data-i18n="dtr.title">DAILY TIME RECORD</span></div>
-        <div class="locked" id="dtr-locked"><i class="fas fa-lock"></i><p data-i18n="dtr.scanleft">Scan your finger on the left to see your DTR.</p></div>
+        <div class="locked" id="dtr-locked"><i class="fas fa-calendar-days"></i><p data-i18n="dtr.scanleft">Scan your finger on the left to see your DTR.</p></div>
         <div id="dtr-card" hidden style="display:flex;flex-direction:column;min-height:0;flex:1"></div>
     </section>
 </main>
@@ -131,7 +146,6 @@
 <!-- ═══ REPORT — complaints (kiosk-report.js) ═══════════════════════════ -->
 <main class="tab-content" id="tab-report">
     <section class="panel">
-        <div class="panel-label"><i class="fas fa-shield-halved"></i><span data-i18n="rep.verify">SCAN TO SEND A REPORT</span></div>
         <div class="fp-display" id="rep-scan">
             <div class="fp-ring" id="rep-ring"><i class="fas fp-icon fa-hand-pointer" id="rep-icon"></i></div>
             <div class="fp-status-text" id="rep-status"></div>
@@ -141,15 +155,15 @@
             <div class="sr-av"><span class="wk"></span></div>
             <div style="min-width:0"><div class="who-name" id="rep-who-name"></div><div class="who-sub" id="rep-who-sub"></div></div>
         </div>
-        <div class="panel-label" id="rep-hist-label" style="margin-top:var(--gap)" hidden><i class="fas fa-clock-rotate-left"></i><span data-i18n="rep.history">MY REPORTS</span></div>
+        <div class="panel-label" id="rep-hist-label" style="margin-top:var(--gap)" hidden><span data-i18n="rep.history">MY REPORTS</span></div>
         <div class="history" id="rep-history" hidden></div>
         <div class="side-actions" id="rep-actions" hidden>
             <button class="big-btn" type="button" id="rep-lock"><i class="fas fa-xmark"></i><span data-i18n="rep.cancel">CANCEL</span></button>
         </div>
     </section>
     <section class="panel">
-        <div class="panel-label"><i class="fas fa-comment-dots"></i><span data-i18n="rep.title">REPORT A PROBLEM</span><span class="spacer"></span><span class="timer" id="rep-timer"></span></div>
-        <div class="locked" id="rep-locked"><i class="fas fa-lock"></i><p data-i18n="rep.scanleft">Scan your finger on the left first.</p></div>
+        <div class="panel-label"><span data-i18n="rep.title">REPORT A PROBLEM</span><span class="spacer"></span><span class="timer" id="rep-timer"></span></div>
+        <div class="locked" id="rep-locked"><i class="fas fa-comment"></i><p data-i18n="rep.scanleft">Scan your finger on the left first.</p></div>
         <!-- 1 · Ready-made requests: one tap each. -->
         <div class="rep-step" id="rep-form" hidden>
             <div class="preset-grid" id="rep-presets"></div>
@@ -170,10 +184,10 @@
     </section>
 </main>
 
-<!-- ═══ ENROLL (script.js) ══════════════════════════════════════════════ -->
+<!-- ═══ ENROLL (script.js) — opened from the ⋯ menu ══════════════════════ -->
 <main class="tab-content" id="tab-register">
     <section class="panel">
-        <div class="panel-label"><i class="fas fa-id-card"></i><span data-i18n="enr.capture">CAPTURE FINGERPRINT</span></div>
+        <div class="panel-label"><span data-i18n="enr.capture">CAPTURE FINGERPRINT</span></div>
         <div class="enroll-who" id="enroll-who"></div>
         <div class="fp-display">
             <div class="fp-ring" id="reg-ring"><i class="fas fp-icon fa-hand-pointer" id="reg-icon"></i></div>
@@ -196,7 +210,7 @@
     </section>
     <section class="panel">
         <div class="panel-label">
-            <i class="fas fa-users"></i><span data-i18n="enr.workers">NEED FINGERPRINTS</span>
+            <span data-i18n="enr.workers">NEED FINGERPRINTS</span>
             <span class="spacer"></span>
             <button class="icon-btn" type="button" id="roster-refresh" data-i18n-aria="enr.refresh" aria-label="Refresh"><i class="fas fa-rotate"></i></button>
         </div>
@@ -205,16 +219,14 @@
     </section>
 </main>
 
-<!-- ── THE DOCK: the four tabs, at the bottom ─────────────────────────────
-     Hides when nobody has touched the screen for a while; a tap anywhere
-     brings it back (script.js, watchDock). -->
+<!-- ── THE TABS: three words along the bottom ────────────────────────────
+     Enrolment is the office's, so it is in the ⋯ menu, not here. -->
 <div class="k-dockwrap">
     <nav class="k-tabs" id="k-tabs">
         <span class="tab-ind" id="tab-ind"></span>
-        <button class="tab-btn active" type="button" data-tab="attendance"><i class="fas fa-clipboard-user"></i><span data-i18n="tab.attendance">ATTENDANCE</span></button>
-        <button class="tab-btn" type="button" data-tab="dtr"><i class="fas fa-calendar-days"></i><span data-i18n="tab.dtr">MY DTR</span></button>
-        <button class="tab-btn" type="button" data-tab="report"><i class="fas fa-comment-dots"></i><span data-i18n="tab.report">REPORT</span></button>
-        <button class="tab-btn" type="button" data-tab="register"><i class="fas fa-user-plus"></i><span data-i18n="tab.enroll">ENROLL</span></button>
+        <button class="tab-btn active" type="button" data-tab="attendance"><i class="far fa-clock"></i><span data-i18n="tab.attendance">ATTENDANCE</span></button>
+        <button class="tab-btn" type="button" data-tab="dtr"><i class="far fa-calendar"></i><span data-i18n="tab.dtr">MY DTR</span></button>
+        <button class="tab-btn" type="button" data-tab="report"><i class="far fa-comment"></i><span data-i18n="tab.report">REPORT</span></button>
     </nav>
     <div class="dock-peek" data-i18n="dock.peek">Tap the screen for the menu</div>
 </div>

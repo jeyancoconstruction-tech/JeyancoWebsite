@@ -587,8 +587,9 @@
     }
 
     function renderBoardMessage(text) {
-        $('monitor-body').innerHTML = `<tr class="mon-empty"><td colspan="6"><i class="fas fa-hard-hat"></i>${esc(text)}</td></tr>`;
+        $('monitor-body').innerHTML = `<tr class="mon-empty"><td colspan="3">${esc(text)}</td></tr>`;
         $('board-count').innerHTML = '';
+        if ($('board-n')) $('board-n').textContent = '';
     }
 
     // The chips above the list: everybody, or only those working / at lunch / not back.
@@ -624,24 +625,23 @@
         const keep = FILTERS[boardFilter];
         const shown = keep ? ordered.filter(r => keep(stateOf(r))) : ordered;
 
+        // v16: a name, the last time in, and the status as a word. The full
+        // day (AM/PM in and out) is in MY DTR.
+        const words = { working: 'mon.f.working', ot: 'mon.f.ot', lunch: 'mon.f.lunch', notback: 'mon.f.notback', done: 'mon.f.done' };
         $('monitor-body').innerHTML = shown.length ? shown.map(r => {
             const id = idOf(r);
+            const st = stateOf(r);
             const cls = [r.working ? 'row-working' : '', just !== null && id === just ? 'just' : ''].join(' ').trim();
             return `<tr class="${cls}">
-                <td><div class="mon-who"><span class="w-av"><span class="wk"></span></span><div>
-                    <div class="mon-name">${esc(r.name)}</div>
-                    <div class="mon-sub">${esc(r.pending ? t('mon.pending') : (r.position || ''))}</div></div></div></td>
-                <td>${cell(r.am_in, false)}</td>
-                <td>${cell(r.am_out, r.am_out_auto)}</td>
-                <td>${cell(r.pm_in, false)}</td>
-                <td>${cell(r.pm_out, r.pm_out_auto)}</td>
-                <td>${badge(stateOf(r))}</td>
+                <td><div class="mon-name">${esc(r.name)}</div></td>
+                <td>${cell(r.pm_in || r.am_in, false)}</td>
+                <td><span class="st-word sw-${esc(st)}">${esc(t(words[st] || 'mon.f.done'))}</span></td>
             </tr>`;
-        }).join('') : `<tr class="mon-empty"><td colspan="6"><i class="fas fa-hard-hat"></i>${esc(t('mon.f.none'))}</td></tr>`;
+        }).join('') : `<tr class="mon-empty"><td colspan="3">${esc(t('mon.f.none'))}</td></tr>`;
 
-        const chip = (key, label) => `<button type="button" class="chip${boardFilter === key ? ' on' : ''}" data-filter="${key}">${esc(label)}</button>`;
-        $('board-count').innerHTML = chip('all', t('mon.f.all', { n: rows.length }))
-            + chip('working', t('mon.f.working')) + chip('lunch', t('mon.f.lunch')) + chip('notback', t('mon.f.notback'));
+        const count = s => rows.filter(r => s.includes(stateOf(r))).length;
+        if ($('board-n')) $('board-n').textContent = rows.length;
+        $('board-count').innerHTML = t('mon.sum', { w: count(['working', 'ot']), l: count(['lunch']), n: count(['notback']) });
     }
 
     // ── Start / stop (switchTab in script.js) ────────────────────────────

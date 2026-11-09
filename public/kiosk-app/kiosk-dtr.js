@@ -119,14 +119,13 @@
         if (!session || !card) return;
         const d = session.data, tot = d.totals || {};
 
+        // v16: the day, its four scans and the hours. A remark (absent,
+        // holiday…) rides under the day; late and OT are in the totals.
         const rows = (d.days || []).map(day => `
             <tr class="${day.today ? 'today' : ''}${day.future ? ' future' : ''}">
-                <td class="d">${esc(day.label)}<span>${esc(day.day)}</span></td>
+                <td class="d">${esc(day.label)}<span>${esc(day.day)}</span>${day.remark ? `<span class="rem ${esc(day.tone)}">${esc(t(day.remark))}</span>` : ''}</td>
                 ${slot(day, 'in1')}${slot(day, 'out1')}${slot(day, 'in2')}${slot(day, 'out2')}
-                <td>${day.worked ? esc(day.worked) : ''}</td>
-                <td class="${day.late ? 'late' : ''}">${day.late ? esc(day.late) : ''}</td>
-                <td class="${day.ot ? 'ot' : ''}">${day.ot ? esc(day.ot) : ''}</td>
-                <td>${day.remark ? `<span class="rem ${esc(day.tone)}">${esc(t(day.remark))}</span>` : ''}</td>
+                <td class="hrs">${day.worked ? esc(day.worked) : ''}</td>
             </tr>`).join('');
 
         const extra = [];
@@ -147,8 +146,7 @@
                         <th>${esc(t('dtr.date'))}</th>
                         <th>${esc(t('dtr.in'))}</th><th>${esc(t('dtr.out'))}</th>
                         <th>${esc(t('dtr.in'))}</th><th>${esc(t('dtr.out'))}</th>
-                        <th>${esc(t('dtr.hours'))}</th><th>${esc(t('dtr.late'))}</th><th>OT</th>
-                        <th>${esc(t('dtr.remark'))}</th>
+                        <th>${esc(t('dtr.hours'))}</th>
                     </tr></thead>
                     <tbody>${rows}</tbody>
                 </table>

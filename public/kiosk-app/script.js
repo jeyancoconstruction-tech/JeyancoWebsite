@@ -87,6 +87,11 @@ const I18N = {
         'mon.workingb': 'WORKING', 'mon.doneb': 'DONE', 'mon.lunchb': 'LUNCH', 'mon.notbackb': 'NOT BACK', 'mon.otb': 'OVERTIME',
         'mon.pending': 'Pending registration', 'mon.count': '{n} today · {w} working',
         'mon.f.all': 'All {n}', 'mon.f.working': 'Working', 'mon.f.lunch': 'Lunch', 'mon.f.notback': 'Not back', 'mon.f.none': 'Nobody here right now',
+        // v16 — the site board and the ⋯ menu.
+        'mon.lastin': 'Last in', 'mon.f.done': 'Done', 'mon.f.ot': 'Overtime',
+        'mon.sum': '<b>{w}</b> working · <b>{l}</b> lunch · <b>{n}</b> not back',
+        'menu.open': 'Menu', 'menu.office': 'For the office', 'menu.lang': 'Language', 'menu.theme': 'Light / dark', 'menu.window': 'Window',
+        'h.ok': 'Online', 'h.wait': 'Connecting…',
 
         'dtr.verify': 'SCAN TO OPEN YOUR DTR', 'dtr.privacy': 'Only you can open your own DTR.',
         'dtr.unlock': 'SCAN YOUR FINGER', 'dtr.scanning': 'SCANNING…', 'dtr.loading': 'OPENING YOUR DTR…',
@@ -213,6 +218,10 @@ const I18N = {
         'mon.workingb': 'NASA LOOB', 'mon.doneb': 'TAPOS NA', 'mon.lunchb': 'TANGHALIAN', 'mon.notbackb': 'WALA PA', 'mon.otb': 'OVERTIME',
         'mon.pending': 'Hindi pa rehistrado', 'mon.count': '{n} ngayon · {w} nasa loob',
         'mon.f.all': 'Lahat {n}', 'mon.f.working': 'Nasa loob', 'mon.f.lunch': 'Tanghalian', 'mon.f.notback': 'Di pa bumalik', 'mon.f.none': 'Walang tao rito ngayon',
+        'mon.lastin': 'Huling pasok', 'mon.f.done': 'Tapos na', 'mon.f.ot': 'Overtime',
+        'mon.sum': '<b>{w}</b> nasa loob · <b>{l}</b> tanghalian · <b>{n}</b> di pa bumalik',
+        'menu.open': 'Menu', 'menu.office': 'Para sa opisina', 'menu.lang': 'Wika', 'menu.theme': 'Maliwanag / madilim', 'menu.window': 'Bintana',
+        'h.ok': 'Online', 'h.wait': 'Kumokonekta…',
 
         'dtr.verify': 'I-SCAN PARA BUKSAN ANG DTR', 'dtr.privacy': 'Ikaw lang ang makakabukas ng sarili mong DTR.',
         'dtr.unlock': 'I-SCAN ANG DALIRI', 'dtr.scanning': 'BINABASA…', 'dtr.loading': 'BINUBUKSAN ANG DTR MO…',
@@ -355,6 +364,14 @@ function paintStatus() {
         if (d) d.className = 'k-dot' + (STATUS[k] === true ? ' ok' : STATUS[k] === false ? ' bad' : '');
         setText(lbl, t(STATUS[k] === false ? 'st.' + k + '.off' : 'st.' + k));
     });
+    // v16: one word in the header — "Online", or what is down, in red.
+    const h = document.getElementById('k-health');
+    if (h) {
+        const down = STATUS.sensor === false ? 'st.sensor.off' : STATUS.web === false ? 'st.web.off' : null;
+        const ok   = STATUS.sensor === true && STATUS.web === true;
+        h.className = 'k-health' + (down ? ' bad' : ok ? ' ok' : '');
+        setText('k-health-text', t(down || (ok ? 'h.ok' : 'h.wait')));
+    }
 }
 
 // ── THE SERVER'S CLOCK ───────────────────────────────────────────────────
@@ -395,10 +412,12 @@ if (typeof CFG.server_time === 'number') {
 function updateClock() {
     const el = document.getElementById('digital-clock');
     if (!el) return;
-    if (!CLOCK_SYNCED) { el.textContent = '--:--:--'; el.classList.add('unsynced'); return; }
+    if (!CLOCK_SYNCED) { el.textContent = '--:--'; el.classList.add('unsynced'); return; }
     const now = kioskNow();
     el.classList.remove('unsynced');
-    el.textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+    // v16: the hour and minute large, the seconds and AM/PM beside them.
+    const h = now.getHours(), m = String(now.getMinutes()).padStart(2, '0'), s = String(now.getSeconds()).padStart(2, '0');
+    el.innerHTML = `<b>${(h % 12) || 12}:${m}</b><span><i>:${s}</i><em>${h < 12 ? 'AM' : 'PM'}</em></span>`;
     let date;
     try {
         date = now.toLocaleDateString(LANG === 'tl' ? 'fil-PH' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -701,6 +720,33 @@ function setDock(show) {
     document.body.classList.toggle('dock-hidden', !show);
 }
 
+// ── THE ⋯ MENU (v16) ─────────────────────────────────────────────────────
+// The office's controls: language, light/dark, the window, ENROLL, and the
+// sensor and server. Closes on a tap outside it, or after the idle return.
+function setMenu(open) {
+    const menu = document.getElementById('k-menu');
+    const btn  = document.getElementById('btn-more');
+    if (!menu || !btn) return;
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.classList.toggle('on', open);
+}
+
+function initMenu() {
+    const menu = document.getElementById('k-menu');
+    const btn  = document.getElementById('btn-more');
+    if (!menu || !btn) return;
+    btn.addEventListener('click', e => { e.stopPropagation(); setMenu(menu.hidden); });
+    menu.addEventListener('click', e => {
+        const go = e.target.closest('[data-go]');
+        if (go) { setMenu(false); switchTab(go.dataset.go); }
+    });
+    document.addEventListener('pointerdown', e => {
+        if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)) setMenu(false);
+    }, true);
+    window.addEventListener('tabchange', () => setMenu(false));
+}
+
 function watchDock() {
     if (MIRROR) return;
     document.addEventListener('pointerdown', () => setDock(true), { passive: true, capture: true });
@@ -714,6 +760,7 @@ function watchDock() {
 function moveTabInd() {
     const ind = document.getElementById('tab-ind');
     const btn = document.querySelector('.tab-btn.active');
+    if (ind && !btn) { ind.style.width = '0'; return; }      // ENROLL, from the ⋯ menu
     if (!ind || !btn) return;
     ind.style.width = btn.offsetWidth + 'px';
     ind.style.transform = `translateX(${btn.offsetLeft - 6}px)`;
@@ -997,7 +1044,8 @@ function setRing(ringId, iconId, state) {
     ring.className = 'fp-ring';
     // No fingerprint picture: a hand while it waits, then a check or a cross.
     const icons = { success: 'fa-check', error: 'fa-xmark', scanning: 'fa-ellipsis' };
-    icon.className = 'fas fp-icon ' + (icons[state] || 'fa-hand-pointer');
+    // v16: the ATTENDANCE box waits with a fingerprint; the rest with a hand.
+    icon.className = 'fas fp-icon ' + (icons[state] || (ringId === 'att-ring' ? 'fa-fingerprint' : 'fa-hand-pointer'));
     if (state && state !== 'idle') ring.classList.add(state);
 }
 
@@ -1080,6 +1128,7 @@ async function loadRoster() {
         knownIds  = new Set(incoming.map(e => e.id));
         rosterAll = incoming;
         roster    = incoming.filter(e => e.complete === undefined ? !e.enrolled : !e.complete);
+        setText('k-menu-enroll', roster.length ? String(roster.length) : '');   // the ⋯ menu's count
 
         // The picked worker, kept up to date — unless mid-capture.
         if (pickedEmp && !ENROLLING) {
@@ -1376,6 +1425,7 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', moveTabInd);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(moveTabInd);
     watchDock();
+    initMenu();
     setInterval(updateClock, 1000);
     watchAutoScroll();
     ['#roster-list', '#board-wrap'].forEach(sel => enableDragScroll(document.querySelector(sel)));
