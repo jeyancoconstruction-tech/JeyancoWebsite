@@ -312,9 +312,10 @@ class KioskController extends Controller
         $required = (int) config('kiosk.fingers_required', 2);
         $max      = max($required, (int) config('kiosk.fingers_max', 3));
 
-        $rows = $employees->map(function (Employee $e) use ($required, $max) {
+        $rows = $employees->map(function (Employee $e) use ($max) {
             $enrolled = ! empty($e->fingerprint_id);
             $slots    = $e->fingerprintSlots();
+            $required = $e->fingersRequired();
 
             return [
                 'id'               => $e->id,
@@ -1256,7 +1257,7 @@ class KioskController extends Controller
                 'fingerprint_id'  => $fp,
                 'fingerprint_ids' => $slots,
                 'fingers'         => count($slots),
-                'complete'        => count($slots) >= (int) config('kiosk.fingers_required', 2),
+                'complete'        => count($slots) >= $employee->fingersRequired(),
                 'status'          => $employee->status,
                 'activated'       => false,
             ]);
@@ -1289,7 +1290,7 @@ class KioskController extends Controller
             'fingerprint_id'=> $employee->fingerprint_id,
             'fingerprint_ids' => $slots,
             'fingers'       => count($slots),
-            'complete'      => count($slots) >= (int) config('kiosk.fingers_required', 2),
+            'complete'      => count($slots) >= $employee->fingersRequired(),
             'status'        => $employee->status,
             'activated'     => $activated,
         ]);

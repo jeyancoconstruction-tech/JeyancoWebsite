@@ -153,7 +153,7 @@ class KioskRealtimeRscTest extends TestCase
 
     public function test_the_roster_keeps_a_worker_until_enough_fingers_are_on_file(): void
     {
-        config(['kiosk.fingers_required' => 2]);
+        config(['kiosk.fingers_required' => 2, 'kiosk.fingers_required_from' => null]);
         $ana = $this->worker('7');
 
         $row = collect($this->getJson('/api/kiosk/roster?kiosk_code=SITE_A')->json('employees'))->firstWhere('id', $ana->id);
@@ -163,6 +163,34 @@ class KioskRealtimeRscTest extends TestCase
         EmployeeFingerprint::create(['employee_id' => $ana->id, 'slot' => '22']);
         $row = collect($this->getJson('/api/kiosk/roster?kiosk_code=SITE_A')->json('employees'))->firstWhere('id', $ana->id);
         $this->assertTrue($row['complete']);
+    }
+
+    /**
+     * 2026-11-09: the crew already working was cleared off the ENROLL list.
+     * Registered before kiosk.fingers_required_from, one finger is enough;
+     * registered since, the full number is needed, as before.
+     */
+    public function test_workers_from_before_the_cut_off_need_one_finger_new_ones_need_two(): void
+    {
+        config(['kiosk.fingers_required' => 2, 'kiosk.fingers_required_from' => '2026-11-09']);
+        $old  = $this->worker('7');                                   // registered 2026-10-19
+        $none = Employee::create(['name' => 'Ben Cruz', 'status' => Employee::STATUS_PENDING,
+            'site_id' => $this->site->id, 'rate_per_hour' => 100, 'shift_id' => $old->shift_id]);
+
+        Carbon::setTestNow(Carbon::parse('2026-11-10 09:00:00', 'Asia/Manila'));
+        $new = Employee::create(['name' => 'Carla Reyes', 'status' => Employee::STATUS_ACTIVE, 'fingerprint_id' => '9',
+            'site_id' => $this->site->id, 'rate_per_hour' => 100, 'shift_id' => $old->shift_id]);
+
+        $rows = collect($this->getJson('/api/kiosk/roster?kiosk_code=SITE_A')->json('employees'))->keyBy('id');
+
+        $this->assertTrue($rows[$old->id]['complete'], 'one finger and from before: off the list');
+        $this->assertSame(1, $rows[$old->id]['fingers_required']);
+        $this->assertFalse($rows[$none->id]['complete'], 'no finger at all: still listed');
+        $this->assertFalse($rows[$new->id]['complete'], 'registered since: still needs a second finger');
+        $this->assertSame(2, $rows[$new->id]['fingers_required']);
+
+        $this->postJson('/api/kiosk/save-fingerprint', ['employee_id' => $new->id, 'fingerprint_id' => '31'])
+            ->assertJsonPath('fingers', 2)->assertJsonPath('complete', true);
     }
 
     public function test_a_finger_of_another_worker_is_refused(): void

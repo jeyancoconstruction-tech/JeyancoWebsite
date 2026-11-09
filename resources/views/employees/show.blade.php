@@ -15,7 +15,7 @@
     $count = fn (array $vals) => collect($vals)->filter(fn ($v) => filled($v))->count();
 
     $slots   = $employee->fingerprintSlots();
-    $needFp  = (int) config('kiosk.fingers_required', 2);
+    $needFp  = $employee->fingersRequired();
     $jobTitle = $employee->job_title ?: $employee->position;
 
     $personal = [

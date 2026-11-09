@@ -477,6 +477,23 @@ class Employee extends Model
         return $id ? $query()->whereKey($id)->first() : null;
     }
 
+    /**
+     * How many fingers this worker needs on file before the kiosk stops
+     * listing them under ENROLL. A worker registered before
+     * kiosk.fingers_required_from needs one; everyone since, the full number.
+     */
+    public function fingersRequired(): int
+    {
+        $required = max(1, (int) config('kiosk.fingers_required', 2));
+        $from     = config('kiosk.fingers_required_from');
+
+        if ($from && $this->created_at && $this->created_at->lt(\Illuminate\Support\Carbon::parse($from)->startOfDay())) {
+            return 1;
+        }
+
+        return $required;
+    }
+
     /** Every slot this worker owns, first finger first. */
     public function fingerprintSlots(): array
     {

@@ -21,7 +21,7 @@
         $lt      = $employee->laborType;
         $slots   = method_exists($employee, 'fingerprintSlots') ? $employee->fingerprintSlots() : array_filter([(string) $employee->fingerprint_id]);
         $fingers = count($slots);
-        $needFp  = (int) config('kiosk.fingers_required', 2);
+        $needFp  = $employee->fingersRequired();
         // How complete the record is: the profile fields with an answer.
         $profileFields = ['birth_date', 'birth_place', 'gender', 'civil_status', 'nationality', 'blood_type',
                           'phone', 'email', 'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',

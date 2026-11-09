@@ -67,6 +67,14 @@ return [
     | a cut or bandaged finger must never lock somebody out.
     */
     'fingers_required' => max(1, (int) env('KIOSK_FINGERS_REQUIRED', 2)),
+
+    /*
+    | Workers registered before this day count as done once one finger is on
+    | file, so they leave the ENROLL list (2026-11-09: the crew already
+    | working was cleared off it). Everyone registered from this day on needs
+    | `fingers_required`, as before. Empty: everybody needs the full number.
+    */
+    'fingers_required_from' => env('KIOSK_FINGERS_REQUIRED_FROM', '2026-11-09'),
     'fingers_max'      => max(1, (int) env('KIOSK_FINGERS_MAX', 3)),
 
 ];

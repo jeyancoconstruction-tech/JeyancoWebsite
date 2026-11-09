@@ -721,7 +721,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                                 'hourly'   => '₱' . number_format((float) $e->rate_per_hour, 2),
                                 'dailyFig' => $e->laborType ? '₱' . number_format((float) $e->laborType->daily_rate, 2) : null,
                                 'slots'    => $e->fingerprintSlots(),
-                                'need'     => (int) config('kiosk.fingers_required', 2),
+                                'need'     => $e->fingersRequired(),
                                 'edit'     => route('employees.edit', $e->id),
                                 'profile'  => route('employees.show', $e->id),
                             ];
