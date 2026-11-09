@@ -839,7 +839,7 @@ body { background: var(--bg); font-feature-settings: "tnum" 1, "cv11" 1; }
 .k-left .k-clock-date { margin: 0; text-align: left; font-size: var(--fs-s); font-weight: 700; letter-spacing: .12em; color: var(--muted); }
 .k-left .k-clock-time {
     display: flex; align-items: flex-start; margin-top: .25em;
-    font-size: clamp(64px, 19vh, 170px); font-weight: 800; letter-spacing: -.045em; line-height: .9; color: var(--text);
+    font-size: clamp(44px, min(19vh, 9.4vw), 170px); white-space: nowrap; font-weight: 800; letter-spacing: -.045em; line-height: .9; color: var(--text);
 }
 .k-left .k-clock-time.unsynced { color: var(--muted); }
 .k-left .k-clock-time b { font-weight: 800; }
@@ -1009,7 +1009,7 @@ body.dock-hidden .k-tabs { transform: none; opacity: 1; pointer-events: auto; }
 /* smaller and narrower screens */
 @media (max-height: 520px) {
     .k-left .k-clock-date, .k-health, .k-left .session-pill { display: none; }
-    .k-left .k-clock-time { font-size: clamp(56px, 22vh, 120px); }
+    .k-left .k-clock-time { font-size: clamp(44px, min(22vh, 9.4vw), 120px); }
 }
 @media (max-width: 900px) {
     .board-count { display: none; }
