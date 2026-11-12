@@ -1022,3 +1022,10 @@ body.dock-hidden .k-tabs { transform: none; opacity: 1; pointer-events: auto; }
     #tab-attendance .scan-bar { margin-top: var(--gap); }
     #tab-dtr > .panel:first-child, #tab-report > .panel:first-child, #tab-register > .panel:first-child { border-right: 0; padding-right: 0; }
 }
+
+/* The worker icon, as on the website: white in the dark theme (the kiosk's
+   default), black in the light; its tile a neutral grey in both. */
+.wk { background-color: #fff !important; }
+html[data-theme="light"] .wk { background-color: #000 !important; }
+:has(> .wk) { background: rgba(255, 255, 255, .08) !important; color: inherit; }
+html[data-theme="light"] :has(> .wk) { background: #eef0f3 !important; }
