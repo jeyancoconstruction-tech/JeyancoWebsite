@@ -367,6 +367,9 @@ html[data-bs-theme] .wkc-who h2 { margin: 0; font-size: 19px; font-weight: 600; 
 [data-bs-theme="dark"] .wkc-fp-add { color: #8fb3df; }
 .wkc-fp-add::before { content: '+ '; }
 .wkc-fp-add:hover { text-decoration: underline; }
+.wkc-fp-x { display: block; margin-top: 2px; padding: 0; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--wk-navy); cursor: pointer; }
+[data-bs-theme="dark"] .wkc-fp-x { color: #8fb3df; }
+.wkc-fp-x:hover { text-decoration: underline; }
 
 .wkc-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; padding: 6px 22px 0; max-height: calc(100vh - 320px); overflow-y: auto; }
 .wkc-blk { padding: 14px 0 4px; min-width: 0; }
@@ -743,6 +746,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                                 // The office has asked the kiosk for another finger.
                                 'fpAsked'  => $e->extraFingerRequested(),
                                 'fpAsk'    => route('employees.finger-request', $e->id),
+                                'fpCancel' => route('employees.finger-request.cancel', $e->id),
                                 'edit'     => route('employees.edit', $e->id),
                                 'profile'  => route('employees.show', $e->id),
                             ];
@@ -2462,10 +2466,11 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
               `<b class="${!slots.length || d.fpAsked ? 'short' : ''}">${slots.length}<small>of ${need}</small></b>` +
               // One finger is enough to work; another is asked of the kiosk from here.
               (!slots.length ? '<em class="wkc-fp">First finger at the kiosk</em>'
-                : slots.length < need && d.fpAsked ? '<em class="wkc-fp">Waiting at the kiosk</em>'
+                : slots.length < need && d.fpAsked ? '<em class="wkc-fp">Waiting at the kiosk</em><button type="submit" form="wmFpCancel" class="wkc-fp-x">Cancel</button>'
                 : slots.length < need ? `<button type="submit" form="wmFpAsk" class="wkc-fp-add">${slots.length === 1 ? 'Add second' : 'Add another'}</button>` : '') +
               '</div>';
         $('wmFpAsk').action = d.fpAsk || '#';
+        $('wmFpCancel').action = d.fpCancel || '#';
 
         const ids = [['SSS', d.sss], ['PhilHealth', d.philhealth], ['Pag-IBIG', d.pagibig], ['TIN', d.tin]];
         const issued = ids.filter(x => x[1]);
@@ -2541,6 +2546,7 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             {{-- Another finger, asked of the kiosk: the Fingerprints figure's
                  button posts this; its action is the worker's, set on open. --}}
             <form id="wmFpAsk" method="POST" action="#" hidden>@csrf</form>
+            <form id="wmFpCancel" method="POST" action="#" hidden>@csrf @method('DELETE')</form>
         </div>
     </div>
 </div>
