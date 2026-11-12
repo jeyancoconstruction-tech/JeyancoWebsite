@@ -323,76 +323,89 @@ tr.rmx-row-card:hover .rmx-name { color: var(--brand, #1668DC); }
 /* The whole row opens the worker; its checkbox and buttons keep their own jobs. */
 tr.rmx-row-card { cursor: pointer; }
 
-/* The worker card (2026-10-20 revision). Sized to what it holds: a
-   construction stripe, who they are, the figures in one strip, the record as
-   a two-column spec sheet, and the two ways on. Theme tokens throughout; the
-   worker icon is black on safety yellow in light and dark alike. */
-#workerModal .wkc-dialog { max-width: 780px; }
-.wkc { overflow: hidden; background: var(--surface, #fff); color: var(--text-primary, #101828);
-       border: 1px solid var(--border-md, #d3dbe6); border-radius: 14px; box-shadow: 0 24px 70px rgba(0, 0, 0, .35); }
-.wkc::before { content: ''; display: block; height: 4px; flex: none;
-               background: repeating-linear-gradient(-45deg, #f5b73b 0 14px, #1a1a1a 14px 28px); }
-.wkc-head { display: flex; align-items: center; gap: 14px; padding: 18px 20px 16px; }
-.wkc-ico { flex: none; width: 56px; height: 56px; border-radius: 12px; display: grid; place-items: center;
-           background: #f5b73b; color: #111; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+/* The worker card (2026-11-12 revision, "calm card"). Who they are, the
+   figures in one strip, then only what has been recorded; whatever is still
+   missing is named once, in one note, instead of a grey "Not recorded" per
+   field. Warm paper and navy instead of white and bright blue, so it is easy
+   on the eyes. The worker in a hard hat stays, cream on navy. */
+#workerModal .wkc-dialog { max-width: 720px; }
+.wkc { --wk-paper: #fffdfa; --wk-ink: #1b2430; --wk-mute: #7b756c; --wk-line: #ece7df;
+       --wk-navy: #1f3a5f; --wk-ico: #f2ede4; --wk-green: #2f7a4f;
+       --wk-amber: #9a6418; --wk-amber-bg: #fbf4e6; --wk-amber-line: #e6d3ae; --wk-meter: #e7e1d7;
+       overflow: hidden; background: var(--wk-paper); color: var(--wk-ink);
+       border: 0; border-radius: 12px; box-shadow: 0 1px 0 rgba(0, 0, 0, .04), 0 20px 56px rgba(10, 15, 25, .32); }
+[data-bs-theme="dark"] .wkc { --wk-paper: var(--surface, #161b22); --wk-ink: #e8eaed; --wk-mute: #9aa3af; --wk-line: rgba(255, 255, 255, .08);
+       --wk-navy: #2c5282; --wk-ico: #f2ede4; --wk-green: #6cc08e;
+       --wk-amber: #e3b467; --wk-amber-bg: rgba(227, 180, 103, .09); --wk-amber-line: rgba(227, 180, 103, .28); --wk-meter: rgba(255, 255, 255, .1);
+       border: 1px solid var(--wk-line); }
+
+.wkc-head { display: flex; align-items: center; gap: 14px; padding: 22px 22px 18px; }
+.wkc-ico { flex: none; width: 50px; height: 50px; border-radius: 10px; display: grid; place-items: center;
+           background: var(--wk-navy); color: var(--wk-ico); }
 .wkc-who { flex: 1; min-width: 0; }
-html[data-bs-theme] .wkc-who h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.015em; color: var(--text-primary, #101828);
+html[data-bs-theme] .wkc-who h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.012em; color: var(--wk-ink);
                                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wkc-who p { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; color: var(--text-secondary, #475467); }
-.wkc-id { font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-muted, #8590a2); }
-.wkc-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted, #8590a2); }
-.wkc-status { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border: 1px solid var(--border-md, #d3dbe6); border-radius: 999px;
-              font-size: 12px; font-weight: 600; color: var(--text-secondary, #475467); }
-.wkc-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--success, #12b76a); }
-.wkc-x { width: 32px; height: 32px; padding: 0; border-radius: 8px; display: grid; place-items: center; cursor: pointer;
-         border: 1px solid var(--border-md, #d3dbe6); background: none; color: var(--text-muted, #8590a2); }
-.wkc-x:hover { color: var(--text-primary, #101828); background: var(--bg-subtle, #f3f5f8); }
+.wkc-who p { margin: 3px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; font-size: 12.5px; color: var(--wk-mute); }
+.wkc-id { font-variant-numeric: tabular-nums; }
+.wkc-dot::before { content: '/'; margin: 0 7px; opacity: .45; }
+.wkc-status { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; font-size: 12px; font-weight: 600; color: var(--wk-green); }
+.wkc-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.wkc-x { width: 30px; height: 30px; padding: 0; border-radius: 8px; display: grid; place-items: center; cursor: pointer;
+         border: 0; background: none; color: var(--wk-mute); }
+.wkc-x:hover { color: var(--wk-ink); background: var(--wk-line); }
 
-.wkc-stats { display: grid; grid-template-columns: 1.15fr 1fr 1fr 1.25fr; margin: 0 20px; border: 1px solid var(--border, #e4e9f0); border-radius: 10px; background: var(--bg-subtle, #f7f9fb); }
-.wkc-stats > div { padding: 11px 14px; min-width: 0; }
-.wkc-stats > div + div { border-left: 1px solid var(--border, #e4e9f0); }
-.wkc-stats > div > span { display: block; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted, #8590a2); }
-.wkc-stats b { display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 18px; font-weight: 600; letter-spacing: -.01em;
-               font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-primary, #101828); }
-.wkc-stats b small { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--text-muted, #8590a2); }
-.wkc-stats b.short { color: var(--warning, #d97706); }
-.wkc-bars { display: inline-flex; gap: 3px; }
-.wkc-bars i { width: 16px; height: 6px; border-radius: 2px; background: var(--border-md, #d3dbe6); }
-.wkc-bars i.on { background: var(--success, #12b76a); }
+.wkc-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--wk-line); border-bottom: 1px solid var(--wk-line); }
+.wkc-stats > div { padding: 13px 22px 14px; min-width: 0; }
+.wkc-stats > div + div { border-left: 1px solid var(--wk-line); }
+.wkc-stats > div > span { display: block; font-size: 11.5px; color: var(--wk-mute); }
+.wkc-stats b { display: flex; align-items: baseline; gap: 5px; margin-top: 3px; font-size: 18px; font-weight: 600; letter-spacing: -.01em;
+               font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--wk-ink); }
+.wkc-stats b small { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--wk-mute); }
+.wkc-stats b.short { color: var(--wk-amber); }
 
-.wkc-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; padding: 16px 20px 6px; max-height: calc(100vh - 330px); overflow-y: auto; }
-.wkc-blk { padding: 12px 0; border-top: 1px solid var(--border, #e4e9f0); min-width: 0; }
+.wkc-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; padding: 6px 22px 0; max-height: calc(100vh - 320px); overflow-y: auto; }
+.wkc-blk { padding: 14px 0 4px; min-width: 0; }
 .wkc-blk.full { grid-column: 1 / -1; }
-.wkc-blk h3 { display: flex; justify-content: space-between; margin: 0 0 8px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted, #8590a2); }
-.wkc-blk h3 span { font-weight: 500; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
-.wkc-spec { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 13px; }
-.wkc-spec dt { font-weight: 400; color: var(--text-muted, #8590a2); white-space: nowrap; }
-.wkc-spec dd { margin: 0; min-width: 0; text-align: right; font-weight: 500; color: var(--text-primary, #101828); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wkc-spec dd.none, .wkc-ids b.none { font-weight: 400; color: var(--text-muted, #8590a2); opacity: .75; }
-.wkc-ids { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.wkc-ids div { padding: 8px 10px; border: 1px dashed var(--border-md, #d3dbe6); border-radius: 8px; min-width: 0; }
-.wkc-ids div.on { border-style: solid; }
-.wkc-ids span { display: block; font-size: 11.5px; color: var(--text-muted, #8590a2); }
-.wkc-ids b { display: block; font-size: 13px; font-weight: 500; color: var(--text-primary, #101828); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wkc-blk h3 { margin: 0 0 4px; font-size: 11.5px; font-weight: 600; color: var(--wk-mute); }
+.wkc-spec { display: grid; grid-template-columns: auto 1fr; gap: 0 14px; margin: 0; font-size: 13px; }
+.wkc-spec dt, .wkc-spec dd { padding: 5px 0; }
+.wkc-spec dt { font-weight: 400; color: var(--wk-mute); white-space: nowrap; }
+.wkc-spec dd { margin: 0; min-width: 0; text-align: right; font-weight: 500; color: var(--wk-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wkc-ids { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 14px; border-top: 1px solid var(--wk-line); }
+.wkc-ids div { padding: 8px 0 2px; min-width: 0; }
+.wkc-ids span { display: block; font-size: 11.5px; color: var(--wk-mute); }
+.wkc-ids b { display: block; font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--wk-ink);
+             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.wkc-foot { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border, #e4e9f0); background: var(--bg-subtle, #f7f9fb); }
-.wkc-meter { flex: 1; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted, #8590a2); }
-.wkc-meter span { width: 120px; height: 5px; border-radius: 3px; overflow: hidden; background: var(--border, #e4e9f0); }
-.wkc-meter i { display: block; height: 100%; background: var(--brand, #1668dc); }
+.wkc-todo { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; margin: 12px 0 4px; padding: 14px 16px;
+            border-radius: 10px; background: var(--wk-amber-bg); }
+.wkc-todo > div { flex: 1; min-width: 0; }
+.wkc-todo strong { display: block; font-size: 13px; font-weight: 600; color: var(--wk-amber); }
+.wkc-todo p { margin: 3px 0 0; font-size: 12px; line-height: 1.5; color: var(--wk-mute); }
+.wkc-todo a { flex: none; height: 32px; padding: 0 13px; border-radius: 8px; display: inline-flex; align-items: center; font-size: 12.5px; font-weight: 600;
+              text-decoration: none; color: var(--wk-amber); border: 1px solid var(--wk-amber-line); background: var(--wk-paper); }
+.wkc-todo a:hover { color: var(--wk-amber); filter: brightness(.98); }
+
+.wkc-foot { display: flex; align-items: center; gap: 10px; padding: 16px 22px 18px; margin-top: 10px; }
+.wkc-meter { flex: 1; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--wk-mute); font-variant-numeric: tabular-nums; }
+.wkc-meter span { width: 100px; height: 4px; border-radius: 2px; overflow: hidden; background: var(--wk-meter); }
+.wkc-meter i { display: block; height: 100%; background: var(--wk-navy); }
 .wkc-btn { height: 36px; padding: 0 15px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; text-decoration: none;
-           border: 1px solid var(--border-md, #d3dbe6); color: var(--text-primary, #101828); background: var(--surface, #fff); }
-.wkc-btn:hover { background: var(--bg-subtle, #f3f5f8); color: var(--text-primary, #101828); }
-.wkc-btn.pri { background: var(--brand, #1668dc); border-color: var(--brand, #1668dc); color: #fff; }
-.wkc-btn.pri:hover { filter: brightness(1.08); color: #fff; }
-.wkc-btn i { font-size: 12px; opacity: .85; }
+           border: 1px solid var(--wk-line); color: var(--wk-ink); background: transparent; }
+[data-bs-theme="dark"] .wkc-btn { border-color: rgba(255, 255, 255, .14); }
+.wkc-btn:hover { background: var(--wk-line); color: var(--wk-ink); }
+.wkc-btn.pri { background: var(--wk-navy); border-color: var(--wk-navy); color: #fff; }
+.wkc-btn.pri:hover { filter: brightness(1.12); color: #fff; }
+.wkc-btn i { font-size: 12px; opacity: .8; }
 
 @media (max-width: 640px) {
     .wkc-status { display: none; }
     .wkc-stats { grid-template-columns: 1fr 1fr; }
     .wkc-stats > div:nth-child(3) { border-left: 0; }
-    .wkc-stats > div:nth-child(n+3) { border-top: 1px solid var(--border, #e4e9f0); }
+    .wkc-stats > div:nth-child(n+3) { border-top: 1px solid var(--wk-line); }
     .wkc-body { grid-template-columns: 1fr; }
     .wkc-ids { grid-template-columns: 1fr 1fr; }
+    .wkc-todo { flex-direction: column; align-items: stretch; }
     .wkc-meter { display: none; }
     .wkc-btn { flex: 1; justify-content: center; }
 }
@@ -2402,15 +2415,26 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
     const esc = t => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const $ = id => document.getElementById(id);
 
-    // The record as a spec sheet. Each row is [label, value]; a block says
-    // how many of its fields are filled in.
-    const NONE = 'Not recorded';
-    const spec = rows => `<dl class="wkc-spec">${rows.map(([label, value, blank]) =>
-        `<dt>${label}</dt>` + (value ? `<dd title="${esc(value)}">${esc(value)}</dd>` : `<dd class="none">${blank || NONE}</dd>`)).join('')}</dl>`;
-    const block = (title, rows, filled, total) =>
-        `<section class="wkc-blk"><h3>${title}${total ? `<span>${filled} of ${total}</span>` : ''}</h3>${spec(rows)}</section>`;
+    // The record as a spec sheet. Each row is [label, value]; only what has
+    // been recorded is shown, and a block with nothing in it is left out.
+    // Whatever is missing is named once, in the note at the end.
+    const spec = rows => `<dl class="wkc-spec">${rows.map(([label, value]) =>
+        `<dt>${label}</dt><dd title="${esc(value)}">${esc(value)}</dd>`).join('')}</dl>`;
+    const block = (title, rows) => {
+        rows = rows.filter(r => r[1]);
+        return rows.length ? `<section class="wkc-blk"><h3>${title}</h3>${spec(rows)}</section>` : '';
+    };
     const has = (...v) => v.filter(Boolean).length;
     const join = (...v) => v.filter(Boolean).join(' · ');
+    // What is still missing, by group: the group's name when all of it is
+    // missing, otherwise the fields that are.
+    const missing = groups => groups.map(([name, fields]) => {
+        const gone = fields.filter(f => !f[1]).map(f => f[0]);
+        const said = gone.length === fields.length ? name : gone.join(', ');
+        return said && said.charAt(0).toUpperCase() + said.slice(1);
+    }).filter(Boolean);
+    // A row that pairs two fields is named after the ones that are there.
+    const pair = (...parts) => [parts.filter(p => p[1]).map(p => p[0]).join(' · '), join(...parts.map(p => p[1]))];
 
     function open(row) {
         let d;
@@ -2422,35 +2446,41 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
         // The figures, in one strip.
         const slots = Array.isArray(d.slots) ? d.slots : [];
         const need  = Math.max(1, Number(d.need) || 2);
-        const bars  = Array.from({ length: Math.max(need, slots.length) }, (_, i) => `<i class="${i < slots.length ? 'on' : ''}"></i>`).join('');
         $('wmStats').innerHTML =
-            `<div><span>Daily</span><b>${esc(d.dailyFig || '—')}</b></div>` +
+            `<div><span>Daily rate</span><b>${esc(d.dailyFig || '—')}</b></div>` +
             `<div><span>Hourly</span><b>${esc(d.hourly || '—')}</b></div>` +
             `<div><span>Scans</span><b>${esc(String(d.logs ?? 0))}<small>logged</small></b></div>` +
             `<div title="${esc(slots.length ? 'Slot ' + slots.join(', ') : 'No fingerprint yet')}"><span>Fingerprints</span>` +
-              `<b class="${slots.length < need ? 'short' : ''}">${slots.length}/${need}<span class="wkc-bars">${bars}</span></b></div>`;
+              `<b class="${slots.length < need ? 'short' : ''}">${slots.length}<small>of ${need}</small></b></div>`;
 
         const ids = [['SSS', d.sss], ['PhilHealth', d.philhealth], ['Pag-IBIG', d.pagibig], ['TIN', d.tin]];
-        $('wmFacts').innerHTML =
-            block('Work', [['Shift', d.shift, 'Not set'], ['Hired', d.hired], ['Employment', d.hiredAs, '—']]
-                .concat(d.otherSites ? [['Other sites', d.otherSites]] : [])
-                .concat(d.overtime ? [['Overtime', d.overtime]] : [])) +
-            block('Personal', [['Born', d.born], ['Gender · Civil status', join(d.gender, d.civil)], ['Nationality', d.nation],
-                               ['Birthplace · Blood', join(d.birthplace, d.blood)]],
-                  has(d.born, d.birthplace, d.gender, d.civil, d.nation, d.blood), 6) +
-            block('Contact', [['Mobile', d.phone], ['Email', d.email],
-                              ['Emergency', d.ice ? d.ice + (d.iceRel ? ' (' + d.iceRel + ')' : '') : ''], ['Emergency no.', d.icePhone]],
-                  has(d.phone, d.email, d.ice, d.iceRel, d.icePhone), 5) +
-            block('Address', [['Street', d.street], ['Barangay', d.brgy], ['City', d.city], ['Province · ZIP', join(d.prov, d.zip)]],
-                  has(d.street, d.brgy, d.city, d.prov, d.zip), 5) +
-            `<section class="wkc-blk full"><h3>Government IDs<span>${has(...ids.map(x => x[1]))} of 4</span></h3><div class="wkc-ids">` +
-              ids.map(([label, v]) => `<div class="${v ? 'on' : ''}"><span>${label}</span><b class="${v ? '' : 'none'}">${v ? esc(v) : 'Not issued yet'}</b></div>`).join('') +
-            `</div></section>`;
-
-        // How complete the record is.
+        const issued = ids.filter(x => x[1]);
+        const gaps = missing([
+            ['Contact & emergency', [['mobile', d.phone], ['email', d.email], ['emergency contact', d.ice], ['relationship', d.iceRel], ['emergency no.', d.icePhone]]],
+            ['Address', [['street', d.street], ['barangay', d.brgy], ['city', d.city], ['province', d.prov], ['ZIP', d.zip]]],
+            ['SSS, PhilHealth, Pag-IBIG, TIN', ids],
+            ['Personal details', [['birth date', d.born], ['gender', d.gender], ['civil status', d.civil], ['nationality', d.nation], ['birthplace', d.birthplace], ['blood type', d.blood]]],
+        ]);
         const filled = has(d.born, d.birthplace, d.gender, d.civil, d.nation, d.blood, d.phone, d.email, d.ice, d.iceRel, d.icePhone,
                            d.street, d.brgy, d.city, d.prov, d.zip, d.sss, d.philhealth, d.pagibig, d.tin);
-        $('wmMeter').innerHTML = `<span><i style="width:${Math.round(filled / 20 * 100)}%"></i></span>Profile ${filled} of 20 recorded`;
+        const left = 20 - filled;
+
+        $('wmFacts').innerHTML =
+            block('Work', [['Shift', d.shift || 'Not set'], ['Hired', d.hired], ['Employment', d.hiredAs], ['Other sites', d.otherSites], ['Overtime', d.overtime]]) +
+            block('Personal', [['Born', d.born], pair(['Gender', d.gender], ['Civil status', d.civil]), ['Nationality', d.nation],
+                               pair(['Birthplace', d.birthplace], ['Blood', d.blood])]) +
+            block('Contact', [['Mobile', d.phone], ['Email', d.email],
+                              ['Emergency', d.ice ? d.ice + (d.iceRel ? ' (' + d.iceRel + ')' : '') : ''], ['Emergency no.', d.icePhone]]) +
+            block('Address', [['Street', d.street], ['Barangay', d.brgy], ['City', d.city], pair(['Province', d.prov], ['ZIP', d.zip])]) +
+            (issued.length ? `<section class="wkc-blk full"><h3>Government IDs</h3><div class="wkc-ids">` +
+              issued.map(([label, v]) => `<div><span>${label}</span><b>${esc(v)}</b></div>`).join('') + `</div></section>` : '') +
+            (left ? `<div class="wkc-todo"><div><strong>${left} ${left === 1 ? 'detail' : 'details'} not recorded yet</strong>` +
+                    `<p>${gaps.map(esc).join(' · ')}</p></div><a href="${esc(d.edit)}">Complete profile</a></div>` : '');
+
+        // How complete the record is.
+        $('wmMeter').innerHTML = left
+            ? `<span><i style="width:${Math.round(filled / 20 * 100)}%"></i></span>${filled} of 20 recorded`
+            : `<span><i style="width:100%"></i></span>Profile complete`;
 
         $('wmProfile').href = d.profile;
         $('wmEdit').href = d.edit;
