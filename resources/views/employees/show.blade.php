@@ -6,10 +6,10 @@
 @endpush
 
 @section('content')
-{{-- A worker's full profile (2026-10-20 revision). One screen, filled: who
-     they are across the top; this week's payroll, then the record in four
-     cards that share the height; and down the right their employment, their
-     fingers and how complete the record is, and the latest kiosk scans. --}}
+{{-- A worker's full profile (2026-11-12 revision, "calm"). Who they are in
+     one line; this week's pay as plain figures; then only what has been
+     recorded, with one note naming what has not; and down the right their
+     employment, how complete the record is, and the latest kiosk scans. --}}
 @php
     $show = fn ($v) => is_string($v) ? (trim($v) !== '' ? trim($v) : null) : $v;
     $count = fn (array $vals) => collect($vals)->filter(fn ($v) => filled($v))->count();
@@ -54,23 +54,35 @@
     $statusLabel = ['active' => __('Active'), 'pending' => __('Pending'), 'archived' => __('Archived'), 'deleted' => __('Removed')][$employee->status] ?? ucfirst((string) $employee->status);
 @endphp
 
+@php
+    // What is still blank, named once: a group's name when all of it is
+    // blank, otherwise the fields that are.
+    $missing = collect([
+        [__('Personal details'), $personal],
+        [__('Contact & emergency'), $contact],
+        [__('Full address'), $address],
+        ['SSS, PhilHealth, Pag-IBIG, TIN', $ids],
+    ])->map(function ($g) {
+        $gone = collect($g[1])->filter(fn ($v) => blank($v))->keys();
+        if ($gone->isEmpty()) return null;
+        return $gone->count() === count($g[1]) ? $g[0] : $gone->implode(', ');
+    })->filter()->values();
+    $filledRows = fn (array $rows) => collect($rows)->filter(fn ($v) => filled($v));
+    $canDtr = \Illuminate\Support\Facades\Route::has('payroll-reports.index') && auth()->user()?->canAccessModule('payroll-reports');
+@endphp
+
 <div class="employee-container epf">
 
     <header class="epf-hero">
-        <span class="epf-ico">@include('partials.worker-icon', ['size' => '66%'])</span>
+        <span class="epf-ico">@include('partials.worker-icon', ['size' => '64%'])</span>
         <div class="epf-who">
             <h1>{{ $employee->name }}</h1>
             <p>
-                <span class="epf-id">#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }}</span>
-                @if($jobTitle)<span class="epf-dot"></span>{{ $jobTitle }}@endif
-                @if($employee->site)<span class="epf-dot"></span>{{ $employee->site->name }}@endif
+                <span>#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }}</span>
+                @if($jobTitle)<span>{{ $jobTitle }}</span>@endif
+                @if($employee->site)<span>{{ $employee->site->name }}</span>@endif
+                <span class="epf-st st-{{ $employee->status }}"><i></i>{{ $statusLabel }}</span>
             </p>
-            <div class="epf-tags">
-                <span class="epf-tag st-{{ $employee->status }}">{{ $statusLabel }}</span>
-                <span class="epf-tag">{{ $employee->isContractual() ? __('Contractual') : __('Regular') }}</span>
-                @if($employee->shift)<span class="epf-tag">{{ $employee->shift->name }}</span>@endif
-                <span class="epf-tag {{ count($slots) < $needFp ? 'warn' : '' }}"><i class="fas fa-fingerprint"></i>{{ count($slots) }} {{ __('of') }} {{ $needFp }}</span>
-            </div>
         </div>
         <div class="epf-acts">
             <a href="{{ route('employees.register') }}" class="epf-btn"><i class="fas fa-arrow-left"></i>{{ __('Employees') }}</a>
@@ -78,84 +90,98 @@
         </div>
     </header>
 
-    <div class="epf-cols">
-        <div class="epf-main">
-            {{-- This week's payroll for the worker, as Payroll works it out. --}}
-            <section class="epf-box">
-                <div class="epf-box-h"><h3>{{ __('Payroll this week') }}</h3><span>{{ $period }}</span></div>
-                <div class="epf-pay">
-                    <div><span>{{ __('Days') }}</span><b>{{ (int) ($totals['workdays'] ?? 0) }}</b></div>
-                    <div><span>{{ __('Hours') }}</span><b>{{ number_format($num('hours'), 2) }}</b></div>
-                    <div><span>{{ __('Overtime') }}</span><b class="{{ $num('overtime') > 0 ? 'is-ot' : '' }}">₱{{ number_format($num('overtime'), 2) }}</b></div>
-                    <div><span>{{ __('Gross') }}</span><b>₱{{ number_format($num('gross'), 2) }}</b></div>
-                    <div><span>{{ __('Deductions') }}</span><b class="{{ $num('totalDeductions') > 0 ? 'is-minus' : '' }}">₱{{ number_format($num('totalDeductions'), 2) }}</b></div>
-                    <div class="net"><span>{{ __('Net') }}</span><b>₱{{ number_format($num('net'), 2) }}</b></div>
-                </div>
-            </section>
+    {{-- This week's payroll for the worker, as Payroll works it out. --}}
+    <section class="epf-box epf-week">
+        <div class="epf-week-t">{{ __('This week') }}<small>{{ $period }}</small></div>
+        <div><span>{{ __('Days') }}</span><b>{{ (int) ($totals['workdays'] ?? 0) }}</b></div>
+        <div><span>{{ __('Hours') }}</span><b>{{ number_format($num('hours'), 2) }}</b></div>
+        <div><span>{{ __('Overtime') }}</span><b>₱{{ number_format($num('overtime'), 2) }}</b></div>
+        <div><span>{{ __('Gross') }}</span><b>₱{{ number_format($num('gross'), 2) }}</b></div>
+        <div><span>{{ __('Deductions') }}</span><b>₱{{ number_format($num('totalDeductions'), 2) }}</b></div>
+        <div class="net"><span>{{ __('Net pay') }}</span><b>₱{{ number_format($num('net'), 2) }}</b></div>
+    </section>
 
-            {{-- The record, in four cards sharing what height is left. --}}
-            <div class="epf-quad">
-                @foreach([
-                    [__('Personal'), $personal, 'g3', __('Not recorded')],
-                    [__('Contact & emergency'), $contact, 'g2', __('Not recorded')],
-                    [__('Address'), $address, 'g3', __('Not recorded')],
-                    [__('Government IDs'), $ids, 'g2', __('Not issued yet')],
-                ] as [$title, $rows, $cols, $blank])
-                    <section class="epf-box">
-                        <div class="epf-box-h"><h3>{{ $title }}</h3><span>{{ $count($rows) }} {{ __('of') }} {{ count($rows) }}</span></div>
-                        <dl class="epf-grid {{ $cols }}">
-                            @foreach($rows as $label => $value)
-                                <div><dt>{{ $label }}</dt><dd class="{{ filled($value) ? '' : 'none' }}">{{ filled($value) ? $value : $blank }}</dd></div>
-                            @endforeach
-                        </dl>
-                    </section>
-                @endforeach
-            </div>
-        </div>
+    <div class="epf-cols">
+        {{-- The record: only what has been recorded. Whatever is blank is
+             named once, in the note at the end, with the way to fill it in. --}}
+        <section class="epf-box epf-rec">
+            @foreach([[__('Personal'), $personal], [__('Contact & emergency'), $contact]] as [$title, $rows])
+                @if(($have = $filledRows($rows))->isNotEmpty())
+                    <div class="epf-blk">
+                        <h3>{{ $title }}</h3>
+                        @foreach($have as $label => $value)
+                            <div class="epf-r"><span>{{ $label }}</span><b>{{ $value }}</b></div>
+                        @endforeach
+                    </div>
+                @endif
+            @endforeach
+
+            @if(($have = $filledRows($address))->isNotEmpty())
+                <div class="epf-blk full">
+                    <h3>{{ __('Address') }}</h3>
+                    <div class="epf-r"><span>{{ __('Home') }}</span><b>{{ collect([$show($employee->address_street), $show($employee->address_barangay), $show($employee->address_city), trim(($show($employee->address_province) ?? '') . ' ' . ($show($employee->address_postal) ?? ''))])->filter()->implode(', ') }}</b></div>
+                </div>
+            @endif
+
+            @if(($have = $filledRows($ids))->isNotEmpty())
+                <div class="epf-blk full">
+                    <h3>{{ __('Government IDs') }}</h3>
+                    <div class="epf-ids">
+                        @foreach($have as $label => $value)
+                            <div><span>{{ $label }}</span><b>{{ $value }}</b></div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            @if($missing->isNotEmpty())
+                <div class="epf-todo">
+                    <div>
+                        <strong>{{ $fields - $recorded }} {{ $fields - $recorded === 1 ? __('detail not recorded yet') : __('details not recorded yet') }}</strong>
+                        <p>{{ $missing->implode(' · ') }}</p>
+                    </div>
+                    <a href="{{ route('employees.edit', $employee->id) }}">{{ __('Complete profile') }}</a>
+                </div>
+            @endif
+        </section>
 
         <aside class="epf-side">
-            <section class="epf-box">
-                <div class="epf-box-h"><h3>{{ __('Employment') }}</h3></div>
+            <section class="epf-box epf-pad">
+                <h3>{{ __('Employment') }}</h3>
                 <dl class="epf-spec">
                     <dt>{{ __('Labor type') }}</dt><dd>{{ $employee->laborType->name ?? __('Not set') }}</dd>
-                    <dt>{{ __('Position') }}</dt><dd>{{ $jobTitle ?: __('Not recorded') }}</dd>
+                    @if($jobTitle && $jobTitle !== ($employee->laborType->name ?? null))<dt>{{ __('Position') }}</dt><dd>{{ $jobTitle }}</dd>@endif
                     <dt>{{ __('Rate') }}</dt><dd>₱{{ number_format((float) $employee->rate_per_hour, 2) }} / {{ __('hr') }}</dd>
                     @if($employee->laborType)<dt>{{ __('Daily') }}</dt><dd>{{ $employee->laborType->getFormattedDailyRate() }}</dd>@endif
                     {{-- An untagged worker falls back to the office default in
                          payroll: worth saying rather than leaving blank. --}}
                     <dt>{{ __('Shift') }}</dt><dd>{{ $employee->shift ? $employee->shift->name . ' · ' . \Carbon\Carbon::parse($employee->shift->starts_at)->format('g:i A') : __('Office default') }}</dd>
-                    <dt>{{ __('Hired') }}</dt><dd>{{ $employee->date_hired?->format('M d, Y') ?: __('Not recorded') }}</dd>
+                    <dt>{{ __('Hired') }}</dt><dd>{{ $employee->date_hired?->format('M j, Y') ?: __('Not recorded') }}</dd>
                     <dt>{{ __('Employment') }}</dt><dd>{{ $employee->isContractual() ? __('Contractual') . ($employee->end_of_contract ? ' · ' . __('until') . ' ' . $employee->end_of_contract->format('M d, Y') : '') : __('Regular') }}</dd>
                     <dt>{{ __('Site') }}</dt><dd>{{ $employee->site->name ?? __('Not assigned') }}</dd>
-                    @if(($others = $employee->otherSiteList())->isNotEmpty())
-                        <dt>{{ __('Other sites') }}</dt><dd>{{ $others->pluck('name')->implode(', ') }}</dd>
-                    @endif
+                    @if(($others = $employee->otherSiteList())->isNotEmpty())<dt>{{ __('Other sites') }}</dt><dd>{{ $others->pluck('name')->implode(', ') }}</dd>@endif
                     <dt>{{ __('Vale balance') }}</dt><dd class="{{ ($employee->vale ?? 0) > 0 ? 'warn' : '' }}">₱{{ number_format($employee->vale ?? 0, 2) }}</dd>
                 </dl>
             </section>
 
             <section class="epf-box epf-pad">
-                <div class="epf-row"><h3>{{ __('Fingerprints') }}</h3><span>{{ count($slots) }} {{ __('of') }} {{ $needFp }}</span></div>
-                <div class="epf-slots">
-                    @for($i = 0; $i < max($needFp, count($slots)); $i++)
-                        @if(isset($slots[$i]))
-                            <span class="epf-slot on"><i class="fas fa-fingerprint"></i>{{ __('Slot') }} {{ $slots[$i] }}</span>
-                        @else
-                            <span class="epf-slot">{{ __('Empty') }}</span>
-                        @endif
-                    @endfor
-                </div>
+                <h3>{{ __('Profile') }}
+                    @if($recorded >= $fields)<span class="ok"><i class="fas fa-check"></i> {{ __('Complete') }}</span>@else<span>{{ $recorded }} {{ __('of') }} {{ $fields }}</span>@endif
+                </h3>
+                @if($recorded < $fields)<div class="epf-meter"><i style="width: {{ round($recorded / max(1, $fields) * 100) }}%"></i></div>@endif
+                <div class="epf-r"><span>{{ __('Fingerprints') }}</span>
+                    <b class="{{ count($slots) < $needFp ? 'warn' : '' }}">{{ count($slots) ? (count($slots) === 1 ? __('Slot') : __('Slots')) . ' ' . implode(', ', $slots) . ' · ' : '' }}{{ count($slots) }} {{ __('of') }} {{ $needFp }}</b></div>
                 @if(count($slots) < $needFp)
-                    <div class="epf-note"><i class="fas fa-circle-exclamation"></i>{{ $needFp - count($slots) === 1 ? __('One more at the kiosk') : __(':n more at the kiosk', ['n' => $needFp - count($slots)]) }}</div>
+                    <div class="epf-note">{{ $needFp - count($slots) === 1 ? __('One more at the kiosk') : __(':n more at the kiosk', ['n' => $needFp - count($slots)]) }}</div>
                 @endif
-                <div class="epf-row" style="margin-top:16px"><h3>{{ __('Profile') }}</h3><span>{{ $recorded }} {{ __('of') }} {{ $fields }}</span></div>
-                <div class="epf-meter"><i style="width: {{ round($recorded / max(1, $fields) * 100) }}%"></i></div>
             </section>
 
             {{-- The latest scans. An open row is someone not clocked out yet,
                  not a missing time, and says so. --}}
-            <section class="epf-box epf-scans">
-                <div class="epf-box-h"><h3>{{ __('Recent scans') }}</h3><span>{{ __('Kiosk') }}</span></div>
+            <section class="epf-box epf-pad epf-scans">
+                <h3>{{ __('Recent scans') }}
+                    @if($canDtr)<a href="{{ route('payroll-reports.index', ['report' => 'dtr', 'q' => $employee->name]) }}">{{ __('Open DTR') }}</a>@endif
+                </h3>
                 @if($attendance->isEmpty())
                     <p class="epf-empty">{{ __('No attendance recorded yet.') }}</p>
                 @else
@@ -163,7 +189,7 @@
                         <table class="epf-tbl">
                             @foreach($attendance as $a)
                                 <tr>
-                                    <td>{{ \Carbon\Carbon::parse($a->date)->format('M d') }}<small>{{ $a->session ? ucfirst($a->session) : '' }}</small></td>
+                                    <td>{{ \Carbon\Carbon::parse($a->date)->format('D, M j') }}@if($a->session)<small>{{ ucfirst($a->session) }}</small>@endif</td>
                                     <td>{{ $a->time_in ? \Carbon\Carbon::parse($a->time_in)->format('g:i A') : '—' }}</td>
                                     <td>
                                         @if($a->time_out)
@@ -185,103 +211,106 @@
 
 @push('styles')
 <style>
-/* ── Full profile. Theme tokens throughout, so light and dark come from the
-   theme; the worker icon is black on safety yellow in both. ───────────────── */
-.epf { display: flex; flex-direction: column; gap: 14px; min-height: calc(100vh - 120px); }
-.epf-hero { position: relative; display: flex; align-items: center; gap: 16px; padding: 18px 20px 18px 24px; overflow: hidden;
-            background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
-.epf-hero::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
-                    background: repeating-linear-gradient(-45deg, #f5b73b 0 10px, #1a1a1a 10px 20px); }
-.epf-ico { flex: none; width: 64px; height: 64px; border-radius: 14px; display: grid; place-items: center;
-           background: #f5b73b; color: #111; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); }
+/* ── Full profile (2026-11-12 revision, "calm"): one line of who, this week's
+   pay as plain figures, only what has been recorded with one note naming
+   what has not, and the employment, profile and scans down the right.
+   Navy is the one accent, as on the worker card and Edit Employee. ──────── */
+.epf { --ef-navy: #1f3a5f; --ef-navy-ink: #1f3a5f; --ef-green: #2f7a4f; --ef-amber: #9a6418; --ef-amber-bg: #fbf4e6; --ef-line: var(--border, #e6e8ec);
+       display: flex; flex-direction: column; gap: 20px; }
+[data-bs-theme="dark"] .epf { --ef-navy: #2c5282; --ef-navy-ink: #8fb3df; --ef-green: #6cc08e; --ef-amber: #e3b467; --ef-amber-bg: rgba(227, 180, 103, .09); }
+
+.epf-hero { display: flex; align-items: center; gap: 16px; }
+.epf-ico { flex: none; width: 58px; height: 58px; border-radius: 12px; display: grid; place-items: center; }
 .epf-who { flex: 1; min-width: 0; }
-html[data-bs-theme] .epf-who h1 { margin: 0; font-size: 23px; font-weight: 700; letter-spacing: -.02em; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.epf-who p { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; color: var(--text-secondary); }
-.epf-id { font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-muted); }
-.epf-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted); }
-.epf-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
-.epf-tag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--border-md); border-radius: 5px; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
-.epf-tag.st-active::before, .epf-tag.st-pending::before, .epf-tag.st-archived::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
-.epf-tag.st-active::before { background: var(--success, #12b76a); }
-.epf-tag.st-pending::before { background: var(--warning, #d97706); }
-.epf-tag.warn { color: var(--warning, #d97706); }
-.epf-tag .fas { font-size: 10px; }
-.epf-acts { display: flex; gap: 8px; align-self: flex-start; }
+html[data-bs-theme] .epf-who h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.015em; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.epf-who p { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--text-muted); }
+.epf-who p > span + span::before { content: '/'; margin: 0 9px; opacity: .45; font-weight: 400; color: var(--text-muted); }
+.epf-st { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text-secondary); }
+.epf-st i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.epf-st.st-active { color: var(--ef-green); }
+.epf-st.st-pending { color: var(--ef-amber); }
+.epf-acts { display: flex; gap: 8px; }
 .epf-btn { height: 36px; padding: 0 15px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; text-decoration: none;
-           border: 1px solid var(--border-md); background: var(--surface); color: var(--text-primary); }
+           border: 1px solid var(--border-md); background: transparent; color: var(--text-primary); }
 .epf-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
-.epf-btn.pri { background: var(--brand); border-color: var(--brand); color: #fff; }
-.epf-btn.pri:hover { filter: brightness(1.08); color: #fff; }
-.epf-btn i { font-size: 12px; opacity: .85; }
+.epf-btn.pri { background: var(--ef-navy); border-color: var(--ef-navy); color: #fff; }
+.epf-btn.pri:hover { filter: brightness(1.12); color: #fff; }
+.epf-btn i { font-size: 12px; opacity: .8; }
 
-/* The two columns run to the bottom of the screen; the cards share the height. */
-.epf-cols { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 14px; }
-.epf-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.epf-quad { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 14px; }
-.epf-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.epf-box { background: var(--surface); border: 1px solid var(--ef-line); border-radius: 12px; min-width: 0; }
 
-.epf-box { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; min-width: 0; }
-.epf-box-h { display: flex; align-items: baseline; gap: 10px; padding: 13px 18px; border-bottom: 1px solid var(--border); }
-html[data-bs-theme] .epf-box-h h3, html[data-bs-theme] .epf-row h3 { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
-.epf-box-h span { margin-left: auto; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* This week, in one strip. */
+.epf-week { display: grid; grid-template-columns: 1.3fr repeat(6, minmax(0, 1fr)); }
+.epf-week > div { padding: 15px 20px; min-width: 0; }
+.epf-week > div + div { border-left: 1px solid var(--ef-line); }
+.epf-week-t { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.epf-week-t small { display: block; margin-top: 3px; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+.epf-week span { display: block; font-size: 11.5px; color: var(--text-muted); }
+.epf-week b { display: block; margin-top: 3px; font-size: 19px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-primary); }
+.epf-week .net b { color: var(--ef-navy-ink); }
 
-.epf-pay { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.epf-pay > div { padding: 14px 16px; min-width: 0; }
-.epf-pay > div + div { border-left: 1px solid var(--border); }
-.epf-pay span { display: block; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
-.epf-pay b { display: block; margin-top: 4px; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-primary); }
-.epf-pay b.is-ot { color: var(--brand); }
-.epf-pay b.is-minus { color: var(--danger); }
-.epf-pay .net { background: color-mix(in srgb, var(--brand) 9%, transparent); border-radius: 0 0 11px 0; }
-.epf-pay .net b { color: var(--brand); }
+.epf-cols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
 
-.epf-grid { flex: 1; display: grid; align-content: space-evenly; gap: 14px 22px; margin: 0; padding: 14px 18px 16px; }
-.epf-grid.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.epf-grid.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.epf-grid > div { min-width: 0; }
-.epf-grid dt { margin-bottom: 4px; font-size: 12px; font-weight: 400; color: var(--text-muted); }
-.epf-grid dd { margin: 0; font-size: 14px; font-weight: 500; color: var(--text-primary); overflow-wrap: anywhere; }
-.epf-grid dd.none, .epf-spec dd.none { font-weight: 400; color: var(--text-muted); opacity: .75; }
-
-.epf-spec { display: grid; grid-template-columns: auto 1fr; gap: 9px 14px; margin: 0; padding: 13px 18px 15px; font-size: 13px; }
-.epf-spec dt { font-weight: 400; color: var(--text-muted); white-space: nowrap; }
+/* The record. */
+.epf-rec { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; padding: 4px 24px 22px; }
+.epf-blk { padding: 18px 0 2px; min-width: 0; }
+.epf-blk.full { grid-column: 1 / -1; }
+html[data-bs-theme] .epf-blk h3, html[data-bs-theme] .epf-pad > h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--text-muted); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.epf-pad > h3 a { font-weight: 600; color: var(--ef-navy-ink); text-decoration: none; }
+.epf-pad > h3 .ok { color: var(--ef-green); }
+.epf-pad > h3 span { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.epf-spec { display: grid; grid-template-columns: auto 1fr; margin: 0; font-size: 13px; }
+.epf-spec dt, .epf-spec dd { padding: 7px 0; border-bottom: 1px solid var(--ef-line); }
+.epf-spec dt:nth-last-child(2), .epf-spec dd:last-child { border-bottom: 0; }
+.epf-spec dt { font-weight: 400; color: var(--text-muted); white-space: nowrap; padding-right: 14px; }
 .epf-spec dd { margin: 0; text-align: right; font-weight: 500; color: var(--text-primary); overflow-wrap: anywhere; }
-.epf-spec dd.warn { color: var(--warning, #d97706); }
+.epf-spec dd.warn { color: var(--ef-amber); }
+.epf-r { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; border-bottom: 1px solid var(--ef-line); font-size: 13px; }
+.epf-r:last-child { border-bottom: 0; }
+.epf-r span { color: var(--text-muted); white-space: nowrap; }
+.epf-r b { font-weight: 500; text-align: right; color: var(--text-primary); overflow-wrap: anywhere; }
+.epf-r b.warn { color: var(--ef-amber); }
+.epf-ids { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.epf-ids span { display: block; font-size: 11.5px; color: var(--text-muted); }
+.epf-ids b { display: block; margin-top: 3px; font: 500 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-primary); overflow-wrap: anywhere; }
+.epf-todo { grid-column: 1 / -1; display: flex; align-items: center; gap: 18px; margin-top: 18px; padding: 16px 18px; border-radius: 10px; background: var(--ef-amber-bg); }
+.epf-todo > div { flex: 1; min-width: 0; }
+.epf-todo strong { display: block; font-size: 13.5px; font-weight: 600; color: var(--ef-amber); }
+.epf-todo p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--text-muted); }
+.epf-todo a { flex: none; height: 34px; padding: 0 14px; border-radius: 8px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; text-decoration: none;
+              color: var(--ef-amber); background: var(--surface); border: 1px solid color-mix(in srgb, var(--ef-amber) 35%, transparent); }
+.epf-todo a:hover { color: var(--ef-amber); filter: brightness(.98); }
 
-.epf-pad { padding: 14px 18px; }
-.epf-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.epf-row span { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.epf-slots { display: flex; gap: 6px; }
-.epf-slot { flex: 1; min-width: 0; height: 36px; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 6px;
-            font-size: 12px; color: var(--text-muted); border: 1px dashed var(--border-md); }
-.epf-slot.on { border: 1px solid rgba(18,183,106,.45); background: rgba(18,183,106,.10); color: var(--success, #12b76a); font-weight: 600; }
-.epf-note { margin-top: 9px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--warning, #d97706); }
-.epf-meter { height: 5px; border-radius: 3px; overflow: hidden; background: var(--border); }
-.epf-meter i { display: block; height: 100%; background: var(--brand); }
-
-/* The scans take what is left of the column and scroll inside it. */
-.epf-scans { flex: 1; min-height: 180px; }
-.epf-scroll { flex: 1; min-height: 0; overflow-y: auto; max-height: 360px; }
-.epf-tbl { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
-.epf-tbl td { padding: 9px 18px; border-bottom: 1px solid var(--border); color: var(--text-primary); white-space: nowrap; }
-.epf-tbl td + td { padding-left: 4px; }
+/* Down the right. */
+.epf-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.epf-pad { padding: 16px 20px; }
+.epf-meter { height: 4px; margin: 6px 0 8px; border-radius: 2px; overflow: hidden; background: var(--ef-line); }
+.epf-meter i { display: block; height: 100%; background: var(--ef-navy-ink); }
+.epf-note { margin-top: 4px; font-size: 12px; color: var(--ef-amber); }
+.epf-scroll { max-height: 360px; overflow-y: auto; }
+.epf-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.epf-tbl td { padding: 8px 0; border-bottom: 1px solid var(--ef-line); white-space: nowrap; color: var(--text-primary); font-weight: 500; text-align: right; }
+.epf-tbl td:first-child { text-align: left; color: var(--text-muted); font-weight: 400; }
+.epf-tbl td + td { padding-left: 12px; }
 .epf-tbl tr:last-child td { border-bottom: 0; }
-.epf-tbl small { display: block; font-size: 11px; color: var(--text-muted); }
-.epf-live { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
-            color: var(--success, #12b76a); background: rgba(18,183,106,.12); }
-.epf-empty { margin: 0; padding: 16px 18px; font-size: 13px; color: var(--text-muted); }
+.epf-tbl small { margin-left: 6px; font-size: 11px; color: var(--text-muted); opacity: .8; }
+.epf-live { font-weight: 600; color: var(--ef-green); }
+.epf-empty { margin: 4px 0 0; font-size: 13px; color: var(--text-muted); }
 
 @media (max-width: 1200px) {
     .epf-cols { grid-template-columns: 1fr; }
-    .epf-pay { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .epf-pay > div:nth-child(4) { border-left: 0; }
-    .epf-pay > div:nth-child(n+4) { border-top: 1px solid var(--border); }
-    .epf-pay .net { border-radius: 0 0 11px 0; }
+    .epf-week { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .epf-week > div:nth-child(5) { border-left: 0; }
+    .epf-week > div:nth-child(n+5) { border-top: 1px solid var(--ef-line); }
 }
 @media (max-width: 760px) {
     .epf-hero { flex-wrap: wrap; } .epf-acts { width: 100%; } .epf-btn { flex: 1; justify-content: center; }
-    .epf-quad { grid-template-columns: 1fr; grid-auto-rows: auto; }
-    .epf-grid.g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .epf-week { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .epf-week > div:nth-child(odd) { border-left: 0; }
+    .epf-week > div:nth-child(n+3) { border-top: 1px solid var(--ef-line); }
+    .epf-rec { grid-template-columns: 1fr; }
+    .epf-ids { grid-template-columns: 1fr 1fr; }
+    .epf-todo { flex-direction: column; align-items: stretch; }
 }
 </style>
 @endpush

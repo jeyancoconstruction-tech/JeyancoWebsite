@@ -48,6 +48,11 @@ class ComplaintController extends Controller
             'groups'     => $groups,
             'total'      => $list->count(),
             'selected'   => $selected,
+            // An empty list still says something: the last few answered.
+            'recent'     => $list->isEmpty()
+                ? Complaint::with('employee:id,name')->where('status', Complaint::RESOLVED)->whereNotNull('resolved_at')
+                    ->latest('resolved_at')->limit(3)->get()
+                : collect(),
             'status'     => $status,
             'group'      => $group,
             'category'   => $category,

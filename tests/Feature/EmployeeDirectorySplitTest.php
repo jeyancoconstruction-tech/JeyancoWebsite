@@ -66,10 +66,12 @@ class EmployeeDirectorySplitTest extends TestCase
      * for, and the rest were entered and then invisible. Since the redesign of
      * 2026-10-20 the record is four cards side by side (Personal, Contact &
      * emergency, Address, Government IDs) with Employment down the right.
+     * Since 2026-11-12 a section shows once something in it is recorded.
      */
     public function test_the_details_page_uses_the_same_sections_as_the_registration_form(): void
     {
         $employee = $this->regular('Ana Reyes');
+        $employee->update(['gender' => 'Female', 'phone' => '09170000000', 'address_city' => 'Pili', 'sss_number' => '00-1234567-8']);
 
         $this->actingAs($this->admin())
             ->get(route('employees.show', $employee->id))
@@ -110,10 +112,9 @@ class EmployeeDirectorySplitTest extends TestCase
     }
 
     /**
-     * The opposite of what this page used to do. Dropping empty rows kept the
-     * card short, but it also meant a field nobody had filled in looked
-     * exactly like a field that does not exist — and the page no longer
-     * matched the form it mirrors.
+     * A field nobody has filled in must not look like a field that does not
+     * exist. Since 2026-11-12 the blank ones are not a grey row each: they
+     * are named together in one note, with the way to fill them in.
      */
     public function test_a_blank_field_says_it_is_blank_rather_than_disappearing(): void
     {
@@ -126,9 +127,10 @@ class EmployeeDirectorySplitTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('Gender', $html);
-        $this->assertStringContainsString('Place of birth', $html);
-        $this->assertStringContainsString('Not recorded', $html);
-        $this->assertStringContainsString('Not issued yet', $html);
+        $this->assertStringContainsString('details not recorded yet', $html);
+        $this->assertStringContainsString('Place of birth', $html, 'named in the note');
+        $this->assertStringContainsString('SSS, PhilHealth, Pag-IBIG, TIN', $html, 'the IDs, not issued yet');
+        $this->assertStringContainsString('Complete profile', $html);
     }
 
     /**
