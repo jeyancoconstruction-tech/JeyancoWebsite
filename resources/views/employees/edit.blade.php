@@ -21,7 +21,8 @@
         $lt      = $employee->laborType;
         $slots   = method_exists($employee, 'fingerprintSlots') ? $employee->fingerprintSlots() : array_filter([(string) $employee->fingerprint_id]);
         $fingers = count($slots);
-        $needFp  = $employee->fingersRequired();
+        $needFp  = \App\Models\Employee::fingersTarget();
+        $fpAsked = $employee->extraFingerRequested();
         // How complete the record is: the profile fields with an answer.
         $profileFields = ['birth_date', 'birth_place', 'gender', 'civil_status', 'nationality', 'blood_type',
                           'phone', 'email', 'emergency_contact_name', 'emergency_contact_relation', 'emergency_contact_phone',
@@ -57,7 +58,7 @@
                     <div><dt>{{ __('Daily rate') }}</dt><dd>{{ $lt->getFormattedDailyRate() }}</dd></div>
                     <div><dt>{{ __('Hourly') }}</dt><dd>{{ $lt->getFormattedHourlyRate() }}</dd></div>
                 @endif
-                <div title="{{ __('Enrolled at the kiosk.') }}"><dt>{{ __('Fingerprints') }}</dt><dd class="{{ $fingers < $needFp ? 'warn' : '' }}">{{ $fingers }} <small>{{ __('of') }} {{ $needFp }}</small></dd></div>
+                <div title="{{ __('Enrolled at the kiosk.') }}"><dt>{{ __('Fingerprints') }}</dt><dd class="{{ $fingers === 0 || $fpAsked ? 'warn' : '' }}">{{ $fingers }} <small>{{ __('of') }} {{ $needFp }}</small></dd></div>
             </dl>
         </header>
 
@@ -69,10 +70,21 @@
                 <div class="eea-railbox">
                     <div class="eea-row"><span>{{ __('Profile') }}</span><b>{{ $profileDone }} {{ __('of') }} {{ count($profileFields) }}</b></div>
                     <div class="eea-meter"><i style="width: {{ round($profileDone / count($profileFields) * 100) }}%"></i></div>
-                    <div class="eea-row"><span>{{ __('Fingerprint') }}</span>
-                        <b>{{ $fingers ? __('Slot') . ' ' . implode(', ', $slots) : __('None yet') }}</b></div>
-                    @if($fingers < $needFp)
-                        <div class="eea-note">{{ $needFp - $fingers === 1 ? __('One more at the kiosk') : __(':n more at the kiosk', ['n' => $needFp - $fingers]) }}</div>
+                    <div class="eea-row"><span>{{ __('Fingerprints') }}</span>
+                        <b>{{ $fingers }} {{ __('of') }} {{ $needFp }}</b></div>
+                    @if($fingers)<div class="eea-row eea-slots"><span>{{ $fingers === 1 ? __('Slot') : __('Slots') }} {{ implode(', ', $slots) }}</span></div>@endif
+                    {{-- One finger is enough to work. Another is asked of the
+                         kiosk from here; the buttons post the small forms after
+                         the main one (a form cannot sit inside a form). --}}
+                    @if($fingers === 0)
+                        <div class="eea-note">{{ __('First finger: at the kiosk, under Enroll.') }}</div>
+                    @elseif($fingers < $needFp && $fpAsked)
+                        <div class="eea-fp">
+                            <span class="eea-note">{{ __('Waiting at the kiosk, under Enroll.') }}</span>
+                            <button type="submit" form="eeaFpCancel" class="eea-link">{{ __('Cancel') }}</button>
+                        </div>
+                    @elseif($fingers < $needFp)
+                        <button type="submit" form="eeaFpAsk" class="eea-btn eea-fp-add"><i class="fas fa-fingerprint"></i>{{ $fingers === 1 ? __('Add second fingerprint') : __('Add another fingerprint') }}</button>
                     @endif
                 </div>
             </aside>
@@ -297,6 +309,10 @@
             </div>
         </div>
     </form>
+
+    {{-- Another finger, asked of the kiosk (the buttons in the rail). --}}
+    <form id="eeaFpAsk" method="POST" action="{{ route('employees.finger-request', $employee->id) }}" hidden>@csrf</form>
+    <form id="eeaFpCancel" method="POST" action="{{ route('employees.finger-request.cancel', $employee->id) }}" hidden>@csrf @method('DELETE')</form>
 </div>
 
 {{-- In the head, not the body: a stylesheet the parser only reaches near
@@ -360,6 +376,12 @@ html[data-bs-theme] .eea-hero .eea-id h1 { margin: 0 !important; font-size: 23px
 .eea-meter { height: 4px; margin: 9px 0 18px; border-radius: 2px; overflow: hidden; background: var(--ea-line); }
 .eea-meter i { display: block; height: 100%; background: var(--ea-navy-ink); }
 .eea-note { margin-top: 6px; font-size: 12px; color: var(--ea-amber); }
+.eea-slots { margin-top: 4px; font-size: 12px; }
+.eea-fp { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.eea-fp .eea-note { margin: 0; }
+.eea-btn.eea-fp-add { width: 100%; justify-content: center; gap: 8px; height: 34px; margin-top: 12px; font-size: 12.5px; }
+.eea-link { padding: 0; border: 0; background: none; font-size: 12.5px; font-weight: 600; color: var(--ea-navy-ink); cursor: pointer; }
+.eea-link:hover { text-decoration: underline; }
 
 .eea-panel { display: flex; flex-direction: column; min-width: 0; background: var(--surface); border: 1px solid var(--ea-line); border-radius: 12px; }
 .eea .eea-body { flex: 1; display: flex; flex-direction: column; }

@@ -978,6 +978,36 @@ class EmployeeController extends Controller
         return back()->with('success', $employee->name . ' was archived.');
     }
 
+    /**
+     * Ask the kiosk for another finger (2026-11-12). One finger is enough to
+     * work; from this moment the kiosk lists the worker under ENROLL until
+     * the office's number of fingers is on file. Asked a second time, it is
+     * taken back.
+     */
+    public function requestFinger(Request $request, Employee $employee)
+    {
+        if (! Employee::hasFingerRequests()) {
+            return back()->with('error', __('The update for this is not finished yet. Please try again after the next deploy.'));
+        }
+
+        $cancel = $request->isMethod('delete');
+        $slots  = count($employee->fingerprintSlots());
+
+        if (! $cancel && $slots === 0) {
+            return back()->with('error', __(':name has no finger on file yet: the kiosk already lists them under Enroll.', ['name' => $employee->name]));
+        }
+
+        if (! $cancel && $slots >= Employee::fingersTarget()) {
+            return back()->with('error', __(':name already has :n fingers on file.', ['name' => $employee->name, 'n' => $slots]));
+        }
+
+        $employee->forceFill(['extra_finger_requested_at' => $cancel ? null : now()])->save();
+
+        return back()->with('success', $cancel
+            ? __('Request cancelled. :name is off the kiosk\'s Enroll list.', ['name' => $employee->name])
+            : __(':name is on the kiosk\'s Enroll list. They add their second finger there.', ['name' => $employee->name]));
+    }
+
     /** Bring an archived worker back into the active workforce. */
     public function activate($id)
     {

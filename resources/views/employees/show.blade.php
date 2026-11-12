@@ -15,7 +15,7 @@
     $count = fn (array $vals) => collect($vals)->filter(fn ($v) => filled($v))->count();
 
     $slots   = $employee->fingerprintSlots();
-    $needFp  = $employee->fingersRequired();
+    $needFp  = \App\Models\Employee::fingersTarget();
     $jobTitle = $employee->job_title ?: $employee->position;
 
     $personal = [
@@ -169,10 +169,26 @@
                     @if($recorded >= $fields)<span class="ok"><i class="fas fa-check"></i> {{ __('Complete') }}</span>@else<span>{{ $recorded }} {{ __('of') }} {{ $fields }}</span>@endif
                 </h3>
                 @if($recorded < $fields)<div class="epf-meter"><i style="width: {{ round($recorded / max(1, $fields) * 100) }}%"></i></div>@endif
+                @php $fpAsked = $employee->extraFingerRequested(); @endphp
                 <div class="epf-r"><span>{{ __('Fingerprints') }}</span>
-                    <b class="{{ count($slots) < $needFp ? 'warn' : '' }}">{{ count($slots) ? (count($slots) === 1 ? __('Slot') : __('Slots')) . ' ' . implode(', ', $slots) . ' · ' : '' }}{{ count($slots) }} {{ __('of') }} {{ $needFp }}</b></div>
-                @if(count($slots) < $needFp)
-                    <div class="epf-note">{{ $needFp - count($slots) === 1 ? __('One more at the kiosk') : __(':n more at the kiosk', ['n' => $needFp - count($slots)]) }}</div>
+                    <b class="{{ count($slots) === 0 || $fpAsked ? 'warn' : '' }}">{{ count($slots) ? (count($slots) === 1 ? __('Slot') : __('Slots')) . ' ' . implode(', ', $slots) . ' · ' : '' }}{{ count($slots) }} {{ __('of') }} {{ $needFp }}</b></div>
+                {{-- One finger is enough to work. Another is asked of the
+                     kiosk from here, and the worker adds it under Enroll. --}}
+                @if(count($slots) === 0)
+                    <div class="epf-note">{{ __('First finger: at the kiosk, under Enroll.') }}</div>
+                @elseif(count($slots) < $needFp && $fpAsked)
+                    <div class="epf-fp">
+                        <span class="epf-note">{{ __('Waiting at the kiosk, under Enroll.') }}</span>
+                        <form method="POST" action="{{ route('employees.finger-request.cancel', $employee->id) }}">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="epf-link">{{ __('Cancel') }}</button>
+                        </form>
+                    </div>
+                @elseif(count($slots) < $needFp)
+                    <form method="POST" action="{{ route('employees.finger-request', $employee->id) }}" class="epf-fp">
+                        @csrf
+                        <button type="submit" class="epf-btn sm"><i class="fas fa-fingerprint"></i>{{ count($slots) === 1 ? __('Add second fingerprint') : __('Add another fingerprint') }}</button>
+                    </form>
                 @endif
             </section>
 
@@ -287,6 +303,12 @@ html[data-bs-theme] .epf-blk h3, html[data-bs-theme] .epf-pad > h3 { margin: 0 0
 .epf-meter { height: 4px; margin: 6px 0 8px; border-radius: 2px; overflow: hidden; background: var(--ef-line); }
 .epf-meter i { display: block; height: 100%; background: var(--ef-navy-ink); }
 .epf-note { margin-top: 4px; font-size: 12px; color: var(--ef-amber); }
+.epf-fp { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.epf-fp form { margin: 0; }
+.epf-fp .epf-note { margin: 0; }
+.epf-btn.sm { width: 100%; justify-content: center; height: 34px; font-size: 12.5px; }
+.epf-link { padding: 0; border: 0; background: none; font-size: 12.5px; font-weight: 600; color: var(--ef-navy-ink); cursor: pointer; }
+.epf-link:hover { text-decoration: underline; }
 .epf-scroll { max-height: 360px; overflow-y: auto; }
 .epf-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .epf-tbl td { padding: 8px 0; border-bottom: 1px solid var(--ef-line); white-space: nowrap; color: var(--text-primary); font-weight: 500; text-align: right; }

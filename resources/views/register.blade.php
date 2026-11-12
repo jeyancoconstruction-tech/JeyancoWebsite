@@ -362,6 +362,11 @@ html[data-bs-theme] .wkc-who h2 { margin: 0; font-size: 19px; font-weight: 600; 
                font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--wk-ink); }
 .wkc-stats b small { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--wk-mute); }
 .wkc-stats b.short { color: var(--wk-amber); }
+.wkc-fp { display: block; margin-top: 2px; font-style: normal; font-size: 11.5px; color: var(--wk-amber); white-space: nowrap; }
+.wkc-fp-add { display: block; margin-top: 3px; padding: 0; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--wk-navy); cursor: pointer; white-space: nowrap; }
+[data-bs-theme="dark"] .wkc-fp-add { color: #8fb3df; }
+.wkc-fp-add::before { content: '+ '; }
+.wkc-fp-add:hover { text-decoration: underline; }
 
 .wkc-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; padding: 6px 22px 0; max-height: calc(100vh - 320px); overflow-y: auto; }
 .wkc-blk { padding: 14px 0 4px; min-width: 0; }
@@ -734,7 +739,10 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                                 'hourly'   => '₱' . number_format((float) $e->rate_per_hour, 2),
                                 'dailyFig' => $e->laborType ? '₱' . number_format((float) $e->laborType->daily_rate, 2) : null,
                                 'slots'    => $e->fingerprintSlots(),
-                                'need'     => $e->fingersRequired(),
+                                'need'     => \App\Models\Employee::fingersTarget(),
+                                // The office has asked the kiosk for another finger.
+                                'fpAsked'  => $e->extraFingerRequested(),
+                                'fpAsk'    => route('employees.finger-request', $e->id),
                                 'edit'     => route('employees.edit', $e->id),
                                 'profile'  => route('employees.show', $e->id),
                             ];
@@ -2451,7 +2459,13 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
             `<div><span>Hourly</span><b>${esc(d.hourly || '—')}</b></div>` +
             `<div><span>Scans</span><b>${esc(String(d.logs ?? 0))}<small>logged</small></b></div>` +
             `<div title="${esc(slots.length ? 'Slot ' + slots.join(', ') : 'No fingerprint yet')}"><span>Fingerprints</span>` +
-              `<b class="${slots.length < need ? 'short' : ''}">${slots.length}<small>of ${need}</small></b></div>`;
+              `<b class="${!slots.length || d.fpAsked ? 'short' : ''}">${slots.length}<small>of ${need}</small></b>` +
+              // One finger is enough to work; another is asked of the kiosk from here.
+              (!slots.length ? '<em class="wkc-fp">First finger at the kiosk</em>'
+                : slots.length < need && d.fpAsked ? '<em class="wkc-fp">Waiting at the kiosk</em>'
+                : slots.length < need ? `<button type="submit" form="wmFpAsk" class="wkc-fp-add">${slots.length === 1 ? 'Add second' : 'Add another'}</button>` : '') +
+              '</div>';
+        $('wmFpAsk').action = d.fpAsk || '#';
 
         const ids = [['SSS', d.sss], ['PhilHealth', d.philhealth], ['Pag-IBIG', d.pagibig], ['TIN', d.tin]];
         const issued = ids.filter(x => x[1]);
@@ -2524,6 +2538,9 @@ html[data-bs-theme] .rmx .rmx-sitepick select option { background: var(--surface
                 <a class="wkc-btn" id="wmProfile" href="#"><i class="fas fa-id-badge" aria-hidden="true"></i>{{ __('Full profile') }}</a>
                 <a class="wkc-btn pri" id="wmEdit" href="#"><i class="fas fa-pen" aria-hidden="true"></i>{{ __('Edit') }}</a>
             </div>
+            {{-- Another finger, asked of the kiosk: the Fingerprints figure's
+                 button posts this; its action is the worker's, set on open. --}}
+            <form id="wmFpAsk" method="POST" action="#" hidden>@csrf</form>
         </div>
     </div>
 </div>

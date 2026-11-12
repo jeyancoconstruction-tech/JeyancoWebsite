@@ -83,6 +83,7 @@ class Employee extends Model
         'date_hired'      => 'date',
         'end_of_contract' => 'date',
         'overtime_allowed' => 'boolean',
+        'extra_finger_requested_at' => 'datetime',
         // Stored as JSON so a worker can carry several of each without
         // needing a child table per list.
         'education'       => 'array',
@@ -478,20 +479,50 @@ class Employee extends Model
     }
 
     /**
+     * How many fingers the office keeps on file for a worker: what the web
+     * shows as "1 of 2", "2 of 2" (kiosk.fingers_required).
+     */
+    public static function fingersTarget(): int
+    {
+        return max(1, (int) config('kiosk.fingers_required', 2));
+    }
+
+    /**
      * How many fingers this worker needs on file before the kiosk stops
-     * listing them under ENROLL. A worker registered before
-     * kiosk.fingers_required_from needs one; everyone since, the full number.
+     * listing them under ENROLL (2026-11-12). One finger is enough to work.
+     * A second is taken only when the office asks for it from the worker's
+     * profile ("Add second fingerprint"); from then the worker stays on the
+     * ENROLL list until fingersTarget() are on file.
      */
     public function fingersRequired(): int
     {
-        $required = max(1, (int) config('kiosk.fingers_required', 2));
-        $from     = config('kiosk.fingers_required_from');
+        return $this->extraFingerRequested() ? self::fingersTarget() : 1;
+    }
 
-        if ($from && $this->created_at && $this->created_at->lt(\Illuminate\Support\Carbon::parse($from)->startOfDay())) {
-            return 1;
+    /** Whether the office has asked the kiosk for another finger. */
+    public function extraFingerRequested(): bool
+    {
+        return self::hasFingerRequests() && $this->extra_finger_requested_at !== null;
+    }
+
+    /**
+     * Whether the column for asking a second finger is there yet. A deploy can
+     * land this code before its migration runs; until then nobody has been
+     * asked, and asking says the update is not finished, instead of failing.
+     */
+    public static function hasFingerRequests(): bool
+    {
+        static $has = null;
+
+        if ($has === null || app()->runningUnitTests()) {
+            try {
+                $has = Schema::hasColumn('employees', 'extra_finger_requested_at');
+            } catch (\Throwable $e) {
+                $has = false;
+            }
         }
 
-        return $required;
+        return $has;
     }
 
     /** Every slot this worker owns, first finger first. */

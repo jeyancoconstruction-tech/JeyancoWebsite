@@ -1250,6 +1250,14 @@ class KioskController extends Controller
                 $slots[] = $fp;
             }
 
+            // The office asked for another finger and now has it: the request
+            // is answered, and the worker leaves the ENROLL list.
+            $complete = count($slots) >= $employee->fingersRequired();
+            if ($employee->extraFingerRequested() && count($slots) >= Employee::fingersTarget()) {
+                $employee->forceFill(['extra_finger_requested_at' => null])->save();
+                $complete = true;
+            }
+
             return response()->json([
                 'success'         => true,
                 'message'         => $employee->name . ' finger ' . count($slots) . ' saved at ID #' . $fp,
@@ -1257,7 +1265,7 @@ class KioskController extends Controller
                 'fingerprint_id'  => $fp,
                 'fingerprint_ids' => $slots,
                 'fingers'         => count($slots),
-                'complete'        => count($slots) >= $employee->fingersRequired(),
+                'complete'        => $complete,
                 'status'          => $employee->status,
                 'activated'       => false,
             ]);

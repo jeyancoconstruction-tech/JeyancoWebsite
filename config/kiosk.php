@@ -62,19 +62,14 @@ return [
     'scan_token_ttl' => (int) env('KIOSK_SCAN_TOKEN_TTL', 180),   // seconds
 
     /*
-    | Fingers per worker. The kiosk keeps a worker on its ENROLL list until
-    | `fingers_required` are on file, and takes no more than `fingers_max` —
-    | a cut or bandaged finger must never lock somebody out.
+    | Fingers per worker. `fingers_required` is how many the office keeps on
+    | file — the web shows "1 of 2", "2 of 2". One finger is enough to work
+    | (2026-11-12): the kiosk lists a worker under ENROLL for their first, and
+    | for more only when the office asks from the worker's profile ("Add
+    | second fingerprint"). It takes no more than `fingers_max` — a cut or
+    | bandaged finger must never lock somebody out.
     */
     'fingers_required' => max(1, (int) env('KIOSK_FINGERS_REQUIRED', 2)),
-
-    /*
-    | Workers registered before this day count as done once one finger is on
-    | file, so they leave the ENROLL list (2026-11-09: the crew already
-    | working was cleared off it). Everyone registered from this day on needs
-    | `fingers_required`, as before. Empty: everybody needs the full number.
-    */
-    'fingers_required_from' => env('KIOSK_FINGERS_REQUIRED_FROM', '2026-11-09'),
     'fingers_max'      => max(1, (int) env('KIOSK_FINGERS_MAX', 3)),
 
 ];
