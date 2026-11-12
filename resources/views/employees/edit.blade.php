@@ -39,16 +39,17 @@
 
         {{-- Who is being edited, and the figures payroll uses. The name
              follows the name fields as they are typed (_register_progress). --}}
+        {{-- One line of who, then the pay figures. What the form below
+             already shows (shift, employment, date hired) is not repeated. --}}
         <header class="eea-hero">
-            <span class="eea-ico">@include('partials.worker-icon', ['size' => '66%'])</span>
+            <span class="eea-ico">@include('partials.worker-icon', ['size' => '64%'])</span>
             <div class="eea-id">
                 <h1 id="rgxWhoName">{{ $employee->name }}</h1>
-                <div class="eea-sub">#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }} · {{ $employee->position ?: ($lt->name ?? __('Worker')) }}@if($employee->site) · {{ $employee->site->name }}@endif</div>
-                <div class="eea-chips">
-                    <span class="eea-chip"><i class="st-{{ $employee->status }}"></i>{{ $statusLabel }}</span>
-                    @if($employee->shift)<span class="eea-chip">{{ $employee->shift->name }} · {{ \Carbon\Carbon::parse($employee->shift->starts_at)->format('g:i A') }}</span>@endif
-                    <span class="eea-chip {{ $fingers < $needFp ? 'warn' : '' }}" title="{{ __('Enrolled at the kiosk.') }}"><i class="fas fa-fingerprint"></i>{{ __('Fingerprints') }} {{ $fingers }} {{ __('of') }} {{ $needFp }}</span>
-                    <span class="eea-chip">{{ $employee->isContractual() ? __('Contractual') : __('Regular') }}</span>
+                <div class="eea-sub">
+                    <span>#{{ str_pad($employee->id, 4, '0', STR_PAD_LEFT) }}</span>
+                    <span>{{ $employee->position ?: ($lt->name ?? __('Worker')) }}</span>
+                    @if($employee->site)<span>{{ $employee->site->name }}</span>@endif
+                    <span class="eea-st st-{{ $employee->status }}"><i></i>{{ $statusLabel }}</span>
                 </div>
             </div>
             <dl class="eea-stats">
@@ -56,7 +57,7 @@
                     <div><dt>{{ __('Daily rate') }}</dt><dd>{{ $lt->getFormattedDailyRate() }}</dd></div>
                     <div><dt>{{ __('Hourly') }}</dt><dd>{{ $lt->getFormattedHourlyRate() }}</dd></div>
                 @endif
-                <div><dt>{{ __('Hired') }}</dt><dd>{{ $employee->date_hired ? $employee->date_hired->format('M j, Y') : '—' }}</dd></div>
+                <div title="{{ __('Enrolled at the kiosk.') }}"><dt>{{ __('Fingerprints') }}</dt><dd class="{{ $fingers < $needFp ? 'warn' : '' }}">{{ $fingers }} <small>{{ __('of') }} {{ $needFp }}</small></dd></div>
             </dl>
         </header>
 
@@ -66,26 +67,13 @@
                      the end of the page from the sections' own titles. --}}
                 <nav class="eea-tabs" id="eeaTabs" role="tablist" aria-label="{{ __('Employee sections') }}"></nav>
                 <div class="eea-railbox">
-                    <div>
-                        <div class="eea-row"><span class="eea-k">{{ __('Profile') }}</span><span>{{ $profileDone }} {{ __('of') }} {{ count($profileFields) }} {{ __('recorded') }}</span></div>
-                        <div class="eea-meter"><i style="width: {{ round($profileDone / count($profileFields) * 100) }}%"></i></div>
-                    </div>
-                    <div>
-                        <div class="eea-row"><span class="eea-k">{{ __('Fingerprints') }}</span><span>{{ $fingers }} {{ __('of') }} {{ $needFp }}</span></div>
-                        <div class="eea-slots">
-                            @for($i = 0; $i < max($needFp, $fingers); $i++)
-                                @if(isset($slots[$i]))
-                                    <span class="eea-slot on"><i class="fas fa-fingerprint"></i>{{ __('Slot') }} {{ $slots[$i] }}</span>
-                                @else
-                                    <span class="eea-slot">{{ __('Empty') }}</span>
-                                @endif
-                            @endfor
-                        </div>
-                        @if($fingers < $needFp)
-                            <div class="eea-note"><i class="fas fa-circle-exclamation"></i>{{ $needFp - $fingers === 1 ? __('One more at the kiosk') : __(':n more at the kiosk', ['n' => $needFp - $fingers]) }}</div>
-                        @endif
-                    </div>
-                    <p class="eea-help"><b>{{ __('Changes apply tomorrow') }}</b>{{ __('Pay, shift and site take effect from the next day worked. Days already worked keep their old values.') }}</p>
+                    <div class="eea-row"><span>{{ __('Profile') }}</span><b>{{ $profileDone }} {{ __('of') }} {{ count($profileFields) }}</b></div>
+                    <div class="eea-meter"><i style="width: {{ round($profileDone / count($profileFields) * 100) }}%"></i></div>
+                    <div class="eea-row"><span>{{ __('Fingerprint') }}</span>
+                        <b>{{ $fingers ? __('Slot') . ' ' . implode(', ', $slots) : __('None yet') }}</b></div>
+                    @if($fingers < $needFp)
+                        <div class="eea-note">{{ $needFp - $fingers === 1 ? __('One more at the kiosk') : __(':n more at the kiosk', ['n' => $needFp - $fingers]) }}</div>
+                    @endif
                 </div>
             </aside>
 
@@ -294,12 +282,14 @@
             </div>
 
             <footer class="eea-foot">
-                <span class="eea-saved">{{ __('Last saved') }} {{ $employee->updated_at?->format('M j, Y g:i A') }}</span>
-                <span class="eea-sp"></span>
-                {{-- What has been changed so far, counted in the page. --}}
-                <div class="rgx-prog" aria-live="polite">
-                    <span class="rgx-dirty" id="rgxDirty">{{ __('No changes yet') }}</span>
-                    <span class="rgx-count"><b id="rgxDone">0</b> {{ __('of') }} <b id="rgxTotal">0</b> {{ __('required filled') }}</span>
+                {{-- One status: when it was last saved, or — once something
+                     is changed — how many changes and which fields. The
+                     required count is still kept (the progress script writes
+                     it) but not shown: the tabs flag a required field. --}}
+                <div class="eea-status" aria-live="polite">
+                    <span class="eea-saved">{{ __('Saved') }} {{ $employee->updated_at?->format('M j, Y · g:i A') }}</span>
+                    <span class="rgx-dirty" id="rgxDirty">{{ __('No changes yet') }}</span><span class="eea-what" id="eeaWhat"></span>
+                    <span class="rgx-count" hidden><b id="rgxDone">0</b><b id="rgxTotal">0</b></span>
                 </div>
                 <a href="{{ route('employees.register', $employee->isPending() ? ['tab' => 'pending'] : []) }}" class="eea-btn">{{ __('Cancel') }}</a>
                 <button type="submit" class="eea-btn pri" id="eeaSave">{{ __('Save changes') }}</button>
@@ -315,106 +305,127 @@
     @include('employees._profile_styles')
     @include('employees._register_layout')
 <style>
-/* ── Edit employee (2026-10-20 revision): a flat worker header, then the
-   sections on a rail at the left and the open one filling the rest of the
-   screen, Save always at its foot. Theme tokens throughout. ─────────────── */
-.eea-page { display: flex; flex-direction: column; gap: 12px; }
-.eea-back { align-self: flex-start; font-size: 13px; font-weight: 600; color: var(--text-muted); text-decoration: none; display: inline-flex; gap: 7px; align-items: center; }
-.eea-back:hover { color: var(--brand); }
-.eea { display: flex; flex-direction: column; gap: 16px; }
+/* ── Edit employee (2026-11-12 revision, "calm"): one line of who and the
+   pay figures, the sections as a quiet list with one mark each, the open
+   section with its groups named at the left, and one status in the footer.
+   Navy is the one accent (the worker tile, the open tab, Save), matching the
+   worker card on Employees. Theme tokens for surfaces and text. ─────────── */
+.eea-page { --ea-navy: #1f3a5f; --ea-navy-ink: #1f3a5f; --ea-ico: #f2ede4; --ea-green: #2f7a4f; --ea-amber: #b7791f; --ea-red: var(--danger, #d1483b);
+            --ea-line: var(--border, #e9e3da); --ea-field: var(--border-md, #ded7cc);
+            display: flex; flex-direction: column; gap: 12px; }
+[data-bs-theme="dark"] .eea-page { --ea-navy: #2c5282; --ea-navy-ink: #8fb3df; --ea-green: #6cc08e; --ea-amber: #e3b467; }
+.eea-back { align-self: flex-start; font-size: 13px; font-weight: 500; color: var(--text-muted); text-decoration: none; display: inline-flex; gap: 7px; align-items: center; }
+.eea-back:hover { color: var(--text-primary); }
+.eea { display: flex; flex-direction: column; gap: 20px; }
 
+/* Who, and the pay. */
 .eea-hero { display: flex; align-items: center; gap: 16px; }
-/* The worker icon: black on safety yellow, the same in light and dark. */
-.eea-ico { flex: none; width: 56px; height: 56px; border-radius: 12px; display: grid; place-items: center;
-           background: #f5b73b; color: #111; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); }
+.eea-ico { flex: none; width: 54px; height: 54px; border-radius: 12px; display: grid; place-items: center; background: var(--ea-navy); color: var(--ea-ico); }
 .eea-id { min-width: 0; flex: 1; }
-html[data-bs-theme] .eea-hero .eea-id h1 { margin: 0 !important; font-size: 22px !important; font-weight: 600; letter-spacing: -.015em; color: var(--text-primary) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.eea-sub { color: var(--text-secondary); font-size: 13px; margin-top: 3px; }
-.eea-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.eea-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 5px;
-            border: 1px solid var(--border-md); color: var(--text-secondary); }
-.eea-chip i:not(.fas) { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); display: inline-block; }
-.eea-chip i.st-active { background: var(--success, #12b76a); } .eea-chip i.st-pending { background: var(--warning, #d97706); }
-.eea-chip .fas { font-size: 10px; }
-.eea-chip.warn { color: var(--warning, #d97706); }
-.eea-stats { display: flex; margin: 0; flex: none; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
-.eea-stats div { padding: 9px 20px; }
-.eea-stats div + div { border-left: 1px solid var(--border); }
-.eea-stats dt { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-.eea-stats dd { margin: 3px 0 0; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-primary); }
+html[data-bs-theme] .eea-hero .eea-id h1 { margin: 0 !important; font-size: 23px !important; font-weight: 600; letter-spacing: -.015em; color: var(--text-primary) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eea-sub { display: flex; flex-wrap: wrap; align-items: center; color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+.eea-sub > span + span::before { content: '/'; margin: 0 9px; opacity: .45; color: var(--text-muted); font-weight: 400; }
+.eea-st { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text-secondary); }
+.eea-st i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.eea-st.st-active { color: var(--ea-green); }
+.eea-st.st-pending { color: var(--ea-amber); }
+.eea-stats { display: flex; margin: 0; flex: none; }
+.eea-stats > div { padding: 0 0 0 24px; margin-left: 24px; border-left: 1px solid var(--ea-line); }
+.eea-stats > div:first-child { padding: 0; margin: 0; border: 0; }
+.eea-stats dt { font-size: 11.5px; font-weight: 400; color: var(--text-muted); }
+.eea-stats dd { margin: 2px 0 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-primary); }
+.eea-stats dd small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.eea-stats dd.warn { color: var(--ea-amber); }
 
-/* The rail and the open section side by side, down to the bottom of the screen. */
-.eea-card { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; min-height: calc(100vh - 250px); }
-.eea-rail { display: flex; flex-direction: column; gap: 12px; }
-.eea-tabs { display: flex; flex-direction: column; gap: 2px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
-.eea-tabs button { background: none; border: 0; border-radius: 7px; padding: 13px 12px; font-weight: 500; font-size: 13.5px; color: var(--text-secondary);
+/* The sections at the left, the open one filling the rest. */
+.eea-card { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; min-height: calc(100vh - 250px); }
+.eea-rail { display: flex; flex-direction: column; }
+.eea-tabs { display: flex; flex-direction: column; gap: 2px; }
+.eea-tabs button { background: none; border: 0; border-radius: 8px; padding: 10px 12px; font-weight: 500; font-size: 13.5px; color: var(--text-muted);
                    display: flex; align-items: center; gap: 10px; cursor: pointer; text-align: left; }
-.eea-tabs button > .fas, .eea-tabs button > .far { width: 16px; text-align: center; font-size: 12px; color: var(--text-muted); }
-.eea-tabs button:hover { background: var(--bg-subtle); color: var(--text-primary); }
-.eea-tabs button.on { background: color-mix(in srgb, var(--brand) 10%, transparent); color: var(--text-primary); font-weight: 600; box-shadow: inset 2px 0 0 var(--brand); }
-.eea-tabs button.on > .fas, .eea-tabs button.on > .far { color: var(--brand); }
-.eea-tabs .cnt { margin-left: auto; font-size: 11.5px; font-weight: 500; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.eea-tabs .cnt.done { color: var(--success, #12b76a); }
-.eea-tabs .dotm { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
-.eea-tabs .dotm.need { background: var(--danger); }
-.eea-tabs .dotm.chg { background: var(--brand); }
+.eea-tabs button > .fas, .eea-tabs button > .far { width: 16px; text-align: center; font-size: 13px; opacity: .8; }
+.eea-tabs button:hover { color: var(--text-primary); }
+.eea-tabs button.on { background: var(--surface); color: var(--text-primary); font-weight: 600; box-shadow: 0 0 0 1px var(--ea-line); }
+.eea-tabs button.on > .fas, .eea-tabs button.on > .far { color: var(--ea-navy-ink); opacity: 1; }
+.eea-tabs .cnt { margin-left: auto; display: inline-flex; align-items: center; font-size: 11px; }
+.eea-tabs .dotm { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.eea-tabs .cnt.gap  .dotm { background: var(--ea-amber); }
+.eea-tabs .cnt.chg  .dotm { background: var(--ea-navy-ink); }
+.eea-tabs .cnt.need .dotm { background: var(--ea-red); }
+.eea-tabs .cnt.ok { color: var(--ea-green); }
 
-.eea-railbox { flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
-.eea-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.eea-k { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
-.eea-meter { height: 5px; margin-top: 10px; border-radius: 3px; overflow: hidden; background: var(--border); }
-.eea-meter i { display: block; height: 100%; background: var(--brand); }
-.eea-slots { display: flex; gap: 6px; margin-top: 10px; }
-.eea-slot { flex: 1; min-width: 0; height: 34px; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 6px;
-            font-size: 12px; color: var(--text-muted); border: 1px dashed var(--border-md); }
-.eea-slot.on { border: 1px solid rgba(18,183,106,.45); background: rgba(18,183,106,.10); color: var(--success, #12b76a); font-weight: 600; }
-.eea-note { margin-top: 9px; font-size: 12px; color: var(--warning, #d97706); display: flex; gap: 6px; align-items: center; }
-.eea-help { margin: auto 0 0; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; line-height: 1.55; color: var(--text-muted); }
-.eea-help b { display: block; margin-bottom: 2px; font-weight: 600; color: var(--text-secondary); }
+.eea-railbox { margin-top: 18px; padding: 16px 12px 0; border-top: 1px solid var(--ea-line); font-size: 12.5px; }
+.eea-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.eea-row b { color: var(--text-primary); font-weight: 600; }
+.eea-meter { height: 4px; margin: 9px 0 18px; border-radius: 2px; overflow: hidden; background: var(--ea-line); }
+.eea-meter i { display: block; height: 100%; background: var(--ea-navy-ink); }
+.eea-note { margin-top: 6px; font-size: 12px; color: var(--ea-amber); }
 
-.eea-panel { display: flex; flex-direction: column; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.eea-panel { display: flex; flex-direction: column; min-width: 0; background: var(--surface); border: 1px solid var(--ea-line); border-radius: 12px; }
 .eea .eea-body { flex: 1; display: flex; flex-direction: column; }
 
-/* The open section: its name and why across the top, its fields the full width under it. */
-.eea .ep-section { flex: 1; display: flex; flex-direction: column; margin: 0; padding: 0 24px 20px;
+/* The open section: its name and why across the top. */
+.eea .ep-section { flex: 1; display: flex; flex-direction: column; margin: 0; padding: 0 28px 22px;
                    background: none !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
 .eea .ep-section[hidden] { display: none !important; }
-.eea .ep-section-head { display: block !important; margin: 0 -24px 6px !important; padding: 16px 24px 14px !important; border: 0 !important; border-bottom: 1px solid var(--border) !important; }
+.eea .ep-section-head { display: block !important; margin: 0 0 4px !important; padding: 22px 0 8px !important; border: 0 !important; }
 .eea .ep-section-icon, .eea .rgx-chip { display: none !important; }
-html[data-bs-theme] .eea .ep-section-title { font-size: 15px; font-weight: 600; margin: 0; color: var(--text-primary); }
-.eea .ep-section-sub { display: block !important; font-size: 12.5px; color: var(--text-muted); margin: 3px 0 0; line-height: 1.5; }
+html[data-bs-theme] .eea .ep-section-title { font-size: 17px; font-weight: 600; letter-spacing: -.01em; margin: 0; color: var(--text-primary); }
+.eea .ep-section-sub { display: block !important; font-size: 12.5px; color: var(--text-muted); margin: 4px 0 0; line-height: 1.5; }
 .eea .ep-section > .row { margin-top: 0; }
 .eea .ep-section > .row + .row { margin-top: 14px; }
-.eea .ep-label { font-size: 12.5px !important; font-weight: 500 !important; text-transform: none !important; letter-spacing: 0 !important; color: var(--text-secondary) !important; margin-bottom: 6px; }
-.eea .form-control, .eea .form-select { min-height: 40px; border-radius: 8px; font-size: 13.5px; }
-.eea .form-control[readonly] { background: transparent; border-style: dashed; }
-.eea .ep-hint { font-size: 11.5px; color: var(--text-muted); }
-.eea .ep-subhead, .eea .eea-grp { display: flex; align-items: center; gap: 12px; margin: 20px 0 12px !important; padding: 0; border: 0;
-                                   font-size: 12px; font-weight: 600; color: var(--text-secondary); }
-.eea .ep-subhead::after, .eea .eea-grp::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.eea .ep-label { font-size: 12px !important; font-weight: 400 !important; text-transform: none !important; letter-spacing: 0 !important; color: var(--text-muted) !important; margin-bottom: 6px; }
+.eea .ep-req { color: var(--ea-amber) !important; }
+.eea .form-control, .eea .form-select { min-height: 40px; border-radius: 8px; font-size: 13.5px; border-color: var(--ea-field); }
+.eea .form-control:focus, .eea .form-select:focus { border-color: var(--ea-navy-ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ea-navy-ink) 16%, transparent); }
+.eea .form-control[readonly] { background: transparent; }
+.eea .ep-hint { font-size: 11.5px; color: var(--text-muted); opacity: .85; }
+.eea .ep-subhead { margin: 22px 0 12px !important; padding: 16px 0 0; border: 0; border-top: 1px solid var(--ea-line);
+                   font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+
+/* Employment & Pay: each group named at the left, its fields at the right. */
+.eea .ep-section.eea-emp { display: grid; grid-template-columns: 174px minmax(0, 1fr); column-gap: 0; align-content: start; }
+.eea .eea-emp > .ep-section-head { grid-column: 1 / -1; }
+.eea .eea-emp > .eea-grp { margin: 0 !important; padding: 20px 0; border-top: 1px solid var(--ea-line); }
+.eea .eea-emp > .row { margin-top: 0 !important; margin-bottom: 0 !important; padding: 4px 0 20px; border-top: 1px solid var(--ea-line); }
+.eea .eea-emp > .eea-grp { padding-top: 22px; padding-right: 24px; font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+.eea .eea-emp > .ep-section-head + .eea-grp, .eea .eea-emp > .ep-section-head + .eea-grp + .row { border-top: 0; }
+.eea .eea-emp > .row + .row { margin-top: 0 !important; }
+.eea .eea-emp .ep-suffix-group .ep-suffix { flex: 0 0 96px; }
 
 /* The other sections' fields: each row shared out across the full width. */
 .eea .ep-section:not(.eea-emp) > .row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 14px 18px; margin: 0; }
 .eea .ep-section:not(.eea-emp) > .row > * { width: auto; max-width: none; padding: 0; margin: 0; }
 .eea .ep-section:not(.eea-emp) > .row:first-of-type { margin-top: 14px; }
 
-.eea-foot { display: flex; align-items: center; gap: 10px; padding: 13px 24px; border-top: 1px solid var(--border); background: var(--bg-subtle);
-            border-radius: 0 0 10px 10px; position: sticky; bottom: 0; z-index: 5; }
-.eea-saved { font-size: 12px; color: var(--text-muted); }
-.eea-sp { flex: 1; }
-.eea-btn { height: 38px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--border-md); background: var(--surface); color: var(--text-primary);
+/* One status, then Cancel and Save. */
+.eea-foot { display: flex; align-items: center; gap: 10px; padding: 14px 28px; border-top: 1px solid var(--ea-line); background: var(--surface);
+            border-radius: 0 0 12px 12px; position: sticky; bottom: 0; z-index: 5; }
+.eea-status { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eea-status .rgx-dirty { display: none; font-weight: 600; color: var(--text-primary); }
+.eea-status .rgx-dirty.is-on { display: inline; }
+.eea-status:has(.rgx-dirty.is-on) .eea-saved { display: none; }
+.eea-status .eea-what:empty { display: none; }
+.eea-btn { height: 38px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--ea-field); background: transparent; color: var(--text-primary);
            font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; text-decoration: none; cursor: pointer; }
 .eea-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
-.eea-btn.pri { background: var(--brand); border-color: var(--brand); color: #fff; }
-.eea-btn.pri:hover { filter: brightness(1.08); color: #fff; }
-.eea .rgx-count { font-size: 12px; }
+.eea-btn.pri { background: var(--ea-navy); border-color: var(--ea-navy); color: #fff; }
+.eea-btn.pri:hover { filter: brightness(1.12); color: #fff; }
+.eea-foot:not(:has(.rgx-dirty.is-on)) .eea-btn.pri { opacity: .5; }
+
+/* Room at the right of the footer for the chat button, so it never sits on Save. */
+.eea-foot { padding-right: 92px; }
+.eea-status .rgx-dirty.is-on { background: none; padding: 0; border: 0; border-radius: 0; color: var(--text-primary); font-size: inherit; }
 
 @media (max-width: 1100px) {
-    .eea-hero { flex-wrap: wrap; } .eea-stats { width: 100%; } .eea-stats div { flex: 1; }
+    .eea-hero { flex-wrap: wrap; } .eea-stats { width: 100%; }
     .eea .ep-section:not(.eea-emp) > .row { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .eea .ep-section.eea-emp { grid-template-columns: 1fr; }
+    .eea .eea-emp > .eea-grp { padding: 18px 0 0; }
+    .eea .eea-emp > .eea-grp + .row { border-top: 0; padding-top: 12px; }
 }
 @media (max-width: 900px) {
-    .eea-card { grid-template-columns: 1fr; min-height: 0; }
+    .eea-card { grid-template-columns: 1fr; min-height: 0; gap: 16px; }
     .eea-tabs { flex-direction: row; overflow-x: auto; }
     .eea-tabs button { flex: none; }
     .eea-railbox { display: none; }
@@ -540,21 +551,30 @@ html[data-bs-theme] .eea .ep-section-title { font-size: 15px; font-weight: 600; 
             const bad = !!sec.querySelector('.is-invalid, .invalid-feedback.d-block');
 
             const fields = Array.from(sec.querySelectorAll('input, select, textarea'))
-                .filter(f => f.type !== 'hidden' && !f.disabled && !f.readOnly && f.name);
+                .filter(f => f.type !== 'hidden' && !f.disabled && !f.readOnly && f.name)
+                // Optional extras that are usually blank do not make a section incomplete.
+                .filter(f => f.id !== 'name_suffix' && !f.name.startsWith('other_site'));
             const filled = fields.filter(f => String(f.value || '').trim() !== '').length;
+            // One mark per tab, the most urgent: red, a required field is
+            // empty or wrong; navy, changed and not saved; amber, something
+            // optional still blank; a check, all of it recorded.
+            const done = fields.length > 0 && filled === fields.length;
+            const cls = bad || empty ? 'need' : changed ? 'chg' : done ? 'ok' : 'gap';
             const cnt = btns[i].querySelector('.cnt');
             if (cnt) {
-                const done = fields.length && filled === fields.length;
-                cnt.className = 'cnt' + (done ? ' done' : '');
-                cnt.innerHTML = done ? '<i class="fas fa-check"></i>' : `${filled}/${fields.length}`;
+                cnt.className = 'cnt ' + cls;
+                cnt.innerHTML = cls === 'ok' ? '<i class="fas fa-check"></i>' : '<i class="dotm"></i>';
+                cnt.title = cls === 'need' ? 'A required field is empty' : cls === 'chg' ? 'Changed, not saved yet'
+                          : cls === 'gap' ? `${filled} of ${fields.length} recorded` : 'All recorded';
             }
-
-            let dot = btns[i].querySelector('.dotm');
-            const cls = bad || empty ? 'need' : (changed ? 'chg' : '');
-            if (!cls) { if (dot) dot.remove(); return; }
-            if (!dot) { dot = document.createElement('i'); btns[i].appendChild(dot); }
-            dot.className = 'dotm ' + cls;
         });
+        // Which fields have changed, beside the count in the footer.
+        const what = document.getElementById('eeaWhat');
+        if (what) {
+            const names = Array.from(document.querySelectorAll('#eeaBody .rgx-changed .ep-label'))
+                .map(l => l.textContent.replace('*', '').trim().toLowerCase()).filter(Boolean);
+            what.textContent = names.length ? ' · ' + names.slice(0, 3).join(', ') + (names.length > 3 ? ` +${names.length - 3}` : '') : '';
+        }
     }
 
     const firstBad = secs.findIndex(s => s.querySelector('.is-invalid, .invalid-feedback.d-block'));
@@ -563,8 +583,9 @@ html[data-bs-theme] .eea .ep-section-title { font-size: 15px; font-weight: 600; 
     show(firstBad >= 0 ? firstBad : Math.min(start, secs.length - 1));
 
     const form = document.getElementById('rgxForm');
-    form.addEventListener('input', () => setTimeout(marks, 0));
-    form.addEventListener('change', () => setTimeout(marks, 0));
+    // After the progress script has marked what changed.
+    form.addEventListener('input', () => setTimeout(marks, 20));
+    form.addEventListener('change', () => setTimeout(marks, 20));
     window.addEventListener('load', () => setTimeout(marks, 50));
 
     // A required field left empty in another tab: open it rather than send.
