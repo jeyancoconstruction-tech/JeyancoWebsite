@@ -3,68 +3,113 @@
 namespace App\Http\Controllers;
 
 use App\Models\Complaint;
+use App\Models\Employee;
 use App\Models\Site;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 /**
- * Complaints workers posted at the kiosk, for the office to read and answer
- * (Complaints, under Leave & Advances in the sidebar). Grouped by site or by employee; the one
- * picked opens beside the list with its answer box. The worker sees the
- * answer and the status the next time they scan in the kiosk's REPORT tab.
+ * Complaints workers posted at the kiosk, for the office to read and answer.
+ * The page lists the workers themselves — every active worker, whether or not
+ * they have written — with the ones waiting for an answer on top. Picking a
+ * worker opens everything they have reported, and the one picked has the
+ * answer box. The worker sees the answer the next time they scan in the
+ * kiosk's REPORT tab.
  */
 class ComplaintController extends Controller
 {
     public function index(Request $request)
     {
-        $status   = in_array($request->query('status'), ['resolved', 'all'], true) ? $request->query('status') : 'open';
-        $group    = $request->query('group') === 'employee' ? 'employee' : 'site';
+        $show     = in_array($request->query('show'), ['open', 'reported'], true) ? $request->query('show') : 'all';
         $category = array_key_exists((string) $request->query('category'), Complaint::CATEGORIES) ? (string) $request->query('category') : null;
         $siteId   = $request->filled('site') ? (int) $request->query('site') : null;
         $q        = trim((string) $request->query('q'));
 
-        $list = Complaint::with(['employee:id,name,position,site_id', 'employee.site:id,name', 'site:id,name', 'kiosk:id,name,code', 'resolver:id,name'])
-            ->when($status !== 'all', fn ($w) => $w->where('status', $status))
+        // What each worker has written: how many, how many still open, the
+        // oldest open one (how long they have waited) and its topic.
+        $agg = Complaint::query()
             ->when($category, fn ($w) => $w->where('category', $category))
-            ->when($siteId, fn ($w) => $w->where('site_id', $siteId))
-            ->when($q !== '', fn ($w) => $w->whereHas('employee', fn ($e) => $e->where('name', 'like', '%' . $q . '%')))
-            ->orderByDesc('created_at')
-            ->limit(300)
-            ->get();
+            ->selectRaw('employee_id, count(*) as total_n, sum(case when status = ? then 1 else 0 end) as open_n, max(created_at) as last_at', [Complaint::OPEN])
+            ->groupBy('employee_id')->get()->keyBy('employee_id');
+        $oldestOpen = Complaint::where('status', Complaint::OPEN)
+            ->when($category, fn ($w) => $w->where('category', $category))
+            ->orderBy('created_at')->get(['id', 'employee_id', 'category', 'created_at', 'message'])
+            ->groupBy('employee_id')->map->first();
 
-        // Grouped as asked: by the site it came from, or by the worker.
-        $groups = $list->groupBy(fn (Complaint $c) => $group === 'site'
-                ? ($c->site->name ?? $c->employee?->site?->name ?? __('No site'))
-                : ($c->employee->name ?? __('Unknown')))
+        // Every active worker, and anyone else who has written.
+        $people = Employee::with('site:id,name')
+            ->where(fn ($w) => $w->where('status', Employee::STATUS_ACTIVE)->orWhereIn('id', $agg->keys()))
+            ->when($siteId, fn ($w) => $w->where('site_id', $siteId))
+            ->when($q !== '', fn ($w) => $w->where('name', 'like', '%' . $q . '%'))
+            ->orderBy('name')
+            ->limit(500)
+            ->get(['id', 'name', 'position', 'site_id', 'status'])
+            ->each(function (Employee $e) use ($agg, $oldestOpen) {
+                $a = $agg->get($e->id);
+                $e->setAttribute('open_n', (int) ($a->open_n ?? 0));
+                $e->setAttribute('total_n', (int) ($a->total_n ?? 0));
+                $e->setAttribute('last_at', isset($a->last_at) ? Carbon::parse($a->last_at) : null);
+                $e->setAttribute('oldest_open', $oldestOpen->get($e->id));
+            });
+
+        $counts = [
+            'all'      => $people->count(),
+            'open'     => $people->where('open_n', '>', 0)->count(),
+            'reported' => $people->where('total_n', '>', 0)->count(),
+        ];
+        $shown = $people->filter(fn ($e) => match ($show) {
+            'open'     => $e->open_n > 0,
+            'reported' => $e->total_n > 0,
+            default    => true,
+        });
+
+        // Waiting for an answer, longest wait first; then everyone by site.
+        $waiting = $shown->where('open_n', '>', 0)->sortBy(fn ($e) => $e->oldest_open?->created_at)->values();
+        $bySite  = $shown->where('open_n', 0)
+            ->groupBy(fn ($e) => $e->site->name ?? __('No site'))
             ->sortKeys();
 
-        $selected = $request->filled('c')
-            ? Complaint::with(['employee.site', 'site', 'kiosk', 'resolver'])->find((int) $request->query('c'))
-            : $list->first();
+        // The worker picked: asked for, the owner of the report asked for, or
+        // the one who has waited longest. Nobody waiting: the month at a glance.
+        $picked = null;
+        if ($request->filled('c') && ($c = Complaint::find((int) $request->query('c')))) {
+            $picked = $c;
+        }
+        $employeeId = $request->filled('e') ? (int) $request->query('e') : ($picked->employee_id ?? $waiting->first()?->id);
+        $employee   = $employeeId ? ($people->firstWhere('id', $employeeId) ?? Employee::withTrashed()->with('site:id,name')->find($employeeId)) : null;
+
+        $thread = collect();
+        $selected = null;
+        if ($employee) {
+            // Open ones first, the longest waiting on top; then the answered, newest first.
+            $all = Complaint::with(['site:id,name', 'kiosk:id,name,code', 'resolver:id,name'])
+                ->where('employee_id', $employee->id)->latest()->limit(100)->get();
+            $thread = $all->filter->isOpen()->sortBy('created_at')->values()
+                ->concat($all->reject->isOpen()->values());
+            $selected = ($picked && (int) $picked->employee_id === (int) $employee->id ? $thread->firstWhere('id', $picked->id) : null)
+                ?? $thread->first();
+        }
 
         $answered = Complaint::where('status', Complaint::RESOLVED)->whereNotNull('resolved_at');
 
         return view('complaints.index', [
-            'groups'     => $groups,
-            'total'      => $list->count(),
+            'waiting'    => $waiting,
+            'bySite'     => $bySite,
+            'employee'   => $employee,
+            'thread'     => $thread,
             'selected'   => $selected,
-            // An empty list still says something: the last few answered.
-            'recent'     => $list->isEmpty()
-                ? Complaint::with('employee:id,name')->where('status', Complaint::RESOLVED)->whereNotNull('resolved_at')
-                    ->latest('resolved_at')->limit(3)->get()
-                : collect(),
-            'status'     => $status,
-            'group'      => $group,
+            'recent'     => $employee ? collect() : Complaint::with('employee:id,name')->where('status', Complaint::RESOLVED)
+                ->whereNotNull('resolved_at')->latest('resolved_at')->limit(5)->get(),
+            'topics'     => $employee ? collect() : $this->topics(),
+            'show'       => $show,
             'category'   => $category,
             'siteId'     => $siteId,
             'q'          => $q,
             'categories' => Complaint::CATEGORIES,
             'sites'      => Site::orderBy('name')->get(['id', 'name']),
-            'counts'     => [
-                'open'     => Complaint::where('status', Complaint::OPEN)->count(),
-                'resolved' => Complaint::where('status', Complaint::RESOLVED)->count(),
-                'all'      => Complaint::count(),
-            ],
+            'counts'     => $counts,
             'stats'      => [
                 'open'     => Complaint::where('status', Complaint::OPEN)->count(),
                 'week'     => (clone $answered)->where('resolved_at', '>=', now()->startOfWeek())->count(),
@@ -81,7 +126,8 @@ class ComplaintController extends Controller
             'response' => 'nullable|string|max:1000',
         ]);
 
-        $back = fn (string $msg) => redirect()->route('complaints.index', array_filter($request->only(['status', 'group', 'category', 'site', 'q']) + ['c' => $complaint->id]))
+        $back = fn (string $msg) => redirect()->route('complaints.index', array_filter($request->only(['show', 'category', 'site', 'q'])
+                + ['e' => $complaint->employee_id, 'c' => $complaint->id]))
             ->with('success', $msg);
 
         if ($data['action'] === 'reopen') {
@@ -104,6 +150,14 @@ class ComplaintController extends Controller
         ]);
 
         return $back('Complaint #' . $complaint->id . ' answered and resolved.');
+    }
+
+    /** What the workers wrote about over the last 30 days, the most first. */
+    private function topics(): Collection
+    {
+        return Complaint::where('created_at', '>=', now()->subDays(30))
+            ->selectRaw('category, count(*) as n')->groupBy('category')->pluck('n', 'category')
+            ->map(fn ($n) => (int) $n)->sortDesc();
     }
 
     /** Average hours from posted to answered, over the latest answers. */
