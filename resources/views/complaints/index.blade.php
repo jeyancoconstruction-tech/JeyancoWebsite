@@ -140,7 +140,7 @@ html[data-bs-theme] .cpx-top h1 { margin: 2px 0 0; font-size: 26px; font-weight:
 .cpx-bar .hd span { color: var(--text-secondary, var(--text-primary)); }
 .cpx-bar .hd b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 .cpx-bar .hd em { font-style: normal; font-weight: 500; color: var(--cx-mute); margin-left: 6px; }
-.cpx-bar .tr { margin-top: 6px; height: 4px; border-radius: 2px; background: var(--cx-line); overflow: hidden; }
+.cpx-bar .tr { display: block; margin-top: 6px; height: 5px; border-radius: 2px; background: var(--cx-line); overflow: hidden; }
 .cpx-bar .tr { background: var(--cx-tint); }
 .cpx-bar .tr i { display: block; height: 100%; border-radius: 2px; background: var(--cx-ink); }
 .cpx-quiet { font-size: 12.5px; color: var(--cx-mute); }
