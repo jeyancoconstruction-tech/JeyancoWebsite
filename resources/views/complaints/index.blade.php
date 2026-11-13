@@ -8,12 +8,16 @@
    waiting for an answer on top, bold, with a count; the workers who have
    never written below them. On the right the conversation with the worker
    picked, oldest at the top: what the worker sent on the left in grey, the
-   office's answers on the right in black, and the box to answer at the
-   bottom. Black and greys only. */
-.cpx { --cx-ink: #111827; --cx-on-ink: #fff; --cx-line: var(--border, #e4e7ec); --cx-soft: var(--bg-subtle, #f8f9fb);
+   office's answers on the right in the accent colour, and the box to answer
+   at the bottom. The accent is the one picked in System Settings →
+   Appearance (the same tokens as the main buttons), so Black still gives a
+   black-and-grey page and the other colours tint it. */
+.cpx { --cx-ink: var(--btn-ink, var(--brand, #1668DC)); --cx-on-ink: var(--btn-on, #fff);
+       --cx-tint: color-mix(in srgb, var(--cx-ink) 11%, var(--surface, #fff));
+       --cx-line: var(--border, #e4e7ec); --cx-soft: var(--bg-subtle, #f8f9fb);
        --cx-bub: #eef0f3; --cx-mute: var(--text-muted, #667085);
        display: flex; flex-direction: column; gap: 14px; height: calc(100vh - 120px); min-height: 600px; }
-[data-bs-theme="dark"] .cpx { --cx-ink: #e8edf5; --cx-on-ink: #0f172a; --cx-bub: #1f2a3c; }
+[data-bs-theme="dark"] .cpx { --cx-bub: #1f2a3c; --cx-tint: color-mix(in srgb, var(--cx-ink) 18%, var(--surface, #111827)); }
 
 /* Head. */
 .cpx-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap; }
@@ -27,7 +31,7 @@ html[data-bs-theme] .cpx-top h1 { margin: 2px 0 0; font-size: 26px; font-weight:
 .cpx-strip span { display: block; font-size: 11.5px; color: var(--cx-mute); white-space: nowrap; }
 .cpx-strip b { display: block; margin-top: 1px; font-size: 21px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 .cpx-strip b small { font-size: 12px; font-weight: 600; color: var(--cx-mute); margin-left: 2px; }
-.cpx-strip .alarm { background: var(--cx-soft); box-shadow: inset 3px 0 0 var(--cx-ink); }
+.cpx-strip .alarm { background: var(--cx-tint); box-shadow: inset 3px 0 0 var(--cx-ink); }
 
 /* The two panes. */
 .cpx-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 14px; }
@@ -52,7 +56,7 @@ html[data-bs-theme] .cpx-top h1 { margin: 2px 0 0; font-size: 26px; font-weight:
 .cpx-list { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; }
 .cpx-chat { position: relative; display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 12px; text-decoration: none; color: inherit; }
 .cpx-chat:hover { background: var(--cx-soft); color: inherit; }
-.cpx-chat.sel { background: var(--cx-bub); }
+.cpx-chat.sel { background: var(--cx-tint); }
 .cpx-av { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--cx-soft); border: 1px solid var(--cx-line); }
 .cpx-chat.sel .cpx-av { background: var(--surface); }
 .cpx-b { flex: 1; min-width: 0; }
@@ -128,11 +132,17 @@ html[data-bs-theme] .cpx-top h1 { margin: 2px 0 0; font-size: 26px; font-weight:
 .cpx-over > * { flex: none; }
 .cpx-over h3 { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 10px; font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .cpx-over h3 small { font-size: 12px; font-weight: 500; color: var(--cx-mute); }
-.cpx-bars { display: grid; grid-template-columns: max-content 1fr 32px; align-items: center; gap: 9px 14px; font-size: 12.5px; }
-.cpx-bars span { color: var(--text-secondary, var(--text-primary)); }
-.cpx-bars .tr { height: 8px; border-radius: 4px; background: var(--cx-soft); overflow: hidden; }
-.cpx-bars .tr i { display: block; height: 100%; border-radius: 4px; background: var(--cx-ink); }
-.cpx-bars b { text-align: right; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+/* Each topic as a line: name and count, then a thin bar for its share of
+   all reports (not of the biggest topic, so two topics of one each read as
+   half and half instead of two full black slabs). */
+.cpx-bars { display: flex; flex-direction: column; gap: 14px; max-width: 520px; }
+.cpx-bar .hd { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; }
+.cpx-bar .hd span { color: var(--text-secondary, var(--text-primary)); }
+.cpx-bar .hd b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.cpx-bar .hd em { font-style: normal; font-weight: 500; color: var(--cx-mute); margin-left: 6px; }
+.cpx-bar .tr { margin-top: 6px; height: 4px; border-radius: 2px; background: var(--cx-line); overflow: hidden; }
+.cpx-bar .tr { background: var(--cx-tint); }
+.cpx-bar .tr i { display: block; height: 100%; border-radius: 2px; background: var(--cx-ink); }
 .cpx-quiet { font-size: 12.5px; color: var(--cx-mute); }
 
 @media (max-width: 1100px) {
@@ -319,9 +329,11 @@ html[data-bs-theme] .cpx-top h1 { margin: 2px 0 0; font-size: 26px; font-weight:
                     @else
                         <div class="cpx-bars">
                             @foreach($topics as $k => $n)
-                                <span>{{ $categories[$k] ?? ucfirst($k) }}</span>
-                                <span class="tr"><i style="width: {{ max(4, round($n / max(1, $topics->max()) * 100)) }}%"></i></span>
-                                <b>{{ $n }}</b>
+                                @php($pct = (int) round($n / max(1, $topics->sum()) * 100))
+                                <div class="cpx-bar">
+                                    <div class="hd"><span>{{ $categories[$k] ?? ucfirst($k) }}</span><b>{{ $n }}<em>{{ $pct }}%</em></b></div>
+                                    <span class="tr"><i style="width: {{ max(3, $pct) }}%"></i></span>
+                                </div>
                             @endforeach
                         </div>
                     @endif
