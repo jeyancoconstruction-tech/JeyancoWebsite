@@ -211,7 +211,7 @@ html[data-bs-theme] .ss .ss-inp select:focus { border-color: var(--accent) !impo
 .ss-tgrow > small { color: var(--muted); font-size: 12px; font-weight: 600; min-width: 22px; }
 .ss-sw { display: flex; gap: 8px; flex-wrap: wrap; }
 .ss-sw label { margin: 0; }
-.ss-sw span { display: block; width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; background: var(--c); }
+.ss-sw span { display: block; width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; background: var(--c); outline: 1px solid color-mix(in srgb, var(--text) 22%, transparent); outline-offset: -1px; }
 .ss-sw input:checked + span { border-color: var(--text); box-shadow: 0 0 0 2px var(--panel) inset; }
 .ss-sw input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 

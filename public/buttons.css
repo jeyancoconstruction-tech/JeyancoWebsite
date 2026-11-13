@@ -1,20 +1,17 @@
-/* ── Primary buttons are black (2026-11-13) ─────────────────────────────────
-   Every button that used to be filled with the brand blue — Register
-   employee, Save, Add, Apply, Sign in, the pop-ups' confirm — is filled with
-   black instead, and with near-white in the dark theme (dark text on it), so
-   the main action of a page reads the same everywhere. Only buttons: the
-   sidebar, links, tabs, checkboxes and charts keep their colours, and the
-   kiosk has its own stylesheets. Loaded after every other stylesheet. ───── */
+/* ── The main buttons follow the accent colour (2026-11-13) ──────────────────
+   Every main button — Register employee, Save, Add, Apply, Sign in, the
+   pop-ups' confirm — is filled with the accent picked in System Settings →
+   Appearance, so the main action of a page reads the same everywhere, even
+   on pages that drew their own blue. With Black it is black, and near-white
+   with dark text in the dark theme. The fill comes from --btn-ink, set with
+   the accent (SystemSetting::accentRules); for the design's own blue it is
+   the brand colour below. The kiosk has its own stylesheets. Loaded after
+   every other stylesheet. ──────────────────────────────────────────────── */
 
 :root {
-    --btn-ink: #111827;
-    --btn-ink-hover: #1f2937;
+    --btn-ink: var(--brand, #1668DC);
+    --btn-ink-hover: color-mix(in srgb, var(--btn-ink) 86%, #000);
     --btn-on: #ffffff;
-}
-[data-bs-theme="dark"] {
-    --btn-ink: #e8edf5;
-    --btn-ink-hover: #ffffff;
-    --btn-on: #0f172a;
 }
 
 :is(

@@ -138,8 +138,8 @@
          wins its ties with everything above. See mobile.css. --}}
     <link rel="stylesheet" href="{{ $cssv('mobile.css') }}">
 
-    {{-- The main buttons of every page in black (white in the dark theme).
-         After the pages' own styles, so it wins over each page's blue. --}}
+    {{-- The main buttons of every page in the accent colour (see below and
+         buttons.css). After the pages' own styles, so it wins over their blue. --}}
     <link rel="stylesheet" href="{{ $cssv('buttons.css') }}">
 
     {{-- System Settings → Appearance → Accent color: the brand tokens, redefined

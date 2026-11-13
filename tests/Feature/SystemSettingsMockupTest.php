@@ -119,6 +119,30 @@ class SystemSettingsMockupTest extends TestCase
              ->assertSessionHasErrors('accent_color');
     }
 
+    public function test_black_fills_the_main_buttons_black_and_white_in_the_dark(): void
+    {
+        $admin = $this->admin();
+
+        // The design's own blue: the sign-in page keeps its own button.
+        $this->get(route('login'))->assertOk()->assertDontSee('buttons.css', false);
+
+        $this->actingAs($admin)->get(route('system-settings.appearance'))->assertOk()
+             ->assertSee('value="black" aria-label="Black"', false);
+
+        $this->put(route('system-settings.appearance.update'), ['default_theme' => 'light', 'accent_color' => 'black'])
+             ->assertSessionHasNoErrors();
+        $this->assertTrue(AuditLog::where('description', 'like', '%accent colour blue → black%')->exists());
+
+        $html = $this->get(route('dashboard'))->assertOk()->getContent();
+        $this->assertStringContainsString('buttons.css', $html);
+        $this->assertStringContainsString('html[data-bs-theme="light"]{--brand:#111827;', $html);
+        $this->assertStringContainsString('--btn-ink:#111827;--btn-ink-hover:#1F2937;--btn-on:#FFFFFF;', $html);
+        $this->assertStringContainsString('--btn-ink:#E8EDF5;--btn-ink-hover:#FFFFFF;--btn-on:#0F172A;', $html);
+
+        auth()->logout();
+        $this->get(route('login'))->assertOk()->assertSee('buttons.css', false);
+    }
+
     public function test_the_sign_in_intro_can_be_switched_off(): void
     {
         $this->get(route('login'))->assertOk()->assertSee("!still && !false", false);

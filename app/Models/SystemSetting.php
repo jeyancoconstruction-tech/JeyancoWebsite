@@ -128,9 +128,16 @@ class SystemSetting extends Model
      * The accent colours Appearance offers: name, swatch, then the brand
      * colour, its pressed shade and its tint for the light theme and for the
      * dark one. Blue is the design's own and needs no override.
+     *
+     * Black can add its own button fill (fill, hover, text) for each theme:
+     * in the dark theme its main buttons are near-white with dark text, while
+     * the rest of its highlights stay a slate grey that white text still
+     * reads on. The others fill their buttons with the accent itself.
      */
     public const ACCENTS = [
         'blue'   => ['Blue',   '#3B82F6', ['#1668DC', '#1257BC', '#EAF2FD'], ['#4F97F5', '#6FAEFF', '#152742']],
+        'black'  => ['Black',  '#111827', ['#111827', '#1F2937', '#F2F4F7'], ['#64748B', '#94A3B8', '#1E2633'],
+                     ['#111827', '#1F2937', '#FFFFFF'], ['#E8EDF5', '#FFFFFF', '#0F172A']],
         'teal'   => ['Teal',   '#0D9488', ['#0D9488', '#0F766E', '#E6F6F4'], ['#2FBFAF', '#5EDBCB', '#10292A']],
         'violet' => ['Violet', '#7C3AED', ['#7C3AED', '#6D28D9', '#F1EBFE'], ['#A48BFA', '#C4B2FF', '#221A3A']],
         'orange' => ['Orange', '#EA580C', ['#EA580C', '#C2410C', '#FFF1E8'], ['#F7924A', '#FDBA74', '#2E1D12']],
@@ -149,13 +156,20 @@ class SystemSetting extends Model
     /** One accent's tokens for both themes; the settings page previews with it too. */
     public static function accentRules(string $key): string
     {
-        [, , $light, $dark] = self::ACCENTS[$key] ?? self::ACCENTS['blue'];
-        $tokens = fn (array $c, int $alpha) => "--brand:{$c[0]};--brand-strong:{$c[1]};--brand-subtle:{$c[2]};"
+        $a = self::ACCENTS[$key] ?? self::ACCENTS['blue'];
+        [, , $light, $dark] = $a;
+        // The main buttons' fill (see public/buttons.css): the accent's own,
+        // unless the accent names one of its own for that theme.
+        $btn = fn (array $c, ?array $b) => $b
+            ? "--btn-ink:{$b[0]};--btn-ink-hover:{$b[1]};--btn-on:{$b[2]};"
+            : "--btn-ink:{$c[0]};--btn-ink-hover:color-mix(in srgb, {$c[0]} 86%, #000);--btn-on:#fff;";
+        $tokens = fn (array $c, int $alpha, ?array $b) => "--brand:{$c[0]};--brand-strong:{$c[1]};--brand-subtle:{$c[2]};"
             . "--primary:{$c[0]};--primary-mid:{$c[1]};--primary-light:{$c[0]};--primary-soft:{$c[2]};--accent:{$c[0]};"
-            . "--sidebar-accent:{$c[0]};--sidebar-active:color-mix(in srgb, {$c[0]} {$alpha}%, transparent);";
+            . "--sidebar-accent:{$c[0]};--sidebar-active:color-mix(in srgb, {$c[0]} {$alpha}%, transparent);"
+            . $btn($c, $b);
 
-        return 'html[data-bs-theme="light"]{' . $tokens($light, 26) . '}'
-             . 'html[data-bs-theme="dark"]{' . $tokens($dark, 30) . '}';
+        return 'html[data-bs-theme="light"]{' . $tokens($light, 26, $a[4] ?? null) . '}'
+             . 'html[data-bs-theme="dark"]{' . $tokens($dark, 30, $a[5] ?? null) . '}';
     }
 
     /**

@@ -515,10 +515,14 @@
         }
     </style>
 
-    {{-- The main button in the house colour, as on every page; white on this
-         dark page, with dark text, so it stays the brightest thing on it. --}}
-    <link rel="stylesheet" href="{{ asset('buttons.css') }}?v={{ @filemtime(public_path('buttons.css')) ?: '1' }}">
-    <style>:root { --btn-ink: #e8edf5; --btn-ink-hover: #ffffff; --btn-on: #0f172a; }</style>
+    {{-- With System Settings → Appearance → Black, the main button is drawn
+         like every page's: white on this dark page, with dark text, so it
+         stays the brightest thing on it. Any other accent keeps this page's
+         own button. --}}
+    @if(rescue(fn () => \App\Models\SystemSetting::current()->accent_color, 'blue', false) === 'black')
+        <link rel="stylesheet" href="{{ asset('buttons.css') }}?v={{ @filemtime(public_path('buttons.css')) ?: '1' }}">
+        <style>:root { --btn-ink: #e8edf5; --btn-ink-hover: #ffffff; --btn-on: #0f172a; }</style>
+    @endif
 </head>
 <body>
 
