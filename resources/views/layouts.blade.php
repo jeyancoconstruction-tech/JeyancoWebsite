@@ -138,6 +138,10 @@
          wins its ties with everything above. See mobile.css. --}}
     <link rel="stylesheet" href="{{ $cssv('mobile.css') }}">
 
+    {{-- The main buttons of every page in black (white in the dark theme).
+         After the pages' own styles, so it wins over each page's blue. --}}
+    <link rel="stylesheet" href="{{ $cssv('buttons.css') }}">
+
     {{-- System Settings → Appearance → Accent color: the brand tokens, redefined
          when the office picked something other than the design's own blue. --}}
     @if($accentCss = \App\Models\SystemSetting::current()->accentCss())

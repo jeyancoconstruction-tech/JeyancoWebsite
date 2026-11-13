@@ -514,6 +514,11 @@
             svg.scene, .rp, .signin, .signin .arrow, .inp, .google { transition: none; }
         }
     </style>
+
+    {{-- The main button in the house colour, as on every page; white on this
+         dark page, with dark text, so it stays the brightest thing on it. --}}
+    <link rel="stylesheet" href="{{ asset('buttons.css') }}?v={{ @filemtime(public_path('buttons.css')) ?: '1' }}">
+    <style>:root { --btn-ink: #e8edf5; --btn-ink-hover: #ffffff; --btn-on: #0f172a; }</style>
 </head>
 <body>
 

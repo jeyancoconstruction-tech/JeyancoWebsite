@@ -1,0 +1,70 @@
+/* ── Primary buttons are black (2026-11-13) ─────────────────────────────────
+   Every button that used to be filled with the brand blue — Register
+   employee, Save, Add, Apply, Sign in, the pop-ups' confirm — is filled with
+   black instead, and with near-white in the dark theme (dark text on it), so
+   the main action of a page reads the same everywhere. Only buttons: the
+   sidebar, links, tabs, checkboxes and charts keep their colours, and the
+   kiosk has its own stylesheets. Loaded after every other stylesheet. ───── */
+
+:root {
+    --btn-ink: #111827;
+    --btn-ink-hover: #1f2937;
+    --btn-on: #ffffff;
+}
+[data-bs-theme="dark"] {
+    --btn-ink: #e8edf5;
+    --btn-ink-hover: #ffffff;
+    --btn-on: #0f172a;
+}
+
+:is(
+    .btn-primary, .btn-success, .rm-btn-primary, .btn-jeyanco, .cb-send-btn,
+    .mode-btn.active, .rmx-primary, .rmx-outline.is-on, .wkc-btn.pri,
+    .acct-btn.primary, .ca-btn.primary, .ana-fbtn:not(.ghost), .atm-btn.pri,
+    .eea-btn.pri, .emp-btn-save, .mod-btn.primary, .pp-btn-pri,
+    .prx-btn.pri, .prx-seg button.on, .rmt-btn.pri, .rp-btn.pri,
+    .ps-save-btn, .ps-add-btn, .ss-btn.pri, .sy-save, .sm-btn.is-primary,
+    .sx-btn.primary, .ur-btn.pri, .jy-confirm-brand .jy-btn-go,
+    .submit, .btn-login, .signin
+) {
+    background: var(--btn-ink) !important;
+    background-image: none !important;
+    border-color: var(--btn-ink) !important;
+    color: var(--btn-on) !important;
+    box-shadow: none !important;
+    filter: none !important;
+}
+
+:is(
+    .btn-primary, .btn-success, .rm-btn-primary, .btn-jeyanco, .cb-send-btn,
+    .mode-btn.active, .rmx-primary, .rmx-outline.is-on, .wkc-btn.pri,
+    .acct-btn.primary, .ca-btn.primary, .ana-fbtn:not(.ghost), .atm-btn.pri,
+    .eea-btn.pri, .emp-btn-save, .mod-btn.primary, .pp-btn-pri,
+    .prx-btn.pri, .prx-seg button.on, .rmt-btn.pri, .rp-btn.pri,
+    .ps-save-btn, .ps-add-btn, .ss-btn.pri, .sy-save, .sm-btn.is-primary,
+    .sx-btn.primary, .ur-btn.pri, .jy-confirm-brand .jy-btn-go,
+    .submit, .btn-login, .signin
+):is(:hover, :focus-visible):not(:disabled) {
+    background: var(--btn-ink-hover) !important;
+    border-color: var(--btn-ink-hover) !important;
+    color: var(--btn-on) !important;
+}
+
+/* What is drawn inside them takes the button's own text colour. */
+:is(
+    .btn-primary, .btn-success, .rm-btn-primary, .btn-jeyanco, .cb-send-btn,
+    .mode-btn.active, .rmx-primary, .rmx-outline.is-on, .wkc-btn.pri,
+    .acct-btn.primary, .ca-btn.primary, .ana-fbtn:not(.ghost), .atm-btn.pri,
+    .eea-btn.pri, .emp-btn-save, .mod-btn.primary, .pp-btn-pri,
+    .prx-btn.pri, .prx-seg button.on, .rmt-btn.pri, .rp-btn.pri,
+    .ps-save-btn, .ps-add-btn, .ss-btn.pri, .sy-save, .sm-btn.is-primary,
+    .sx-btn.primary, .ur-btn.pri, .jy-confirm-brand .jy-btn-go,
+    .submit, .btn-login, .signin
+) :is(i, svg, .arrow) {
+    color: var(--btn-on) !important;
+}
+
+/* A button that cannot be pressed yet stays black, only fainter. */
+:is(.btn-primary, .btn-success, .rmx-primary, .submit, .btn-login, .signin, .ps-save-btn, .sy-save, .emp-btn-save):disabled {
+    opacity: .45 !important;
+}
