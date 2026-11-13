@@ -37,6 +37,12 @@ class ComplaintController extends Controller
             ->when($category, fn ($w) => $w->where('category', $category))
             ->orderBy('created_at')->get(['id', 'employee_id', 'category', 'created_at', 'message'])
             ->groupBy('employee_id')->map->first();
+        // The last report of each worker, for the line under their name.
+        $latest = Complaint::query()
+            ->when($category, fn ($w) => $w->where('category', $category))
+            ->orderByDesc('created_at')->orderByDesc('id')
+            ->get(['id', 'employee_id', 'category', 'message', 'response', 'status', 'created_at', 'resolved_at'])
+            ->unique('employee_id')->keyBy('employee_id');
 
         // Every active worker, and anyone else who has written.
         $people = Employee::with('site:id,name')
@@ -46,12 +52,16 @@ class ComplaintController extends Controller
             ->orderBy('name')
             ->limit(500)
             ->get(['id', 'name', 'position', 'site_id', 'status'])
-            ->each(function (Employee $e) use ($agg, $oldestOpen) {
+            ->each(function (Employee $e) use ($agg, $oldestOpen, $latest) {
                 $a = $agg->get($e->id);
+                $l = $latest->get($e->id);
                 $e->setAttribute('open_n', (int) ($a->open_n ?? 0));
                 $e->setAttribute('total_n', (int) ($a->total_n ?? 0));
                 $e->setAttribute('last_at', isset($a->last_at) ? Carbon::parse($a->last_at) : null);
                 $e->setAttribute('oldest_open', $oldestOpen->get($e->id));
+                $e->setAttribute('latest', $l);
+                // When the conversation last moved: their report, or the answer to it.
+                $e->setAttribute('active_at', $l ? collect([$l->created_at, $l->resolved_at])->filter()->max() : null);
             });
 
         $counts = [
@@ -65,11 +75,14 @@ class ComplaintController extends Controller
             default    => true,
         });
 
-        // Waiting for an answer, longest wait first; then everyone by site.
+        // As a chat app lists them: the conversations waiting for an answer
+        // on top, then the rest by when they last moved; the workers who have
+        // never written below, by name.
         $waiting = $shown->where('open_n', '>', 0)->sortBy(fn ($e) => $e->oldest_open?->created_at)->values();
-        $bySite  = $shown->where('open_n', 0)
-            ->groupBy(fn ($e) => $e->site->name ?? __('No site'))
-            ->sortKeys();
+        $chats   = $waiting->concat(
+            $shown->where('open_n', 0)->where('total_n', '>', 0)->sortByDesc(fn ($e) => $e->active_at)->values()
+        );
+        $others  = $shown->where('total_n', 0)->values();
 
         // The worker picked: asked for, the owner of the report asked for, or
         // the one who has waited longest. Nobody waiting: the month at a glance.
@@ -83,20 +96,22 @@ class ComplaintController extends Controller
         $thread = collect();
         $selected = null;
         if ($employee) {
-            // Open ones first, the longest waiting on top; then the answered, newest first.
-            $all = Complaint::with(['site:id,name', 'kiosk:id,name,code', 'resolver:id,name'])
-                ->where('employee_id', $employee->id)->latest()->limit(100)->get();
-            $thread = $all->filter->isOpen()->sortBy('created_at')->values()
-                ->concat($all->reject->isOpen()->values());
+            // The conversation, oldest at the top and newest at the bottom.
+            $thread = Complaint::with(['site:id,name', 'kiosk:id,name,code', 'resolver:id,name'])
+                ->where('employee_id', $employee->id)->latest()->orderByDesc('id')->limit(100)->get()
+                ->reverse()->values();
+            // The one the answer box replies to: asked for, else the oldest
+            // still open, else the last one.
             $selected = ($picked && (int) $picked->employee_id === (int) $employee->id ? $thread->firstWhere('id', $picked->id) : null)
-                ?? $thread->first();
+                ?? $thread->first(fn ($c) => $c->isOpen())
+                ?? $thread->last();
         }
 
         $answered = Complaint::where('status', Complaint::RESOLVED)->whereNotNull('resolved_at');
 
         return view('complaints.index', [
-            'waiting'    => $waiting,
-            'bySite'     => $bySite,
+            'chats'      => $chats,
+            'others'     => $others,
             'employee'   => $employee,
             'thread'     => $thread,
             'selected'   => $selected,
