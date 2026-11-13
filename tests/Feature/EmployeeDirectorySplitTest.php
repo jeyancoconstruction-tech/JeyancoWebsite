@@ -66,7 +66,8 @@ class EmployeeDirectorySplitTest extends TestCase
      * for, and the rest were entered and then invisible. Since the redesign of
      * 2026-10-20 the record is four cards side by side (Personal, Contact &
      * emergency, Address, Government IDs) with Employment down the right.
-     * Since 2026-11-12 a section shows once something in it is recorded.
+     * Since 2026-11-13 every section shows whether or not anything in it is
+     * recorded (see the test below).
      */
     public function test_the_details_page_uses_the_same_sections_as_the_registration_form(): void
     {
@@ -109,6 +110,29 @@ class EmployeeDirectorySplitTest extends TestCase
             // The two that used to be collected and never shown anywhere.
             ->assertSee('ana@example.com')
             ->assertSee('00-1234567-8');
+    }
+
+    /**
+     * A worker just registered, with nothing but a name, already has a
+     * profile with its full shape: every section and every field, the blank
+     * ones reading "Not recorded" and leading to Edit (2026-11-13).
+     */
+    public function test_a_new_workers_profile_shows_every_section_and_field(): void
+    {
+        $employee = $this->regular('Ana Reyes');
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('employees.show', $employee->id))
+            ->assertOk()
+            ->getContent();
+
+        foreach (['<h3>Personal</h3>', '<h3>Contact &amp; emergency</h3>', '<h3>Address</h3>', '<h3>Government IDs</h3>'] as $heading) {
+            $this->assertStringContainsString($heading, $html);
+        }
+        foreach (['Place of birth', 'Blood type', 'Emergency number', 'Barangay', 'ZIP', 'PhilHealth', 'TIN'] as $label) {
+            $this->assertStringContainsString('<span>' . $label . '</span><b>Not recorded</b>', $html, $label);
+        }
+        $this->assertStringContainsString('href="' . route('employees.edit', $employee->id) . '" title="Add in Edit"', $html);
     }
 
     /**
