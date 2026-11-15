@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 =======================================================================
- JEYANCO KIOSK - GPS TRACKER (NEO-M8L)  v4
+ JEYANCO KIOSK - GPS TRACKER (NEO-M8L)  v5
 =======================================================================
 
  Binabasa ang live GPS ng NEO-M8L, tinitignan kung nasa loob ng aling
@@ -43,6 +43,19 @@
    * Nasa /dev/shm ang file (RAM, hindi SD card), kaya walang pagod sa card
      at nababasa ng Flask kahit ibang user ang nagpapatakbo.
 
+ v5 - mabilis na fix pagbukas (hot start sa halip na cold start):
+   * Bago patayin (sudo poweroff / restart ng service), pinapatigil ang
+     GNSS at sine-save ng module ang satellite data (ephemeris, almanac)
+     sa sarili nitong flash - UBX-UPD-SOS. Sine-save din ang huling
+     position sa LAST_FIX_FILE.
+   * Pagbukas, kusang ibinabalik ng module ang na-save na data. Ibinibigay
+     din dito ang kasalukuyang oras (mula sa internet time ng Pi, kung
+     naka-sync) at ang huling position - UBX-MGA-INI. Kaya ilang segundo
+     na lang ang unang fix imbes na 30s hanggang ilang minuto.
+   * Sinasabi ng log kung ilang segundo bago ang unang fix.
+   * KAILANGAN: maayos na shutdown. Kapag hinugot lang ang saksakan, walang
+     nase-save - cold start pa rin sa susunod (pero gumagana pa rin).
+
  Setup:  sudo apt install python3-serial python3-requests
          pip3 install pynmea2
 =======================================================================
@@ -50,8 +63,11 @@
 
 import json
 import os
+import signal
+import struct
 import sys
 import time
+from datetime import datetime, timezone
 from math import atan2, cos, radians, sin, sqrt
 
 import pynmea2
@@ -80,6 +96,14 @@ DEBUG         = False    # True = ipakita ang bawat GGA/RMC na linya (maingay)
 # DAPAT kapareho ng GPS_STATUS_FILE sa testing.py.
 STATUS_FILE         = '/dev/shm/jeyanco_gps_status.json'
 STATUS_EVERY        = 2        # segundo sa pagitan ng mga sulat
+
+# v5: ang huling position, para maibigay sa GPS pagbukas (SD card, kaya
+# isinusulat lang sa unang fix, kada 10 minuto, at bago mag-shutdown).
+LAST_FIX_FILE       = '/home/admin/jeyanco/gps_last_fix.json'
+LAST_FIX_EVERY      = 600
+# Naka-sync ba ang orasan ng Pi sa internet (systemd-timesyncd). Kapag hindi,
+# HINDI ibinibigay ang oras sa GPS - mas masama ang maling oras kaysa wala.
+TIME_SYNCED_FILE    = '/run/systemd/timesync/synchronized'
 
 ACTIVE_SITE_FILE    = '/home/admin/active_site.json'
 DEFAULT_ACTIVE_SITE = None      # None = hayaang ang GPS ang magsabi
@@ -228,6 +252,7 @@ def try_open_gps():
         except Exception:
             pass
         STATE['heard_at'] = time.time()
+        warm_up(ser)                          # v5: oras + huling position
         return ser                            # _baud_i: dito ulit magsisimula sa susunod
 
     log('  Walang NMEA sa %s baud (check wiring at antenna).' % baud)
@@ -237,6 +262,123 @@ def try_open_gps():
         pass
     _baud_i += 1
     return None
+
+
+# --- v5: HOT START (UBX) ----------------------------------------------
+def ubx(cls, mid, payload=b''):
+    """Isang UBX message: B5 62, class, id, haba, laman, checksum."""
+    body = struct.pack('<BBH', cls, mid, len(payload)) + payload
+    a = b = 0
+    for byte in body:
+        a = (a + byte) & 0xFF
+        b = (b + a) & 0xFF
+    return b'\xb5\x62' + body + bytes((a, b))
+
+
+def ubx_send(ser, msg):
+    try:
+        ser.write(msg)
+        ser.flush()
+        return True
+    except Exception as e:
+        log('  [!] Hindi maipadala sa GPS: %s' % e)
+        return False
+
+
+def wait_sos_reply(ser, seconds=4):
+    """Hintayin ang UBX-UPD-SOS na sagot (09 14). Ang response byte, o None."""
+    buf = b''
+    deadline = time.time() + seconds
+    while time.time() < deadline:
+        try:
+            buf += ser.read(256)
+        except Exception:
+            return None
+        i = buf.find(b'\xb5\x62\x09\x14')
+        if i >= 0 and len(buf) >= i + 11:
+            return buf[i + 10]                     # payload[4] = response
+    return None
+
+
+def save_last_fix(force=False):
+    """Isulat ang huling fix sa SD card (hindi madalas)."""
+    fix = STATE['fix']
+    if not fix:
+        return
+    if not force and (time.time() - STATE.get('saved_at', 0.0)) < LAST_FIX_EVERY:
+        return
+    try:
+        tmp = LAST_FIX_FILE + '.tmp'
+        with open(tmp, 'w') as f:
+            json.dump({'lat': fix['lat'], 'lng': fix['lng'], 'at': STATE['fix_at']}, f)
+        os.replace(tmp, LAST_FIX_FILE)
+        STATE['saved_at'] = time.time()
+    except Exception:
+        pass
+
+
+def warm_up(ser):
+    """
+    Tawagin pagbukas ng port. Simulan ang GNSS (baka pinatigil ng huling
+    shutdown), tapos ibigay ang oras at ang huling position.
+    """
+    # UBX-CFG-RST: controlled GNSS start (0x09). Walang epekto kung tumatakbo na.
+    ubx_send(ser, ubx(0x06, 0x04, struct.pack('<HBB', 0x0000, 0x09, 0)))
+
+    given = []
+    if os.path.exists(TIME_SYNCED_FILE):
+        now = datetime.now(timezone.utc)
+        # UBX-MGA-INI-TIME_UTC: oras ng Pi, +/- 2 segundo.
+        payload = struct.pack('<BBBbHBBBBBBIHHI', 0x10, 0x00, 0x00, -128,
+                              now.year, now.month, now.day, now.hour, now.minute, now.second,
+                              0, now.microsecond * 1000, 2, 0, 0)
+        if ubx_send(ser, ubx(0x13, 0x40, payload)):
+            given.append('oras')
+    try:
+        with open(LAST_FIX_FILE) as f:
+            last = json.load(f)
+        # UBX-MGA-INI-POS_LLH: huling position, +/- 50 km (baka lumipat ng site).
+        payload = struct.pack('<BBHiiiI', 0x01, 0x00, 0,
+                              int(round(last['lat'] * 1e7)), int(round(last['lng'] * 1e7)), 0, 5000000)
+        if ubx_send(ser, ubx(0x13, 0x40, payload)):
+            given.append('huling position')
+    except (FileNotFoundError, ValueError, KeyError, TypeError, OSError):
+        pass
+    log('Hot start: ibinigay sa GPS ang %s.' % (', '.join(given) if given else 'wala (walang oras/position na alam)'))
+
+
+def backup_on_shutdown():
+    """
+    Bago mamatay ang service: patigilin ang GNSS at i-save ng module ang
+    satellite data sa flash nito, para hot start sa susunod na bukas.
+    """
+    save_last_fix(force=True)
+    if gps is None:
+        log('Shutdown: walang bukas na GPS port - walang na-save sa module.')
+        return
+    try:
+        gps.reset_input_buffer()
+    except Exception:
+        pass
+    # UBX-CFG-RST: controlled GNSS stop (0x08), tapos UBX-UPD-SOS: create backup.
+    ubx_send(gps, ubx(0x06, 0x04, struct.pack('<HBB', 0x0000, 0x08, 0)))
+    time.sleep(0.5)
+    # Burahin muna ang lumang backup (kung naiwan ng restart na hindi
+    # pinatay ang module), tapos gumawa ng bago.
+    ubx_send(gps, ubx(0x09, 0x14, bytes((0x01, 0, 0, 0))))
+    time.sleep(1.0)
+    try:
+        gps.reset_input_buffer()
+    except Exception:
+        pass
+    ubx_send(gps, ubx(0x09, 0x14, bytes((0x00, 0, 0, 0))))
+    reply = wait_sos_reply(gps)
+    if reply == 1:
+        log('Shutdown: [OK] backup saved - na-save ang satellite data sa GPS module.')
+    elif reply == 0:
+        log('Shutdown: [!] tinanggihan ng GPS module ang backup.')
+    else:
+        log('Shutdown: walang sagot ang GPS module sa backup (baka luma ang firmware).')
 
 
 def drop_gps(why):
@@ -263,7 +405,9 @@ STATE = {
     'used':     None,   # satellite na ginagamit sa fix (GGA)
     'in_view':  {},     # satellite na nakikita, bawat sistema (GSV)
     'heard_at': 0.0,    # kailan huling may NMEA mula sa module
+    'saved_at': 0.0,    # kailan huling naisulat ang LAST_FIX_FILE
 }
+STARTED_AT = time.time()
 
 
 # Ang huling heartbeat: kailan, at kung tinanggap ng web.
@@ -462,6 +606,7 @@ def send(coords, detected, distance, active):
 def report_and_send():
     coords = current_fix()
     if coords:
+        save_last_fix()
         detected, distance = detect_site(coords['lat'], coords['lng'])
         send(coords, detected, distance, read_active_site())
     else:
@@ -481,24 +626,41 @@ def report_and_send():
 
 # --- MAIN LOOP --------------------------------------------------------
 if __name__ == '__main__':
-    log('GPS tracker v4 started - tuloy-tuloy ang basa, agad ang unang fix, heartbeat kahit walang GPS data.')
+    log('GPS tracker v5 started - hot start, tuloy-tuloy ang basa, agad ang unang fix, heartbeat kahit walang GPS data.')
+
+    # systemd (poweroff, reboot, restart ng service) ay nagpapadala ng
+    # SIGTERM: lumabas nang maayos para ma-save ang satellite data.
+    def _stop(signum, frame):
+        raise SystemExit(0)
+    signal.signal(signal.SIGTERM, _stop)
+
     load_sites(force=True)
 
     had_fix = False
+    first_logged = False
     last_sent = 0.0
 
-    while True:
-        # Basahin ang GPS nang isang segundo; hindi na natutulog nang walang basa.
-        # (Kapag walang bukas na port, isang baud ang sinusubukan dito, ~5s.)
-        new_fix = pump(1.0)
+    try:
+        while True:
+            # Basahin ang GPS nang isang segundo; hindi na natutulog nang walang basa.
+            # (Kapag walang bukas na port, isang baud ang sinusubukan dito, ~5s.)
+            new_fix = pump(1.0)
 
-        due = (time.time() - last_sent) >= SEND_INTERVAL
-        first_fix = new_fix and not had_fix     # galing sa walang fix: ipadala AGAD
+            due = (time.time() - last_sent) >= SEND_INTERVAL
+            first_fix = new_fix and not had_fix     # galing sa walang fix: ipadala AGAD
 
-        if due or first_fix:
-            if first_fix and not due:
-                log('[OK] Unang fix - ipinapadala agad.')
-            had_fix = report_and_send()
-            last_sent = time.time()
+            if new_fix and not first_logged:
+                first_logged = True
+                log('[OK] Unang fix sa loob ng %ds mula nang magsimula (%s).'
+                    % (time.time() - STARTED_AT, sats_text()))
+                save_last_fix(force=True)
 
-        write_status()
+            if due or first_fix:
+                if first_fix and not due:
+                    log('[OK] Unang fix - ipinapadala agad.')
+                had_fix = report_and_send()
+                last_sent = time.time()
+
+            write_status()
+    finally:
+        backup_on_shutdown()

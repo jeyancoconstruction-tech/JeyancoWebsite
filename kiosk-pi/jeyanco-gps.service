@@ -11,6 +11,10 @@ Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/bin/python3 /home/admin/jeyanco/gps_tracker.py
 Restart=always
 RestartSec=5
+# v5: on poweroff/reboot the tracker gets SIGTERM and saves the satellite
+# data to the GPS module's flash before it exits (a few seconds).
+KillSignal=SIGTERM
+TimeoutStopSec=20
 
 [Install]
 WantedBy=multi-user.target
