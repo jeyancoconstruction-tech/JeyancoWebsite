@@ -132,18 +132,56 @@ html[data-bs-theme] .cpx-top h1 { margin: 2px 0 0; font-size: 26px; font-weight:
 .cpx-over > * { flex: none; }
 .cpx-over h3 { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 10px; font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .cpx-over h3 small { font-size: 12px; font-weight: 500; color: var(--cx-mute); }
-/* Each topic as a line: name and count, then a thin bar for its share of
-   all reports (not of the biggest topic, so two topics of one each read as
-   half and half instead of two full black slabs). */
-.cpx-bars { display: flex; flex-direction: column; gap: 14px; max-width: 520px; }
-.cpx-bar .hd { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; }
-.cpx-bar .hd span { color: var(--text-secondary, var(--text-primary)); }
-.cpx-bar .hd b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary); }
-.cpx-bar .hd em { font-style: normal; font-weight: 500; color: var(--cx-mute); margin-left: 6px; }
-.cpx-bar .tr { display: block; margin-top: 6px; height: 5px; border-radius: 2px; background: var(--cx-line); overflow: hidden; }
-.cpx-bar .tr { background: var(--cx-tint); }
-.cpx-bar .tr i { display: block; height: 100%; border-radius: 2px; background: var(--cx-ink); }
+/* All caught up: a line saying so, the month in three numbers, every topic
+   (the quiet ones greyed, so the panel never looks empty), the latest
+   answers to reopen, and the round trip from kiosk to office and back. */
+.cpx-ok { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 14px; background: var(--cx-tint); }
+.cpx-ok .ic { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--cx-ink); color: var(--cx-on-ink); font-size: 18px; }
+.cpx-ok b { display: block; font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.cpx-ok p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--text-secondary, var(--cx-mute)); }
+
+.cpx-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cpx-kpis > div { padding: 12px 14px; border: 1px solid var(--cx-line); border-radius: 12px; }
+.cpx-kpis span { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--cx-mute); }
+.cpx-kpis span i { color: var(--cx-ink); font-size: 12px; }
+.cpx-kpis b { display: block; margin-top: 4px; font-size: 22px; font-weight: 700; line-height: 1.1; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.cpx-kpis small { font-size: 11.5px; color: var(--cx-mute); }
+
+.cpx-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.cpx-box { padding: 14px 16px; border: 1px solid var(--cx-line); border-radius: 14px; }
+
+/* Topics: icon, name, count and share, over a thin bar of that share. */
+.cpx-topics { display: flex; flex-direction: column; gap: 11px; }
+.cpx-topic { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 0 10px; align-items: center; }
+.cpx-topic .ti { grid-row: span 2; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 12.5px;
+                 background: var(--cx-tint); color: var(--cx-ink); }
+.cpx-topic .hd { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-primary); }
+.cpx-topic .hd b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cpx-topic .hd em { font-style: normal; font-weight: 500; color: var(--cx-mute); margin-left: 5px; font-size: 12px; }
+.cpx-topic .tr { display: block; margin-top: 5px; height: 5px; border-radius: 3px; background: var(--cx-soft); overflow: hidden; }
+.cpx-topic .tr i { display: block; height: 100%; border-radius: 3px; background: var(--cx-ink); }
+.cpx-topic.zero .ti { background: var(--cx-soft); color: var(--cx-mute); }
+.cpx-topic.zero .hd { color: var(--cx-mute); }
+
+/* The latest answers. */
+.cpx-recs { display: flex; flex-direction: column; gap: 2px; margin: 0 -8px; }
+.cpx-rec { display: flex; gap: 10px; padding: 8px; border-radius: 10px; text-decoration: none; color: inherit; }
+.cpx-rec:hover { background: var(--cx-soft); color: inherit; }
+.cpx-rec .cpx-av { width: 34px; height: 34px; }
+.cpx-rec .cpx-n { font-size: 13px; }
+.cpx-chip { display: inline-block; margin-top: 3px; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; background: var(--cx-tint); color: var(--cx-ink); }
+.cpx-rec .cpx-pv { margin-top: 3px; }
+.cpx-none { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px 8px; text-align: center; font-size: 12.5px; color: var(--cx-mute); }
+.cpx-none i { font-size: 20px; opacity: .6; }
+
+/* Kiosk to office and back. */
+.cpx-how ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; counter-reset: s; }
+.cpx-how li { position: relative; padding: 12px 14px 12px 52px; border-radius: 12px; background: var(--cx-soft); font-size: 12.5px; line-height: 1.45; color: var(--text-secondary, var(--cx-mute)); }
+.cpx-how li i { position: absolute; left: 14px; top: 13px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+                background: var(--surface); color: var(--cx-ink); font-size: 12px; border: 1px solid var(--cx-line); }
+.cpx-how li b { display: block; color: var(--text-primary); font-size: 13px; }
 .cpx-quiet { font-size: 12.5px; color: var(--cx-mute); }
+@media (max-width: 1280px) { .cpx-cols, .cpx-how ol { grid-template-columns: 1fr; } }
 
 @media (max-width: 1100px) {
     .cpx { height: auto; }
@@ -318,25 +356,69 @@ html[data-bs-theme] .cpx-top h1 { margin: 2px 0 0; font-size: 26px; font-weight:
             </section>
         @else
             <aside class="cpx-card cpx-over">
-                <div class="cpx-hello" style="margin: 0; text-align: left; max-width: none">
-                    <b>{{ __('Nobody is waiting for an answer') }}</b>
-                    {{ __('Pick a worker on the left to open the conversation. A new report from the kiosk puts the worker on top of the list, with an alert in the bell.') }}
+                @php
+                    $icons = ['pay' => 'fa-peso-sign', 'attendance' => 'fa-clock', 'safety' => 'fa-helmet-safety',
+                              'equipment' => 'fa-screwdriver-wrench', 'treatment' => 'fa-people-arrows', 'other' => 'fa-comment-dots'];
+                    $total = $topics->sum();
+                @endphp
+                <div class="cpx-ok">
+                    <span class="ic"><i class="fas fa-check"></i></span>
+                    <div>
+                        <b>{{ __('All caught up — nobody is waiting for an answer') }}</b>
+                        <p>{{ __('Pick a worker on the left to open the conversation. A new report from the kiosk puts the worker on top of the list, with an alert in the bell.') }}</p>
+                    </div>
                 </div>
-                <section>
-                    <h3>{{ __('Reported in the last 30 days') }}<small>{{ __(':n in all', ['n' => $topics->sum()]) }}</small></h3>
-                    @if($topics->isEmpty())
-                        <p class="cpx-quiet">{{ __('Nothing reported in the last 30 days.') }}</p>
-                    @else
-                        <div class="cpx-bars">
-                            @foreach($topics as $k => $n)
-                                @php($pct = (int) round($n / max(1, $topics->sum()) * 100))
-                                <div class="cpx-bar">
-                                    <div class="hd"><span>{{ $categories[$k] ?? ucfirst($k) }}</span><b>{{ $n }}<em>{{ $pct }}%</em></b></div>
-                                    <span class="tr"><i style="width: {{ max(3, $pct) }}%"></i></span>
+
+                <div class="cpx-kpis">
+                    <div><span><i class="fas fa-inbox"></i>{{ __('Reports') }}</span><b>{{ $total }}</b><small>{{ __('last 30 days') }}</small></div>
+                    <div><span><i class="fas fa-reply"></i>{{ __('Answered') }}</span><b>{{ $answered30 }}</b><small>{{ __('last 30 days') }}</small></div>
+                    <div><span><i class="fas fa-users"></i>{{ __('Workers who wrote') }}</span><b>{{ $counts['reported'] }}</b><small>{{ __('of :n workers', ['n' => $counts['all']]) }}</small></div>
+                </div>
+
+                <div class="cpx-cols">
+                    <section class="cpx-box">
+                        <h3>{{ __('By topic') }}<small>{{ __('last 30 days') }}</small></h3>
+                        <div class="cpx-topics">
+                            @foreach($categories as $k => $label)
+                                @php($n = (int) ($topics[$k] ?? 0))
+                                @php($pct = $total ? (int) round($n / $total * 100) : 0)
+                                <div class="cpx-topic {{ $n ? '' : 'zero' }}">
+                                    <span class="ti"><i class="fas {{ $icons[$k] ?? 'fa-comment-dots' }}"></i></span>
+                                    <div class="hd"><span>{{ $label }}</span><span><b>{{ $n }}</b><em>{{ $pct }}%</em></span></div>
+                                    <span class="tr"><i style="width: {{ $n ? max(3, $pct) : 0 }}%"></i></span>
                                 </div>
                             @endforeach
                         </div>
-                    @endif
+                    </section>
+
+                    <section class="cpx-box">
+                        <h3>{{ __('Recently answered') }}<small>{{ __('latest :n', ['n' => $recent->count()]) }}</small></h3>
+                        @if($recent->isEmpty())
+                            <div class="cpx-none"><i class="fas fa-comments"></i>{{ __('No answers yet. They appear here once the office replies to a report.') }}</div>
+                        @else
+                            <div class="cpx-recs">
+                                @foreach($recent as $c)
+                                    <a class="cpx-rec" href="{{ $url(['e' => $c->employee_id, 'c' => $c->id]) }}">
+                                        <span class="cpx-av">{!! $avatar() !!}</span>
+                                        <span class="cpx-b">
+                                            <span class="cpx-n"><span>{{ $c->employee->name ?? __('Worker') }}</span><time>{{ $short($c->resolved_at) }}</time></span>
+                                            <span class="cpx-chip">{{ $categories[$c->category] ?? ucfirst((string) $c->category) }}</span>
+                                            <span class="cpx-pv">{{ $c->response ? __('You: :r', ['r' => $c->response]) : __('Resolved') }}</span>
+                                        </span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+                    </section>
+                </div>
+
+                <section class="cpx-how">
+                    <h3>{{ __('How it works') }}</h3>
+                    <ol>
+                        <li><i class="fas fa-fingerprint"></i><b>{{ __('The worker reports') }}</b>{{ __('Scans a finger in the kiosk\'s Report tab and picks a topic.') }}</li>
+                        <li><i class="fas fa-reply"></i><b>{{ __('The office answers') }}</b>{{ __('The report lands here and in the bell; answer it, or answer and resolve.') }}</li>
+                        <li><i class="fas fa-tablet-screen-button"></i><b>{{ __('The worker sees it') }}</b>{{ __('The answer shows on the kiosk the next time the worker scans.') }}</li>
+                    </ol>
                 </section>
             </aside>
         @endif

@@ -118,6 +118,7 @@ class ComplaintController extends Controller
             'recent'     => $employee ? collect() : Complaint::with('employee:id,name')->where('status', Complaint::RESOLVED)
                 ->whereNotNull('resolved_at')->latest('resolved_at')->limit(5)->get(),
             'topics'     => $employee ? collect() : $this->topics(),
+            'answered30' => $employee ? 0 : (clone $answered)->where('resolved_at', '>=', now()->subDays(30))->count(),
             'show'       => $show,
             'category'   => $category,
             'siteId'     => $siteId,
