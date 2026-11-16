@@ -56,14 +56,14 @@
 @endsection
 
 @push('styles')
-<style>
+<style nonce="{{ $cspNonce ?? '' }}">
     .signout { background: none; border: 0; padding: 0; font: 700 13.5px "Manrope", sans-serif; color: var(--brand-light); cursor: pointer; }
     .signout:hover { color: #A9CBF0; }
 </style>
 @endpush
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 (function () {
   document.querySelectorAll('[data-toggle]').forEach(function (btn) {
     btn.addEventListener('click', function () {

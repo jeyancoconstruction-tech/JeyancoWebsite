@@ -5,7 +5,7 @@
 @section('subheading', 'We will email you a link to set a new one')
 
 @push('styles')
-<style>
+<style nonce="{{ $cspNonce ?? '' }}">
     /* Where the person is in a three-step errand. The numbers are the steps,
        so they are numbers; nothing here is decorative. */
     .pw-flow {
@@ -147,7 +147,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     (function () {
         const form = document.getElementById('forgotForm');
         const btn = document.getElementById('forgotBtn');

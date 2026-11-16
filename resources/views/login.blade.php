@@ -47,7 +47,7 @@
          lands here), and not this page coming back with an error on it,
          which is also a "navigate". Nor for anyone who asked for less motion.
          Without the intro the page opens on its finished state. --}}
-    <script>
+    <script nonce="{{ $cspNonce ?? '' }}">
         (function () {
             var d = document.documentElement, play = false;
             try {
@@ -62,7 +62,7 @@
         })();
     </script>
 
-    <style>
+    <style nonce="{{ $cspNonce ?? '' }}">
         :root {
             color-scheme: dark;
             --bg: #070e1c;
@@ -520,7 +520,7 @@
          own button. --}}
     @if(rescue(fn () => \App\Models\SystemSetting::current()->accent_color, 'blue', false) === 'black')
         <link rel="stylesheet" href="{{ asset('buttons.css') }}?v={{ @filemtime(public_path('buttons.css')) ?: '1' }}">
-        <style>:root { --btn-ink: #e8edf5; --btn-ink-hover: #ffffff; --btn-on: #0f172a; }</style>
+        <style nonce="{{ $cspNonce ?? '' }}">:root { --btn-ink: #e8edf5; --btn-ink-hover: #ffffff; --btn-on: #0f172a; }</style>
     @endif
 </head>
 <body>
@@ -769,7 +769,7 @@
     </main>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 (function () {
   var d      = document.documentElement;
   var login  = document.getElementById('login');

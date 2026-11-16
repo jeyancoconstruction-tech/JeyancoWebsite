@@ -23,7 +23,7 @@
      that before it finishes — a second on each tab switch, two to close a
      dialog. It is .jp-fade now. --}}
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 /* Opened, or navigated to? A referrer from this same site means a click
    inside the app, and back_forward means the back button — neither is an
    arrival. Both checks are wrapped: a referrer can be an unparseable string,
@@ -42,7 +42,7 @@
 })();
 </script>
 
-<style>
+<style nonce="{{ $cspNonce ?? '' }}">
 /* ── The overlay ─────────────────────────────────────────────────────────
    z-index above the toasts and the confirm dialog, which reserve 9500–9700. */
 #jp-loader {

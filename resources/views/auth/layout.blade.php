@@ -30,7 +30,7 @@
          No theme switch here. The rest of the app follows the device; this
          page is the front door and is always the dark one, the same as the
          loading screen it hands over to. --}}
-    <style>
+    <style nonce="{{ $cspNonce ?? '' }}">
         :root {
             --bg:          #0a0f1e;
             --panel:       #0C1A38;
@@ -373,7 +373,7 @@
          own button. --}}
     @if(rescue(fn () => \App\Models\SystemSetting::current()->accent_color, 'blue', false) === 'black')
         <link rel="stylesheet" href="{{ asset('buttons.css') }}?v={{ @filemtime(public_path('buttons.css')) ?: '1' }}">
-        <style>:root { --btn-ink: #e8edf5; --btn-ink-hover: #ffffff; --btn-on: #0f172a; }</style>
+        <style nonce="{{ $cspNonce ?? '' }}">:root { --btn-ink: #e8edf5; --btn-ink-hover: #ffffff; --btn-on: #0f172a; }</style>
     @endif
 </head>
 <body>

@@ -7,7 +7,7 @@
 @php $min = $minLength ?? 8; @endphp
 
 @push('styles')
-<style>
+<style nonce="{{ $cspNonce ?? '' }}">
     /* The same three steps shown on the request page, now at the last one. */
     .pw-flow {
         display: flex; list-style: none; margin: 0 0 22px; padding: 0;
@@ -125,7 +125,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
     // Show/hide for both password boxes.
     document.querySelectorAll('.toggle-pass').forEach(function (btn) {
         btn.addEventListener('click', function () {

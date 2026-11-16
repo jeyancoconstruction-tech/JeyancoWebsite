@@ -57,7 +57,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ $cspNonce ?? '' }}">
 (function () {
   var root   = document.documentElement;
   var el     = document.getElementById('jp-loader');
