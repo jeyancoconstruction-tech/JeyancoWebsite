@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 =======================================================================
- JEYANCO KIOSK - GPS TRACKER (NEO-M8L)  v5.1
+ JEYANCO KIOSK - GPS TRACKER (NEO-M8L)  v5.2
 =======================================================================
 
  Binabasa ang live GPS ng NEO-M8L, tinitignan kung nasa loob ng aling
@@ -80,9 +80,14 @@ import serial
 # pwedeng humawak ng isang UART.
 GPS_PORT      = '/dev/ttyAMA3'
 BAUD_TRY      = [9600, 57600, 38400, 115200]   # susubukan sunod-sunod
-KIOSK_ID      = 'jeyanco-01'                   # dapat tugma sa dashboard map
+# v5.2 (maraming kiosk): ang code ng kiosk na ito, mula sa kiosk.env
+# (JEYANCO_KIOSK_CODE, kapareho ng code sa System Settings -> Kiosks). Dati
+# 'jeyanco-01' para sa lahat, kaya ang GPS ng bawat Pi ay napupunta sa UNANG
+# kiosk sa web. Ngayon, sa sariling kiosk na ito napupunta.
+KIOSK_ID      = (os.environ.get('JEYANCO_KIOSK_CODE') or '').strip() or 'jeyanco-01'
 
-BASE_URL      = 'https://jeyancowebsite-production.up.railway.app'
+BASE_URL      = ((os.environ.get('JEYANCO_WEB') or '').strip().rstrip('/')
+                 or 'https://jeyancowebsite-production.up.railway.app')
 LOCATION_URL  = BASE_URL + '/api/location'
 SITES_URL     = BASE_URL + '/api/kiosk/sites'
 
@@ -633,7 +638,8 @@ def report_and_send():
 
 # --- MAIN LOOP --------------------------------------------------------
 if __name__ == '__main__':
-    log('GPS tracker v5.1 started - hot start, tuloy-tuloy ang basa, agad ang unang fix, heartbeat kahit walang GPS data.')
+    log('GPS tracker v5.2 started - kiosk %s, web %s.' % (KIOSK_ID, BASE_URL))
+    log('GPS tracker v5.2: - hot start, tuloy-tuloy ang basa, agad ang unang fix, heartbeat kahit walang GPS data.')
 
     # systemd (poweroff, reboot, restart ng service) ay nagpapadala ng
     # SIGTERM: lumabas nang maayos para ma-save ang satellite data.
