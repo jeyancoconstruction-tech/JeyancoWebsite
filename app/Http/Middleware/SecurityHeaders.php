@@ -42,7 +42,14 @@ class SecurityHeaders
         if (str_contains((string) $h->get('Content-Type'), 'text/html')) {
             $h->set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
             $h->set('Cross-Origin-Resource-Policy', 'same-origin');
-            $h->set('Content-Security-Policy-Report-Only', implode('; ', [
+            // Enforced on the public sign-in pages and on redirects / error
+            // pages, which load nothing but the site's own files. Report-only
+            // everywhere else (the signed-in pages, the kiosk) until checked.
+            $public  = $request->is('/', 'login', 'forgot-password', 'forgot-password/*', 'reset-password', 'reset-password/*')
+                || $response->getStatusCode() >= 300;
+            $kiosk   = $request->is('kiosk', 'kiosk/*', 'kiosk-app/*', 'device-monitoring/*/screen');
+            $header  = $public && ! $kiosk ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only';
+            $h->set($header, implode('; ', [
                 "default-src 'self'",
                 "base-uri 'self'",
                 "form-action 'self' https://accounts.google.com",
