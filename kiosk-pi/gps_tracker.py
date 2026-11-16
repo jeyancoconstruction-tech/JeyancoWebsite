@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 =======================================================================
- JEYANCO KIOSK - GPS TRACKER (NEO-M8L)  v5
+ JEYANCO KIOSK - GPS TRACKER (NEO-M8L)  v5.1
 =======================================================================
 
  Binabasa ang live GPS ng NEO-M8L, tinitignan kung nasa loob ng aling
