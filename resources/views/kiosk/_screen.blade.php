@@ -132,6 +132,8 @@
             <div class="seg">
                 <button type="button" data-week="0" class="active" data-i18n="dtr.this">THIS WEEK</button>
                 <button type="button" data-week="1" data-i18n="dtr.last">LAST WEEK</button>
+                <button type="button" data-week="2" data-i18n="dtr.month">THIS MONTH</button>
+                <button type="button" data-week="3" data-i18n="dtr.lmonth">LAST MONTH</button>
             </div>
             <button class="big-btn primary" type="button" id="dtr-lock"><i class="fas fa-lock"></i><span data-i18n="dtr.done">I AM DONE — CLOSE</span></button>
             <div class="timer" id="dtr-timer"></div>

@@ -49,6 +49,7 @@ class KioskAppController extends Controller
                     'tz_offset'   => now()->utcOffset(),
                     'secured'     => KioskScan::enforced(),
                     'fingers'     => (int) config('kiosk.fingers_required', 2),
+                    'fingers_max' => max((int) config('kiosk.fingers_required', 2), (int) config('kiosk.fingers_max', 3)),
                     'build'       => self::build(),
                 ],
             ])

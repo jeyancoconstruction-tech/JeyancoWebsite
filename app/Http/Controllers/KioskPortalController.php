@@ -36,10 +36,19 @@ class KioskPortalController extends Controller
             return $this->stale();
         }
 
-        $week = (int) $request->query('week', 0) === 1 ? 1 : 0;
+        // Which record: 0 this week, 1 last week, 2 this month, 3 last month.
+        // The months ride on the same `week` value so a Pi whose service only
+        // passes `week` on (testing.py /my-dtr) shows them without an update.
+        $week = (int) $request->query('week', 0);
+        $week = in_array($week, [0, 1, 2, 3], true) ? $week : 0;
         $now  = Carbon::now('Asia/Manila');
-        $from = $now->copy()->startOfWeek(Carbon::MONDAY)->subWeeks($week)->startOfDay();
-        $to   = $from->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        if ($week >= 2) {
+            $from = $now->copy()->startOfMonth()->subMonthsNoOverflow($week - 2)->startOfDay();
+            $to   = $from->copy()->endOfMonth()->startOfDay();
+        } else {
+            $from = $now->copy()->startOfWeek(Carbon::MONDAY)->subWeeks($week)->startOfDay();
+            $to   = $from->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
+        }
 
         try {
             $sheet = $dtr->range($from->toDateString(), $to->toDateString())[$employee->id] ?? null;

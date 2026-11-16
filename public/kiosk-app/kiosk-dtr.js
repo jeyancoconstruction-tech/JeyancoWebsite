@@ -3,7 +3,8 @@
 //  attendance and the DTR)
 //
 //  A worker scans a finger and sees their own Daily Time Record — this week
-//  or last — the same rows and totals as Payroll Reports › Employees DTR.
+//  or last, this month or last (`week` 0–3) — the same rows and totals as
+//  Payroll Reports › Employees DTR.
 //  Nothing is recorded here. A scan made on this tab never clocks anyone in.
 //
 //  The DTR is opened with the scan token the web gave that finger read

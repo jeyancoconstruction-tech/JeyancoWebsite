@@ -97,7 +97,7 @@ const I18N = {
         'dtr.unlock': 'SCAN YOUR FINGER', 'dtr.scanning': 'SCANNING…', 'dtr.loading': 'OPENING YOUR DTR…',
         'dtr.notread': 'NOT READ — TRY AGAIN', 'dtr.noweb': 'CANNOT REACH THE SERVER', 'dtr.nosensor': 'NO CONNECTION TO THE SENSOR',
         'dtr.unknown': 'FINGER NOT REGISTERED', 'dtr.stale': 'Scan your finger again.',
-        'dtr.this': 'THIS WEEK', 'dtr.last': 'LAST WEEK', 'dtr.done': 'I AM DONE — CLOSE',
+        'dtr.this': 'THIS WEEK', 'dtr.last': 'LAST WEEK', 'dtr.month': 'THIS MONTH', 'dtr.lmonth': 'LAST MONTH', 'dtr.done': 'I AM DONE — CLOSE',
         'dtr.title': 'DAILY TIME RECORD', 'dtr.scanleft': 'Scan your finger on the left to see your DTR.',
         'dtr.timer': 'Closes by itself in {t}', 'dtr.closed': 'Closed for your privacy.',
         'dtr.date': 'Date', 'dtr.in': 'In', 'dtr.out': 'Out', 'dtr.hours': 'Hours', 'dtr.remark': 'Remark',
@@ -124,7 +124,8 @@ const I18N = {
         'enr.pickfirst': 'CHOOSE A NAME FIRST', 'enr.detailsweb': 'Details come from the web — only the fingers are taken here',
         'enr.s1': 'Touch', 'enr.s2': 'Lift', 'enr.s3': 'Again', 'enr.s4': 'Done', 'enr.start': 'START SCAN',
         'enr.workers': 'NEED FINGERPRINTS', 'enr.loading': 'Loading the list…',
-        'enr.note': 'New name? Add it in the web system first. Each worker needs {n} different fingers.',
+        'enr.note': 'New name? Add it in the web system first. One finger is enough to work; each worker can register up to {m} different fingers.',
+        'enr.more': 'ADD ANOTHER FINGER (UP TO {m})', 'enr.addmore': 'Finger {k} saved. To add another (up to {m}), press START SCAN with a DIFFERENT finger.',
         'enr.empty': 'No workers at this site yet.', 'enr.emptysub': 'Add them in the web system first.',
         'enr.failed': 'Could not load the list.', 'enr.new': 'NEW',
         'enr.alldone': 'Everyone here has their fingers on file.', 'enr.alldonesub': 'New workers appear here on their own.',
@@ -227,7 +228,7 @@ const I18N = {
         'dtr.unlock': 'I-SCAN ANG DALIRI', 'dtr.scanning': 'BINABASA…', 'dtr.loading': 'BINUBUKSAN ANG DTR MO…',
         'dtr.notread': 'HINDI MABASA — SUBUKAN ULIT', 'dtr.noweb': 'HINDI MAABOT ANG SERVER', 'dtr.nosensor': 'WALANG KONEKSYON SA SENSOR',
         'dtr.unknown': 'HINDI REHISTRADO ANG DALIRI', 'dtr.stale': 'I-scan ulit ang daliri mo.',
-        'dtr.this': 'NGAYONG LINGGO', 'dtr.last': 'NAKARAANG LINGGO', 'dtr.done': 'TAPOS NA AKO — ISARA',
+        'dtr.this': 'NGAYONG LINGGO', 'dtr.last': 'NAKARAANG LINGGO', 'dtr.month': 'NGAYONG BUWAN', 'dtr.lmonth': 'NAKARAANG BUWAN', 'dtr.done': 'TAPOS NA AKO — ISARA',
         'dtr.title': 'DAILY TIME RECORD', 'dtr.scanleft': 'I-scan ang daliri mo sa kaliwa para makita ang DTR mo.',
         'dtr.timer': 'Kusang magsasara sa {t}', 'dtr.closed': 'Isinara para sa privacy mo.',
         'dtr.date': 'Petsa', 'dtr.in': 'Pasok', 'dtr.out': 'Labas', 'dtr.hours': 'Oras', 'dtr.remark': 'Tala',
@@ -254,7 +255,8 @@ const I18N = {
         'enr.pickfirst': 'PUMILI MUNA NG PANGALAN', 'enr.detailsweb': 'Nasa web ang detalye — daliri lang ang kinukuha dito',
         'enr.s1': 'Dampi', 'enr.s2': 'Alis', 'enr.s3': 'Ulit', 'enr.s4': 'Tapos', 'enr.start': 'SIMULAN ANG SCAN',
         'enr.workers': 'KAILANGAN NG DALIRI', 'enr.loading': 'Kinukuha ang listahan…',
-        'enr.note': 'Bagong pangalan? Idagdag muna sa web. Bawat manggagawa ay kailangan ng {n} magkaibang daliri.',
+        'enr.note': 'Bagong pangalan? Idagdag muna sa web. Sapat na ang isang daliri; hanggang {m} magkaibang daliri ang puwedeng i-rehistro ng bawat manggagawa.',
+        'enr.more': 'MAGDAGDAG NG DALIRI (HANGGANG {m})', 'enr.addmore': 'Na-save ang daliri {k}. Para magdagdag (hanggang {m}), pindutin ang SIMULAN ANG SCAN gamit ang IBANG daliri.',
         'enr.empty': 'Wala pang manggagawa sa site na ito.', 'enr.emptysub': 'Idagdag muna sila sa web system.',
         'enr.failed': 'Hindi makuha ang listahan.', 'enr.new': 'BAGO',
         'enr.alldone': 'Kumpleto na ang daliri ng lahat dito.', 'enr.alldonesub': 'Kusang lalabas dito ang mga bagong manggagawa.',
@@ -307,7 +309,7 @@ function applyLanguage() {
     paintFullscreen();
     paintSite();
     paintStatus();
-    setText('enr-note', t('enr.note', { n: FINGERS_REQUIRED }));
+    setText('enr-note', t('enr.note', { n: FINGERS_REQUIRED, m: FINGERS_MAX }));
     if (pickedEmp && !ENROLLING) renderPick(); else if (!pickedEmp && !ENROLLING) resetEnrollIdle();
     renderRoster();
     updateClock();
@@ -451,6 +453,7 @@ let ACTIVE_SITE = null;          // { id, slug, name, location }
 let ASSIGNED;                    // undefined = not heard yet; null = none set
 let KIOSK_CODE  = new URLSearchParams(location.search).get('kiosk') || null;
 let FINGERS_REQUIRED = Number(CFG.fingers) || 2;
+let FINGERS_MAX      = Number(CFG.fingers_max) || 3;    // how many fingers a worker may register
 
 window.jeyanco = window.jeyanco || {};
 
@@ -1067,6 +1070,10 @@ let rosterGen    = 0;
 
 const fingersOf = e => Number(e.fingers != null ? e.fingers : (e.enrolled ? 1 : 0));
 const needOf    = e => Number(e.fingers_required || FINGERS_REQUIRED);
+const maxOf     = e => Math.max(needOf(e), Number(e.fingers_max || FINGERS_MAX));
+// What the next finger counts towards: the ones still needed, else the most allowed.
+const goalOf    = e => (fingersOf(e) < needOf(e) ? needOf(e) : maxOf(e));
+let extraRoster = [];        // enrolled, may add another finger (up to FINGERS_MAX)
 
 function clearRosterForSite() {
     rosterGen++;
@@ -1128,6 +1135,8 @@ async function loadRoster() {
         knownIds  = new Set(incoming.map(e => e.id));
         rosterAll = incoming;
         roster    = incoming.filter(e => e.complete === undefined ? !e.enrolled : !e.complete);
+        extraRoster = incoming.filter(e => !roster.includes(e) && fingersOf(e) < maxOf(e));
+        if (incoming[0] && incoming[0].fingers_max) FINGERS_MAX = Number(incoming[0].fingers_max);
         setText('k-menu-enroll', roster.length ? String(roster.length) : '');   // the ⋯ menu's count
 
         // The picked worker, kept up to date — unless mid-capture.
@@ -1137,7 +1146,7 @@ async function loadRoster() {
             else if (enrolledSlot == null) { pickedEmp = fresh; renderPick(); }
         }
         renderRoster();
-        setText('enr-note', t('enr.note', { n: FINGERS_REQUIRED }));
+        setText('enr-note', t('enr.note', { n: FINGERS_REQUIRED, m: FINGERS_MAX }));
     } catch (err) {
         if (gen !== rosterGen) return;
         list.innerHTML = `<div class="roster-empty error"><i class="fas fa-triangle-exclamation"></i>
@@ -1159,31 +1168,33 @@ function renderRoster() {
     const list = document.getElementById('roster-list');
     if (!list || !knownIds) return;
 
-    if (!roster.length) {
+    if (!roster.length && !extraRoster.length) {
         const done = rosterAll.length > 0;
         list.innerHTML = `<div class="roster-empty"><i class="fas ${done ? 'fa-circle-check' : 'fa-user-slash'}"></i>
             ${escapeHtml(t(done ? 'enr.alldone' : 'enr.empty'))}<br>${escapeHtml(t(done ? 'enr.alldonesub' : 'enr.emptysub'))}</div>`;
         return;
     }
 
-    list.innerHTML = roster.map(e => {
+    const item = (e, optional) => {
         const picked = pickedEmp && pickedEmp.id === e.id;
-        const isNew  = e.just_arrived || e.is_new;
+        const isNew  = !optional && (e.just_arrived || e.is_new);
         return `<button type="button" class="roster-item${picked ? ' picked' : ''}${e.just_arrived ? ' arrived' : ''}" data-id="${e.id}">
             <div class="roster-main">
                 <div class="roster-name">${escapeHtml(e.name)}${isNew ? `<span class="rnew">${escapeHtml(t('enr.new'))}</span>` : ''}</div>
                 <div class="roster-sub">${escapeHtml(e.position || t('worker'))}${e.shift ? ' · ' + escapeHtml(e.shift.name) : ''}</div>
             </div>
-            <span class="rbadge${fingersOf(e) > 0 ? ' done' : ''}"><i class="fas fa-fingerprint"></i> ${escapeHtml(t('enr.fingers', { k: fingersOf(e), n: needOf(e) }))}</span>
+            <span class="rbadge${fingersOf(e) > 0 ? ' done' : ''}"><i class="fas fa-fingerprint"></i> ${escapeHtml(t('enr.fingers', { k: fingersOf(e), n: optional ? maxOf(e) : needOf(e) }))}</span>
         </button>`;
-    }).join('');
+    };
+    list.innerHTML = roster.map(e => item(e, false)).join('')
+        + (extraRoster.length ? `<div class="roster-div">${escapeHtml(t('enr.more', { m: FINGERS_MAX }))}</div>` + extraRoster.map(e => item(e, true)).join('') : '');
 
     list.querySelectorAll('.roster-item').forEach(btn => btn.addEventListener('click', () => pickEmployee(Number(btn.dataset.id))));
 }
 
 function pickEmployee(id) {
     if (ENROLLING) return;
-    const emp = roster.find(e => e.id === id);
+    const emp = roster.find(e => e.id === id) || extraRoster.find(e => e.id === id);
     if (!emp) return;
     pickedEmp = emp; enrolledSlot = null;
     renderRoster(); resetRegSteps();
@@ -1201,12 +1212,12 @@ function renderPick() {
     if (who) {
         who.innerHTML = `<div class="who-name">${escapeHtml(emp.name)}</div>
             <div class="who-sub">${escapeHtml(emp.position || t('worker'))}</div>
-            ${fingerDots(emp, fingersOf(emp) < Math.max(needOf(emp), Number(emp.fingers_max || needOf(emp))))}
+            ${fingerDots(emp, fingersOf(emp) < maxOf(emp))}
             <div class="who-warn">${escapeHtml(t('enr.usefinger'))}</div>`;
         who.classList.add('has-pick');
     }
     if (enrolledSlot == null) {
-        setText('reg-status-text', t('enr.ready', { k: fingersOf(emp) + 1, n: Math.max(needOf(emp), fingersOf(emp) + 1) }));
+        setText('reg-status-text', t('enr.ready', { k: fingersOf(emp) + 1, n: goalOf(emp) }));
         setText('reg-hint', t('enr.presskey'));
     }
 }
@@ -1334,8 +1345,21 @@ async function attachFingerprint() {
             return;
         }
 
+        if (have < maxOf(emp)) {
+            // Enough to work; the worker may still add another finger now.
+            enrolledSlot = null;
+            setText('reg-status-text', t('enr.complete'));
+            renderPick();
+            setText('reg-status-text', t('enr.complete'));
+            setText('reg-hint', t('enr.addmore', { k: have, m: maxOf(emp) }));
+            resetRegSteps();
+            if (btn) btn.disabled = false;
+            loadRoster();
+            return;
+        }
+
         setText('reg-status-text', t('enr.complete'));
-        setText('reg-hint', `${emp.name} — ${t('enr.fingers', { k: have, n: need })}`);
+        setText('reg-hint', `${emp.name} — ${t('enr.fingers', { k: have, n: maxOf(emp) })}`);
         await loadRoster();
         setTimeout(() => {
             if (ENROLLING || pickedEmp !== emp) return;
