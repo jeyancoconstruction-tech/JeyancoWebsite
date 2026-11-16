@@ -39,6 +39,8 @@ Route::middleware(KioskDevice::class)->group(function () {
     Route::post('/kiosk/active-site',      [KioskController::class, 'setActiveSite']);
     Route::get ('/kiosk/roster',           [KioskController::class, 'roster']);
     Route::get ('/kiosk/today-attendance', [KioskController::class, 'todayAttendance']);
+    // GPS reports: only a registered kiosk (GPS tracker v5.3 sends the key).
+    Route::post('/location',                  [KioskLocationController::class, 'store']);
     Route::get ('/location/latest',           [KioskLocationController::class, 'latestByQuery']);
     Route::get ('/location/{kioskId}/status', [KioskLocationController::class, 'status']);
     Route::get ('/location/{kioskId}',        [KioskLocationController::class, 'latest']);
@@ -72,4 +74,3 @@ Route::middleware(KioskDevice::class)->group(function () {
 // ✅ Kiosk GPS (NEO-M8L on the Pi, posted every ~30s). Cache-only: latest fix wins.
 //    The literal /location/latest must precede /location/{kioskId}, otherwise
 //    "latest" is captured as a kiosk id.
-Route::post('/location',                  [KioskLocationController::class, 'store']);
