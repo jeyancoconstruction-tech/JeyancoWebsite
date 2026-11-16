@@ -1135,7 +1135,11 @@ async function loadRoster() {
         knownIds  = new Set(incoming.map(e => e.id));
         rosterAll = incoming;
         roster    = incoming.filter(e => e.complete === undefined ? !e.enrolled : !e.complete);
-        extraRoster = incoming.filter(e => !roster.includes(e) && fingersOf(e) < maxOf(e));
+        // Only the workers who need a finger are listed: a new registration, or
+        // a worker the office asked for another finger (from the profile). The
+        // others are not listed; a worker being enrolled can still add up to
+        // FINGERS_MAX fingers while picked.
+        extraRoster = [];
         if (incoming[0] && incoming[0].fingers_max) FINGERS_MAX = Number(incoming[0].fingers_max);
         setText('k-menu-enroll', roster.length ? String(roster.length) : '');   // the ⋯ menu's count
 
