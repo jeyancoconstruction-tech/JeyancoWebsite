@@ -245,6 +245,13 @@ def try_open_gps():
         time.sleep(2)
         return None
 
+    # v5.1: simulan muna ang GNSS. Ang module na pinatigil ng huling
+    # shutdown (pero hindi namatayan ng kuryente, hal. reboot) ay WALANG
+    # inilalabas na NMEA, kaya hindi ito makikita ng sniff kung hindi muna
+    # gigisingin. Walang epekto kung tumatakbo na o mali ang baud.
+    ubx_send(ser, ubx(0x06, 0x04, struct.pack('<HBB', 0x0000, 0x09, 0)))
+    time.sleep(0.3)
+
     if sniff_nmea(ser):
         log('[OK] Gumana sa %s baud - may NMEA data.' % baud)
         try:
@@ -626,7 +633,7 @@ def report_and_send():
 
 # --- MAIN LOOP --------------------------------------------------------
 if __name__ == '__main__':
-    log('GPS tracker v5 started - hot start, tuloy-tuloy ang basa, agad ang unang fix, heartbeat kahit walang GPS data.')
+    log('GPS tracker v5.1 started - hot start, tuloy-tuloy ang basa, agad ang unang fix, heartbeat kahit walang GPS data.')
 
     # systemd (poweroff, reboot, restart ng service) ay nagpapadala ng
     # SIGTERM: lumabas nang maayos para ma-save ang satellite data.
