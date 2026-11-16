@@ -704,7 +704,11 @@ body.dock-hidden .dock-peek { opacity: 1; transition-delay: .15s; }
     .k-clock-date, .k-status { display: none; }
     .tab-btn i { display: none; }
     .fp-hint { display: none; }
-    .enroll-steps { display: none; }
+    /* The four enroll steps stay (the worker follows them), only smaller. */
+    .enroll-steps { margin: 2px 0; gap: 4px; }
+    .enroll-step { flex-direction: row; gap: 4px; font-size: .68rem; }
+    .step-dot { width: 20px; font-size: .66rem; }
+    .step-line { width: 12px; margin-bottom: 0; }
 }
 @media (max-width: 640px) {
     .monitor-table th:nth-child(6), .monitor-table td:nth-child(6) { display: none; }
