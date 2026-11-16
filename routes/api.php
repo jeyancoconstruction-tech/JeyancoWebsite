@@ -20,9 +20,6 @@ Route::get ('/kiosk/labor-types',      [KioskController::class, 'getLaborTypes']
 Route::get ('/kiosk/settings',         [KioskController::class, 'getSettings']);
 Route::get ('/kiosk/projects',         [KioskController::class, 'getProjects']);
 Route::get ('/kiosk/sites',            [KioskController::class, 'getSites']);
-Route::post('/kiosk/active-site',      [KioskController::class, 'setActiveSite']);
-Route::get ('/kiosk/roster',           [KioskController::class, 'roster']);
-Route::get ('/kiosk/today-attendance', [KioskController::class, 'todayAttendance']);
 
 // The write. With a device key set (config kiosk.device_key) it records only
 // with a scan token from a finger read moments ago — see App\Support\KioskScan.
@@ -34,6 +31,18 @@ Route::post('/kiosk/attendance',       [KioskController::class, 'attendance'])->
 // records. The screen reaches these through the Pi's fingerprint service.
 // ─────────────────────────────────────────────────────────────────────────
 Route::middleware(KioskDevice::class)->group(function () {
+    // Security assessment 2026-11-16: these answered anyone on the internet —
+    // the roster (names, positions, fingerprint slots), today's attendance,
+    // the site switch and the kiosks' GPS positions. Only a registered kiosk
+    // (X-Kiosk-Key, sent by the Pi's service) may use them now. The web pages
+    // read the same data through their own signed-in routes.
+    Route::post('/kiosk/active-site',      [KioskController::class, 'setActiveSite']);
+    Route::get ('/kiosk/roster',           [KioskController::class, 'roster']);
+    Route::get ('/kiosk/today-attendance', [KioskController::class, 'todayAttendance']);
+    Route::get ('/location/latest',           [KioskLocationController::class, 'latestByQuery']);
+    Route::get ('/location/{kioskId}/status', [KioskLocationController::class, 'status']);
+    Route::get ('/location/{kioskId}',        [KioskLocationController::class, 'latest']);
+
     // Identify a scanned finger (no write) / the older clock-by-finger.
     Route::post('/kiosk/scan-attendance', [KioskController::class, 'scanAttendance'])->middleware(RecordKioskEvent::class);
     Route::post('/kiosk/clock',           [KioskController::class, 'clock'])->middleware(RecordKioskEvent::class);
@@ -64,6 +73,3 @@ Route::middleware(KioskDevice::class)->group(function () {
 //    The literal /location/latest must precede /location/{kioskId}, otherwise
 //    "latest" is captured as a kiosk id.
 Route::post('/location',                  [KioskLocationController::class, 'store']);
-Route::get ('/location/latest',           [KioskLocationController::class, 'latestByQuery']); // dashboard map
-Route::get ('/location/{kioskId}/status', [KioskLocationController::class, 'status']);        // anti-theft state
-Route::get ('/location/{kioskId}',        [KioskLocationController::class, 'latest']);

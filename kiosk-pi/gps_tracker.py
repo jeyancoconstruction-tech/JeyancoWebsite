@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 =======================================================================
- JEYANCO KIOSK - GPS TRACKER (NEO-M8L)  v5.2
+ JEYANCO KIOSK - GPS TRACKER (NEO-M8L)  v5.3
 =======================================================================
 
  Binabasa ang live GPS ng NEO-M8L, tinitignan kung nasa loob ng aling
@@ -89,6 +89,10 @@ KIOSK_ID      = (os.environ.get('JEYANCO_KIOSK_CODE') or '').strip() or 'jeyanco
 BASE_URL      = ((os.environ.get('JEYANCO_WEB') or '').strip().rstrip('/')
                  or 'https://jeyancowebsite-production.up.railway.app')
 LOCATION_URL  = BASE_URL + '/api/location'
+# v5.3: ang device key ng kiosk (kiosk.env), para ang web lang ang
+# tumanggap ng GPS mula sa rehistradong kiosk.
+DEVICE_KEY    = (os.environ.get('JEYANCO_DEVICE_KEY') or '').strip()
+HEADERS       = {'X-Kiosk-Key': DEVICE_KEY} if DEVICE_KEY else {}
 SITES_URL     = BASE_URL + '/api/kiosk/sites'
 
 SEND_INTERVAL = 30       # segundo bawat heartbeat (offline_after ng server = 120s)
@@ -139,7 +143,7 @@ def load_sites(force=False):
         return _sites
 
     try:
-        r = requests.get(SITES_URL, timeout=10)
+        r = requests.get(SITES_URL, headers=HEADERS, timeout=10)
         r.raise_for_status()
         payload = r.json()
 
@@ -590,7 +594,7 @@ def send(coords, detected, distance, active):
                    if v is not None or k in ('lat', 'lng'))
 
     try:
-        r = requests.post(LOCATION_URL, json=payload, timeout=10)
+        r = requests.post(LOCATION_URL, json=payload, headers=HEADERS, timeout=10)
 
         if coords:
             tag = sites[detected]['name'] if detected else 'OUT-OF-RANGE'
@@ -638,8 +642,8 @@ def report_and_send():
 
 # --- MAIN LOOP --------------------------------------------------------
 if __name__ == '__main__':
-    log('GPS tracker v5.2 started - kiosk %s, web %s.' % (KIOSK_ID, BASE_URL))
-    log('GPS tracker v5.2: - hot start, tuloy-tuloy ang basa, agad ang unang fix, heartbeat kahit walang GPS data.')
+    log('GPS tracker v5.3 started - kiosk %s, web %s.' % (KIOSK_ID, BASE_URL))
+    log("GPS tracker v5.3: hot start, tuloy-tuloy ang basa, agad ang unang fix, heartbeat kahit walang GPS data.")
 
     # systemd (poweroff, reboot, restart ng service) ay nagpapadala ng
     # SIGTERM: lumabas nang maayos para ma-save ang satellite data.

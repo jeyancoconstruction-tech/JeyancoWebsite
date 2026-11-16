@@ -411,7 +411,7 @@
         const TRACKER_ID = 'jeyanco-01';
 
         function refresh() {
-            fetch(`/api/location/latest?kiosk_id=${TRACKER_ID}`).catch(() => {});
+            fetch(`/dashboard/kiosk-ping?kiosk_id=${TRACKER_ID}`, { credentials: 'same-origin' }).catch(() => {});
             layer.refresh();
         }
         refresh();
