@@ -34,7 +34,30 @@
             try { pick = JSON.parse(localStorage.getItem('jeyanco_theme') || 'null'); } catch (e) {}
             document.documentElement.dataset.theme = pick && pick.part === part ? pick.theme : part;
         })();
+
+        // At power-on Chromium opens as a window and only then goes full
+        // screen, so the screen was laid out small and jumped to full size —
+        // it looked like the kiosk minimised and maximised. Keep the screen
+        // hidden until the window covers the display and has stopped
+        // resizing (3 s at most), then show it once. Not inside Device
+        // Monitoring's live view (an iframe), which is never full screen.
+        (function () {
+            if (window.top !== window.self) return;
+            var root = document.documentElement, done = false, quiet = null;
+            var full = function () { return window.innerWidth >= screen.width - 2 && window.innerHeight >= screen.height - 2; };
+            var show = function () { if (done) return; done = true; root.classList.remove('k-settling'); window.removeEventListener('resize', settle); };
+            var settle = function () { clearTimeout(quiet); if (full()) quiet = setTimeout(show, 350); };
+            root.classList.add('k-settling');
+            window.addEventListener('resize', settle);
+            window.addEventListener('load', settle);
+            settle();
+            setTimeout(show, 3000);
+        })();
     </script>
+    <style>
+        html.k-settling body > * { opacity: 0; }
+        body > * { transition: opacity .25s ease; }
+    </style>
 </head>
 <body>
 
