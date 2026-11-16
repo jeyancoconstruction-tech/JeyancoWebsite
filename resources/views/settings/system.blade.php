@@ -352,6 +352,9 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 .ks-site small { font-size: 10.5px; color: var(--faint); font-weight: 600; letter-spacing: .02em; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ks-site:hover { border-color: var(--accent); }
 .ks-site.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* A site that already has another kiosk (one kiosk per site). */
+.ks-site[data-taken] { cursor: not-allowed; opacity: .5; border-style: dashed; }
+.ks-site[data-taken]:hover { border-color: var(--line); }
 .ks-site.on small { color: rgba(255, 255, 255, .8); }
 .ks-site.on::after { content: ""; position: absolute; top: 9px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
 .ks-site:disabled { cursor: progress; opacity: .7; }
@@ -617,8 +620,10 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                                 @endif</div>
                                             <div class="ks-sites" role="radiogroup" aria-label="{{ __('Site of') }} {{ $k['name'] }}">
                                                 @foreach($kioskSites as $st)
-                                                    <button type="button" class="ks-site @if($k['site_id'] === $st->id) on @endif" role="radio" aria-checked="{{ $k['site_id'] === $st->id ? 'true' : 'false' }}" data-site="{{ $st->id }}">
-                                                        <b>{{ $st->name }}</b>@if($st->location)<small>{{ $st->location }}</small>@endif</button>
+                                                    @php($takenBy = ($kioskTaken[$st->id] ?? null) && $k['site_id'] !== $st->id ? $kioskTaken[$st->id] : null)
+                                                    <button type="button" class="ks-site @if($k['site_id'] === $st->id) on @endif" role="radio" aria-checked="{{ $k['site_id'] === $st->id ? 'true' : 'false' }}" data-site="{{ $st->id }}"
+                                                        @if($takenBy) disabled data-taken title="{{ __('Already has a kiosk') }}: {{ $takenBy }}" @endif>
+                                                        <b>{{ $st->name }}</b>@if($takenBy)<small>{{ __('Has :kiosk', ['kiosk' => $takenBy]) }}</small>@elseif($st->location)<small>{{ $st->location }}</small>@endif</button>
                                                 @endforeach
                                             </div>
                                             <div class="ks-save" data-ks-save>
@@ -629,17 +634,18 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                             <div class="ks-note" data-ks-note></div>
                                         </div>
                                     @endforeach
-                                    <details class="ks-add" @if($errors->has('code') || $errors->has('name')) open @endif>
+                                    <details class="ks-add" @if($errors->has('code') || $errors->has('name') || $errors->has('site_id')) open @endif>
                                         <summary>+ {{ __('Add kiosk') }}</summary>
                                         <div class="ks-add-grid">
                                             <input form="ksAddForm" name="name" value="{{ old('name') }}" placeholder="{{ __('Name, e.g. Kiosk 2') }}" aria-label="{{ __('Kiosk name') }}" required>
                                             <input form="ksAddForm" name="code" value="{{ old('code') }}" placeholder="{{ __('Code, e.g. KIOSK_2') }}" aria-label="{{ __('Kiosk code') }}" required>
-                                            <select form="ksAddForm" name="site_id" aria-label="{{ __('Site') }}">
-                                                @foreach($kioskSites as $st)<option value="{{ $st->id }}">{{ $st->name }}</option>@endforeach
+                                            @php($freeSites = $kioskSites->reject(fn ($st) => isset($kioskTaken[$st->id])))
+                                            <select form="ksAddForm" name="site_id" aria-label="{{ __('Site') }}" @if($freeSites->isEmpty()) disabled @endif>
+                                                @forelse($freeSites as $st)<option value="{{ $st->id }}" @selected(old('site_id') == $st->id)>{{ $st->name }}</option>@empty<option value="">{{ __('Every site has a kiosk') }}</option>@endforelse
                                             </select>
-                                            <button form="ksAddForm" type="submit" class="ss-btn pri">{{ __('Add') }}</button>
+                                            <button form="ksAddForm" type="submit" class="ss-btn pri" @if($freeSites->isEmpty()) disabled @endif>{{ __('Add') }}</button>
                                         </div>
-                                        <div class="ks-add-hint">@error('name'){{ $message }} @enderror @error('code'){{ $message }}@else{{ __('The code must match KIOSK_CODE in testing.py on that kiosk\'s Pi.') }}@enderror</div>
+                                        <div class="ks-add-hint">@error('name'){{ $message }} @enderror @error('site_id'){{ $message }} @enderror @error('code'){{ $message }}@else{{ __('Each site has one kiosk. The code must match JEYANCO_KIOSK_CODE in kiosk.env on that kiosk\'s Pi.') }}@enderror</div>
                                     </details>
                                 </div></div>
                             {{-- On: real-time attendance only. A scan is recorded only while
@@ -1095,11 +1101,13 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
             note.className = 'ks-note ok';
             note.textContent = 'Saved. ' + k.name + ' is now at ' + k.site + '. The kiosk switches within a few seconds.'
                 + (cls === 'out' ? ' Until its GPS is inside ' + k.site + "'s radius, it will refuse scans." : '');
+            // The site it left is free for the other kiosks now: show it.
+            if (list.querySelectorAll('.ks-card').length > 1) setTimeout(() => location.reload(), 1500);
         } catch (err) {
             note.className = 'ks-note bad';
             note.textContent = 'Could not save the site — check the connection and try again.';
         } finally {
-            buttons.forEach(b => b.disabled = false);
+            buttons.forEach(b => b.disabled = b.hasAttribute('data-taken'));
             go.textContent = 'Save';
             card.classList.remove('moving');
         }
