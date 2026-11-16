@@ -37,9 +37,8 @@
     {{-- The mark is on screen from the first frame without the intro; asked
          for early, so the ring is never seen empty while it downloads. --}}
     <link rel="preload" as="image" href="{{ $mark }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Big+Shoulders+Stencil+Display:wght@800;900&family=Big+Shoulders+Display:wght@600;700&display=swap" rel="stylesheet">
+    {{-- Served from the site (OWASP ZAP: no third-party stylesheet without integrity). --}}
+    <link rel="stylesheet" href="{{ asset('fonts/auth/fonts.css') }}">
 
     {{-- Whether the intro plays, decided before anything is painted so the
          page never shows one state and jumps to the other. Only a navigation

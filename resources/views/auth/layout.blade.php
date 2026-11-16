@@ -9,13 +9,12 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="64x64" href="{{ asset('favicon-64.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicon-180.png') }}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    {{-- Served from the site (OWASP ZAP: no third-party stylesheet without integrity). --}}
+    <link rel="stylesheet" href="{{ asset('fonts/auth/fonts.css') }}">
     {{-- Forgot password and Set a new password draw their step markers and
          field icons from Font Awesome. The sign-in page uses inline SVG and
          needs none of it. --}}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ asset('kiosk-app/lib/fontawesome/css/all.min.css') }}">
 
     {{-- Michael's design, from login.html. Two panels: what the system is on
          the left, the way in on the right. Below 1024px the left one goes and

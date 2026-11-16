@@ -20,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Laravel honours X-Forwarded-Proto and generates https:// URLs.
         $middleware->trustProxies(at: '*');
 
+        // Security headers on every response (OWASP ZAP findings).
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         // The system's language, resolved per request rather than at boot: a
         // long-lived process would otherwise keep the language it started with.
         $middleware->web(append: [
