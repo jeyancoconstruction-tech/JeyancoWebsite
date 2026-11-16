@@ -110,8 +110,6 @@ class SystemSettingsController extends Controller
             'kiosks'  => Kiosk::with('site')->orderBy('name')->get()->map(fn (Kiosk $k) => KioskStatus::line($k))->values(),
             // Where a kiosk can be set: the sites on the Sites page, as named there.
             'kioskSites' => Site::orderBy('name')->get(['id', 'name', 'location']),
-            // Which site already has which kiosk (one kiosk per site).
-            'kioskTaken' => Kiosk::whereNotNull('site_id')->pluck('name', 'site_id'),
         ]);
     }
 
@@ -124,11 +122,7 @@ class SystemSettingsController extends Controller
      */
     public function kioskSite(Request $request, Kiosk $kiosk)
     {
-        // One kiosk per site: a site that already has another kiosk cannot be picked.
-        $data = $request->validate(
-            ['site_id' => ['required', 'exists:sites,id', \Illuminate\Validation\Rule::unique('kiosks', 'site_id')->ignore($kiosk->id)]],
-            ['site_id.unique' => 'That site already has a kiosk. Each site has one kiosk.']
-        );
+        $data = $request->validate(['site_id' => 'required|exists:sites,id']);
         $site = Site::findOrFail($data['site_id']);
         $was  = $kiosk->site;
 
@@ -173,9 +167,8 @@ class SystemSettingsController extends Controller
         $data = $request->validate([
             'name'    => ['required', 'string', 'max:60'],
             'code'    => ['required', 'string', 'max:40', 'alpha_dash', 'unique:kiosks,code'],
-            'site_id' => ['required', 'exists:sites,id', 'unique:kiosks,site_id'],
+            'site_id' => ['required', 'exists:sites,id'],
         ], [
-            'site_id.unique'  => 'That site already has a kiosk. Each site has one kiosk.',
             'code.unique'     => 'Another kiosk already uses this code.',
             'code.alpha_dash' => 'Use letters, numbers, dashes and underscores only — the same code as KIOSK_CODE on the Pi.',
         ]);
