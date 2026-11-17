@@ -377,6 +377,12 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
 .ks-add-grid input, .ks-add-grid select { width: 100%; height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); padding: 0 10px; font: inherit; font-size: 13px; }
 .ks-add-hint { font-size: 11.5px; color: var(--faint); padding-bottom: 12px; margin-top: -4px; }
 @media (max-width: 700px) { .ks-add-grid { grid-template-columns: 1fr 1fr; } }
+/* How to set up the kiosk's device (text only). */
+.ks-howto { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12px; color: var(--text); }
+.ks-howto > b { display: block; margin-bottom: 4px; font-size: 12.5px; }
+.ks-howto ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; line-height: 1.5; }
+.ks-howto code { font-family: Consolas, monospace; font-size: 11.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; }
+.ks-howto-env { display: inline-block; margin: 2px 0; font-weight: 700; }
 
 /* Unsaved bar */
 .ss-bar { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 160%); display: flex; gap: 10px; align-items: center; background: var(--text-primary); color: var(--bg-body); border-radius: 12px; padding: 8px 8px 8px 16px; box-shadow: 0 20px 50px rgba(0,0,0,.35); z-index: 1050; transition: transform .35s cubic-bezier(.2, .8, .2, 1); max-width: calc(100% - 32px); visibility: hidden; }
@@ -650,6 +656,28 @@ html[data-bs-theme] .ss .ss-sel input, html[data-bs-theme] .ss .ss-sel select {
                                             <button form="ksAddForm" type="submit" class="ss-btn pri" @if($freeSites->isEmpty()) disabled @endif>{{ __('Add') }}</button>
                                         </div>
                                         <div class="ks-add-hint">@error('name'){{ $message }} @enderror @error('site_id'){{ $message }} @enderror @error('code'){{ $message }}@else{{ __('Each site has one kiosk. The code must match JEYANCO_KIOSK_CODE in kiosk.env on that kiosk\'s Pi.') }}@enderror</div>
+                                        {{-- How the device is set up for the kiosk added here. Text only:
+                                             the device key is never shown on this page. --}}
+                                        <div class="ks-howto">
+                                            <b>{{ __('Setting up the kiosk device') }}</b>
+                                            <ol>
+                                                <li>{{ __('Add the kiosk here with its name, code and site.') }}</li>
+                                                <li>{{ __('Copy the kiosk-pi folder to the new Raspberry Pi (with its fingerprint sensor and GPS module) and run:') }} <code>sudo bash setup.sh</code></li>
+                                                <li>{{ __('Open') }} <code>/home/admin/jeyanco/kiosk.env</code> {{ __('and set:') }}
+                                                    <code class="ks-howto-env">JEYANCO_KIOSK_CODE=<span data-ks-code>{{ old('code') ?: 'KIOSK_2' }}</span></code>
+                                                    {{ __('and JEYANCO_DEVICE_KEY, given by the office (the same key as the other kiosks).') }}</li>
+                                                <li>{{ __('Restart the device:') }} <code>sudo reboot</code> {{ __('— the kiosk screen opens on its own.') }}</li>
+                                                <li>{{ __('Check Device Monitoring: the kiosk shows Online and its site.') }}</li>
+                                            </ol>
+                                            {{-- Step 3 shows the code being typed in the Code box. --}}
+                                            <script nonce="{{ $cspNonce ?? '' }}">
+                                                document.addEventListener('input', function (e) {
+                                                    if (!e.target.matches('input[form="ksAddForm"][name="code"]')) return;
+                                                    var s = document.querySelector('[data-ks-code]');
+                                                    if (s) s.textContent = e.target.value.trim() || 'KIOSK_2';
+                                                });
+                                            </script>
+                                        </div>
                                     </details>
                                 </div></div>
                             {{-- On: real-time attendance only. A scan is recorded only while
