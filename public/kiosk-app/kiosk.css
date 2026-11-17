@@ -793,6 +793,14 @@ body { background: var(--bg); font-feature-settings: "tnum" 1, "cv11" 1; }
 .k-brand-site i { display: none; }
 .k-brand-site.waiting { color: var(--amber); }
 .k-tools { position: relative; gap: clamp(10px, 1.2vw, 16px); }
+/* GPS pin: grey while searching, green with a live position (shown on every screen size). */
+.k-gps { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 800;
+         color: var(--muted); background: var(--chip); border: 1px solid var(--line); white-space: nowrap; }
+.k-gps[hidden] { display: none; }
+.k-gps i { font-size: 1em; }
+.k-gps.fix { color: var(--green); border-color: color-mix(in srgb, var(--green) 45%, transparent); background: color-mix(in srgb, var(--green) 12%, transparent); }
+.k-gps.search i { animation: k-gps-blink 1.6s ease-in-out infinite; }
+@keyframes k-gps-blink { 50% { opacity: .35; } }
 .k-health { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); white-space: nowrap; }
 .k-health i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .k-health.ok i { background: var(--green); }

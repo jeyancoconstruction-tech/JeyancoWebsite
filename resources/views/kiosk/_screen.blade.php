@@ -14,6 +14,8 @@
         <div class="k-brand-site waiting" id="site-name"><i class="fas fa-location-dot"></i><span id="site-name-text">…</span></div>
     </div>
     <div class="k-tools">
+        {{-- GPS: a small pin, green when the kiosk has a live position. --}}
+        <span class="k-gps" id="k-gps" hidden><i class="fas fa-location-dot"></i><b id="k-gps-text">GPS</b></span>
         <span class="k-health" id="k-health"><i></i><span id="k-health-text"></span></span>
         <button class="k-more" id="btn-more" type="button" aria-haspopup="true" aria-expanded="false" data-i18n-aria="menu.open" aria-label="Menu"><i class="fas fa-ellipsis"></i></button>
 

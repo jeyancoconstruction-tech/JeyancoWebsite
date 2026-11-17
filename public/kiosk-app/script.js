@@ -1480,3 +1480,30 @@ window.addEventListener('DOMContentLoaded', () => {
     }, 10000);
     window.addEventListener('online', loadKioskSettings);
 });
+
+// ── GPS PIN (header) ───────────────────────────────────────────────────────
+// Asks the Pi's service how the GPS is (/gps-status, every 5 s) and shows a
+// small pin: green "GPS" with a live position, grey and blinking while it
+// searches. Hidden where there is no Pi to ask (a laptop, the live view).
+(function () {
+    const pin = document.getElementById('k-gps');
+    if (!pin) return;
+    const label = { fix: 'GPS', no_fix: 'GPS…', no_module: 'GPS ✕', off: 'GPS ✕' };
+    async function check() {
+        try {
+            const res = await flaskFetch('/gps-status', { headers: { Accept: 'application/json' } }, 3000);
+            if (isMissingRoute(res)) { pin.hidden = true; return; }
+            const d = await safeParseJSON(res);
+            const state = d && d.state ? d.state : 'off';
+            pin.hidden = false;
+            pin.className = 'k-gps ' + (state === 'fix' ? 'fix' : state === 'no_fix' ? 'search' : 'off');
+            setText('k-gps-text', label[state] || 'GPS');
+            pin.title = state === 'fix' ? 'GPS: live position'
+                : state === 'no_fix' ? 'GPS: searching for satellites'
+                : 'GPS: no data from the module';
+        } catch (e) {
+            pin.hidden = true;
+        }
+    }
+    window.addEventListener('load', () => { check(); setInterval(check, 5000); });
+})();
