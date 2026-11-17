@@ -39,8 +39,6 @@ Route::middleware(KioskDevice::class)->group(function () {
     Route::post('/kiosk/active-site',      [KioskController::class, 'setActiveSite']);
     Route::get ('/kiosk/roster',           [KioskController::class, 'roster']);
     Route::get ('/kiosk/today-attendance', [KioskController::class, 'todayAttendance']);
-    // GPS reports: only a registered kiosk (GPS tracker v5.3 sends the key).
-    Route::post('/location',                  [KioskLocationController::class, 'store']);
     Route::get ('/location/latest',           [KioskLocationController::class, 'latestByQuery']);
     Route::get ('/location/{kioskId}/status', [KioskLocationController::class, 'status']);
     Route::get ('/location/{kioskId}',        [KioskLocationController::class, 'latest']);
@@ -70,6 +68,11 @@ Route::middleware(KioskDevice::class)->group(function () {
     Route::get ('/employees/by-finger/{fingerId}', [KioskAiController::class, 'byFinger']);
     Route::get ('/kiosk/my-payroll/{fingerId}',    [KioskAiController::class, 'summary']);
 });
+
+// GPS reports are accepted without the device key again (2026-11-17): the
+// kiosk's tracker was refused while its key was not reaching it. Reading the
+// positions above still needs the key. To close again: move this into the group.
+Route::post('/location', [KioskLocationController::class, 'store']);
 
 // ✅ Kiosk GPS (NEO-M8L on the Pi, posted every ~30s). Cache-only: latest fix wins.
 //    The literal /location/latest must precede /location/{kioskId}, otherwise
