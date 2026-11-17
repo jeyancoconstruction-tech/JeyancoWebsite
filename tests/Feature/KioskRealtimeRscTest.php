@@ -179,16 +179,16 @@ class KioskRealtimeRscTest extends TestCase
         $this->assertTrue($rows()[$ana->id]['complete'], 'two fingers: off the list');
     }
 
-    /** The web shows "1 of 2" and asks the kiosk for the second from the profile. */
+    /** The web shows "1 of 3" and asks the kiosk for another from the profile. */
     public function test_the_office_asks_for_a_second_finger_from_the_profile(): void
     {
-        config(['kiosk.fingers_required' => 2]);
+        config(['kiosk.fingers_required' => 2, 'kiosk.fingers_max' => 3]);
         $ana   = $this->worker('7');
         $admin = User::create(['name' => 'Admin', 'username' => 'admin.fingers', 'password' => 'secret123',
             'role' => User::ROLE_ADMIN, 'is_admin' => true, 'is_active' => true]);
 
         $this->actingAs($admin)->get(route('employees.show', $ana->id))->assertOk()
-            ->assertSee('1 of 2')
+            ->assertSee('1 of 3')
             ->assertSee(route('employees.finger-request', $ana->id), false)
             ->assertSee('Add second fingerprint');
 

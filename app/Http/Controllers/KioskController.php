@@ -1252,8 +1252,9 @@ class KioskController extends Controller
 
             // The office asked for another finger and now has it: the request
             // is answered, and the worker leaves the ENROLL list.
+            // One new finger answers one request (up to three on file).
             $complete = count($slots) >= $employee->fingersRequired();
-            if ($employee->extraFingerRequested() && count($slots) >= Employee::fingersTarget()) {
+            if ($employee->extraFingerRequested()) {
                 $employee->forceFill(['extra_finger_requested_at' => null])->save();
                 $complete = true;
             }

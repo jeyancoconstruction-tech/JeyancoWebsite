@@ -479,24 +479,28 @@ class Employee extends Model
     }
 
     /**
-     * How many fingers the office keeps on file for a worker: what the web
-     * shows as "1 of 2", "2 of 2" (kiosk.fingers_required).
+     * How many fingers a worker may have on file: what the web shows as
+     * "1 of 3", "2 of 3" (2026-11-17: up to three, kiosk.fingers_max).
      */
     public static function fingersTarget(): int
     {
-        return max(1, (int) config('kiosk.fingers_required', 2));
+        return max(1, (int) config('kiosk.fingers_required', 2), (int) config('kiosk.fingers_max', 3));
     }
 
     /**
      * How many fingers this worker needs on file before the kiosk stops
-     * listing them under ENROLL (2026-11-12). One finger is enough to work.
-     * A second is taken only when the office asks for it from the worker's
-     * profile ("Add second fingerprint"); from then the worker stays on the
-     * ENROLL list until fingersTarget() are on file.
+     * listing them under ENROLL. One finger is enough to work. Each time the
+     * office asks for another from the worker's profile ("Add another
+     * fingerprint"), the worker is listed until one more finger is on file,
+     * up to fingersTarget().
      */
     public function fingersRequired(): int
     {
-        return $this->extraFingerRequested() ? self::fingersTarget() : 1;
+        if (! $this->extraFingerRequested()) {
+            return 1;
+        }
+
+        return min(self::fingersTarget(), count($this->fingerprintSlots()) + 1);
     }
 
     /** Whether the office has asked the kiosk for another finger. */

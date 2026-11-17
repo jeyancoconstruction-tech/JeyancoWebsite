@@ -1005,7 +1005,7 @@ class EmployeeController extends Controller
 
         return back()->with('success', $cancel
             ? __('Request cancelled. :name is off the kiosk\'s Enroll list.', ['name' => $employee->name])
-            : __(':name is on the kiosk\'s Enroll list. They add their second finger there.', ['name' => $employee->name]));
+            : __(':name is on the kiosk\'s Enroll list. They add another finger there (up to :max).', ['name' => $employee->name, 'max' => Employee::fingersTarget()]));
     }
 
     /** Bring an archived worker back into the active workforce. */
