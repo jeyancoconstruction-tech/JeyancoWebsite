@@ -346,6 +346,12 @@ html[data-bs-theme] .prx-pv-pick .ss-input {
 .psh-grid td.rng { background: color-mix(in srgb, var(--brand) 9%, var(--surface)); }
 .psh-grid tr.psh-tot td { position: sticky; bottom: 0; z-index: 2; background: var(--bg-subtle); border-top: 2px solid var(--border-md); }
 .psh-grid tr.psh-tot th { bottom: 0; z-index: 3; }
+/* Column A (the employee) stays in view, like Freeze Panes. */
+.psh-grid td[data-c="A"], .psh-head td:first-of-type { position: sticky; left: 40px; z-index: 1; min-width: 230px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; box-shadow: 1px 0 0 var(--border-md); }
+.psh-grid thead th[data-c="A"] { left: 40px; z-index: 5; }
+.psh-head td:first-of-type { z-index: 3; text-align: left; }
+.psh-grid tr.psh-tot td[data-c="A"] { z-index: 3; }
+.psh-grid td[data-c="A"].sel { box-shadow: inset 0 0 0 2px var(--brand), 1px 0 0 var(--border-md); }
 .psh-status { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 7px 14px; border-top: 1px solid var(--border); background: var(--bg-subtle); font-size: 12px; color: var(--text-secondary); }
 .psh-status .sp { flex: 1; }
 .psh-status b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
