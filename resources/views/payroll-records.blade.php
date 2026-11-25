@@ -310,6 +310,56 @@ html[data-bs-theme] .prx-pv-pick .ss-input {
 .prx-slip .r.none { color: #8a97ab; }
 .prx-slip th.l, .prx-slip td.l { text-align: left; }
 .prx-slip tfoot td { font-weight: 800; border-bottom: 0; border-top: 1px solid #0f1b2d; }
+
+/* ── Sheet view (partials/payroll-sheet) ──────────────────────────────────
+   The same week as a spreadsheet, in the site's colours. */
+.prx-viewseg button { height: 28px; padding: 0 11px; font-size: 12px; }
+.prx-list[data-view="sheet"] #prTableWrap, .prx-list[data-view="sheet"] [data-prx-tblnote] { display: none; }
+.psh { display: flex; flex-direction: column; min-height: 0; }
+.psh[hidden] { display: none; }
+.psh-fbar { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); background: var(--bg-subtle); font-size: 12.5px; min-height: 34px; }
+.psh-name { width: 64px; flex: none; display: grid; place-items: center; font-weight: 800; color: var(--text-primary); border-right: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.psh-fx { width: 34px; flex: none; display: grid; place-items: center; font-style: italic; font-weight: 800; color: var(--brand); border-right: 1px solid var(--border); font-family: Georgia, serif; }
+.psh-f { flex: 1; min-width: 0; padding: 0 12px; display: flex; align-items: center; font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--text-primary); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.psh-val { flex: none; padding: 0 12px; display: flex; align-items: center; font-weight: 800; color: var(--brand); font-variant-numeric: tabular-nums; }
+.psh-wrap { overflow: auto; flex: 1; min-height: 0; }
+.psh-grid { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1060px; font-size: 12.5px; }
+.psh-grid th, .psh-grid td { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 5px 9px; white-space: nowrap; height: 32px; }
+.psh-grid thead th { position: sticky; top: 0; z-index: 3; background: var(--bg-subtle); color: var(--text-muted); font-size: 11px; font-weight: 600; text-align: center; height: 24px; padding: 2px 6px; }
+.psh-grid thead th.on { background: color-mix(in srgb, var(--brand) 14%, var(--surface)); color: var(--brand); box-shadow: inset 0 -2px 0 var(--brand); }
+.psh-corner { width: 40px; left: 0; z-index: 4 !important; }
+.psh-rn { position: sticky; left: 0; z-index: 2; width: 40px; min-width: 40px; background: var(--bg-subtle); color: var(--text-muted); font-size: 11px; font-weight: 600; text-align: center; }
+.psh-rn.on { background: color-mix(in srgb, var(--brand) 14%, var(--surface)); color: var(--brand); }
+.psh-head td { position: sticky; top: 24px; z-index: 2; background: var(--surface); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); text-align: center; box-shadow: inset 0 -2px 0 var(--border-md); }
+.psh-grid td { background: var(--surface); color: var(--text-primary); cursor: cell; outline: none; }
+.psh-grid td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.psh-grid td.t { text-align: left; }
+.psh-grid td small { margin-left: 6px; font-size: 10.5px; color: var(--text-muted); font-weight: 500; }
+.psh-grid td.lock { background: var(--bg-subtle); }
+.psh-grid td.zero { color: var(--text-muted); }
+.psh-grid td.strong { font-weight: 800; }
+.psh-grid td.neg { color: var(--danger); }
+.psh-grid td.netc { color: var(--brand); }
+.psh-grid td.edit { background: color-mix(in srgb, var(--warning) 10%, var(--surface)); }
+.psh-grid td.edit.can:hover { box-shadow: inset 0 0 0 1px var(--warning); }
+.psh-grid td.sel { box-shadow: inset 0 0 0 2px var(--brand); background: color-mix(in srgb, var(--brand) 9%, var(--surface)); }
+.psh-grid td.rng { background: color-mix(in srgb, var(--brand) 9%, var(--surface)); }
+.psh-grid tr.psh-tot td { position: sticky; bottom: 0; z-index: 2; background: var(--bg-subtle); border-top: 2px solid var(--border-md); }
+.psh-grid tr.psh-tot th { bottom: 0; z-index: 3; }
+.psh-status { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 7px 14px; border-top: 1px solid var(--border); background: var(--bg-subtle); font-size: 12px; color: var(--text-secondary); }
+.psh-status .sp { flex: 1; }
+.psh-status b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.psh-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; }
+.psh-leg i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--border-md); background: var(--surface); }
+.psh-leg i.lk { background: var(--bg-subtle); }
+.psh-leg i.ed { background: color-mix(in srgb, var(--warning) 18%, var(--surface)); }
+.psh-pop { position: fixed; z-index: 1080; width: 280px; display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px;
+           background: var(--surface); border: 1px solid var(--border-md); box-shadow: var(--shadow-lg, 0 12px 32px rgba(0,0,0,.18)); font-size: 12.5px; }
+.psh-pop[hidden] { display: none; }
+.psh-pop label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; color: var(--text-secondary); }
+.psh-pop input { height: 34px; border: 1px solid var(--border-md); border-radius: 8px; padding: 0 10px; background: var(--surface); color: var(--text-primary); font: inherit; }
+.psh-pop small { color: var(--text-muted); }
+.psh-popb { display: flex; justify-content: flex-end; gap: 8px; }
 </style>
 @endpush
 
@@ -631,9 +681,16 @@ html[data-bs-theme] .prx-pv-pick .ss-input {
             <h2 class="prx-h">{!! $icon['cal'] !!} {{ $isDaily ? __('Daily breakdown') : __('Weekly breakdown') }}</h2>
             <span class="prx-note">{{ count($employees) }} {{ count($employees) === 1 ? __('employee') : __('employees') }}</span>
             <span class="sp"></span>
-            <span class="prx-note">{{ __('Click a row for the full payslip') }}</span>
+            <span class="prx-note" data-prx-tblnote>{{ __('Click a row for the full payslip') }}</span>
+            @unless($isDaily)
+                {{-- Table or Sheet (spreadsheet) view of the same week. --}}
+                <div class="prx-seg prx-viewseg" role="group" aria-label="{{ __('Layout') }}">
+                    <button type="button" class="on" data-prx-view="table" aria-pressed="true">{{ __('Table') }}</button>
+                    <button type="button" data-prx-view="sheet" aria-pressed="false">{{ __('Sheet') }}</button>
+                </div>
+            @endunless
         </div>
-        <div class="prx-wrap" data-fill-scroll>
+        <div class="prx-wrap" id="prTableWrap" data-fill-scroll>
             <table class="prx-table">
                 <thead>
                     <tr>
@@ -805,6 +862,9 @@ html[data-bs-theme] .prx-pv-pick .ss-input {
                 @endif
             </table>
         </div>
+        @unless($isDaily)
+            @include('partials.payroll-sheet')
+        @endunless
     </section>
 
     {{-- ── The payslip panel ───────────────────────────────────────────────
@@ -1245,6 +1305,112 @@ html[data-bs-theme] .prx-pv-pick .ss-input {
         if (b) { pane = b.dataset.pv; renderPv(); }
     });
     $('pvEmp').addEventListener('change', e => { chosen = e.target.value; renderPv(); });
+})();
+
+// ── Sheet view (partials/payroll-sheet) ────────────────────────────────────
+// Table or Sheet, remembered per browser. In the sheet: pick a cell to see its
+// formula; shift-click down a column to sum a range; arrow keys move; the
+// Administrator double-clicks Bonus (pay period running now) to add a bonus.
+(function () {
+    const list  = document.getElementById('prBreakdown');
+    const sheet = document.getElementById('prSheet');
+    if (!list || !sheet) return;
+    const $ = id => document.getElementById(id);
+    const peso = v => (v < 0 ? '−' : '') + '₱' + Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function show(view) {
+        const isSheet = view === 'sheet';
+        list.dataset.view = isSheet ? 'sheet' : 'table';
+        sheet.hidden = !isSheet;
+        list.querySelectorAll('[data-prx-view]').forEach(b => {
+            const on = b.dataset.prxView === view;
+            b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        try { localStorage.setItem('prx_view', isSheet ? 'sheet' : 'table'); } catch (e) { /* private mode */ }
+        window.dispatchEvent(new Event('resize'));   // _fill_screen re-measures
+    }
+    list.addEventListener('click', e => { const b = e.target.closest('[data-prx-view]'); if (b) show(b.dataset.prxView); });
+    let saved = null;
+    try { saved = localStorage.getItem('prx_view'); } catch (e) { /* private mode */ }
+    if (saved === 'sheet') show('sheet');
+    // A live update patches this card from the server's markup (which has the
+    // sheet hidden): put the chosen view, and the picked cell, back.
+    list.addEventListener('live:updated', () => {
+        let v = 'table';
+        try { v = localStorage.getItem('prx_view') || 'table'; } catch (e) { /* private mode */ }
+        show(v);
+        if (cur && cur.isConnected) pick(cur, false);
+    });
+
+    const grid = sheet.querySelector('.psh-grid');
+    let cur = null, anchor = null;
+
+    function mark(cells) {
+        grid.querySelectorAll('td.sel, td.rng').forEach(td => td.classList.remove('sel', 'rng'));
+        grid.querySelectorAll('thead th.on, .psh-rn.on').forEach(th => th.classList.remove('on'));
+        cells.forEach(td => td.classList.add('rng'));
+        if (cur) {
+            cur.classList.remove('rng'); cur.classList.add('sel');
+            grid.querySelector(`thead th[data-c="${cur.dataset.c}"]`)?.classList.add('on');
+            cur.closest('tr').querySelector('.psh-rn')?.classList.add('on');
+        }
+        const nums = cells.filter(td => td.dataset.v !== undefined).map(td => parseFloat(td.dataset.v) || 0);
+        const money = cells.some(td => /₱/.test(td.textContent));
+        const fmt = v => money ? peso(v) : (Math.round(v * 100) / 100).toString();
+        const sum = nums.reduce((a, b) => a + b, 0);
+        $('pshSel').textContent = cells.length > 1 ? `${cells[0].dataset.c}${cells[0].dataset.r}:${cells[cells.length - 1].dataset.c}${cells[cells.length - 1].dataset.r}` : (cur ? cur.dataset.c + cur.dataset.r : '—');
+        $('pshSum').textContent = nums.length ? fmt(sum) : '—';
+        $('pshCount').textContent = String(cells.length);
+        $('pshAvg').textContent = nums.length ? fmt(sum / nums.length) : '—';
+    }
+
+    function pick(td, extend) {
+        if (!td || !td.dataset.c) return;
+        if (extend && anchor && anchor.dataset.c === td.dataset.c) {
+            const a = +anchor.dataset.r, b = +td.dataset.r, lo = Math.min(a, b), hi = Math.max(a, b);
+            cur = td;
+            mark([...grid.querySelectorAll(`td[data-c="${td.dataset.c}"]`)].filter(x => +x.dataset.r >= lo && +x.dataset.r <= hi));
+        } else {
+            cur = anchor = td;
+            mark([td]);
+        }
+        $('pshName').textContent = td.dataset.c + td.dataset.r;
+        const f = td.dataset.f || '';
+        $('pshF').textContent = td.classList.contains('edit') ? f + ' · ' + sheet.dataset.bonusWhy : f;
+        $('pshV').textContent = td.dataset.v !== undefined && /₱/.test(td.textContent) ? '= ' + peso(parseFloat(td.dataset.v) || 0) : '';
+        td.focus({ preventScroll: true });
+        td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    grid.addEventListener('click', e => pick(e.target.closest('td'), e.shiftKey));
+    grid.addEventListener('keydown', e => {
+        if (!cur) return;
+        const step = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+        if (e.key === 'Enter' && cur.classList.contains('can')) { e.preventDefault(); openBonus(cur); return; }
+        if (!step) return;
+        e.preventDefault();
+        const c = String.fromCharCode(cur.dataset.c.charCodeAt(0) + step[0]), r = +cur.dataset.r + step[1];
+        pick(grid.querySelector(`td[data-c="${c}"][data-r="${r}"]`) || cur, e.shiftKey && step[0] === 0);
+    });
+
+    // ── Add a bonus (Administrator, this pay period) ──
+    const pop = $('pshPop');
+    function openBonus(td) {
+        if (sheet.dataset.canBonus !== '1') return;
+        const tr = td.closest('tr[data-emp]');
+        if (!tr) return;
+        pop.action = sheet.dataset.bonusUrl.replace('__ID__', tr.dataset.emp);
+        $('pshPopWho').textContent = 'Add a bonus · ' + (tr.querySelector('td[data-c="A"]')?.firstChild?.textContent || '').trim();
+        pop.reset();
+        pop.hidden = false;
+        const r = td.getBoundingClientRect();
+        pop.style.top = Math.min(window.innerHeight - pop.offsetHeight - 12, r.bottom + 6) + 'px';
+        pop.style.left = Math.max(12, Math.min(window.innerWidth - pop.offsetWidth - 12, r.right - pop.offsetWidth)) + 'px';
+        pop.querySelector('input[name="amount"]').focus();
+    }
+    grid.addEventListener('dblclick', e => { const td = e.target.closest('td.edit.can'); if (td) openBonus(td); });
+    pop.querySelector('[data-psh-cancel]').addEventListener('click', () => { pop.hidden = true; cur?.focus(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.hidden) { pop.hidden = true; cur?.focus(); } });
 })();
 </script>
 @endpush
